@@ -1,8 +1,8 @@
 """RAG chain: retrieval + LLM generation."""
 
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import Document
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 
 from src.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, TOP_K, FAISS_INDEX_DIR

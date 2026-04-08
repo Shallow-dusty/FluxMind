@@ -3,9 +3,9 @@
 from pathlib import Path
 
 import fitz  # PyMuPDF
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from src.config import PAPERS_DIR, FAISS_INDEX_DIR, CHUNK_SIZE, CHUNK_OVERLAP
 from src.embeddings import get_embedding_model
