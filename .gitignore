@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.faiss
+faiss_index/
+papers/*.pdf
+.streamlit/secrets.toml
