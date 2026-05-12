@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>演示导览 · FluxMind</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f26;
+    --panel-2: #232730;
+    --ink: #ebe9e0;
+    --muted: #9aa1ad;
+    --line: #2f3540;
+    --accent: #c5b6ff;
+    --accent-2: #7af0c4;
+    --warn: #ffb27a;
+    --good: #7af0c4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft Yahei", "Noto Sans CJK SC", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(197,182,255,0.12), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(122,240,196,0.08), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 64px 40px 120px; }
+
+  /* ---------- hero ---------- */
+  header { margin-bottom: 56px; }
+  .stamp {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 4px 10px;
+    margin-bottom: 18px;
+    font-weight: 600;
+  }
+  h1 {
+    margin: 0;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(110deg, #c5b6ff 0%, #7af0c4 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tagline {
+    color: var(--muted);
+    margin-top: 14px;
+    font-size: 17px;
+  }
+  .whisper {
+    margin-top: 22px;
+    font-size: 13px;
+    color: var(--muted);
+    background: rgba(255,178,122,0.08);
+    border: 1px dashed var(--warn);
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .whisper b { color: var(--warn); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  h2 .ord {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: var(--accent);
+    margin-right: 12px;
+    font-weight: 600;
+    background: rgba(197,182,255,0.12);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  h3 {
+    font-size: 17px;
+    margin: 28px 0 10px;
+    color: var(--ink);
+  }
+  h3::before {
+    content: "—— ";
+    color: var(--accent);
+  }
+  p { margin: 0 0 12px; }
+  strong { color: var(--accent); }
+  em { font-style: italic; color: var(--muted); }
+  code:not(pre code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: rgba(197,182,255,0.12);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  ul { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+
+  /* ---------- tldr ---------- */
+  .tldr {
+    background: linear-gradient(135deg, rgba(197,182,255,0.16), rgba(122,240,196,0.12));
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin: 12px 0;
+  }
+  .tldr .title {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .tldr p:last-child { margin-bottom: 0; }
+
+  /* ---------- step card ---------- */
+  .step {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 26px;
+    margin: 16px 0;
+    position: relative;
+  }
+  .step::before {
+    content: attr(data-step);
+    position: absolute;
+    top: -14px;
+    left: 22px;
+    background: var(--accent);
+    color: #14161a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+  .step .step-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 6px 0 16px;
+  }
+  .step .step-title .time {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 10px;
+    font-weight: 400;
+  }
+  .step .row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 14px;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  .step .row .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    padding-top: 3px;
+  }
+  .step .row.action .label { color: var(--accent); }
+  .step .row.say .label    { color: var(--accent-2); }
+  .step .row.point .label  { color: var(--warn); }
+  .step .row .content { color: var(--ink); }
+  .step .row.say .content {
+    background: rgba(122,240,196,0.08);
+    border-left: 3px solid var(--accent-2);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+  }
+  .step .followup {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .step .followup b { color: var(--accent); }
+
+  /* ---------- qa ---------- */
+  .qa {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+  }
+  .qa .q { font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+  .qa .q::before { content: "Q  ·  "; color: var(--accent); font-family: ui-monospace, monospace; font-weight: 700; }
+  .qa .a { font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .qa .a::before { content: "A  ·  "; color: var(--good); font-family: ui-monospace, monospace; font-weight: 700; }
+  .qa .a strong { color: var(--ink); }
+
+  /* ---------- glossary ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    background: var(--panel-2);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 72px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="stamp">For the presenter · 演示者手册</div>
+  <h1>演示导览</h1>
+  <div class="tagline">FluxMind 五分钟实机演示脚本 + 答辩 Q&A 兜底</div>
+  <div class="whisper">
+    <b>使用方式：</b>这一页是给演示者（拿着电脑给评审讲解的那个人）的"导游词"——
+    按 <b>开场 → 6 步操作 → 答辩兜底 → 收尾</b> 的顺序过两遍即可。每个步骤都标好了
+    <b>"动作 / 话术 / 亮点"</b>三件套，照着做、照着说就行。<b>不要把这页给评审看</b>，
+    需要展示给评审的是 <code>handover.html</code>。
+  </div>
+</header>
+
+<section>
+  <div class="tldr">
+    <div class="title">⚡ 开场白 · 30 秒</div>
+    <p>
+      <em>（建议开场就把这段稳稳地说出去，然后再开始操作。）</em>
+    </p>
+    <p>
+      "我做的是 <strong>FluxMind</strong>——一个面向控制工程的 <strong>检索增强（RAG）研究助手</strong>，
+      聚焦滑模控制与磁链估计两个领域。它把研究论文作为外部知识库，每个回答都能<strong>追溯到具体论文和页码</strong>，
+      避免大模型自由发挥。系统提供 Web 界面和开放 API 两种形态，目前已经部署上线，<strong>公网可访问</strong>。"
+    </p>
+    <p>
+      "我现在演示一下。"<em>（然后打开浏览器到 demo 网址。）</em>
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ord">DEMO</span>五分钟演示流程</h2>
+  <p style="color: var(--muted); font-size: 14px;">
+    建议提前打开浏览器到 <code>https://smy.hyper-dusty.cloud/</code>，把网络环境检查好。如果现场网络不稳，准备一份截图兜底。
+  </p>
+
+  <div class="step" data-step="STEP 01">
+    <div class="step-title">介绍主界面 <span class="time">· 约 30 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">让评审看到 Streamlit 主界面。指着左侧栏。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"左侧是<strong>知识库管理</strong>。当前预置了 <strong>6 篇精选论文</strong>，覆盖滑模控制与磁链估计两个方向，全部是 CC BY 或 arXiv 开放访问的真实研究文献。<strong>每篇论文带 [Seed] 或 [Upload] 标签</strong>，区分预置语料和用户上传。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">让评审看到这是"真项目"——有真实文献，不是空壳。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 02">
+    <div class="step-title">第一问：英文 SMC 比较 <span class="time">· 约 90 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">点击示例问题 <em>"Explain the reaching law design in sliding mode control"</em>，或者直接输入。等待回答。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"您看，答案上方这个 <strong>💭 引用块</strong>就是模型的<strong>推理过程</strong>——它在思考时如何拆解问题、检索哪些段落、组织哪些证据，全程对用户可见。分隔线下面才是正式回答，并且<strong>带具体论文和页码引用</strong>。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">流式输出 + 推理可视化 + 带引用。这是项目最容易"出彩"的一步，请放慢节奏让评审看清楚。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 03">
+    <div class="step-title">第二问：中文双语 <span class="time">· 约 60 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">在输入框里用中文提问，比如：<br><code>请用两句话解释 PMSM 滑模观测器和扩展卡尔曼滤波器在磁链估计上的取舍。</code></div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"系统会<strong>以提问语言作答</strong>，这不是简单的界面 i18n 切换，而是在模型层面做了语言约束。控制工程文献中英文混杂是常态，所以这点对实际使用很重要。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">中文回答 + 引用文献。如果检索回来的论文是英文、回答是中文，更显出系统的双语融合能力。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 04">
+    <div class="step-title">展示语料库管理 <span class="time">· 约 45 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">回到侧栏，<strong>取消勾选</strong>其中 2-3 篇论文，点击 <em>"应用选择并重建索引"</em>。等待几秒看到重建完成提示。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"研究场景常常需要<strong>限定知识库范围</strong>——比如'只在这几篇论文里回答'。我把激活的论文清单做了持久化（<code>active_papers.json</code>），下次启动会自动恢复上次的选择。这把'知识库'从一个无差别黑盒变成了<strong>可被精确管理的资源</strong>。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">这一步显示出系统的"准生产"层级——不只是能跑，而是考虑过实际研究场景的需求。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 05">
+    <div class="step-title">（可选）上传演示 <span class="time">· 约 30 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">如果评审感兴趣"能不能上传自己的论文"，可以演示。提前准备一个小 PDF 拖入上传区。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"上传通道做了<strong>三重安全防护</strong>：文件名清洗防止路径穿越、大小限制（50 MB 默认）、上传后校验 PDF 是否真有可提取文本以免污染索引。<strong>中文 / 日文 / 俄文文件名都能正确保留</strong>，同名上传会自动加序号避免覆盖。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">"安全意识"是工程层级的关键加分项。即使评审不追问，主动提一句"防路径穿越"会让对方觉得你考虑过实际部署场景。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 06">
+    <div class="step-title">（可选）展示开放 API <span class="time">· 约 30 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">如果评审是技术背景，可以打开 <code>http://223.6.253.9:18502/docs</code>（FastAPI 自动生成的 Swagger 页面），让他看到 <code>/query</code> 和 <code>/health</code> 两个端点的 OpenAPI 描述。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"除了 Web UI，系统还开放了 <strong>FastAPI 端点</strong>，符合 OpenAPI 3 规范，可以直接挂载为<strong>字节跳动 Coze 智能体的自定义工具插件</strong>。这意味着 FluxMind 不只是一个独立应用，而是一个可被其他 Agent 调用的<strong>领域能力</strong>。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">"可组合中间件"是商业 PPT 黑话，但用在这里特别合适——因为 API 确实已经接通 Coze。</div>
+    </div>
+  </div>
+
+  <div class="step" data-step="STEP 07">
+    <div class="step-title">收尾 · 打开架构图 <span class="time">· 约 45 秒</span></div>
+    <div class="row action">
+      <div class="label">动作</div>
+      <div class="content">打开 <code>docs/handover.html</code>，滚到"系统架构"那张 SVG 图。从顶到底过一遍。</div>
+    </div>
+    <div class="row say">
+      <div class="label">话术</div>
+      <div class="content">"这是系统架构图。<strong>两层经典 RAG 范式</strong>——上半是检索层，用户问题先做<strong>向量化</strong>，然后在 FAISS 里做<strong>语义相似度检索</strong>；下半是生成层，把检索到的论文片段和问题一起喂给大模型生成最终答案。<strong>两层完全解耦</strong>，向量库、嵌入模型、大模型都可以独立替换。"</div>
+    </div>
+    <div class="row point">
+      <div class="label">亮点</div>
+      <div class="content">把"完全解耦"这个词说出来——这是工程判断力的体现。最后用一句 <em>"基于这套架构，未来可以接入重排器、Simulink 模板生成、或硬件在环验证"</em> 自然过渡到 Q&A。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ord">Q&A</span>常见追问 · 兜底答案</h2>
+  <p style="color: var(--muted); font-size: 14px;">每个答案<strong>背 2-3 句话</strong>即可。评审不会让你长篇大论。</p>
+
+  <div class="qa">
+    <div class="q">这和直接用 ChatGPT 检索论文有什么区别？</div>
+    <div class="a">
+      "<strong>三个核心差异</strong>。一，ChatGPT 不知道我的私人文献库，FluxMind 是在用户指定的论文集合上做检索，每个回答可<strong>追溯到具体论文和页码</strong>；
+      二，<strong>检索结果先于生成出现</strong>，压缩了模型自由发挥的空间，降低幻觉；
+      三，FluxMind 同时是 Web UI 和 API，可以被其他 Agent 平台调用，<strong>是工具而不是聊天框</strong>。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">为什么没有对大模型做 fine-tune？</div>
+    <div class="a">
+      "在控制工程文献的体量与更新节奏下，<strong>RAG 比 fine-tune 性价比更高</strong>——新增论文无需重训、回答始终基于真实文本而非'模型记忆'、调试时可以分别定位是检索失误还是生成失误。
+      fine-tune 适合做风格定制，不适合做<strong>知识更新</strong>。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">模型还是可能产生幻觉，怎么应对？</div>
+    <div class="a">
+      "<strong>幻觉无法被根除，只能被约束</strong>。系统做了三层防护：
+      <strong>检索层</strong>提供论据上下文；
+      <strong>系统提示词</strong>强制要求引用，并在检索内容不足时返回'不知道'而非自由发挥；
+      <strong>推理过程对用户可见</strong>，方便人工审校。下一步会接入二阶段重排和引用页码锚定。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">中文论文支持怎么样？</div>
+    <div class="a">
+      "当前嵌入模型是英文基线 MiniLM，对中文语义保留略弱。架构上嵌入模型是<strong>一行环境变量可替换</strong>——切到 BGE-zh 或 E5-multilingual 重建一次索引就行，代码层无须改动。我把这点留给后续扩展。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">性能瓶颈在哪？</div>
+    <div class="a">
+      "三段管线里，<strong>检索是毫秒级</strong>的（FAISS 本地）、<strong>嵌入是十毫秒级</strong>的（MiniLM CPU）、唯一明显延迟在 <strong>LLM 推理阶段</strong>。
+      对推理模型还要叠加思考链时间，我用流式输出 + 思考过程可视化对冲了用户感知延迟。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">系统能完全离线运行吗？</div>
+    <div class="a">
+      "<strong>检索栈完全离线</strong>——嵌入模型本地、FAISS 本地、PDF 解析本地。<strong>唯一联网的是 LLM 调用</strong>。
+      把 <code>LLM_BASE_URL</code> 指向一个本地部署的 Ollama 或 vLLM，系统<strong>不需要改任何代码</strong>，因为协议是 OpenAI 兼容的。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">为什么前端用 Streamlit 不用 React？</div>
+    <div class="a">
+      "Streamlit 让我在<strong>不写一行前端代码</strong>的前提下做出可交互对话界面、文件上传、流式渲染。这是个研究工具不是 to C 产品，<strong>研发效率优先于视觉打磨</strong>。
+      如果未来要做正式产品，FastAPI 后端保留、前端换成 React 即可——我现在就已经是<strong>前后端分离的双形态架构</strong>。"
+    </div>
+  </div>
+
+  <div class="qa">
+    <div class="q">代码量看起来不大？</div>
+    <div class="a">
+      "代码行数不大，<strong>但这是优势不是劣势</strong>。工作量花在三件事：<strong>组件选型</strong>（每个都比较过备选）、
+      <strong>把 LangChain 默认流式行为改造成支持推理模型</strong>的版本、
+      以及<strong>生产部署</strong>——systemd 双服务、Cloudflare Tunnel、Token 鉴权、与同主机其他业务隔离。
+      <strong>'代码少'恰恰说明组件选对了</strong>。"
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="ord">REF</span>关键术语速查</h2>
+  <p style="color: var(--muted); font-size: 14px;">演示前快速过一遍即可——评审随口提到这些词时不会卡住。</p>
+  <table>
+    <thead><tr><th>术语</th><th>一句话解释</th></tr></thead>
+    <tbody>
+      <tr><td>RAG</td><td>检索增强生成——大模型回答前先从知识库检索相关片段，以此为依据生成回答，显著降低幻觉。</td></tr>
+      <tr><td>Embedding</td><td>向量化——把文本映射到高维向量空间，语义相近的文本在空间中也相近。</td></tr>
+      <tr><td>FAISS</td><td>Facebook AI 开源的向量相似度搜索库（读作 /feɪs/，像 face），本地运行无外部依赖。</td></tr>
+      <tr><td>Reasoning Model</td><td>推理模型——在产出答案前先输出"思考链"的大语言模型，本项目对此做了流式可视化适配。</td></tr>
+      <tr><td>FastAPI</td><td>Python 高性能 Web 框架，自动生成 OpenAPI 文档，本项目用来对外开放 <code>/query</code> 端点。</td></tr>
+      <tr><td>Streamlit</td><td>Python 数据应用框架，无须写前端即可做出交互式 Web 界面。</td></tr>
+      <tr><td>Cloudflare Tunnel</td><td>反向代理通道——源站主动出站到 CF 边缘，无需公网 IP 或开放端口。</td></tr>
+      <tr><td>SMC</td><td>滑模控制——变结构控制方法，通过切换函数把状态驱动到滑动面，强鲁棒性。</td></tr>
+      <tr><td>MRAS</td><td>模型参考自适应系统——通过参考模型与可调模型输出误差自适应调整参数。</td></tr>
+      <tr><td>Chattering</td><td>抖振——滑模控制中由开关项引发的高频振荡，是高阶 SMC 重点研究问题。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="ord">END</span>收尾金句</h2>
+  <div class="tldr">
+    <div class="title">💎 演示结束时</div>
+    <p>
+      <em>（评审问完最后一个问题，给自己留一句正面收尾。）</em>
+    </p>
+    <p>
+      "总结一下：<strong>FluxMind 不是一个聊天机器人，它是一个把控制工程领域知识结构化、可检索、可调用的中间件</strong>。
+      用户既可以通过 Web 界面直接对话，也可以让其他智能体把它作为工具挂载。
+      <strong>所有回答都能追溯到原始论文，所有推理过程都对用户可见，所有组件都可独立替换</strong>。
+      谢谢老师。"
+    </p>
+  </div>
+  <p style="color: var(--muted); font-size: 13.5px; margin-top: 18px;">
+    📌 演示前的最后清单：网络畅通 ✓ ／ 浏览器已打开 demo 网址 ✓ ／ 30 秒开场白已背 ✓ ／ 一个示例上传 PDF 已准备 ✓ ／ 这一页过两遍 ✓
+  </p>
+</section>
+
+<footer>
+  这是演示者手册，不是项目交付文档。<br>
+  正式交付文档是 <code>handover.html</code>，那一份才是给评审看的。
+</footer>
+
+</div>
+</body>
+</html>
