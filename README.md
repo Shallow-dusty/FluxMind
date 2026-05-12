@@ -91,6 +91,12 @@ docker build -t fluxmind .
 docker run -p 8501:8501 --env-file .env fluxmind
 ```
 
+## Deployment Status
+
+Temporary deployment details and live-check commands are recorded in
+[`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md).
+Current temporary public URL: `https://smy.hyper-dusty.cloud/`.
+
 ## 📚 Building the Knowledge Base
 
 1. Place PDF research papers in the `papers/` directory, or upload them through the web interface
@@ -113,7 +119,7 @@ docker run -p 8501:8501 --env-file .env fluxmind
 | RAG Framework | LangChain | Orchestration of retrieval and generation pipeline |
 | Vector Store | FAISS | Local vector similarity search (no external DB needed) |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) | Local text embedding (384-dim) |
-| LLM | DeepSeek-V3.2 | Response generation via OpenAI-compatible API |
+| LLM | Any OpenAI-compatible model (default `DeepSeek-V3.2`, configurable via `LLM_MODEL`) | Response generation |
 | PDF Parser | PyMuPDF (fitz) | Fast and accurate PDF text extraction |
 | Frontend | Streamlit | Interactive chat interface with file upload |
 
