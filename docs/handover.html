@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FluxMind · 项目交付文档</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --panel: #ffffff;
+    --ink: #14161a;
+    --muted: #5b6470;
+    --line: #e3e2dc;
+    --accent: #4d3da6;
+    --accent-soft: #ece8fb;
+    --good: #1f7a4d;
+    --good-soft: #e7f5ec;
+    --code-bg: #161821;
+    --code-ink: #d4d7df;
+    --code-key: #a3b1ff;
+    --code-str: #c8e6a6;
+    --code-com: #6b7390;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft Yahei", "Noto Sans CJK SC",
+                 "Source Han Sans SC", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 56px 48px 96px; }
+
+  /* ---------- header ---------- */
+  header { margin-bottom: 56px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+  }
+  h1 .bolt { color: var(--accent); }
+  .subtitle {
+    margin-top: 12px;
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 36px;
+    margin-top: 34px;
+    padding: 22px 26px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .meta .k {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .meta .v { font-size: 14px; }
+  .meta a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  h2::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: var(--accent);
+    margin-right: 12px;
+    vertical-align: -3px;
+    border-radius: 2px;
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 28px 0 8px;
+    color: var(--ink);
+  }
+  .lede {
+    color: var(--muted);
+    margin: 4px 0 24px 16px;
+    font-size: 14px;
+  }
+  p { margin: 0 0 12px; }
+  ul { margin: 8px 0 12px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  strong { font-weight: 600; }
+  em { font-style: italic; color: var(--muted); }
+
+  /* ---------- TL;DR ---------- */
+  .tldr {
+    margin-top: 8px;
+    padding: 22px 26px;
+    background: linear-gradient(135deg, var(--accent-soft) 0%, var(--good-soft) 100%);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+  }
+  .tldr .tag {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .tldr p { margin: 0 0 10px; }
+  .tldr p:last-child { margin-bottom: 0; }
+
+  /* ---------- feature grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px 22px;
+  }
+  .card .title {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card .title .num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+  }
+  .card .body { font-size: 13.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.65; }
+  .card .body strong { color: var(--ink); font-weight: 600; }
+  .card .why {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 12.5px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .card .why::before {
+    content: "为什么这样设计 · ";
+    font-weight: 700;
+  }
+
+  /* ---------- arch diagram ---------- */
+  .diagram {
+    margin: 18px 0;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .caption {
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ---------- table ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  th, td { padding: 11px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    background: #f3f1ea;
+    font-weight: 600;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+
+  /* ---------- code ---------- */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 18px 20px;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    overflow-x: auto;
+    margin: 12px 0;
+  }
+  pre .k { color: var(--code-key); }
+  pre .s { color: var(--code-str); }
+  pre .c { color: var(--code-com); font-style: italic; }
+  code:not(pre code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: #f0ede4;
+    color: #5b4ba8;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 14px 18px;
+    border-radius: 0 4px 4px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* ---------- qa ---------- */
+  .qa { margin: 12px 0; padding: 16px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .qa .q { font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .qa .q::before { content: "Q  ·  "; color: var(--accent); font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; }
+  .qa .a { font-size: 14px; color: var(--ink); }
+  .qa .a::before { content: "A  ·  "; color: var(--good); font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* ---------- print ---------- */
+  @media print {
+    body { background: white; font-size: 12pt; }
+    .wrap { padding: 24px; max-width: none; }
+    .diagram, .card, table, .meta, .tldr, .qa { break-inside: avoid; }
+    pre { break-inside: avoid; font-size: 10pt; }
+    section { break-inside: avoid-page; }
+    h2 { break-after: avoid; }
+  }
+  @media (max-width: 720px) {
+    .wrap { padding: 32px 22px; }
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Project Handover · 项目交付文档</div>
+  <h1><span class="bolt">⚡</span> FluxMind</h1>
+  <div class="subtitle">面向滑模控制与磁链估计的检索增强研究 Copilot</div>
+
+  <div class="meta">
+    <div><div class="k">项目类型</div><div class="v">RAG 研究助手 · Web App + 开放 API</div></div>
+    <div><div class="k">技术方向</div><div class="v">检索增强生成 / 控制工程</div></div>
+    <div><div class="k">代码仓库</div><div class="v"><a href="https://github.com/Shallow-dusty/FluxMind">github.com/Shallow-dusty/FluxMind</a></div></div>
+    <div><div class="k">在线演示</div><div class="v"><a href="https://smy.hyper-dusty.cloud/">smy.hyper-dusty.cloud</a></div></div>
+    <div><div class="k">许可证</div><div class="v">MIT</div></div>
+    <div><div class="k">交付状态</div><div class="v">已部署，公网可访问</div></div>
+  </div>
+</header>
+
+<section>
+  <div class="tldr">
+    <div class="tag">⚡ 一页总览 · One-page Summary</div>
+    <p>
+      <strong>FluxMind</strong> 是一套基于 <em>检索增强生成（RAG）</em> 架构的研究 Copilot，聚焦于
+      <em>滑模控制（Sliding Mode Control）</em> 与 <em>磁链估计（Flux Linkage Estimation）</em> 两个控制工程子领域。
+      系统提供论文级问答、数学推导讲解，以及 MATLAB / Simulink 代码生成能力。
+    </p>
+    <p>
+      技术上做了三件超出"原型"层级的事：
+      <strong>① 推理模型的思考过程流式可视化</strong>——用户不再面对黑盒；
+      <strong>② Web UI 与 FastAPI 双形态交付</strong>——可作为 Coze 智能体的自定义插件挂载；
+      <strong>③ 双层语料管理 + 手动激活机制</strong>——预置语料库与用户上传分离，索引内容可精确控制。
+    </p>
+    <p>
+      系统已部署上线，通过 <strong>Cloudflare Tunnel</strong> 暴露公网入口，运行于独立 systemd 服务，与同主机其他业务完全隔离。
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>核心特性</h2>
+  <div class="lede">六个工程层面的关键能力。</div>
+  <div class="grid">
+    <div class="card">
+      <div class="title"><span class="num">01</span>语料驱动的问答</div>
+      <div class="body">
+        用户上传 PDF 研究论文即自动完成解析、切片、向量化、入库；提问时按语义相似度召回 top-k 块作为上下文，
+        在回答中标注<strong>来源论文与页码</strong>，避免大模型自由编造。
+      </div>
+      <div class="why">回答必须有据可查 —— 这是学术工具区别于通用聊天机器人的根本边界。</div>
+    </div>
+    <div class="card">
+      <div class="title"><span class="num">02</span>推理过程可视化</div>
+      <div class="body">
+        底层 LLM 为<strong>推理模型</strong>（reasoning model），其思考链以折叠引用块实时呈现，
+        随后以水平线分隔，接入正式答案。用户可观察模型如何拆解问题、组织证据。
+      </div>
+      <div class="why">学术场景下，"答案如何得出"与"答案本身"同等重要 —— 透明化推理也方便人工二次审校。</div>
+    </div>
+    <div class="card">
+      <div class="title"><span class="num">03</span>双层语料库</div>
+      <div class="body">
+        <strong>预置语料库</strong>（<code>papers/library/</code>，带 manifest 元数据）与
+        <strong>用户上传</strong>（<code>papers/uploads/</code>）严格分离；
+        侧栏多选界面可任意组合启用，<strong>精确控制 RAG 索引中的论文集合</strong>。
+      </div>
+      <div class="why">研究场景常需"只在这几篇论文范围内回答" —— 而非把所有材料一锅端。</div>
+    </div>
+    <div class="card">
+      <div class="title"><span class="num">04</span>MATLAB / Simulink 代码合成</div>
+      <div class="body">
+        系统提示词默认 MATLAB 语法输出，可一键产出滑模控制器、MRAS 磁链观测器、扩展卡尔曼滤波器（EKF）等
+        控制工程典型模块的可运行代码骨架。
+      </div>
+      <div class="why">把"论文读懂"和"工程能跑"之间的鸿沟用代码骨架补齐 —— 这是助手而非问答机器人的关键。</div>
+    </div>
+    <div class="card">
+      <div class="title"><span class="num">05</span>中英双语界面</div>
+      <div class="body">
+        UI 侧栏内置中英文切换，所有提示语、按钮、上传反馈、占位符均完成本地化；
+        系统提示词同时约束模型以<strong>用户提问的语言</strong>作答。
+      </div>
+      <div class="why">控制工程文献中英文混杂是常态 —— 切换语言不应是"换一套界面"，而应是无缝的交互。</div>
+    </div>
+    <div class="card">
+      <div class="title"><span class="num">06</span>开放 API + Coze 插件</div>
+      <div class="body">
+        除 Web UI 外开放 <code>/query</code> 与 <code>/health</code> 两个 FastAPI 端点，符合 OpenAPI 3 规范，
+        可直接挂载为 <strong>Coze 智能体的自定义工具插件</strong>，受 Token 鉴权保护。
+      </div>
+      <div class="why">让 FluxMind 不止是一个独立应用，而是一个可被其他 Agent 调用的能力 —— 即"可组合中间件"。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>系统架构</h2>
+  <div class="lede">两层 RAG 经典范式 · 检索层与生成层各自可独立替换。</div>
+  <div class="diagram">
+    <svg viewBox="0 0 860 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FluxMind 系统架构">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#4d3da6"/>
+        </marker>
+        <style>
+          .box { fill: #ffffff; stroke: #14161a; stroke-width: 1.4; }
+          .box-soft { fill: #ece8fb; stroke: #4d3da6; stroke-width: 1.4; }
+          .box-dim { fill: #f3f1ea; stroke: #5b6470; stroke-width: 1.2; stroke-dasharray: 4 3; }
+          .lbl { font: 600 13px -apple-system, "Segoe UI", "PingFang SC", sans-serif; fill: #14161a; }
+          .lbl-sm { font: 500 11.5px -apple-system, "Segoe UI", "PingFang SC", sans-serif; fill: #5b6470; }
+          .lbl-mono { font: 11px ui-monospace, Consolas, monospace; fill: #5b6470; }
+          .arrow { stroke: #4d3da6; stroke-width: 1.6; fill: none; }
+        </style>
+      </defs>
+
+      <!-- top: clients -->
+      <rect class="box" x="60" y="20" width="200" height="60" rx="6"/>
+      <text class="lbl" x="160" y="46" text-anchor="middle">Streamlit Web UI</text>
+      <text class="lbl-sm" x="160" y="64" text-anchor="middle">用户浏览器</text>
+
+      <rect class="box" x="320" y="20" width="200" height="60" rx="6"/>
+      <text class="lbl" x="420" y="46" text-anchor="middle">FastAPI · /query</text>
+      <text class="lbl-sm" x="420" y="64" text-anchor="middle">Coze 智能体 / 外部脚本</text>
+
+      <rect class="box-dim" x="580" y="20" width="220" height="60" rx="6"/>
+      <text class="lbl" x="690" y="46" text-anchor="middle">PDF 上传 + 论文激活</text>
+      <text class="lbl-sm" x="690" y="64" text-anchor="middle">侧栏管理界面</text>
+
+      <!-- arrows down -->
+      <path class="arrow" d="M160,80 L160,130" marker-end="url(#arr)"/>
+      <path class="arrow" d="M420,80 L420,130" marker-end="url(#arr)"/>
+      <path class="arrow" d="M690,80 L690,135" marker-end="url(#arr)"/>
+
+      <!-- query layer -->
+      <rect class="box-soft" x="60" y="135" width="460" height="60" rx="6"/>
+      <text class="lbl" x="290" y="161" text-anchor="middle">Query Encoder · sentence-transformers (all-MiniLM-L6-v2)</text>
+      <text class="lbl-sm" x="290" y="178" text-anchor="middle">本地 CPU 推理 · 384 维语义向量</text>
+
+      <path class="arrow" d="M290,195 L290,225" marker-end="url(#arr)"/>
+
+      <!-- retrieval -->
+      <rect class="box-soft" x="60" y="230" width="460" height="60" rx="6"/>
+      <text class="lbl" x="290" y="256" text-anchor="middle">Vector Retrieval · FAISS (L2 索引, top-k = 5)</text>
+      <text class="lbl-sm" x="290" y="273" text-anchor="middle">召回若干文献片段 + 来源元数据</text>
+
+      <path class="arrow" d="M290,290 L290,330" marker-end="url(#arr)"/>
+
+      <!-- ingestion side (right) -->
+      <rect class="box" x="580" y="140" width="220" height="170" rx="6"/>
+      <text class="lbl" x="690" y="166" text-anchor="middle">Ingestion · 语料管线</text>
+      <text class="lbl-sm" x="690" y="188" text-anchor="middle">PyMuPDF 文本抽取</text>
+      <text class="lbl-sm" x="690" y="208" text-anchor="middle">递归分块 1000 / 200</text>
+      <text class="lbl-sm" x="690" y="228" text-anchor="middle">向量化 + 元数据</text>
+      <text class="lbl-sm" x="690" y="248" text-anchor="middle">激活论文清单</text>
+      <text class="lbl-mono" x="690" y="276" text-anchor="middle">papers/library/*</text>
+      <text class="lbl-mono" x="690" y="293" text-anchor="middle">papers/uploads/*</text>
+
+      <!-- side arrow into vector retrieval -->
+      <path class="arrow" d="M580,260 L520,260" marker-end="url(#arr)"/>
+
+      <!-- generation -->
+      <rect class="box-soft" x="60" y="335" width="740" height="80" rx="6"/>
+      <text class="lbl" x="430" y="365" text-anchor="middle">Generation Layer · LLM (OpenAI-compatible)</text>
+      <text class="lbl-sm" x="430" y="386" text-anchor="middle">System Prompt + Retrieved Context + User Question</text>
+      <text class="lbl-sm" x="430" y="404" text-anchor="middle">流式输出：reasoning_content（💭 思考块）→ 分隔 → 正式答案</text>
+
+      <path class="arrow" d="M160,415 L160,450" marker-end="url(#arr)"/>
+      <path class="arrow" d="M420,415 L420,450" marker-end="url(#arr)"/>
+
+      <!-- output -->
+      <rect class="box" x="60" y="455" width="200" height="50" rx="6"/>
+      <text class="lbl" x="160" y="481" text-anchor="middle">Markdown 渲染</text>
+      <text class="lbl-sm" x="160" y="496" text-anchor="middle">引用、公式、代码块</text>
+
+      <rect class="box" x="320" y="455" width="200" height="50" rx="6"/>
+      <text class="lbl" x="420" y="481" text-anchor="middle">JSON 响应</text>
+      <text class="lbl-sm" x="420" y="496" text-anchor="middle">供下游 Agent 解析</text>
+    </svg>
+  </div>
+  <div class="caption">图 1 · FluxMind 双层 RAG 系统架构。检索层与生成层完全解耦，可独立替换 LLM 后端。</div>
+
+  <h3>离线索引阶段</h3>
+<pre>papers/library/  +  papers/uploads/    <span class="c"># 双层语料：预置 + 用户上传</span>
+                  │
+                  ▼
+   PyMuPDF text extraction
+                  ▼
+   RecursiveCharacterTextSplitter   <span class="c"># chunk = 1000, overlap = 200</span>
+                  ▼
+   sentence-transformers MiniLM-L6  <span class="c"># 本地 CPU</span>
+                  ▼
+   FAISS L2 index + active_papers.json  <span class="c"># 索引内容可精确控制</span></pre>
+
+  <h3>在线推理流程</h3>
+<pre>user question
+   ├─→ embed (CPU, ~10 ms)
+   ├─→ FAISS similarity_search(k=5)        <span class="c"># 仅在激活的论文集合内召回</span>
+   ├─→ assemble system prompt + context
+   ├─→ LLM stream  (reasoning_content + content)
+   └─→ Streamlit / FastAPI yields tokens to client</pre>
+</section>
+
+<section>
+  <h2>技术栈</h2>
+  <div class="lede">优先选择稳定、可离线、可替换的组件。</div>
+  <table>
+    <thead>
+      <tr><th>层</th><th>组件</th><th>说明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>编排框架</td><td class="mono">LangChain 1.2.x</td><td>统一管理 Prompt 模板与检索器抽象</td></tr>
+      <tr><td>向量索引</td><td class="mono">FAISS-CPU</td><td>本地 L2 相似度搜索，无外部数据库依赖</td></tr>
+      <tr><td>嵌入模型</td><td class="mono">sentence-transformers / all-MiniLM-L6-v2</td><td>384 维，离线运行</td></tr>
+      <tr><td>语言模型</td><td class="mono">OpenAI-compatible</td><td>通过环境变量切换；部署可挂任意符合协议的供应商</td></tr>
+      <tr><td>PDF 解析</td><td class="mono">PyMuPDF (fitz)</td><td>对学术 PDF 文本抽取精度优于 pdfminer</td></tr>
+      <tr><td>前端</td><td class="mono">Streamlit 1.38</td><td>对话式 UI、文件上传、流式渲染</td></tr>
+      <tr><td>API 层</td><td class="mono">FastAPI + Uvicorn</td><td>自动生成 OpenAPI Schema，便于第三方集成</td></tr>
+      <tr><td>容器化</td><td class="mono">Dockerfile</td><td>一键构建可部署镜像，纯 Python 健康检查（无 curl 依赖）</td></tr>
+      <tr><td>反向代理</td><td class="mono">Cloudflare Tunnel</td><td>免公网 IP / 免防火墙开放</td></tr>
+      <tr><td>进程管理</td><td class="mono">systemd</td><td>双服务：fluxmind-ui.service / fluxmind-api.service</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>工程深度</h2>
+  <div class="lede">超出"能跑通"层级、最能体现设计判断的四个决策。</div>
+
+  <h3>1 · 推理流式输出的 UX 处理</h3>
+  <p>
+    系统选用的 LLM 属于<strong>推理模型</strong>（reasoning model）——在 OpenAI 兼容协议下，每个 SSE chunk 的 <code>delta</code>
+    同时具备 <code>content</code> 与 <code>reasoning_content</code> 两个 channel。模型在思考阶段仅填充 <code>reasoning_content</code>，
+    <code>content</code> 字段为空字符串。直接套用 LangChain 默认 <code>chain.stream()</code> 仅消费 <code>content</code> channel，
+    会导致前端出现 5–15 秒的"静默等待"。系统改为直接调用 OpenAI Python SDK 自管 SSE，并对两个 channel 分别处理：
+  </p>
+<pre><span class="c"># src/chain.py · query_stream（核心片段）</span>
+<span class="k">for</span> chunk <span class="k">in</span> stream:
+    delta = chunk.choices[0].delta
+    reasoning_piece = <span class="k">getattr</span>(delta, <span class="s">"reasoning_content"</span>, <span class="k">None</span>)
+    content_piece   = <span class="k">getattr</span>(delta, <span class="s">"content"</span>, <span class="k">None</span>)
+    <span class="k">if</span> reasoning_piece:
+        <span class="k">if not</span> reasoning_started: <span class="k">yield</span> <span class="s">"&gt; 💭 "</span>
+        <span class="k">yield</span> reasoning_piece.replace(<span class="s">"\n"</span>, <span class="s">"\n&gt; "</span>)
+    <span class="k">if</span> content_piece:
+        <span class="k">if</span> reasoning_started <span class="k">and not</span> answer_started:
+            <span class="k">yield</span> <span class="s">"\n\n---\n\n"</span>
+        <span class="k">yield</span> content_piece</pre>
+  <p>对非推理模型（无 <code>reasoning_content</code> 字段），同一段代码自然降级为纯内容流式输出，<strong>无需任何分支判断</strong>。</p>
+  <div class="callout">
+    <strong>设计意图：</strong>透明化模型推理对学术工具尤其重要——用户应能看到"答案是如何被组织出来的"，而非只面对一个黑盒。这是 FluxMind 区别于通用聊天界面的核心 UX 决策。
+  </div>
+
+  <h3>2 · 双层语料库 + 手动激活机制</h3>
+  <p>
+    研究助手的常见痛点是<strong>知识库范围控制</strong>——用户往往希望"只在这 5 篇论文范围内回答"，而不是把所有上传过的文献一并参与检索。
+    为此系统将语料分为两层：
+  </p>
+  <ul>
+    <li><strong><code>papers/library/</code></strong>：仓库内置的精选语料，附带 <code>manifest.json</code> 元数据（标题、主题分类）</li>
+    <li><strong><code>papers/uploads/</code></strong>：用户运行时上传，已被 gitignore，不污染仓库</li>
+  </ul>
+  <p>
+    侧栏多选界面允许用户任意组合激活论文，点击"应用选择并重建索引"后，系统重建 FAISS 索引并将选择持久化到
+    <code>faiss_index/active_papers.json</code>。下次启动直接恢复上次激活集。
+  </p>
+  <div class="callout">
+    <strong>设计意图：</strong>把"知识库"从一个无差别的黑盒解耦为<strong>可被显式管理的资源</strong>——这是从"原型"走向"准生产"的关键标志。
+  </div>
+
+  <h3>3 · 上传通道的安全加固</h3>
+  <p>开放上传是 Web 应用最常见的攻击面。系统在 <code>src/ingestion.py</code> 中加入三重防护：</p>
+  <ul>
+    <li><strong>文件名清洗</strong>：<code>_safe_pdf_name()</code> 移除路径分隔符与特殊字符，限长 120 字符，防止<strong>路径穿越</strong>（path traversal）</li>
+    <li><strong>大小限制</strong>：<code>MAX_UPLOAD_SIZE_MB</code> 环境变量配置（默认 50 MB），超限直接拒绝</li>
+    <li><strong>内容校验</strong>：解析后若 PDF 提取不出任何文本（如纯扫描版），直接抛出明确错误，<strong>避免污染向量索引</strong></li>
+  </ul>
+  <div class="callout">
+    <strong>设计意图：</strong>暴露在公网的接口必须假设输入是不可信的。这三层防护对应于 OWASP 上传攻击的常见路径。
+  </div>
+
+  <h3>4 · API 鉴权的双格式兼容</h3>
+  <p>
+    <code>/query</code> 端点同时接受 <code>X-API-Key</code> 自定义头与标准 <code>Authorization: Bearer &lt;token&gt;</code>，
+    前者适配 Coze 自定义插件的鉴权字段映射，后者兼容 curl / OpenAI SDK 等主流调用方式。
+    当 <code>FLUXMIND_API_TOKEN</code> 未配置时鉴权<strong>跳过</strong>，便于本地开发不受打扰。
+  </p>
+
+  <h3>5 · 多服务隔离部署</h3>
+  <p>主机同时承担其他业务（容器化 QQ 机器人），FluxMind 部署严格遵循以下隔离边界：</p>
+  <ul>
+    <li>独立运行时账户 <code>fluxmind:fluxmind</code>，独立 venv 目录 <code>/opt/fluxmind/venv</code></li>
+    <li>独立 systemd 服务两个：UI 服务 <code>:18501</code>、API 服务 <code>:18502</code>，资源软限 <code>CPUQuota=150%, MemoryMax=1400M</code></li>
+    <li>独立 Cloudflare Tunnel <code>cloudflared-fluxmind-smy.service</code>，避免与现有隧道命名/端口冲突</li>
+    <li><strong>不依赖、不修改、不重启</strong>同主机 Docker 容器栈，并通过 live-check 验证既有服务在部署前后状态一致</li>
+  </ul>
+</section>
+
+<section>
+  <h2>安全性</h2>
+  <ul>
+    <li><strong>密钥分层存储</strong>：LLM API Key、API Token、Cloudflare Tunnel Token 全部留在服务器 <code>/opt/fluxmind/.env</code>（权限 600），<strong>不进入 Git 仓库</strong>。</li>
+    <li><strong>反向代理边界</strong>：UI 通过 Cloudflare Tunnel 暴露，源站不开放任何公网端口；API 端口 18502 仅在内网与受信任 Agent 调用，并叠加 Token 鉴权。</li>
+    <li><strong>最小权限运行时</strong>：systemd 服务以非 root 用户运行，<code>NoNewPrivileges=true</code> 阻止提权。</li>
+    <li><strong>无外发依赖</strong>：嵌入模型与向量库完全本地化，论文内容不发送给任何第三方搜索/嵌入服务。</li>
+    <li><strong>上传防护</strong>：文件名清洗 + 大小限制 + 内容校验，覆盖 OWASP 文件上传常见攻击面。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>运行与运维</h2>
+
+  <h3>本地启动（开发）</h3>
+<pre>conda create -n fluxmind python=3.11 -y
+conda activate fluxmind
+pip install -r requirements.txt
+cp .env.example .env   <span class="c"># 填入 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL</span>
+streamlit run app.py</pre>
+
+  <h3>容器化（可选）</h3>
+<pre>docker build -t fluxmind .
+docker run -p 8501:8501 --env-file .env fluxmind</pre>
+
+  <h3>生产部署（参考）</h3>
+  <p>详见仓库内 <code>docs/DEPLOYMENT_STATUS.md</code>，包含 systemd unit 配置、Cloudflare Tunnel 路由、健康检查脚本与回滚命令。</p>
+</section>
+
+<section>
+  <h2>可扩展方向</h2>
+  <div class="lede">本次交付为可独立运行的最小闭环，以下方向可作为后续研究 / 毕设迭代点。</div>
+  <ul>
+    <li><strong>多阶段重排（Reranker）</strong>：在 FAISS top-k 召回后接入 cross-encoder 二阶段重排，提升复杂技术问题的命中精度。</li>
+    <li><strong>结构化引用追溯</strong>：将回答中的论据片段以可点击锚点链接到 PDF 原文页码，实现可审计的学术问答。</li>
+    <li><strong>中文语料专项</strong>：嵌入模型可热切到 BGE-zh / E5-multilingual，重建索引后即可获得中文论文的高质量召回。</li>
+    <li><strong>Simulink 模板生成</strong>：扩展为可直接产出 <code>.slx</code> 模型骨架，对接控制工程教学场景。</li>
+    <li><strong>多模态扩展</strong>：识别论文公式图、Bode 图、相轨迹图，进入向量空间，支持"图问图"。</li>
+    <li><strong>HIL 集成</strong>：对生成的控制器代码自动下沉至硬件在环测试台，闭环验证 SMC 抗抖振等指标。</li>
+  </ul>
+  <div class="callout">
+    <strong>交付边界说明：</strong>当前版本聚焦于"知识检索 + 答案生成 + 代码骨架"三件事。上述扩展方向均不在本次交付范围内，但系统架构与代码组织已为其留出清晰扩展点。
+  </div>
+</section>
+
+<section>
+  <h2>常见问题</h2>
+  <div class="lede">面向评审与使用者的高频问题集。</div>
+
+  <div class="qa">
+    <div class="q">这与直接使用 ChatGPT 检索论文有何不同？</div>
+    <div class="a">三个核心差异。其一，FluxMind 在<strong>用户指定的论文集合</strong>上做检索，每个回答可追溯到具体论文与页码；其二，检索结果先于生成出现，<strong>压缩了模型自由发挥的空间</strong>；其三，FluxMind 同时是 UI 与 API，可被其他 Agent 平台（如 Coze）作为工具调用，定位是"可组合的领域能力"而非聊天框。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">为什么没有对大模型做 fine-tune？</div>
+    <div class="a">在控制工程文献的体量与更新节奏下，<strong>RAG 比 fine-tune 性价比更高</strong>：新增论文无需重训、回答始终基于真实文本而非"模型记忆"、调试时可定位是检索失误还是生成失误。fine-tune 适用于风格/格式定制，不适用于知识更新。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">如何应对大模型的"幻觉"？</div>
+    <div class="a">幻觉无法被根除，只能被约束。系统采取三层防护：<strong>检索层</strong>提供论据上下文；<strong>系统提示词</strong>强制要求引用，并在检索内容不足时返回"不知道"而非自由发挥；<strong>推理过程可视化</strong>让用户能判断模型推理是否站得住脚。下一步将加入 cross-encoder 重排与引用页码锚定，进一步压缩自由发挥空间。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">是否支持中文论文？</div>
+    <div class="a">支持。当前嵌入模型为 MiniLM 英文基线，对中文语义保留略弱；架构上嵌入模型为<strong>一行环境变量可替换</strong>——切到 BGE-zh 或 E5-multilingual 并重建索引即可获得中文专项能力，代码层无须改动。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">系统的性能瓶颈在哪？</div>
+    <div class="a">三段管线中，<strong>检索为毫秒级</strong>（FAISS 本地）、<strong>嵌入为十毫秒级</strong>（MiniLM CPU）、唯一明显延迟在 LLM 推理。对推理模型还需叠加思考链时间，系统通过流式输出 + 思考过程可视化对冲用户感知延迟。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">能否完全离线运行？</div>
+    <div class="a">检索栈完全离线——嵌入、向量库、PDF 解析均在本地。唯一联网项是 LLM 调用。将 <code>LLM_BASE_URL</code> 指向本地部署的 Ollama / vLLM / TGI 即可实现全栈离线，<strong>因协议为 OpenAI 兼容，代码无须改动</strong>。</div>
+  </div>
+</section>
+
+<section>
+  <h2>项目结构</h2>
+<pre>FluxMind/
+├── app.py                  <span class="c"># Streamlit 入口（含中英文 i18n + 论文激活管理）</span>
+├── api.py                  <span class="c"># FastAPI 入口（含 Token 鉴权）</span>
+├── src/
+│   ├── config.py           <span class="c"># 配置 + 环境变量加载</span>
+│   ├── embeddings.py       <span class="c"># 本地嵌入模型封装</span>
+│   ├── ingestion.py        <span class="c"># PDF 解析 / 切片 / 索引 / 激活清单</span>
+│   └── chain.py            <span class="c"># RAG 链 + 推理流式输出</span>
+├── papers/
+│   ├── library/            <span class="c"># 预置精选语料库（含 manifest.json）</span>
+│   └── uploads/            <span class="c"># 用户运行时上传（gitignore）</span>
+├── faiss_index/            <span class="c"># 持久化向量索引 + 激活清单（gitignore）</span>
+├── docs/
+│   ├── DEPLOYMENT_STATUS.md
+│   └── handover.html       <span class="c"># 本文档</span>
+├── Dockerfile
+├── requirements.txt
+└── README.md</pre>
+</section>
+
+<section>
+  <h2>关键术语对照</h2>
+  <table>
+    <thead><tr><th>术语</th><th>简释</th></tr></thead>
+    <tbody>
+      <tr><td>RAG · 检索增强生成</td><td>大模型回答前先从知识库检索相关片段，再以此为依据生成回答，显著降低"幻觉"。</td></tr>
+      <tr><td>Embedding · 向量化</td><td>将文本映射到高维向量空间，使语义相近的文本在空间中也相近。</td></tr>
+      <tr><td>FAISS</td><td>Facebook AI 开源的向量相似度搜索库，本系统使用其 L2 距离索引，本地常驻。</td></tr>
+      <tr><td>Reasoning Model · 推理模型</td><td>在产出最终答案前先输出一段"思考链"的大语言模型，本项目对此做了流式 UX 适配。</td></tr>
+      <tr><td>SMC · 滑模控制</td><td>变结构控制方法，通过设计切换函数将系统状态驱动到滑动面，具有强鲁棒性。</td></tr>
+      <tr><td>MRAS · 模型参考自适应系统</td><td>通过参考模型与可调模型的输出误差自适应调整参数的观测器结构。</td></tr>
+      <tr><td>EKF · 扩展卡尔曼滤波</td><td>对非线性系统进行局部线性化后应用卡尔曼滤波的状态估计算法。</td></tr>
+      <tr><td>Chattering · 抖振</td><td>滑模控制中由开关项引发的高频振荡现象，是高阶 SMC / 边界层方法重点研究问题。</td></tr>
+      <tr><td>OpenAPI 3</td><td>RESTful API 的标准描述协议，FastAPI 自动生成；Coze 等智能体平台可据此自动识别工具调用方式。</td></tr>
+      <tr><td>Cloudflare Tunnel</td><td>从源站主动出站到 Cloudflare 边缘的反向代理通道，源站无需公网 IP 或开放端口。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  <div>FluxMind · 项目交付文档</div>
+  <div>本文档生成自 <code>docs/handover.html</code> · 单文件，零外部依赖。</div>
+</footer>
+
+</div>
+</body>
+</html>
