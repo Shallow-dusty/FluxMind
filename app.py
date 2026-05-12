@@ -21,6 +21,19 @@ from src.ingestion import (
     rebuild_vector_store_from_pdfs,
 )
 
+DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
+
+
+@st.dialog("演示导览", width="large")
+def show_demo_guide():
+    """Presenter-only walkthrough. Sourced from docs/demo-script.md so the
+    content can be edited without touching app code."""
+    try:
+        content = DEMO_SCRIPT_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        content = "_`docs/demo-script.md` not found._"
+    st.markdown(content)
+
 I18N = {
     "zh": {
         "language": "语言",
@@ -127,6 +140,19 @@ st.markdown("""
         font-size: 0.8em;
         color: #1a5276;
     }
+    /* Decorative sidebar footer egg — faded by default, lights up on hover */
+    .st-key-bg_easter button {
+        opacity: 0.22;
+        border-color: transparent !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transition: opacity .35s ease, background .35s ease;
+    }
+    .st-key-bg_easter button:hover {
+        opacity: 1;
+        background: rgba(77, 61, 166, 0.08) !important;
+    }
+    .st-key-bg_easter button p { font-size: 18px; line-height: 1; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,6 +240,10 @@ with st.sidebar:
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")
     st.markdown(text["about_text"])
+
+    # Decorative footer egg — presenter-only demo walkthrough.
+    if st.button("🥚", key="bg_easter", help=None):
+        show_demo_guide()
 
 # ── Init vector store on first run ──
 if "store_initialized" not in st.session_state:

@@ -287,33 +287,6 @@
     .grid { grid-template-columns: 1fr; }
     h1 { font-size: 30px; }
   }
-
-  /* ---------- easter egg ---------- */
-  .easter {
-    position: fixed;
-    right: 22px;
-    bottom: 22px;
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    font-size: 15px;
-    opacity: 0.14;
-    text-decoration: none;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    transition: opacity .35s ease, transform .35s ease, background .35s ease, border-color .35s ease;
-    z-index: 99;
-    user-select: none;
-  }
-  .easter:hover {
-    opacity: 1;
-    transform: translateY(-3px) rotate(-14deg);
-    background: var(--accent-soft);
-    border-color: var(--accent);
-  }
-  @media print { .easter { display: none; } }
 </style>
 </head>
 <body>
@@ -739,8 +712,5 @@ docker run -p 8501:8501 --env-file .env fluxmind</pre>
 </footer>
 
 </div>
-
-<a class="easter" href="bragging-guide.html" target="_blank" rel="noopener" title="" aria-label="">🥚</a>
-
 </body>
 </html>
