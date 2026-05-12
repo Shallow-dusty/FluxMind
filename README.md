@@ -11,6 +11,7 @@ FluxMind is an intelligent research assistant built on Retrieval-Augmented Gener
 - **🧲 Domain Expertise** — Specialized in SMC reaching law design, chattering reduction, MRAS observers, EKF-based estimation
 - **📊 Mathematical Support** — LaTeX-formatted equations and derivations
 - **🌐 Bilingual** — Supports both English and Chinese queries
+- **🗂️ Curated Seed Library** — Bundled open-access papers can be selected manually before rebuilding the RAG index
 
 ## 🏗️ System Architecture
 
@@ -99,9 +100,9 @@ Current temporary public URL: `https://smy.hyper-dusty.cloud/`.
 
 ## 📚 Building the Knowledge Base
 
-1. Place PDF research papers in the `papers/` directory, or upload them through the web interface
-2. The system automatically processes PDFs: extraction → chunking → embedding → indexing
-3. Use the "Rebuild Index" button in the sidebar to re-index all papers
+1. Use the sidebar paper selector to choose bundled papers from `papers/library/`
+2. Click "Apply Selection and Rebuild Index" to rebuild FAISS from the selected papers
+3. Upload additional PDFs through the web interface; uploads are stored under `papers/uploads/`
 
 ### Recommended Paper Topics
 

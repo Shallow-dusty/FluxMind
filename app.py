@@ -11,7 +11,15 @@ st.set_page_config(
 )
 
 from src.chain import query_stream
-from src.ingestion import ingest_uploaded_pdf, build_vector_store, load_all_pdfs, PAPERS_DIR, FAISS_INDEX_DIR
+from src.config import MAX_UPLOAD_SIZE_MB, PAPERS_LIBRARY_DIR, PROJECT_ROOT
+from src.ingestion import (
+    build_vector_store,
+    discover_pdfs,
+    ingest_uploaded_pdf,
+    load_active_paper_paths,
+    load_library_manifest,
+    rebuild_vector_store_from_pdfs,
+)
 
 I18N = {
     "zh": {
@@ -19,6 +27,11 @@ I18N = {
         "caption": "滑模控制与磁链估计研究助手",
         "knowledge_base": "知识库",
         "papers_indexed": "{count} 篇论文已索引",
+        "available_papers": "可选论文库",
+        "selected_papers": "当前入库论文",
+        "select_papers": "选择要进入 RAG 的论文",
+        "apply_selection": "应用选择并重建索引",
+        "no_selectable_papers": "还没有可选 PDF",
         "view_papers": "查看论文",
         "no_papers": "知识库暂无论文",
         "upload_papers": "上传研究论文（PDF）",
@@ -28,6 +41,8 @@ I18N = {
         "rebuild_index": "重建索引",
         "rebuilding": "正在重建向量库...",
         "rebuilt": "索引已重建",
+        "select_at_least_one": "请至少选择一篇论文",
+        "upload_failed": "上传失败：{error}",
         "about": "关于",
         "about_text": """
         **FluxMind** 是面向控制工程的 RAG 研究助手。
@@ -57,6 +72,11 @@ I18N = {
         "caption": "Sliding Mode Control & Flux Estimation Copilot",
         "knowledge_base": "Knowledge Base",
         "papers_indexed": "{count} papers indexed",
+        "available_papers": "Selectable Library",
+        "selected_papers": "Active papers",
+        "select_papers": "Choose papers for RAG",
+        "apply_selection": "Apply Selection and Rebuild Index",
+        "no_selectable_papers": "No selectable PDFs yet",
         "view_papers": "View papers",
         "no_papers": "No papers in knowledge base yet",
         "upload_papers": "Upload research papers (PDF)",
@@ -66,6 +86,8 @@ I18N = {
         "rebuild_index": "Rebuild Index",
         "rebuilding": "Rebuilding vector store...",
         "rebuilt": "Index rebuilt!",
+        "select_at_least_one": "Select at least one paper",
+        "upload_failed": "Upload failed: {error}",
         "about": "About",
         "about_text": """
         **FluxMind** is a RAG-based research copilot for control engineering.
@@ -108,6 +130,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+def rel_path(path) -> str:
+    return path.resolve().relative_to(PROJECT_ROOT).as_posix()
+
+
+def paper_label(path, manifest: dict[str, dict]) -> str:
+    item = manifest.get(path.name, {})
+    title = item.get("title") or path.stem.replace("-", " ")
+    topic = item.get("topic")
+    source = "Seed" if PAPERS_LIBRARY_DIR in path.parents else "Upload"
+    return f"[{source}] {title}" + (f" · {topic}" if topic else "")
+
+
 # ── Sidebar: Knowledge Base Management ──
 with st.sidebar:
     st.title("⚡ FluxMind")
@@ -124,15 +159,38 @@ with st.sidebar:
 
     st.subheader(f"📚 {text['knowledge_base']}")
 
-    # Show indexed papers
-    papers = sorted(PAPERS_DIR.glob("*.pdf")) if PAPERS_DIR.exists() else []
-    if papers:
-        st.success(text["papers_indexed"].format(count=len(papers)))
+    manifest = load_library_manifest()
+    selectable_papers = discover_pdfs()
+    active_papers = load_active_paper_paths()
+    selectable_by_rel = {rel_path(path): path for path in selectable_papers}
+    active_defaults = [
+        rel_path(path) for path in active_papers if rel_path(path) in selectable_by_rel
+    ]
+
+    if selectable_papers:
+        st.success(text["papers_indexed"].format(count=len(active_defaults)))
+        selected = st.multiselect(
+            text["select_papers"],
+            options=list(selectable_by_rel),
+            default=active_defaults,
+            format_func=lambda key: paper_label(selectable_by_rel[key], manifest),
+            key="paper_selection",
+        )
+        if st.button(text["apply_selection"], use_container_width=True):
+            if not selected:
+                st.warning(text["select_at_least_one"])
+            else:
+                with st.spinner(text["rebuilding"]):
+                    paths = [selectable_by_rel[key] for key in selected]
+                    _, chunks = rebuild_vector_store_from_pdfs(paths)
+                    st.success(f"{text['rebuilt']} ({chunks} chunks)")
+                    st.rerun()
         with st.expander(text["view_papers"]):
-            for p in papers:
-                st.text(f"• {p.name}")
+            for p in selectable_papers:
+                marker = "✓" if rel_path(p) in active_defaults else " "
+                st.text(f"{marker} {paper_label(p, manifest)}")
     else:
-        st.warning(text["no_papers"])
+        st.warning(text["no_selectable_papers"])
 
     # Upload PDFs
     uploaded_files = st.file_uploader(
@@ -144,24 +202,14 @@ with st.sidebar:
 
     if uploaded_files:
         for uf in uploaded_files:
-            existing = PAPERS_DIR / uf.name if PAPERS_DIR.exists() else None
-            if existing and existing.exists():
-                st.info(text["already_exists"].format(filename=uf.name))
-                continue
             with st.spinner(text["indexing"].format(filename=uf.name)):
-                n_chunks = ingest_uploaded_pdf(uf.read(), uf.name)
-                st.success(text["indexed_chunks"].format(filename=uf.name, chunks=n_chunks))
+                try:
+                    saved_path, n_chunks = ingest_uploaded_pdf(uf.read(), uf.name)
+                    st.success(text["indexed_chunks"].format(filename=saved_path.name, chunks=n_chunks))
+                except ValueError as exc:
+                    st.error(text["upload_failed"].format(error=exc))
 
-    # Rebuild index button
-    if papers and st.button(f"🔄 {text['rebuild_index']}", use_container_width=True):
-        with st.spinner(text["rebuilding"]):
-            # Delete existing index
-            import shutil
-            if FAISS_INDEX_DIR.exists():
-                shutil.rmtree(FAISS_INDEX_DIR)
-            docs = load_all_pdfs()
-            build_vector_store(docs)
-            st.success(text["rebuilt"])
+    st.caption(f"Max upload: {MAX_UPLOAD_SIZE_MB} MB")
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")

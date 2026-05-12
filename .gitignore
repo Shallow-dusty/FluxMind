@@ -9,4 +9,5 @@ venv/
 *.faiss
 faiss_index/
 papers/*.pdf
+papers/uploads/
 .streamlit/secrets.toml

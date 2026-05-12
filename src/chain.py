@@ -66,7 +66,7 @@ def format_context(docs: list[Document]) -> str:
 
 
 def query(question: str, chat_history: list[dict] | None = None) -> str:
-    """Run RAG query: retrieve relevant chunks → generate answer."""
+    """Run RAG query: retrieve relevant chunks -> generate answer."""
     # Retrieve
     store = get_vector_store()
     context_docs = []
