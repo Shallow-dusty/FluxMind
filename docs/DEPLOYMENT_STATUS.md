@@ -23,12 +23,19 @@ API port      18502
 Public endpoints:
 
 - Preferred Web UI: `https://smy.hyper-dusty.cloud/`
-- Web UI: `http://223.6.253.9:18501/`
-- API health: `http://223.6.253.9:18502/health`
-- API query: `POST http://223.6.253.9:18502/query`
+- Preferred API:    `https://api-smy.hyper-dusty.cloud/`
+- Web UI (raw):     `http://223.6.253.9:18501/`
+- API health (raw): `http://223.6.253.9:18502/health`
 
-API calls to `/query` require `X-API-Key: <token>`. The token is stored only on
-the server in `/opt/fluxmind/.env`; do not copy it into this repository.
+Both HTTPS hostnames terminate at Cloudflare and tunnel back to the same origin
+ports through `fluxmind-smy` (one tunnel, two ingress rules). The raw HTTP IP
+endpoints stay reachable for diagnostics, but Coze / third-party agent
+integration should use the HTTPS hostname so the OpenAPI schema is fetched over
+TLS.
+
+API calls to `/query` require `X-API-Key: <token>` (or the equivalent
+`Authorization: Bearer <token>`). The token is stored only on the server in
+`/opt/fluxmind/.env`; do not copy it into this repository.
 
 ## Isolation Boundary
 
@@ -94,22 +101,26 @@ root disk free          26G
 
 ## Cloudflare Tunnel
 
-Cloudflare routes `smy.hyper-dusty.cloud` to the Streamlit UI through a
-dedicated named tunnel:
+Cloudflare routes both `smy.hyper-dusty.cloud` (UI) and
+`api-smy.hyper-dusty.cloud` (FastAPI) through a single named tunnel:
 
 ```
 Zone       hyper-dusty.cloud
-Hostname   smy.hyper-dusty.cloud
 Tunnel     fluxmind-smy
 Tunnel ID  692b5ddf-2684-4a2f-84d4-30c87bf32dba
 Service    cloudflared-fluxmind-smy.service
-Ingress    smy.hyper-dusty.cloud -> http://127.0.0.1:18501
+Ingress    smy.hyper-dusty.cloud      -> http://127.0.0.1:18501   (Streamlit UI)
+           api-smy.hyper-dusty.cloud  -> http://127.0.0.1:18502   (FastAPI)
+           *                          -> http_status:404
 ```
+
+Ingress is managed remotely (this is a token-mode tunnel, no local YAML
+config). Updates go through the Cloudflare API:
+`PUT /accounts/{acct}/cfd_tunnel/{tunnel_id}/configurations`. DNS CNAMEs for
+both hostnames point to `<tunnel_id>.cfargotunnel.com` with `proxied: true`.
 
 The tunnel token is stored only on the server in
 `/etc/default/cloudflared-fluxmind-smy`; do not copy it into this repository.
-The API remains on the original `18502` endpoint with token protection and is
-not routed through `smy.hyper-dusty.cloud`.
 
 ## Refresh Commands
 
