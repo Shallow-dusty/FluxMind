@@ -7,7 +7,7 @@
 - **RAG 框架**: LangChain
 - **向量存储**: FAISS (本地)
 - **Embedding**: sentence-transformers (all-MiniLM-L6-v2, 本地)
-- **LLM**: DeepSeek-V3.2 via OpenAI-compatible API
+- **LLM**: OpenAI-compatible API（部署可用 MiMo/DeepSeek 等模型）
 - **前端**: Streamlit
 - **PDF 解析**: PyMuPDF
 

@@ -1,5 +1,8 @@
-"""PDF ingestion pipeline: load → split → embed → store in FAISS."""
+"""PDF ingestion pipeline: load -> split -> embed -> store in FAISS."""
 
+import json
+import re
+import shutil
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -7,33 +10,109 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
-from src.config import PAPERS_DIR, FAISS_INDEX_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from src.config import (
+    ACTIVE_PAPERS_FILE,
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    FAISS_INDEX_DIR,
+    MAX_UPLOAD_SIZE_MB,
+    PAPER_LIBRARY_MANIFEST,
+    PAPERS_DIR,
+    PAPERS_LIBRARY_DIR,
+    PAPERS_UPLOADS_DIR,
+    PROJECT_ROOT,
+)
 from src.embeddings import get_embedding_model
+
+
+def _safe_pdf_name(filename: str) -> str:
+    """Return a safe PDF filename for local storage."""
+    name = Path(filename).name.strip()
+    if not name.lower().endswith(".pdf"):
+        raise ValueError("Only PDF files are supported.")
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(name).stem).strip(".-_")
+    if not stem:
+        stem = "paper"
+    return f"{stem[:120]}.pdf"
+
+
+def _relative(path: Path) -> str:
+    return path.resolve().relative_to(PROJECT_ROOT).as_posix()
+
+
+def load_library_manifest() -> dict[str, dict]:
+    """Load curated paper metadata keyed by filename."""
+    if not PAPER_LIBRARY_MANIFEST.exists():
+        return {}
+    return json.loads(PAPER_LIBRARY_MANIFEST.read_text(encoding="utf-8"))
+
+
+def discover_pdfs() -> list[Path]:
+    """Return all selectable PDFs from the bundled library and uploads."""
+    paths: list[Path] = []
+    for directory in (PAPERS_LIBRARY_DIR, PAPERS_UPLOADS_DIR, PAPERS_DIR):
+        if not directory.exists():
+            continue
+        paths.extend(p for p in directory.glob("*.pdf") if p.is_file())
+    return sorted(set(paths), key=lambda p: _relative(p).lower())
+
+
+def load_active_paper_paths() -> list[Path]:
+    """Load the current manual paper selection, defaulting to bundled papers."""
+    all_papers = discover_pdfs()
+    if ACTIVE_PAPERS_FILE.exists():
+        selected = json.loads(ACTIVE_PAPERS_FILE.read_text(encoding="utf-8"))
+        paths = [PROJECT_ROOT / item for item in selected]
+        return [p for p in paths if p.exists() and p.suffix.lower() == ".pdf"]
+    return [p for p in all_papers if PAPERS_LIBRARY_DIR in p.parents]
+
+
+def save_active_paper_paths(paths: list[Path]) -> None:
+    """Persist the manual paper selection beside the FAISS index."""
+    FAISS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
+    payload = [_relative(p) for p in paths if p.exists() and p.suffix.lower() == ".pdf"]
+    ACTIVE_PAPERS_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def load_pdf(path: Path) -> list[Document]:
     """Extract text from a single PDF using PyMuPDF."""
-    doc = fitz.open(str(path))
     documents = []
-    for page_num, page in enumerate(doc):
-        text = page.get_text()
-        if text.strip():
-            documents.append(
-                Document(
-                    page_content=text,
-                    metadata={"source": path.name, "page": page_num + 1},
+    doc = fitz.open(str(path))
+    try:
+        for page_num, page in enumerate(doc):
+            text = page.get_text()
+            if text.strip():
+                documents.append(
+                    Document(
+                        page_content=text,
+                        metadata={
+                            "source": path.name,
+                            "source_path": _relative(path),
+                            "page": page_num + 1,
+                        },
+                    )
                 )
-            )
-    doc.close()
+    finally:
+        doc.close()
     return documents
 
 
 def load_all_pdfs(directory: Path | None = None) -> list[Document]:
-    """Load all PDFs from the papers directory."""
-    directory = directory or PAPERS_DIR
+    """Load all PDFs from a directory or from the current paper selection."""
+    if directory is None:
+        return load_pdfs(load_active_paper_paths())
+
     directory.mkdir(parents=True, exist_ok=True)
+    return load_pdfs(sorted(directory.glob("*.pdf")))
+
+
+def load_pdfs(paths: list[Path]) -> list[Document]:
+    """Load PDF documents from explicit paths."""
     all_docs = []
-    for pdf_path in sorted(directory.glob("*.pdf")):
+    for pdf_path in paths:
         all_docs.extend(load_pdf(pdf_path))
     return all_docs
 
@@ -48,10 +127,17 @@ def split_documents(documents: list[Document]) -> list[Document]:
     return splitter.split_documents(documents)
 
 
-def build_vector_store(documents: list[Document] | None = None) -> FAISS:
+def build_vector_store(
+    documents: list[Document] | None = None,
+    *,
+    rebuild: bool = False,
+) -> FAISS:
     """Build or load FAISS vector store."""
     embeddings = get_embedding_model()
     index_path = FAISS_INDEX_DIR
+
+    if rebuild and index_path.exists():
+        shutil.rmtree(index_path)
 
     # If index exists, load it
     if index_path.exists() and (index_path / "index.faiss").exists():
@@ -85,16 +171,30 @@ def build_vector_store(documents: list[Document] | None = None) -> FAISS:
     return store
 
 
-def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> int:
-    """Ingest a single uploaded PDF into the vector store. Returns chunk count."""
+def rebuild_vector_store_from_pdfs(paths: list[Path]) -> tuple[FAISS, int]:
+    """Rebuild the FAISS index from selected PDFs and persist the selection."""
+    docs = load_pdfs(paths)
+    store = build_vector_store(docs, rebuild=True)
+    save_active_paper_paths(paths)
+    return store, len(split_documents(docs)) if docs else 0
+
+
+def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
+    """Ingest one uploaded PDF into the vector store. Returns path and chunk count."""
+    max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    if len(pdf_bytes) > max_bytes:
+        raise ValueError(f"PDF is larger than {MAX_UPLOAD_SIZE_MB} MB.")
+
     # Save PDF to papers dir
-    PAPERS_DIR.mkdir(parents=True, exist_ok=True)
-    pdf_path = PAPERS_DIR / filename
+    PAPERS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    pdf_path = PAPERS_UPLOADS_DIR / _safe_pdf_name(filename)
     pdf_path.write_bytes(pdf_bytes)
 
     # Load and add to store
     docs = load_pdf(pdf_path)
     chunks = split_documents(docs)
+    if not chunks:
+        raise ValueError("PDF did not contain extractable text.")
 
     embeddings = get_embedding_model()
     FAISS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,4 +208,9 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> int:
         store = FAISS.from_documents(chunks, embeddings)
 
     store.save_local(str(FAISS_INDEX_DIR))
-    return len(chunks)
+
+    active = load_active_paper_paths()
+    if pdf_path not in active:
+        save_active_paper_paths(active + [pdf_path])
+
+    return pdf_path, len(chunks)
