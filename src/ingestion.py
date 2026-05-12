@@ -3,6 +3,7 @@
 import json
 import re
 import shutil
+import unicodedata
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -25,15 +26,35 @@ from src.config import (
 from src.embeddings import get_embedding_model
 
 
+_FS_RESERVED_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]+')
+
+
 def _safe_pdf_name(filename: str) -> str:
-    """Return a safe PDF filename for local storage."""
+    """Return a safe PDF filename. Preserves Unicode (CJK, Cyrillic, etc.);
+    strips control chars and filesystem-reserved characters; collapses
+    whitespace to single hyphens; caps stem at 120 chars."""
     name = Path(filename).name.strip()
     if not name.lower().endswith(".pdf"):
         raise ValueError("Only PDF files are supported.")
-    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", Path(name).stem).strip(".-_")
+    stem = unicodedata.normalize("NFC", Path(name).stem)
+    stem = _FS_RESERVED_RE.sub("-", stem)
+    stem = re.sub(r"\s+", "-", stem)
+    stem = re.sub(r"-+", "-", stem).strip(".-_ ")
     if not stem:
         stem = "paper"
     return f"{stem[:120]}.pdf"
+
+
+def _resolve_unique_path(target: Path) -> Path:
+    """If target exists, append -1, -2, ... before the suffix until unique."""
+    if not target.exists():
+        return target
+    stem, suffix, parent = target.stem, target.suffix, target.parent
+    for i in range(1, 1000):
+        candidate = parent / f"{stem}-{i}{suffix}"
+        if not candidate.exists():
+            return candidate
+    raise ValueError("Too many uploads with conflicting names.")
 
 
 def _relative(path: Path) -> str:
@@ -187,7 +208,7 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
 
     # Save PDF to papers dir
     PAPERS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-    pdf_path = PAPERS_UPLOADS_DIR / _safe_pdf_name(filename)
+    pdf_path = _resolve_unique_path(PAPERS_UPLOADS_DIR / _safe_pdf_name(filename))
     pdf_path.write_bytes(pdf_bytes)
 
     # Load and add to store
