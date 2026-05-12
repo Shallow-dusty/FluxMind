@@ -51,9 +51,21 @@ The existing bot containers checked healthy at the last verification:
 The deployed `.env` currently uses:
 
 ```
-LLM_MODEL=deepseek-v4-flash
+LLM_BASE_URL=https://token-plan-sgp.xiaomimimo.com/v1
+LLM_MODEL=mimo-v2.5-pro
 EMBEDDING_MODEL=/opt/fluxmind/models/all-MiniLM-L6-v2
 ```
+
+`mimo-v2.5-pro` is a reasoning model: it emits `reasoning_content` first
+and the final answer second. `src/chain.py::query_stream` streams the
+reasoning as a `> 💭` blockquote, then a horizontal rule, then the
+answer, so the Streamlit UI no longer looks frozen during the thinking
+phase. The non-streaming `/query` endpoint returns the final answer only.
+
+Previous pool `api.268526.eu.cc` with `deepseek-v4-flash` was retired on
+2026-05-12 after it began returning `upstream_empty_output` (HTTP 429)
+on every call. The Xiaomi MiMo pool (`token-plan-sgp.xiaomimimo.com`)
+replaced it.
 
 The sentence-transformers embedding model was copied to the server under
 `/opt/fluxmind/models/all-MiniLM-L6-v2`, so normal service startup should not
