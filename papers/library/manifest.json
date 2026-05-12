@@ -1,0 +1,56 @@
+{
+  "arxiv-2510-18420-smc-pmsm-review.pdf": {
+    "title": "Sliding-Mode Control Strategies for PMSM Speed Control: A Comprehensive Review, Taxonomy and Research Gaps",
+    "authors": "Abdullah Ajasa; Mubarak Badamasi Aremu; Ali Nasir",
+    "year": 2025,
+    "topic": "PMSM SMC review",
+    "source_url": "https://arxiv.org/abs/2510.18420",
+    "pdf_url": "https://arxiv.org/pdf/2510.18420",
+    "license": "arXiv open access"
+  },
+  "choi-2021-regression-flux-observer-ipmsm.pdf": {
+    "title": "Regression Model-Based Flux Observer for IPMSM Sensorless Control with Wide Speed Range",
+    "authors": "Jongwon Choi",
+    "year": 2021,
+    "topic": "active flux observer",
+    "source_url": "https://www.mdpi.com/1996-1073/14/19/6249",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06249/article_deploy/energies-14-06249.pdf",
+    "license": "CC BY"
+  },
+  "jin-2024-sogifo-x-flux-observer-pmsm.pdf": {
+    "title": "Optimizing Sensorless Control in PMSM Based on the SOGIFO-X Flux Observer Algorithm",
+    "authors": "Rencheng Jin; Ji Chen; Peihao Hu; Jianzhang Li",
+    "year": 2024,
+    "topic": "flux observer",
+    "source_url": "https://www.mdpi.com/1424-8220/24/3/817",
+    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-24-00817/article_deploy/sensors-24-00817.pdf",
+    "license": "CC BY"
+  },
+  "lesniewski-2023-smc-constraints.pdf": {
+    "title": "Sliding Mode Control for Perturbed Nonlinear Systems with State and Control Signal Constraints",
+    "authors": "Piotr Lesniewski; Marek Jaskula",
+    "year": 2023,
+    "topic": "SMC reaching law",
+    "source_url": "https://www.mdpi.com/1996-1073/16/14/5481",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-05481/article_deploy/energies-16-05481.pdf",
+    "license": "CC BY"
+  },
+  "liang-2024-pmsm-sliding-mode-observer.pdf": {
+    "title": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer",
+    "authors": "Jinfa Liang; Jun Wu; Yong Wang; Zhihong Zhong; Xinxin Bai",
+    "year": 2024,
+    "topic": "PMSM SMO",
+    "source_url": "https://www.mdpi.com/2673-4117/5/3/91",
+    "pdf_url": "https://res.mdpi.com/d_attachment/eng/eng-05-00091/article_deploy/eng-05-00091.pdf",
+    "license": "CC BY"
+  },
+  "nguyen-2021-chattering-attenuated-tsmc.pdf": {
+    "title": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control for Nonlinear Systems Subject to Matched and Mismatched Disturbances",
+    "authors": "Duc Giap Nguyen; Duc Thien Tran; Kyoung Kwan Ahn",
+    "year": 2021,
+    "topic": "chattering attenuation",
+    "source_url": "https://www.mdpi.com/2076-3417/11/17/8158",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-11-08158/article_deploy/applsci-11-08158.pdf",
+    "license": "CC BY"
+  }
+}
