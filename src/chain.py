@@ -1,5 +1,6 @@
 """RAG chain: retrieval + LLM generation."""
 
+from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
@@ -88,29 +89,43 @@ def query(question: str, chat_history: list[dict] | None = None) -> str:
 
 
 def query_stream(question: str):
-    """Streaming version of query for Streamlit."""
+    """Streaming RAG. Surfaces `reasoning_content` (for reasoning models like MiMo) as a
+    blockquoted thinking block before the final answer."""
     store = get_vector_store()
-    context_docs = []
-    if store:
-        context_docs = store.similarity_search(question, k=TOP_K)
-
+    context_docs = store.similarity_search(question, k=TOP_K) if store else []
     context = format_context(context_docs)
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human", USER_TEMPLATE),
-    ])
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+        {"role": "user", "content": question},
+    ]
 
-    llm = get_llm().__class__(
-        base_url=LLM_BASE_URL,
-        api_key=LLM_API_KEY,
+    client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+    stream = client.chat.completions.create(
         model=LLM_MODEL,
+        messages=messages,
         temperature=0.3,
         max_tokens=4096,
-        streaming=True,
+        stream=True,
     )
 
-    chain = prompt | llm
-    for chunk in chain.stream({"context": context, "question": question}):
-        if hasattr(chunk, "content") and chunk.content:
-            yield chunk.content
+    reasoning_started = False
+    answer_started = False
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        reasoning_piece = getattr(delta, "reasoning_content", None)
+        content_piece = getattr(delta, "content", None)
+
+        if reasoning_piece:
+            if not reasoning_started:
+                yield "> 💭 "
+                reasoning_started = True
+            yield reasoning_piece.replace("\n", "\n> ")
+
+        if content_piece:
+            if reasoning_started and not answer_started:
+                yield "\n\n---\n\n"
+            answer_started = True
+            yield content_piece
