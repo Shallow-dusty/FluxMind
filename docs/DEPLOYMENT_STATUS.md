@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 02:29 CST
+Last live check: 2026-05-30 02:37 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `4367644`
+Last restarted application-code commit: `e0868c7`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 02:29 CST after syncing application commit
-`4367644` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 02:37 CST after syncing application commit
+`e0868c7` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -115,11 +115,14 @@ deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
 deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
+deployed admin layer     present in /opt/fluxmind/src/admin.py
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
 execution artifacts      local code job captured result.txt artifact
 artifact export route    present; authenticated local API listed result.txt
 artifact gallery         present in /opt/fluxmind/app.py
+admin status panel       present in /opt/fluxmind/app.py
+admin status route       present; authenticated local API returned runtime state
 job retry/cancel UI      present in /opt/fluxmind/app.py
 offline RAG eval         passed in /opt/fluxmind
 corpus metadata route    present in /opt/fluxmind/api.py
@@ -129,6 +132,9 @@ index rebuild job route  present in /opt/fluxmind/api.py
 async index job route    present in /opt/fluxmind/api.py
 query answer mode        present in /opt/fluxmind/api.py
 job retry route          present in /opt/fluxmind/api.py
+admin status jobs        2 total, 1 failed historical local code job
+admin status corpus      6 papers, 6 active, 6 indexed
+admin status artifacts   1 artifact, 2 bytes
 active paper count      6
 FAISS index size        786477 bytes
 bot-resume              healthy
