@@ -30,7 +30,8 @@ def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):
     assert loaded.artifacts[0]["mime_type"] == "image/svg+xml"
 
 
-def test_local_python_job_persists_execution_result(tmp_path: Path):
+def test_local_python_job_persists_execution_result(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     runner = LocalJobRunner(store)
 
@@ -38,12 +39,19 @@ def test_local_python_job_persists_execution_result(tmp_path: Path):
         CodeExecutionRequest(
             language="python",
             entrypoint="main.py",
-            files={"main.py": "print('job-ok')"},
+            files={
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "print('job-ok')\n"
+                    "Path('result.txt').write_text('artifact-ok', encoding='utf-8')\n"
+                )
+            },
         )
     )
 
     assert job.status == "succeeded"
     assert job.result["stdout"] == "job-ok\n"
+    assert job.artifacts[0]["title"] == "result.txt"
     assert store.get(job.job_id).result["exit_code"] == 0
 
 

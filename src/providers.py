@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import hashlib
+import mimetypes
 import threading
 import subprocess
 import sys
@@ -37,8 +38,27 @@ class LocalArtifactStore:
         path = self.root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
+        return self._artifact_for(path, mime_type)
+
+    def write_bytes(self, relative_path: str, content: bytes, mime_type: str) -> GeneratedArtifact:
+        path = self.root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return self._artifact_for(path, mime_type)
+
+    def copy_file(self, relative_path: str, source: Path, mime_type: str) -> GeneratedArtifact:
+        return self.write_bytes(relative_path, source.read_bytes(), mime_type)
+
+    @staticmethod
+    def _artifact_for(path: Path, mime_type: str) -> GeneratedArtifact:
+        if mime_type.startswith("image/"):
+            kind = "image"
+        elif mime_type.startswith("text/"):
+            kind = "text"
+        else:
+            kind = "file"
         return GeneratedArtifact(
-            kind="image" if mime_type.startswith("image/") else "text",
+            kind=kind,
             uri=path.resolve().as_uri(),
             mime_type=mime_type,
             title=path.name,
@@ -85,6 +105,11 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
     still requires a dedicated isolated service with explicit resource limits.
     """
 
+    max_artifact_bytes = 2 * 1024 * 1024
+
+    def __init__(self, store: LocalArtifactStore | None = None):
+        self.store = store or LocalArtifactStore()
+
     def run(
         self,
         request: CodeExecutionRequest,
@@ -100,10 +125,12 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
 
         with tempfile.TemporaryDirectory(prefix="fluxmind-exec-") as tmp:
             workdir = Path(tmp)
+            input_files = set()
             for name, content in request.files.items():
                 target = workdir / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content, encoding="utf-8")
+                input_files.add(target.resolve())
 
             entrypoint = workdir / request.entrypoint
             if not entrypoint.exists():
@@ -153,4 +180,40 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                 exit_code=proc.returncode,
                 stdout=stdout,
                 stderr=stderr,
+                artifacts=self._collect_artifacts(workdir, input_files, request),
             )
+
+    def _collect_artifacts(
+        self,
+        workdir: Path,
+        input_files: set[Path],
+        request: CodeExecutionRequest,
+    ) -> list[GeneratedArtifact]:
+        artifacts: list[GeneratedArtifact] = []
+        digest = hashlib.sha256(
+            f"{request.language}\n{request.entrypoint}\n{sorted(request.files)}".encode()
+        ).hexdigest()[:12]
+        for path in sorted(item for item in workdir.rglob("*") if item.is_file()):
+            if path.resolve() in input_files:
+                continue
+            if path.stat().st_size > self.max_artifact_bytes:
+                continue
+            mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            relative = path.relative_to(workdir).as_posix()
+            safe_relative = relative.replace("/", "-")
+            artifact = self.store.copy_file(
+                f"code-runs/{digest}/{safe_relative}",
+                path,
+                mime_type,
+            )
+            kind = "plot" if mime_type.startswith("image/") else artifact.kind
+            artifacts.append(
+                GeneratedArtifact(
+                    kind=kind,
+                    uri=artifact.uri,
+                    mime_type=artifact.mime_type,
+                    title=relative,
+                    metadata={**artifact.metadata, "source": relative},
+                )
+            )
+        return artifacts

@@ -31,9 +31,9 @@ made.
 Current no-key feature work now includes local provider implementations:
 `MockImageGenerationProvider` writes deterministic SVG artifacts, and
 `LocalPythonExecutionProvider` exercises the code-execution contract for
-development. These are wired through immediate local job endpoints, async
-in-process job endpoints, and the Streamlit local job panel, but not into any
-real external provider.
+development, including generated file and plot artifact capture. These are
+wired through immediate local job endpoints, async in-process job endpoints,
+and the Streamlit local job panel, but not into any real external provider.
 
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
@@ -282,6 +282,10 @@ Status: planned. Build request/result plumbing, job state, and the sandbox
 boundary first. Real hosted execution remains disabled until infrastructure is
 configured. Real MATLAB support additionally requires license/account decisions;
 GNU Octave or Python-only execution should be considered before MATLAB.
+
+Current progress: the local Python provider captures stdout, stderr, exit code,
+generated files, and generated image plots as persisted artifacts. It remains a
+development provider, not an isolated production sandbox.
 
 Do not run user code in the Streamlit/API process. Add an execution provider:
 

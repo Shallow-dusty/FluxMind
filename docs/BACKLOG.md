@@ -133,21 +133,23 @@ Acceptance:
 
 ## WP5: Code Execution
 
-Status: planned; implement request/result plumbing and sandbox boundary first,
-keep real hosted execution and MATLAB activation disabled until infrastructure
-and license/account decisions are made
+Status: local request/result plumbing and file/plot artifact capture
+implemented; real hosted execution, Octave, and MATLAB activation remain
+disabled until infrastructure and license/account decisions are made
 
 - `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
   contract for development-only Python snippets.
-- Start with Python numerical snippets and generated plots.
-- Add GNU Octave before considering real MATLAB.
-- Run code in an isolated service with CPU, memory, timeout, filesystem, and
-  network limits.
-- Capture stdout, stderr, exit code, plots, and files as artifacts.
+- Python snippets can capture stdout, stderr, exit code, generated text/file
+  artifacts, and generated image files as plot artifacts.
+- Job records persist execution artifacts alongside the execution result.
+- Still planned: GNU Octave before considering real MATLAB.
+- Still planned: run code in an isolated service with CPU, memory, timeout,
+  filesystem, and network limits.
 
 Acceptance:
 
-- User code never runs inside the Streamlit or FastAPI process.
+- Current development provider runs code in a child Python process and temporary
+  workdir, but it is not a production sandbox.
 - Execution results are reproducible from stored input files and environment
   metadata.
 - A failed local execution returns structured diagnostics without breaking the

@@ -40,7 +40,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/capabilities.py`: provider-neutral future contracts for image
   generation and isolated Python/Octave/MATLAB-compatible execution.
 - `src/providers.py`: no-key local providers for artifact storage, mock SVG
-  diagram generation, and development-only Python execution.
+  diagram generation, and development-only Python execution with generated
+  file/plot capture.
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
   background queue for mock image generation, development-only Python
   execution, and selected-PDF index rebuilds.
@@ -130,3 +131,13 @@ update this file, and FastAPI exposes it through `GET /corpus/papers`.
 This is still a local development store. It makes corpus state inspectable
 without reading the filesystem manually, but it is not the future multi-user
 metadata database or object storage layer.
+
+## Execution Artifacts
+
+`LocalPythonExecutionProvider` runs development-only Python snippets in a
+temporary workdir, captures stdout/stderr/exit code, and persists generated
+files under `artifacts/code-runs/`. Image files are returned as `plot`
+artifacts; text files are returned as `text` artifacts; other small outputs are
+returned as `file` artifacts. This gives the UI/API/job model a concrete
+artifact shape for generated plots and files before any hosted sandbox or
+MATLAB/Octave backend is activated.
