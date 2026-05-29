@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 03:28 CST
+Last live check: 2026-05-30 03:33 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `3ddb936`
+Last restarted application-code commit: `2706a7c`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 03:28 CST after syncing application commit
-`3ddb936` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 03:33 CST after syncing application commit
+`2706a7c` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -123,6 +123,7 @@ deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed admin layer     present in /opt/fluxmind/src/admin.py
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
+recorded eval gate       present in /opt/fluxmind/eval/rag_baseline.json; recorded answers scored at coverage=1.00
 hybrid retrieval         present in /opt/fluxmind/src/chain.py; query uses hybrid_retrieve
 local reranker           present in /opt/fluxmind/src/chain.py; hybrid_retrieve uses rerank_documents
 artifact references      present in /opt/fluxmind/src/chain.py; RAG prompt includes Generated Artifact References
