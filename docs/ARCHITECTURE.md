@@ -30,7 +30,7 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   rendering, browser-translation guard, and local no-key job panel.
 - `api.py`: FastAPI request contract, token verification, lifecycle startup.
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
-  reasoning-aware streaming.
+  reasoning-aware streaming, answer modes, and numbered citation validation.
 - `src/ingestion.py`: PDF discovery, upload name safety, PyMuPDF extraction,
   chunking, FAISS persistence, active paper selection.
 - `src/embeddings.py`: local sentence-transformers embedding model factory.
@@ -41,6 +41,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
   background queue for mock image generation, development-only Python
   execution, and selected-PDF index rebuilds.
+- `src/evaluation.py`: offline RAG fixture evaluation, provider-error fixture
+  checks, and citation validation helpers.
+- `eval/rag_baseline.json`: no-network baseline cases with expected source/page
+  references and fixture answers.
+- `scripts/evaluate_rag.py`: CLI gate for the offline RAG baseline.
 - `scripts/health_check.py`: local, HTTP, and SSH runtime checks.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
@@ -100,3 +105,13 @@ jobs, and display recent job status. Real external providers can be attached
 later without changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.
+
+## RAG Quality Gate
+
+The first RAG quality gate is intentionally offline. `eval/rag_baseline.json`
+stores domain questions, answer modes, expected source/page references, fixture
+answers, and provider failure fixtures. `scripts/evaluate_rag.py` validates
+that fixture answers only cite retrieved context refs and that provider errors
+normalize to stable user-facing codes. This does not prove live answer quality
+yet; it establishes the regression harness that later live or recorded model
+answers can plug into without changing the deployment gate.

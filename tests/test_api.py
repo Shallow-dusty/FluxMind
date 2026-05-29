@@ -35,7 +35,11 @@ def test_verify_api_token_rejects_invalid_token(monkeypatch):
 
 def test_query_response_includes_request_id(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
-    monkeypatch.setattr(api, "query", lambda question: f"answer: {question}")
+
+    def fake_query(question, *, answer_mode):
+        return f"{answer_mode}: {question}"
+
+    monkeypatch.setattr(api, "query", fake_query)
 
     client = TestClient(api.app)
     response = client.post(
@@ -46,16 +50,35 @@ def test_query_response_includes_request_id(monkeypatch):
 
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "req-test"
-    assert response.json() == {
-        "answer": "answer: Explain SMC",
-        "request_id": "req-test",
-    }
+    assert response.json() == {"answer": "explanation: Explain SMC", "request_id": "req-test"}
+
+
+def test_query_accepts_answer_mode(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    seen = {}
+
+    def fake_query(question, *, answer_mode):
+        seen["question"] = question
+        seen["answer_mode"] = answer_mode
+        return "ok"
+
+    monkeypatch.setattr(api, "query", fake_query)
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/query",
+        json={"question": "Derive SMC reaching law", "answer_mode": "derivation"},
+    )
+
+    assert response.status_code == 200
+    assert seen == {"question": "Derive SMC reaching law", "answer_mode": "derivation"}
 
 
 def test_query_normalizes_provider_errors(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
 
-    def fail(_question):
+    def fail(_question, *, answer_mode):
+        assert answer_mode == "explanation"
         raise TimeoutError("provider timed out")
 
     monkeypatch.setattr(api, "query", fail)

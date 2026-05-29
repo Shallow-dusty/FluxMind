@@ -59,6 +59,6 @@ def test_query_stream_wraps_provider_errors(monkeypatch):
     try:
         list(chain.query_stream("Explain SMC"))
     except chain.ProviderError as exc:
-        assert exc.user_error.code == "provider_error"
+        assert exc.user_error.code == "provider_timeout"
     else:
         raise AssertionError("expected ProviderError")

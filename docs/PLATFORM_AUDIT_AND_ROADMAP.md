@@ -35,6 +35,12 @@ development. These are wired through immediate local job endpoints, async
 in-process job endpoints, and the Streamlit local job panel, but not into any
 real external provider.
 
+Current RAG quality work includes an offline baseline in
+`eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
+numbered citation validation, provider-error fixtures, and selectable answer
+modes. It is a regression harness, not a claim that live model output has been
+fully scored.
+
 ## Workspace Reference Migration
 
 FluxMind has been moved from the temporary AI-Prism index `80` to the formal
@@ -119,9 +125,9 @@ Reference context:
 - `/query` is synchronous and can block on retrieval plus LLM latency.
 - Uploaded PDFs are stored locally without per-user ownership, quotas, malware
   scanning, deduplication, or retention policy.
-- The initial pytest suite, GitHub Actions CI gate, and local/remote health
-  checker now exist. They still do not cover query-quality evaluation or
-  citation correctness.
+- The pytest suite, GitHub Actions CI gate, local/remote health checker, and
+  offline RAG fixture evaluator now exist. They still do not cover live
+  retrieval-quality scoring or model-answer citation correctness.
 - Citation quality depends on raw chunk metadata. There is no source
   normalization, DOI/arXiv metadata enrichment, reranking, or citation verifier.
 - LLM/provider errors are normalized for the UI and API, but provider-specific
@@ -209,8 +215,8 @@ provider switches first. Only real external activation is deferred.
 - Add background jobs for PDF parsing, indexing, image generation, and code
   execution.
 - Add corpus-level status: queued, parsing, indexed, failed, stale.
-- Add an evaluation set: standard SMC/flux questions with expected citation
-  behavior and regression scoring.
+- Extend the offline evaluation set into live or recorded-model regression
+  scoring for standard SMC/flux questions.
 
 Current progress: a local JSONL job store, immediate no-key job endpoints, and
 in-process async no-key job endpoints exist for mock image generation,
@@ -222,6 +228,8 @@ database.
 
 ### Phase 2: Better RAG
 
+- Current progress: answer modes and an offline fixture-based citation/provider
+  regression gate exist. Live model-answer scoring remains planned.
 - Enrich PDFs with title, authors, DOI/arXiv ID, year, venue, and topic tags.
 - Add hybrid retrieval: vector search plus keyword/BM25.
 - Add reranking before final context assembly.

@@ -28,15 +28,21 @@ Acceptance:
 
 ## WP1: RAG Quality Baseline
 
-Status: planned
+Status: offline baseline implemented; live quality scoring, reranking, and
+full citation correctness remain planned
 
-- Create a small evaluation set of control-engineering questions.
-- Record expected source papers/pages for citation-sensitive questions.
-- Add citation validation: every cited source must map to retrieved metadata.
-- Add provider failure fixtures for timeout, 429, empty output, and malformed
-  streaming chunks.
-- Add answer modes: explanation, derivation, implementation, literature review,
-  and code generation.
+- `eval/rag_baseline.json` contains a small control-engineering evaluation set.
+- Each case records expected source papers/pages and fixture snippets.
+- `src.chain.validate_numbered_citations()` validates answer citations like
+  `[1]` against retrieved document refs.
+- `scripts/evaluate_rag.py` runs the offline baseline without network calls.
+- Provider failure fixtures cover timeout, 429/rate-limit, empty output, and
+  malformed streaming chunks.
+- Answer modes exist in the prompt/API/UI: explanation, derivation,
+  implementation, literature review, and code generation.
+- Still planned: live retrieval-quality scoring, citation verification against
+  generated model answers, reranking, and regression thresholds on real eval
+  answers.
 
 Acceptance:
 

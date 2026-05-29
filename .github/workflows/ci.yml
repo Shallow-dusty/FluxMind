@@ -27,5 +27,8 @@ jobs:
       - name: Run tests
         run: python -m pytest
 
+      - name: Run offline RAG evaluation
+        run: python scripts/evaluate_rag.py
+
       - name: Run local health gate
         run: python scripts/health_check.py

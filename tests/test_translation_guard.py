@@ -13,7 +13,7 @@ def test_browser_translation_guard_is_installed():
 
 def test_streamlit_write_stream_is_not_used_for_chat_streaming():
     assert "st.write_stream" not in APP_SOURCE
-    assert "render_streaming_response(prompt)" in APP_SOURCE
+    assert "render_streaming_response(prompt, answer_mode=st.session_state.answer_mode)" in APP_SOURCE
 
 
 def test_streamlit_local_job_panel_is_installed():

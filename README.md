@@ -96,6 +96,7 @@ The app will open at `http://localhost:8501`.
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest
+python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/health_check.py \
   --url https://smy.hyper-dusty.cloud/ \
@@ -157,6 +158,16 @@ These endpoints persist JSONL job records under `jobs/` and artifacts under
 `artifacts/`; both directories are git-ignored runtime state. This queue is a
 no-key development bridge, not a durable multi-worker job system.
 
+## RAG Quality Baseline
+
+`eval/rag_baseline.json` records offline control-engineering evaluation cases,
+expected source/page references, fixture answers, and provider-error fixtures.
+`python scripts/evaluate_rag.py` validates that fixture answers cite retrieved
+context refs such as `[1]` and that provider failures normalize to stable
+user-facing codes. The `/query` API and Streamlit UI accept answer modes:
+`explanation`, `derivation`, `implementation`, `literature_review`, and
+`code_generation`.
+
 ## 📚 Building the Knowledge Base
 
 1. Use the sidebar paper selector to choose bundled papers from `papers/library/`
@@ -195,6 +206,7 @@ FluxMind/
 │   ├── capabilities.py    # Image/code execution provider contracts
 │   ├── providers.py       # Local no-key provider implementations
 │   ├── jobs.py            # Local JSONL job records, runner, and async queue
+│   ├── evaluation.py      # Offline RAG evaluation and citation checks
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)
@@ -202,6 +214,7 @@ FluxMind/
 ├── jobs/                  # Local job records (git-ignored)
 ├── assets/                # Architecture diagrams and images
 ├── docs/                  # Additional documentation
+├── eval/                  # Offline RAG evaluation fixtures
 ├── scripts/               # Local and deployment health checks
 ├── tests/                 # Regression tests
 ├── Dockerfile             # Container deployment

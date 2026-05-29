@@ -35,8 +35,14 @@ class FluxMindError(Exception):
 class ProviderError(FluxMindError):
     """Raised when the LLM or another provider fails."""
 
-    def __init__(self, message: str, *, code: str = "provider_error"):
-        super().__init__(code, message, status_code=502)
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: str = "provider_error",
+        status_code: int = 502,
+    ):
+        super().__init__(code, message, status_code=status_code)
 
 
 def normalize_exception(exc: Exception) -> UserFacingError:
@@ -61,6 +67,18 @@ def normalize_exception(exc: Exception) -> UserFacingError:
         return UserFacingError(
             "provider_auth_failed",
             "The model provider rejected the configured credentials.",
+            502,
+        )
+    if "upstream_empty_output" in text or "empty output" in text:
+        return UserFacingError(
+            "provider_empty_output",
+            "The model provider returned an empty response. Please retry later.",
+            502,
+        )
+    if "malformed" in text and ("stream" in text or "chunk" in text or "response" in text):
+        return UserFacingError(
+            "provider_malformed_response",
+            "The model provider returned a malformed response.",
             502,
         )
 

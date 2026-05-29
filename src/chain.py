@@ -1,5 +1,9 @@
 """RAG chain: retrieval + LLM generation."""
 
+import re
+from dataclasses import dataclass
+from typing import Literal
+
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -8,7 +12,19 @@ from langchain_community.vectorstores import FAISS
 
 from src.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, TOP_K, FAISS_INDEX_DIR
 from src.embeddings import get_embedding_model
-from src.runtime import ProviderError
+from src.runtime import ProviderError, normalize_exception
+
+AnswerMode = Literal["explanation", "derivation", "implementation", "literature_review", "code_generation"]
+
+DEFAULT_ANSWER_MODE: AnswerMode = "explanation"
+
+ANSWER_MODE_INSTRUCTIONS: dict[AnswerMode, str] = {
+    "explanation": "Explain the concept clearly, define assumptions, and keep citations close to claims.",
+    "derivation": "Prioritize equations, derivation steps, assumptions, and cite the source context for each key step.",
+    "implementation": "Focus on implementation guidance, parameters, engineering tradeoffs, and reproducible steps.",
+    "literature_review": "Compare papers, methods, evidence, and research gaps with source/page citations.",
+    "code_generation": "Generate MATLAB/Simulink-oriented code by default, explain interfaces, and cite relevant context.",
+}
 
 SYSTEM_PROMPT = """\
 You are FluxMind, an expert research copilot specializing in:
@@ -23,11 +39,31 @@ You are FluxMind, an expert research copilot specializing in:
 4. If the retrieved context doesn't contain relevant information, say so honestly and provide your best knowledge.
 5. Answer in the SAME LANGUAGE as the user's question (Chinese or English).
 
+## Answer Mode:
+{answer_mode}
+
+{mode_instruction}
+
 ## Retrieved Context:
 {context}
 """
 
 USER_TEMPLATE = "{question}"
+_BRACKET_CITATION_RE = re.compile(r"(?<!\!)\[(\d+)\]")
+
+
+@dataclass(frozen=True)
+class CitationValidation:
+    """Citation validation result for numbered retrieved-context references."""
+
+    cited_refs: list[int]
+    valid_refs: list[int]
+    invalid_refs: list[int]
+    missing_required_refs: list[int]
+
+    @property
+    def ok(self) -> bool:
+        return not self.invalid_refs and not self.missing_required_refs
 
 
 def get_llm() -> ChatOpenAI:
@@ -66,8 +102,44 @@ def format_context(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def query(question: str, chat_history: list[dict] | None = None) -> str:
+def normalize_answer_mode(answer_mode: str | None) -> AnswerMode:
+    """Return a supported answer mode, defaulting to explanation."""
+    if answer_mode in ANSWER_MODE_INSTRUCTIONS:
+        return answer_mode  # type: ignore[return-value]
+    return DEFAULT_ANSWER_MODE
+
+
+def validate_numbered_citations(
+    answer: str,
+    docs: list[Document],
+    *,
+    required_refs: list[int] | None = None,
+) -> CitationValidation:
+    """Validate bracket citations like [1] against retrieved document refs."""
+    max_ref = len(docs)
+    cited_refs = sorted({int(match) for match in _BRACKET_CITATION_RE.findall(answer)})
+    valid_refs = [ref for ref in cited_refs if 1 <= ref <= max_ref]
+    invalid_refs = [ref for ref in cited_refs if ref < 1 or ref > max_ref]
+    required = required_refs or []
+    missing_required_refs = [ref for ref in required if ref not in cited_refs]
+    return CitationValidation(
+        cited_refs=cited_refs,
+        valid_refs=valid_refs,
+        invalid_refs=invalid_refs,
+        missing_required_refs=missing_required_refs,
+    )
+
+
+def query(
+    question: str,
+    chat_history: list[dict] | None = None,
+    *,
+    answer_mode: str | None = DEFAULT_ANSWER_MODE,
+) -> str:
     """Run RAG query: retrieve relevant chunks -> generate answer."""
+    del chat_history
+    mode = normalize_answer_mode(answer_mode)
+
     # Retrieve
     store = get_vector_store()
     context_docs = []
@@ -86,21 +158,37 @@ def query(question: str, chat_history: list[dict] | None = None) -> str:
     llm = get_llm()
     chain = prompt | llm
     try:
-        response = chain.invoke({"context": context, "question": question})
+        response = chain.invoke(
+            {
+                "context": context,
+                "question": question,
+                "answer_mode": mode,
+                "mode_instruction": ANSWER_MODE_INSTRUCTIONS[mode],
+            }
+        )
     except Exception as exc:
-        raise ProviderError(str(exc)) from exc
+        error = normalize_exception(exc)
+        raise ProviderError(error.message, code=error.code, status_code=error.status_code) from exc
     return response.content
 
 
-def query_stream(question: str):
+def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE):
     """Streaming RAG. Surfaces `reasoning_content` (for reasoning models like MiMo) as a
     blockquoted thinking block before the final answer."""
+    mode = normalize_answer_mode(answer_mode)
     store = get_vector_store()
     context_docs = store.similarity_search(question, k=TOP_K) if store else []
     context = format_context(context_docs)
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT.format(
+                context=context,
+                answer_mode=mode,
+                mode_instruction=ANSWER_MODE_INSTRUCTIONS[mode],
+            ),
+        },
         {"role": "user", "content": question},
     ]
 
@@ -135,4 +223,5 @@ def query_stream(question: str):
                 answer_started = True
                 yield content_piece
     except Exception as exc:
-        raise ProviderError(str(exc)) from exc
+        error = normalize_exception(exc)
+        raise ProviderError(error.message, code=error.code, status_code=error.status_code) from exc

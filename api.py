@@ -40,6 +40,10 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     question: str = Field(..., description="User question about SMC or flux estimation", examples=["What is sliding mode control?"])
+    answer_mode: str = Field(
+        default="explanation",
+        description="Answer mode: explanation, derivation, implementation, literature_review, or code_generation",
+    )
 
 
 class QueryResponse(BaseModel):
@@ -129,7 +133,7 @@ def ask(
         len(req.question),
     )
     try:
-        answer = query(req.question)
+        answer = query(req.question, answer_mode=req.answer_mode)
     except Exception as exc:
         error = normalize_exception(exc)
         logger.exception("query.error request_id=%s code=%s", request_id, error.code)

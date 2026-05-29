@@ -71,6 +71,14 @@ I18N = {
         "python_entrypoint": "入口文件",
         "python_files": "文件内容",
         "run_python_job": "运行 Python 任务",
+        "answer_mode": "回答模式",
+        "answer_modes": {
+            "explanation": "解释",
+            "derivation": "推导",
+            "implementation": "实现",
+            "literature_review": "文献综述",
+            "code_generation": "代码生成",
+        },
         "job_created": "任务状态：{job_id} ({status})",
         "job_failed": "任务失败：{message}",
         "about": "关于",
@@ -129,6 +137,14 @@ I18N = {
         "python_entrypoint": "Entrypoint",
         "python_files": "File contents",
         "run_python_job": "Run Python Job",
+        "answer_mode": "Answer Mode",
+        "answer_modes": {
+            "explanation": "Explanation",
+            "derivation": "Derivation",
+            "implementation": "Implementation",
+            "literature_review": "Literature Review",
+            "code_generation": "Code Generation",
+        },
         "job_created": "Job status: {job_id} ({status})",
         "job_failed": "Job failed: {message}",
         "about": "About",
@@ -243,14 +259,19 @@ def paper_label(path, manifest: dict[str, dict]) -> str:
     return f"[{source}] {title}" + (f" · {topic}" if topic else "")
 
 
-def render_streaming_response(prompt: str) -> str:
+def render_streaming_response(prompt: str, *, answer_mode: str) -> str:
     """Render a streaming answer through a stable markdown placeholder."""
     request_id = new_request_id()
-    logger.info("streamlit.query.start request_id=%s chars=%s", request_id, len(prompt))
+    logger.info(
+        "streamlit.query.start request_id=%s mode=%s chars=%s",
+        request_id,
+        answer_mode,
+        len(prompt),
+    )
     chunks: list[str] = []
     placeholder = st.empty()
     try:
-        for piece in query_stream(prompt):
+        for piece in query_stream(prompt, answer_mode=answer_mode):
             chunks.append(piece)
             placeholder.markdown("".join(chunks))
     except Exception as exc:
@@ -303,6 +324,12 @@ with st.sidebar:
     )
     text = I18N[language]
     st.caption(text["caption"])
+    answer_mode = st.selectbox(
+        text["answer_mode"],
+        options=list(text["answer_modes"]),
+        format_func=lambda value: text["answer_modes"][value],
+        key="answer_mode",
+    )
     st.divider()
 
     st.subheader(f"📚 {text['knowledge_base']}")
@@ -450,5 +477,5 @@ if prompt := st.chat_input(text["chat_placeholder"]):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = render_streaming_response(prompt)
+        response = render_streaming_response(prompt, answer_mode=st.session_state.answer_mode)
     st.session_state.messages.append({"role": "assistant", "content": response})

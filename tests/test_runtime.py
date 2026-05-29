@@ -21,3 +21,11 @@ def test_normalize_timeout_error():
 
     assert error.code == "provider_timeout"
     assert error.status_code == 504
+
+
+def test_normalize_provider_fixture_errors():
+    empty = normalize_exception(RuntimeError("upstream_empty_output"))
+    malformed = normalize_exception(RuntimeError("malformed streaming chunk"))
+
+    assert empty.code == "provider_empty_output"
+    assert malformed.code == "provider_malformed_response"
