@@ -71,11 +71,24 @@ def load_library_manifest() -> dict[str, dict]:
 
 def refresh_paper_metadata() -> list[PaperRecord]:
     """Refresh local paper metadata from selectable files and active selection."""
-    return CorpusMetadataStore().refresh_from_files(
+    store = CorpusMetadataStore()
+    records = store.refresh_from_files(
         discover_pdfs(),
         active_paths=load_active_paper_paths(),
         manifest=load_library_manifest(),
     )
+    if (FAISS_INDEX_DIR / "index.faiss").exists():
+        manifest = load_library_manifest()
+        for record in records:
+            if record.active:
+                path = PROJECT_ROOT / record.source_path
+                record = store.upsert_paper(
+                    path,
+                    manifest_entry=manifest.get(path.name, {}),
+                    active=True,
+                    indexed_status="indexed",
+                )
+    return store.list_papers()
 
 
 def discover_pdfs() -> list[Path]:
