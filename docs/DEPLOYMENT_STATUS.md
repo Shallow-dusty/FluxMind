@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 01:18 CST
+Last live check: 2026-05-30 01:32 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `5c0440b`
+Last restarted application-code commit: `59304f6`
 
 ```
 Host          Trace-Twin
@@ -86,8 +86,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:18 CST after syncing application commit
-`5c0440b` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 01:32 CST after syncing application commit
+`59304f6` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -106,7 +106,10 @@ public UI HTTP          200 at http://223.6.253.9:18501/
 public API health HTTP  200 at http://223.6.253.9:18502/health
 deployed stream guard   present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
-no-key provider docs     present in /opt/fluxmind/docs/BACKLOG.md
+deployed runtime layer   present in /opt/fluxmind/src/runtime.py
+deployed no-key providers present in /opt/fluxmind/src/providers.py
+active paper count      6
+FAISS index size        786477 bytes
 bot-resume              healthy
 bot-lingju              healthy
 available memory        about 2.2 GiB
