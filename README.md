@@ -186,7 +186,8 @@ context refs such as `[1]` and that provider failures normalize to stable
 user-facing codes. The `/query` API and Streamlit UI accept answer modes:
 `explanation`, `derivation`, `implementation`, `literature_review`, and
 `code_generation`. Retrieval uses FAISS vector search plus local keyword
-supplementation from the indexed docstore, deduped and capped at `TOP_K`.
+supplementation from the indexed docstore, deterministic lexical reranking,
+dedupe, and a `TOP_K` context cap.
 
 ## 📚 Building the Knowledge Base
 

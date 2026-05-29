@@ -123,6 +123,7 @@ def main() -> int:
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
+    check("rerank_documents" in chain_source and "lexical_relevance_score" in chain_source, "local reranker installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
@@ -174,6 +175,7 @@ def main() -> int:
             "grep -q 'CREATE TABLE IF NOT EXISTS jobs' /opt/fluxmind/src/jobs.py; "
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
+            "grep -q 'rerank_documents' /opt/fluxmind/src/chain.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"

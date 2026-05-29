@@ -137,6 +137,26 @@ def document_key(doc: Document) -> tuple[str, str, str]:
     )
 
 
+def lexical_relevance_score(question: str, doc: Document) -> int:
+    """Score a chunk by local lexical overlap with the query."""
+    query_terms = tokenize_query(question)
+    if not query_terms:
+        return 0
+    content_terms = tokenize_query(doc.page_content)
+    metadata_terms = tokenize_query(" ".join(str(value) for value in doc.metadata.values()))
+    return len(query_terms & content_terms) * 2 + len(query_terms & metadata_terms)
+
+
+def rerank_documents(question: str, docs: list[Document], *, k: int = TOP_K) -> list[Document]:
+    """Deterministic no-key reranker for retrieved chunks."""
+    scored = [
+        (lexical_relevance_score(question, doc), -index, doc)
+        for index, doc in enumerate(docs)
+    ]
+    scored.sort(reverse=True)
+    return [doc for _score, _index, doc in scored[:k]]
+
+
 def hybrid_retrieve(question: str, *, k: int = TOP_K) -> list[Document]:
     """Retrieve context with vector search plus local keyword supplementation."""
     store = get_vector_store()
@@ -153,9 +173,7 @@ def hybrid_retrieve(question: str, *, k: int = TOP_K) -> list[Document]:
             continue
         seen.add(key)
         merged.append(doc)
-        if len(merged) >= k:
-            break
-    return merged
+    return rerank_documents(question, merged, k=k)
 
 
 def format_context(docs: list[Document]) -> str:

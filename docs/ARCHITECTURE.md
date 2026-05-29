@@ -133,8 +133,10 @@ answers can plug into without changing the deployment gate.
 Retrieval now uses `src.chain.hybrid_retrieve()` for both non-streaming and
 streaming answers. It starts with FAISS vector search, supplements with local
 keyword matches from the indexed docstore when available, dedupes chunks, and
-keeps the final context bounded by `TOP_K`. This is a local no-key retrieval
-improvement, not a replacement for later reranking or live answer scoring.
+then applies `src.chain.rerank_documents()`, a deterministic no-key lexical
+reranker, before keeping the final context bounded by `TOP_K`. This is a local
+retrieval-quality baseline, not a replacement for later learned reranking or
+live answer scoring.
 
 ## Corpus Metadata
 

@@ -28,8 +28,9 @@ Acceptance:
 
 ## WP1: RAG Quality Baseline
 
-Status: offline baseline and local hybrid retrieval implemented; live quality
-scoring, reranking, and full citation correctness remain planned
+Status: offline baseline, local hybrid retrieval, and deterministic lexical
+reranking implemented; live quality scoring and full citation correctness remain
+planned
 
 - `eval/rag_baseline.json` contains a small control-engineering evaluation set.
 - Each case records expected source papers/pages and fixture snippets.
@@ -43,9 +44,11 @@ scoring, reranking, and full citation correctness remain planned
 - `src.chain.hybrid_retrieve()` merges FAISS vector hits with local keyword
   matches from the indexed docstore, dedupes chunks, and keeps the final context
   bounded by `TOP_K`.
+- `src.chain.rerank_documents()` applies a deterministic no-key lexical
+  relevance reranker before context formatting.
 - Still planned: live retrieval-quality scoring, citation verification against
-  generated model answers, reranking, and regression thresholds on real eval
-  answers.
+  generated model answers, stronger learned/service reranking, and regression
+  thresholds on real eval answers.
 
 Acceptance:
 

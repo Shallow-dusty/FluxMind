@@ -7,6 +7,7 @@ from src.chain import (
     format_context,
     hybrid_retrieve,
     normalize_answer_mode,
+    rerank_documents,
     tokenize_query,
     validate_numbered_citations,
 )
@@ -44,7 +45,7 @@ def test_numbered_citation_validation_rejects_unknown_refs():
     assert result.missing_required_refs == [2]
 
 
-def test_hybrid_retrieve_adds_keyword_hits_after_vector_hits(monkeypatch):
+def test_hybrid_retrieve_reranks_keyword_hits(monkeypatch):
     vector_doc = Document(
         page_content="sliding mode reaching law",
         metadata={"source": "vector.pdf", "page": 1},
@@ -67,7 +68,14 @@ def test_hybrid_retrieve_adds_keyword_hits_after_vector_hits(monkeypatch):
 
     docs = hybrid_retrieve("flux observer", k=2)
 
-    assert docs == [vector_doc, keyword_doc]
+    assert docs == [keyword_doc, vector_doc]
+
+
+def test_rerank_documents_keeps_original_order_for_equal_scores():
+    first = Document(page_content="alpha", metadata={"source": "a.pdf"})
+    second = Document(page_content="alpha", metadata={"source": "b.pdf"})
+
+    assert rerank_documents("alpha", [first, second], k=2) == [first, second]
 
 
 def test_tokenize_query_supports_cjk_terms():
