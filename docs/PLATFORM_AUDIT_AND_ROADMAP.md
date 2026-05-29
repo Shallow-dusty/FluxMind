@@ -291,6 +291,8 @@ development provider, not an isolated production sandbox.
 Artifact progress: generated local artifacts can be listed and downloaded
 through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
 and execution outputs an export path before real provider storage is configured.
+The Streamlit sidebar also includes a local artifact gallery for recent job
+outputs.
 
 Do not run user code in the Streamlit/API process. Add an execution provider:
 

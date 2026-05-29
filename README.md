@@ -141,8 +141,8 @@ endpoint.
 
 The Streamlit sidebar includes a local job panel for development workflows. It
 submits jobs to an in-process background queue and displays persisted JSONL
-status. The FastAPI service exposes both immediate local endpoints and queued
-local endpoints:
+status plus a local artifact gallery with download buttons. The FastAPI service
+exposes both immediate local endpoints and queued local endpoints:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`

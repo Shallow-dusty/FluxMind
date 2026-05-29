@@ -12,6 +12,7 @@ st.set_page_config(
 )
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
+from src.artifacts import LocalArtifactRegistry, local_artifact_path
 from src.chain import query_stream
 from src.config import MAX_UPLOAD_SIZE_MB, PAPERS_LIBRARY_DIR, PROJECT_ROOT
 from src.ingestion import (
@@ -62,6 +63,9 @@ I18N = {
         "upload_failed": "上传失败：{error}",
         "jobs": "本地任务",
         "latest_jobs": "最近任务",
+        "latest_artifacts": "最近产物",
+        "no_artifacts": "暂无产物",
+        "download_artifact": "下载产物",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
         "mock_image_job": "生成本地 SVG 图",
@@ -128,6 +132,9 @@ I18N = {
         "upload_failed": "Upload failed: {error}",
         "jobs": "Local Jobs",
         "latest_jobs": "Latest jobs",
+        "latest_artifacts": "Latest artifacts",
+        "no_artifacts": "No artifacts yet",
+        "download_artifact": "Download artifact",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
         "mock_image_job": "Generate Local SVG",
@@ -312,6 +319,30 @@ def render_latest_jobs() -> None:
                 st.json(job.error)
 
 
+def render_latest_artifacts() -> None:
+    artifacts = LocalArtifactRegistry().list_artifacts(limit=5)
+    if not artifacts:
+        st.caption(text["no_artifacts"])
+        return
+    for artifact in artifacts:
+        label = f"{artifact.kind} · {artifact.title or artifact.artifact_id}"
+        with st.expander(label):
+            st.caption(f"{artifact.job_kind} · {artifact.job_id}")
+            st.code(artifact.uri, language="text")
+            try:
+                path = local_artifact_path(artifact.uri)
+                st.download_button(
+                    text["download_artifact"],
+                    data=path.read_bytes(),
+                    file_name=artifact.title or path.name,
+                    mime=artifact.mime_type,
+                    use_container_width=True,
+                    key=f"download_{artifact.artifact_id}",
+                )
+            except (FileNotFoundError, ValueError) as exc:
+                st.caption(str(exc))
+
+
 # ── Sidebar: Knowledge Base Management ──
 with st.sidebar:
     st.title("⚡ FluxMind")
@@ -433,6 +464,9 @@ with st.sidebar:
 
     with st.expander(text["latest_jobs"]):
         render_latest_jobs()
+
+    with st.expander(text["latest_artifacts"]):
+        render_latest_artifacts()
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")

@@ -147,4 +147,5 @@ MATLAB/Octave backend is activated.
 FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
 mock diagrams, plots, and execution files can be listed and exported without
 exposing raw filesystem paths. Export only supports local `file://` artifacts
-that resolve under `ARTIFACTS_DIR`.
+that resolve under `ARTIFACTS_DIR`. The Streamlit sidebar also reads the local
+artifact registry and renders recent artifacts with download buttons.

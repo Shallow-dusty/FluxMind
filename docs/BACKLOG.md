@@ -121,6 +121,7 @@ key/account is configured
   contract with deterministic local SVG output.
 - `GET /artifacts` lists generated local artifacts from persisted jobs.
 - `GET /artifacts/{artifact_id}` exports local file artifacts by stable ID.
+- Streamlit sidebar includes a local artifact gallery with download buttons.
 - Start with engineering diagrams and paper-figure redrafts.
 - Store prompt, provider, model, size, source references, output URI, and cost
   metadata.
@@ -131,6 +132,7 @@ Acceptance:
 - A request can generate an artifact record with a stable URI.
 - Generated mock diagrams produce persisted artifact URIs.
 - Generated diagrams and execution artifacts can be listed and exported.
+- Generated local artifacts can be downloaded from Streamlit.
 - Remaining: generated diagrams can be referenced from RAG answers.
 - Provider can be swapped without changing the UI flow.
 

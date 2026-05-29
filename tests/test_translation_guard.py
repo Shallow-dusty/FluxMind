@@ -21,3 +21,9 @@ def test_streamlit_local_job_panel_is_installed():
     assert "enqueue_index_rebuild(selected)" in APP_SOURCE
     assert "enqueue_mock_image" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
+
+
+def test_streamlit_artifact_gallery_is_installed():
+    assert "LocalArtifactRegistry" in APP_SOURCE
+    assert "render_latest_artifacts()" in APP_SOURCE
+    assert "st.download_button" in APP_SOURCE
