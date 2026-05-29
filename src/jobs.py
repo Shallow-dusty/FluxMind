@@ -143,6 +143,33 @@ class LocalJobStore:
             and parse_utc(job.not_before) > now
         )
 
+    def list_queued(self, *, limit: int = 1000) -> list[JobRecord]:
+        """Return queued jobs from durable state, ordered by creation time."""
+        jobs = [job for job in self.list_latest(limit=limit) if job.status == "queued"]
+        jobs.sort(key=lambda job: job.created_at)
+        return jobs
+
+    def queue_health(self) -> dict[str, Any]:
+        """Summarize durable local queue state for admin/status surfaces."""
+        now = datetime.now(timezone.utc)
+        queued = self.list_queued(limit=10000)
+        due = [
+            job for job in queued
+            if not job.not_before or parse_utc(job.not_before) <= now
+        ]
+        scheduled = [
+            job for job in queued
+            if job.not_before and parse_utc(job.not_before) > now
+        ]
+        running = [job for job in self.list_latest(limit=10000) if job.status == "running"]
+        return {
+            "queued": len(queued),
+            "due": len(due),
+            "scheduled": len(scheduled),
+            "running": len(running),
+            "oldest_queued_at": queued[0].created_at if queued else None,
+        }
+
     def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(self.db_path)
@@ -432,13 +459,26 @@ class LocalJobRunner:
 class AsyncJobManager:
     """In-process background queue for local no-key jobs."""
 
-    def __init__(self, store: LocalJobStore | None = None):
+    def __init__(self, store: LocalJobStore | None = None, *, recover_existing: bool = True):
         self.store = store or LocalJobStore()
         self.runner = LocalJobRunner(self.store)
         self._queue: queue.Queue[str] = queue.Queue()
         self._events: dict[str, threading.Event] = {}
         self._lock = threading.Lock()
         self._worker: threading.Thread | None = None
+        if recover_existing:
+            self.recover_queued_jobs()
+
+    def recover_queued_jobs(self) -> int:
+        """Rehydrate queued/scheduled jobs from SQLite/JSONL after restart."""
+        recovered = 0
+        for record in self.store.list_queued(limit=10000):
+            with self._lock:
+                if record.job_id in self._events:
+                    continue
+            self._enqueue(record)
+            recovered += 1
+        return recovered
 
     def enqueue_mock_image(
         self,

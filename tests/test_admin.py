@@ -81,6 +81,13 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["jobs"]["latest_failed"][0]["job_id"] == "job-fail"
     assert status["jobs"]["storage"]["jsonl_exists"] is True
     assert status["jobs"]["storage"]["sqlite_exists"] is True
+    assert status["jobs"]["queue_health"] == {
+        "queued": 0,
+        "due": 0,
+        "scheduled": 0,
+        "running": 0,
+        "oldest_queued_at": None,
+    }
     assert status["artifacts"] == {"total": 1, "bytes": 4}
     assert status["corpus"] == {"papers": 1, "active": 1, "available": 0, "indexed": 1, "failed": 0}
     assert status["config"]["external_providers_enabled"] is False

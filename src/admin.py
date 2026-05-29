@@ -64,7 +64,8 @@ def runtime_directory_status(name: str, path: Path) -> RuntimeDirectoryStatus:
 
 
 def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
-    jobs = LocalJobStore().list_latest(limit=job_limit)
+    job_store = LocalJobStore()
+    jobs = job_store.list_latest(limit=job_limit)
     job_status_counts = Counter(job.status for job in jobs)
     job_kind_counts = Counter(job.kind for job in jobs)
     failed_jobs = [job for job in jobs if job.status == "failed"]
@@ -94,6 +95,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "sqlite_exists": JOBS_DB_FILE.exists(),
                 "sqlite_bytes": JOBS_DB_FILE.stat().st_size if JOBS_DB_FILE.exists() else 0,
             },
+            "queue_health": job_store.queue_health(),
             "latest_failed": [
                 {
                     "job_id": job.job_id,

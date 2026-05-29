@@ -158,6 +158,30 @@ def test_async_manager_runs_zero_delay_scheduled_retry(tmp_path: Path):
     assert finished.result["stdout"] == "retry-ok\n"
 
 
+def test_async_manager_recovers_queued_job_after_restart(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    failed = LocalJobRunner(store).run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(1)"},
+        )
+    )
+    failed.request["files"] = {"main.py": "print('recovered-ok')"}
+    store.append(failed)
+    scheduled = LocalJobRunner(store).schedule_retry(failed.job_id, delay_s=0)
+
+    assert scheduled is not None
+    assert store.queue_health()["due"] == 1
+
+    manager = AsyncJobManager(store)
+    manager._queue.join()
+    recovered = wait_for_status(store, scheduled.job_id, {"succeeded"})
+
+    assert recovered.result["stdout"] == "recovered-ok\n"
+    assert store.queue_health()["queued"] == 0
+
+
 def test_job_store_mirrors_current_state_to_sqlite(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     runner = LocalJobRunner(store)

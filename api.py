@@ -23,8 +23,9 @@ logging.basicConfig(level=os.getenv("FLUXMIND_LOG_LEVEL", "INFO"))
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Initialize the vector store when the API process starts."""
+    """Initialize retrieval and recover durable queued local jobs on startup."""
     build_vector_store()
+    get_async_job_manager().recover_queued_jobs()
     yield
 
 app = FastAPI(

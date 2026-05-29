@@ -122,6 +122,7 @@ def main() -> int:
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
+    check("recover_queued_jobs" in jobs_source and "queue_health" in jobs_source, "durable queued job recovery installed", failures)
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
     check("rerank_documents" in chain_source and "lexical_relevance_score" in chain_source, "local reranker installed", failures)
@@ -179,6 +180,8 @@ def main() -> int:
             "test -f /opt/fluxmind/src/admin.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS jobs' /opt/fluxmind/src/jobs.py; "
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'recover_queued_jobs' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
             "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
             "grep -q 'rerank_documents' /opt/fluxmind/src/chain.py; "
             "grep -q 'Generated Artifact References' /opt/fluxmind/src/chain.py; "
