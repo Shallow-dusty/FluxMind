@@ -21,6 +21,7 @@ from src.ingestion import (
     load_library_manifest,
     rebuild_vector_store_from_pdfs,
 )
+from src.runtime import logger, new_request_id, normalize_exception
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -216,12 +217,23 @@ def paper_label(path, manifest: dict[str, dict]) -> str:
 
 def render_streaming_response(prompt: str) -> str:
     """Render a streaming answer through a stable markdown placeholder."""
+    request_id = new_request_id()
+    logger.info("streamlit.query.start request_id=%s chars=%s", request_id, len(prompt))
     chunks: list[str] = []
     placeholder = st.empty()
-    for piece in query_stream(prompt):
-        chunks.append(piece)
-        placeholder.markdown("".join(chunks))
-    return "".join(chunks)
+    try:
+        for piece in query_stream(prompt):
+            chunks.append(piece)
+            placeholder.markdown("".join(chunks))
+    except Exception as exc:
+        error = normalize_exception(exc)
+        logger.exception("streamlit.query.error request_id=%s code=%s", request_id, error.code)
+        message = f"{error.message}\n\nRequest ID: `{request_id}`"
+        placeholder.error(message)
+        return message
+    response = "".join(chunks)
+    logger.info("streamlit.query.ok request_id=%s chars=%s", request_id, len(response))
+    return response
 
 
 # ── Sidebar: Knowledge Base Management ──

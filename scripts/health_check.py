@@ -61,6 +61,12 @@ def run_ssh(host: str, command: str, timeout: float) -> tuple[int, str]:
     return proc.returncode, proc.stdout
 
 
+def directory_size_bytes(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", action="append", default=[], help="HTTP(S) URL to check")
@@ -77,6 +83,7 @@ def main() -> int:
         "src/chain.py",
         "src/ingestion.py",
         "src/capabilities.py",
+        "src/providers.py",
         "docs/DEPLOYMENT_STATUS.md",
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
@@ -96,12 +103,25 @@ def main() -> int:
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
+    if (PROJECT_ROOT / "artifacts").exists():
+        print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
+    else:
+        print("skip artifact directory is absent")
 
     index_file = PROJECT_ROOT / "faiss_index" / "index.faiss"
     if index_file.exists():
         check(index_file.stat().st_size > 0, "local FAISS index is non-empty", failures)
+        print(f"info local FAISS index bytes={index_file.stat().st_size}")
     else:
         print("skip local FAISS index is absent")
+
+    active_papers_file = PROJECT_ROOT / "faiss_index" / "active_papers.json"
+    if active_papers_file.exists():
+        active_papers = json.loads(active_papers_file.read_text(encoding="utf-8"))
+        check(isinstance(active_papers, list), "active paper selection is a list", failures)
+        print(f"info active papers={len(active_papers)}")
+    else:
+        print("skip active paper selection is absent")
 
     for url in args.url:
         status = http_status(url, args.timeout, args.retries)
@@ -117,6 +137,18 @@ def main() -> int:
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
+            "test -s /opt/fluxmind/faiss_index/index.faiss; "
+            "python3 - <<'PY'\n"
+            "import json\n"
+            "from pathlib import Path\n"
+            "root = Path('/opt/fluxmind')\n"
+            "active = root / 'faiss_index' / 'active_papers.json'\n"
+            "papers = json.loads(active.read_text()) if active.exists() else []\n"
+            "print(f'active_papers={len(papers)}')\n"
+            "print(f'faiss_index_bytes={(root / \"faiss_index\" / \"index.faiss\").stat().st_size}')\n"
+            "PY\n"
+            "journalctl -u fluxmind-api.service -u fluxmind-ui.service --since '30 minutes ago' --no-pager | "
+            "egrep -i 'error|exception|traceback' | tail -20 || true; "
             "df -h / | sed -n '2p'"
         )
         code, output = run_ssh(args.ssh_host, command, args.timeout)

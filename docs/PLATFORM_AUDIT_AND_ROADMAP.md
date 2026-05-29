@@ -20,11 +20,18 @@ durable multi-user platform. The main gap is not the RAG prototype; it is the
 missing platform layer around identity, jobs, storage, observability, safety,
 and isolated execution.
 
-Current implementation boundary: provider-key, account, license, or sandbox
-dependent features are not being implemented in this iteration. The repository
-may keep interface contracts for those capabilities, but production remains
-limited to RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
-token-protected FastAPI `/query` endpoint.
+Current implementation boundary: real external provider activation is disabled
+until keys, accounts, licenses, or sandbox infrastructure are configured.
+Feature development should still proceed behind provider-neutral interfaces,
+local mocks, fixtures, and explicit runtime flags. Production remains limited to
+RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
+token-protected FastAPI `/query` endpoint until those activation decisions are
+made.
+
+Current no-key feature work now includes local provider implementations:
+`MockImageGenerationProvider` writes deterministic SVG artifacts, and
+`LocalPythonExecutionProvider` exercises the code-execution contract for
+development. These are not wired into the public production workflow yet.
 
 ## Workspace Reference Migration
 
@@ -72,8 +79,8 @@ Current mitigation:
 - Streaming now uses a stable `st.empty()` markdown placeholder via
   `render_streaming_response()` instead of the `st.write_stream` black box.
 - The RAG stream contract in `src/chain.py::query_stream` remains unchanged.
-- `src/capabilities.py` defines provider contracts for future image generation
-  and isolated code execution without coupling those features to the UI.
+- `src/capabilities.py` defines provider contracts and `src/providers.py`
+  contains local no-key providers without coupling those features to the UI.
 - Regression coverage now includes stream formatting, translation-guard static
   checks, ingestion filename safety, and capability dataclass contracts.
 - `api.py` initializes the vector store in FastAPI lifespan instead of at
@@ -111,13 +118,14 @@ Reference context:
 - Uploaded PDFs are stored locally without per-user ownership, quotas, malware
   scanning, deduplication, or retention policy.
 - The initial pytest suite, GitHub Actions CI gate, and local/remote health
-  checker now exist. They still do not cover query-quality evaluation,
-  citation correctness, provider failures, or recent journal errors.
+  checker now exist. They still do not cover query-quality evaluation or
+  citation correctness.
 - Citation quality depends on raw chunk metadata. There is no source
   normalization, DOI/arXiv metadata enrichment, reranking, or citation verifier.
-- LLM/provider errors are not normalized for the UI or API.
-- No observability: request IDs, latency, retrieval hits, token usage, and
-  provider failures are not persisted.
+- LLM/provider errors are normalized for the UI and API, but provider-specific
+  retry policy and richer error taxonomy are still basic.
+- Request IDs are logged for UI/API requests, but latency, retrieval hits,
+  token usage, and provider failures are not persisted.
 - No execution sandbox. Any future Python/MATLAB compiler feature must not run
   arbitrary code in the main web/API process.
 
@@ -173,9 +181,10 @@ Storage
 
 ## Roadmap
 
-The roadmap below is directional. Phases that require external provider keys,
-paid accounts, MATLAB licensing, or sandbox infrastructure are explicitly
-deferred until those operational decisions are made.
+The roadmap below is directional. For phases that eventually require external
+provider keys, paid accounts, MATLAB licensing, or sandbox infrastructure, build
+the local contracts, storage, request/response flow, tests, and disabled
+provider switches first. Only real external activation is deferred.
 
 ### Phase 0: Stabilize the Current App
 
@@ -212,8 +221,9 @@ deferred until those operational decisions are made.
 
 ### Phase 3: Image and Diagram Generation Interface
 
-Status: deferred. This phase requires a configured image provider key/account
-and artifact storage decisions.
+Status: planned. Build provider-neutral plumbing and a no-key mock/local
+provider first. Real image-provider activation remains disabled until a
+key/account and artifact storage policy are configured.
 
 Use an internal provider interface before binding the app to one vendor:
 
@@ -239,9 +249,10 @@ Reference: https://platform.openai.com/docs/guides/image-generation
 
 ### Phase 4: Code Execution
 
-Status: deferred. This phase requires isolated execution infrastructure. Real
-MATLAB support additionally requires license/account decisions; GNU Octave or
-Python-only execution should be considered before MATLAB.
+Status: planned. Build request/result plumbing, job state, and the sandbox
+boundary first. Real hosted execution remains disabled until infrastructure is
+configured. Real MATLAB support additionally requires license/account decisions;
+GNU Octave or Python-only execution should be considered before MATLAB.
 
 Do not run user code in the Streamlit/API process. Add an execution provider:
 
@@ -270,8 +281,9 @@ Reference: https://developers.cloudflare.com/sandbox/
 
 ### Phase 5: Productization
 
-Status: deferred. This phase requires identity, API-key lifecycle, quota, and
-cost-accounting decisions.
+Status: planned. Build local/admin foundations first. Public identity,
+API-key lifecycle, quotas, and billing remain disabled until those product and
+operational decisions are made.
 
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.
@@ -287,11 +299,10 @@ cost-accounting decisions.
 2. Expand tests and the local smoke command into a deploy gate.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-4. Keep `src/capabilities.py` as the future provider boundary, but do not wire
-   image generation or code execution without explicit key/account/sandbox
-   decisions.
-5. Move long-running operations to explicit jobs before reconsidering code
-   execution or image generation.
+4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
+   disabled provider switches.
+5. Move long-running operations to explicit jobs before enabling real external
+   image generation or code execution providers.
 
 ## Open Decisions
 

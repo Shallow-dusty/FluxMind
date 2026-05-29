@@ -12,10 +12,12 @@ Status: in progress
 - Keep CI green: `python -m pytest` and `python scripts/health_check.py`.
 - Keep Trace-Twin health green with:
   `python scripts/health_check.py --ssh-host root@100.100.233.26`.
-- Add provider-error normalization for UI and API responses.
-- Add request IDs to `/query` and Streamlit logs.
-- Add recent journal error checks to `scripts/health_check.py`.
-- Add active paper count and FAISS index size checks to `scripts/health_check.py`.
+- Provider-error normalization exists for UI and API responses.
+- Request IDs exist for `/query`, Streamlit responses, and logs.
+- `scripts/health_check.py` reports local/remote FAISS index size and active
+  paper count when available.
+- `scripts/health_check.py --ssh-host ...` includes recent journal error lines
+  for the UI/API services.
 
 Acceptance:
 
@@ -60,7 +62,8 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: deferred until a provider/sandbox implementation is selected
+Status: planned; build the local job model first, keep external provider
+activation disabled until keys/sandbox decisions are made
 
 - Introduce job records for PDF parsing, indexing, image generation, and code
   execution.
@@ -75,9 +78,12 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: deferred; requires a configured image provider key/account
+Status: planned; implement provider-neutral plumbing and a no-key mock/local
+provider first, keep real image-provider activation disabled until a key/account
+is configured
 
-- Implement the `ImageGenerationProvider` contract.
+- `MockImageGenerationProvider` implements the `ImageGenerationProvider`
+  contract with deterministic local SVG output.
 - Start with engineering diagrams and paper-figure redrafts.
 - Store prompt, provider, model, size, source references, output URI, and cost
   metadata.
@@ -91,10 +97,12 @@ Acceptance:
 
 ## WP5: Code Execution
 
-Status: deferred; requires isolated execution infrastructure and, for MATLAB,
-license/account decisions
+Status: planned; implement request/result plumbing and sandbox boundary first,
+keep real hosted execution and MATLAB activation disabled until infrastructure
+and license/account decisions are made
 
-- Implement the `CodeExecutionProvider` contract.
+- `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
+  contract for development-only Python snippets.
 - Start with Python numerical snippets and generated plots.
 - Add GNU Octave before considering real MATLAB.
 - Run code in an isolated service with CPU, memory, timeout, filesystem, and
@@ -110,7 +118,8 @@ Acceptance:
 
 ## WP6: Product Shell
 
-Status: deferred; requires identity/API-key/quota decisions
+Status: planned; implement local/admin foundations first, keep public identity,
+API-key lifecycle, quotas, and billing disabled until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.

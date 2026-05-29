@@ -24,3 +24,12 @@ def test_http_status_retries_after_transient_error(monkeypatch):
 
     assert health_check.http_status("https://example.test", 3, 2) == 200
     assert calls["count"] == 2
+
+
+def test_directory_size_bytes_counts_nested_files(tmp_path):
+    (tmp_path / "a").write_text("123", encoding="utf-8")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "b").write_text("45", encoding="utf-8")
+
+    assert health_check.directory_size_bytes(tmp_path) == 5

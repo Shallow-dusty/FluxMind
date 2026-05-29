@@ -8,6 +8,7 @@ from langchain_community.vectorstores import FAISS
 
 from src.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, TOP_K, FAISS_INDEX_DIR
 from src.embeddings import get_embedding_model
+from src.runtime import ProviderError
 
 SYSTEM_PROMPT = """\
 You are FluxMind, an expert research copilot specializing in:
@@ -84,7 +85,10 @@ def query(question: str, chat_history: list[dict] | None = None) -> str:
     # Generate
     llm = get_llm()
     chain = prompt | llm
-    response = chain.invoke({"context": context, "question": question})
+    try:
+        response = chain.invoke({"context": context, "question": question})
+    except Exception as exc:
+        raise ProviderError(str(exc)) from exc
     return response.content
 
 
@@ -101,31 +105,34 @@ def query_stream(question: str):
     ]
 
     client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
-    stream = client.chat.completions.create(
-        model=LLM_MODEL,
-        messages=messages,
-        temperature=0.3,
-        max_tokens=4096,
-        stream=True,
-    )
+    try:
+        stream = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=4096,
+            stream=True,
+        )
 
-    reasoning_started = False
-    answer_started = False
-    for chunk in stream:
-        if not chunk.choices:
-            continue
-        delta = chunk.choices[0].delta
-        reasoning_piece = getattr(delta, "reasoning_content", None)
-        content_piece = getattr(delta, "content", None)
+        reasoning_started = False
+        answer_started = False
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            reasoning_piece = getattr(delta, "reasoning_content", None)
+            content_piece = getattr(delta, "content", None)
 
-        if reasoning_piece:
-            if not reasoning_started:
-                yield "> 💭 "
-                reasoning_started = True
-            yield reasoning_piece.replace("\n", "\n> ")
+            if reasoning_piece:
+                if not reasoning_started:
+                    yield "> 💭 "
+                    reasoning_started = True
+                yield reasoning_piece.replace("\n", "\n> ")
 
-        if content_piece:
-            if reasoning_started and not answer_started:
-                yield "\n\n---\n\n"
-            answer_started = True
-            yield content_piece
+            if content_piece:
+                if reasoning_started and not answer_started:
+                    yield "\n\n---\n\n"
+                answer_started = True
+                yield content_piece
+    except Exception as exc:
+        raise ProviderError(str(exc)) from exc
