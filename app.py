@@ -1,6 +1,7 @@
 """FluxMind — RAG-based Copilot for Sliding Mode Control & Flux Linkage Estimation."""
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Must be first Streamlit call
 st.set_page_config(
@@ -129,6 +130,7 @@ I18N = {
 
 # ── Custom CSS ──
 st.markdown("""
+<meta name="google" content="notranslate">
 <style>
     .stApp { max-width: 1200px; margin: 0 auto; }
     .source-tag {
@@ -157,6 +159,49 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def install_translation_guard() -> None:
+    """Mark the Streamlit document as non-translatable.
+
+    Browser translation extensions can mutate text nodes while Streamlit is
+    streaming markdown into the same container. That can leave the frontend's
+    virtual DOM out of sync with the real DOM and break streamed rendering.
+    """
+    components.html(
+        """
+        <script>
+        const doc = window.parent.document;
+        const mark = (node) => {
+            if (!node || !node.setAttribute) return;
+            node.setAttribute("translate", "no");
+            node.classList.add("notranslate");
+        };
+        mark(doc.documentElement);
+        mark(doc.body);
+        doc
+          .querySelectorAll('[data-testid="stAppViewContainer"], [data-testid="stChatMessage"]')
+          .forEach(mark);
+        new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        mark(node);
+                        node
+                          .querySelectorAll?.('[data-testid="stChatMessage"], .stMarkdown')
+                          .forEach(mark);
+                    }
+                }
+            }
+        }).observe(doc.body, { childList: true, subtree: true });
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+install_translation_guard()
+
+
 def rel_path(path) -> str:
     return path.resolve().relative_to(PROJECT_ROOT).as_posix()
 
@@ -167,6 +212,16 @@ def paper_label(path, manifest: dict[str, dict]) -> str:
     topic = item.get("topic")
     source = "Seed" if PAPERS_LIBRARY_DIR in path.parents else "Upload"
     return f"[{source}] {title}" + (f" · {topic}" if topic else "")
+
+
+def render_streaming_response(prompt: str) -> str:
+    """Render a streaming answer through a stable markdown placeholder."""
+    chunks: list[str] = []
+    placeholder = st.empty()
+    for piece in query_stream(prompt):
+        chunks.append(piece)
+        placeholder.markdown("".join(chunks))
+    return "".join(chunks)
 
 
 # ── Sidebar: Knowledge Base Management ──
@@ -280,5 +335,5 @@ if prompt := st.chat_input(text["chat_placeholder"]):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = st.write_stream(query_stream(prompt))
+        response = render_streaming_response(prompt)
     st.session_state.messages.append({"role": "assistant", "content": response})

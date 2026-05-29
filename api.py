@@ -1,6 +1,7 @@
 """FluxMind API — FastAPI wrapper for RAG pipeline, compatible with Coze custom plugin."""
 
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +12,17 @@ from src.ingestion import build_vector_store
 
 API_TOKEN = os.getenv("FLUXMIND_API_TOKEN", "")
 
-# Init vector store on startup
-build_vector_store()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Initialize the vector store when the API process starts."""
+    build_vector_store()
+    yield
 
 app = FastAPI(
     title="FluxMind API",
     description="RAG-based Copilot for Sliding Mode Control & Flux Linkage Estimation",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
