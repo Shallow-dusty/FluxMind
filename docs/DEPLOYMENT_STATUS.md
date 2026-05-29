@@ -9,7 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced commit: `5c0440b`
+Last synced repository commit: `f258a90`
+Last restarted application-code commit: `5c0440b`
 
 ```
 Host          Trace-Twin
@@ -86,9 +87,10 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:18 CST after syncing commit
+Live checks refreshed on 2026-05-30 01:18 CST after syncing application commit
 `5c0440b` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
-`fluxmind-api.service`:
+`fluxmind-api.service`. Commit `f258a90` only refreshes this deployment
+snapshot and was synced afterward without another service restart.
 
 ```
 fluxmind-ui.service     active
