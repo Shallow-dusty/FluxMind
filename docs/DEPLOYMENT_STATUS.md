@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 02:50 CST
+Last live check: 2026-05-30 02:57 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `be8e688`
+Last restarted application-code commit: `a057816`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 02:50 CST after syncing application commit
-`be8e688` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 02:57 CST after syncing application commit
+`a057816` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -130,7 +130,9 @@ scheduled retry smoke    queued retry executed; parent_job_id/not_before present
 job retry/cancel UI      present in /opt/fluxmind/app.py
 offline RAG eval         passed in /opt/fluxmind
 corpus metadata route    present in /opt/fluxmind/api.py
+active corpus route      present in /opt/fluxmind/api.py
 corpus metadata papers   6 indexed papers via authenticated local API check
+active corpus smoke      PUT /corpus/active preserved 6 active papers; rebuild_required=true
 job API routes           present in /opt/fluxmind/api.py
 index rebuild job route  present in /opt/fluxmind/api.py
 async index job route    present in /opt/fluxmind/api.py
