@@ -2,6 +2,8 @@
 
 **FluxMind 五分钟实机演示脚本 + 答辩 Q&A 兜底**
 
+项目状态：AI-Prism 正式编号 `11.FluxMind`，公网演示入口为 `https://smy.hyper-dusty.cloud/`。
+
 ---
 
 > 🤫 **使用方式**

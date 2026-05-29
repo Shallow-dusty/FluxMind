@@ -4,6 +4,12 @@
 
 FluxMind is an intelligent research assistant built on Retrieval-Augmented Generation (RAG) architecture, designed to help control engineering researchers and students with theoretical analysis, MATLAB code generation, and literature navigation in the domains of Sliding Mode Control (SMC) and Flux Linkage Estimation.
 
+## Workspace Index
+
+- AI-Prism formal project number: `11`
+- Active workspace directory: `11.FluxMind/`
+- Previous temporary index `80` has been retired; the pre-formal snapshot is kept under `90.Archive/11-FluxMind-PreFormal/`.
+
 ## ✨ Features
 
 - **📖 Literature-Grounded Q&A** — Ask theoretical questions and get answers with citations from your uploaded papers
@@ -85,6 +91,19 @@ streamlit run app.py
 
 The app will open at `http://localhost:8501`.
 
+### Verify
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+python scripts/health_check.py
+python scripts/health_check.py \
+  --url https://smy.hyper-dusty.cloud/ \
+  --url https://api-smy.hyper-dusty.cloud/health
+python scripts/health_check.py --ssh-host root@100.100.233.26
+python scripts/update_local_references.py
+```
+
 ### Docker
 
 ```bash
@@ -94,9 +113,18 @@ docker run -p 8501:8501 --env-file .env fluxmind
 
 ## Deployment Status
 
-Temporary deployment details and live-check commands are recorded in
+Deployment details and live-check commands are recorded in
 [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md).
-Current temporary public URL: `https://smy.hyper-dusty.cloud/`.
+Current public URL: `https://smy.hyper-dusty.cloud/`.
+
+## Project Documents
+
+- [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) — live deployment snapshot and refresh commands
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current runtime boundaries and next architecture step
+- [`docs/PLATFORM_AUDIT_AND_ROADMAP.md`](docs/PLATFORM_AUDIT_AND_ROADMAP.md) — current audit, bug notes, and platform roadmap
+- [`docs/BACKLOG.md`](docs/BACKLOG.md) — implementation work packages and acceptance criteria
+- [`docs/demo-script.md`](docs/demo-script.md) — five-minute demo script and defense Q&A
+- [`docs/handover.html`](docs/handover.html) — single-file delivery handover
 
 ## 📚 Building the Knowledge Base
 
@@ -133,11 +161,14 @@ FluxMind/
 │   ├── config.py          # Configuration and environment variables
 │   ├── embeddings.py      # Local embedding model setup
 │   ├── ingestion.py       # PDF loading, chunking, and indexing
+│   ├── capabilities.py    # Future image/code execution provider contracts
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)
 ├── assets/                # Architecture diagrams and images
 ├── docs/                  # Additional documentation
+├── scripts/               # Local and deployment health checks
+├── tests/                 # Regression tests
 ├── Dockerfile             # Container deployment
 ├── requirements.txt       # Python dependencies
 └── .env.example           # Environment variable template

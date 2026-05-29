@@ -29,6 +29,10 @@ conda activate fluxmind
 streamlit run app.py
 ```
 
+## Workspace Index
+
+正式编号：`11.FluxMind`
+
 ## Linear Project
 
-无（临时项目，不走 Linear）
+无（独立个人项目，暂不走 Linear）

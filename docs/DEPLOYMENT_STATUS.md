@@ -1,12 +1,14 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-12 20:11 CST
+Last live check: 2026-05-30 01:10 CST
 
-This document records the current temporary deployment snapshot. Treat it as a
+This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
 healthy at a later time.
 
 ## Current Deployment
+
+Workspace directory: `11.FluxMind/`
 
 ```
 Host          Trace-Twin
@@ -64,10 +66,13 @@ EMBEDDING_MODEL=/opt/fluxmind/models/all-MiniLM-L6-v2
 ```
 
 `mimo-v2.5-pro` is a reasoning model: it emits `reasoning_content` first
-and the final answer second. `src/chain.py::query_stream` streams the
-reasoning as a `> 💭` blockquote, then a horizontal rule, then the
-answer, so the Streamlit UI no longer looks frozen during the thinking
-phase. The non-streaming `/query` endpoint returns the final answer only.
+and the final answer second. `src/chain.py::query_stream` exposes the
+reasoning as a `> 💭` blockquote, then a horizontal rule, then the answer,
+so the Streamlit UI no longer looks frozen during the thinking phase. The
+Streamlit layer uses a stable placeholder plus browser-translation guards,
+because Chrome/Google Translate can mutate streamed text DOM nodes while the
+frontend is still updating them. The non-streaming `/query` endpoint returns
+the final answer only.
 
 Previous pool `api.268526.eu.cc` with `deepseek-v4-flash` was retired on
 2026-05-12 after it began returning `upstream_empty_output` (HTTP 429)
@@ -80,7 +85,7 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks performed on 2026-05-12 20:11 CST:
+Live checks refreshed on 2026-05-30 01:10 CST:
 
 ```
 fluxmind-ui.service     active
@@ -91,11 +96,14 @@ UI listener             0.0.0.0:18501
 API listener            0.0.0.0:18502
 local API health        {"status":"ok"}
 Cloudflare UI HTTP      200 at https://smy.hyper-dusty.cloud/
-public UI HTTP          200
-public API health HTTP  200
+Cloudflare API HTTP     200 at https://api-smy.hyper-dusty.cloud/health
+public UI HTTP          200 at http://223.6.253.9:18501/
+public API health HTTP  200 at http://223.6.253.9:18502/health
+deployed stream guard   present in /opt/fluxmind/app.py
+deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 bot-resume              healthy
 bot-lingju              healthy
-available memory        about 1.8 GiB
+available memory        about 2.2 GiB
 root disk free          26G
 ```
 
@@ -127,6 +135,12 @@ The tunnel token is stored only on the server in
 Use live state before making deployment decisions:
 
 ```bash
+python scripts/health_check.py \
+  --url https://smy.hyper-dusty.cloud/ \
+  --url https://api-smy.hyper-dusty.cloud/health
+
+python scripts/health_check.py --ssh-host root@100.100.233.26
+
 ssh -o BatchMode=yes root@100.100.233.26 \
   'systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service docker.service;
    ss -ltnp | egrep "18501|18502" || true;
