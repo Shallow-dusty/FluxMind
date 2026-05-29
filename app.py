@@ -22,7 +22,7 @@ from src.ingestion import (
     load_library_manifest,
     rebuild_vector_store_from_pdfs,
 )
-from src.jobs import LocalJobRunner, LocalJobStore
+from src.jobs import LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
@@ -71,7 +71,7 @@ I18N = {
         "python_entrypoint": "入口文件",
         "python_files": "文件内容",
         "run_python_job": "运行 Python 任务",
-        "job_created": "任务已完成：{job_id} ({status})",
+        "job_created": "任务状态：{job_id} ({status})",
         "job_failed": "任务失败：{message}",
         "about": "关于",
         "about_text": """
@@ -129,7 +129,7 @@ I18N = {
         "python_entrypoint": "Entrypoint",
         "python_files": "File contents",
         "run_python_job": "Run Python Job",
-        "job_created": "Job completed: {job_id} ({status})",
+        "job_created": "Job status: {job_id} ({status})",
         "job_failed": "Job failed: {message}",
         "about": "About",
         "about_text": """
@@ -266,7 +266,7 @@ def render_streaming_response(prompt: str) -> str:
 
 def render_job_result(job) -> None:
     """Render a compact job outcome in the sidebar."""
-    if job.status == "succeeded":
+    if job.status in {"queued", "running", "succeeded"}:
         st.success(text["job_created"].format(job_id=job.job_id, status=job.status))
     else:
         message = (job.error or {}).get("message", job.status)
@@ -338,7 +338,7 @@ with st.sidebar:
                 st.warning(text["select_at_least_one"])
             else:
                 with st.spinner(text["rebuilding"]):
-                    job = LocalJobRunner().run_index_rebuild(selected)
+                    job = get_async_job_manager().enqueue_index_rebuild(selected)
                     render_job_result(job)
         with st.expander(text["view_papers"]):
             for p in selectable_papers:
@@ -376,7 +376,7 @@ with st.sidebar:
             height=80,
         )
         if st.button(text["run_mock_image"], use_container_width=True):
-            job = LocalJobRunner().run_mock_image(
+            job = get_async_job_manager().enqueue_mock_image(
                 request=ImageGenerationRequest(prompt=image_prompt)
             )
             render_job_result(job)
@@ -394,7 +394,7 @@ with st.sidebar:
             height=120,
         )
         if st.button(text["run_python_job"], use_container_width=True):
-            job = LocalJobRunner().run_local_python(
+            job = get_async_job_manager().enqueue_local_python(
                 CodeExecutionRequest(
                     language="python",
                     entrypoint=entrypoint,

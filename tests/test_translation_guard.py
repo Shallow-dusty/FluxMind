@@ -17,7 +17,7 @@ def test_streamlit_write_stream_is_not_used_for_chat_streaming():
 
 
 def test_streamlit_local_job_panel_is_installed():
-    assert "LocalJobRunner" in APP_SOURCE
-    assert "run_index_rebuild(selected)" in APP_SOURCE
-    assert "run_mock_image" in APP_SOURCE
-    assert "run_local_python" in APP_SOURCE
+    assert "get_async_job_manager" in APP_SOURCE
+    assert "enqueue_index_rebuild(selected)" in APP_SOURCE
+    assert "enqueue_mock_image" in APP_SOURCE
+    assert "enqueue_local_python" in APP_SOURCE

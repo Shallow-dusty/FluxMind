@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import queue
+import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -117,6 +119,28 @@ class LocalJobRunner:
         self.store.append(record)
         return record
 
+    def _enqueue(self, kind: JobKind, request: dict[str, Any], request_id: str | None) -> JobRecord:
+        now = utc_now()
+        record = JobRecord(
+            job_id=new_request_id(),
+            kind=kind,
+            status="queued",
+            created_at=now,
+            updated_at=now,
+            request=request,
+            attempts=0,
+            request_id=request_id,
+        )
+        self.store.append(record)
+        return record
+
+    def _mark_running(self, record: JobRecord) -> JobRecord:
+        record.status = "running"
+        record.updated_at = utc_now()
+        record.attempts += 1
+        self.store.append(record)
+        return record
+
     def _finish(
         self,
         record: JobRecord,
@@ -139,9 +163,17 @@ class LocalJobRunner:
         request: ImageGenerationRequest,
         *,
         request_id: str | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> JobRecord:
-        record = self._start("image_generation", asdict(request), request_id)
+        record = self._mark_running(record) if record else self._start("image_generation", asdict(request), request_id)
         try:
+            if cancel_event and cancel_event.is_set():
+                return self._finish(
+                    record,
+                    status="cancelled",
+                    error={"code": "cancelled", "message": "Job was cancelled."},
+                )
             artifact = MockImageGenerationProvider().generate(request)
         except Exception as exc:
             error = normalize_exception(exc)
@@ -153,22 +185,29 @@ class LocalJobRunner:
         request: CodeExecutionRequest,
         *,
         request_id: str | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> JobRecord:
-        record = self._start("code_execution", asdict(request), request_id)
+        record = self._mark_running(record) if record else self._start("code_execution", asdict(request), request_id)
         try:
-            result = LocalPythonExecutionProvider().run(request)
+            result = LocalPythonExecutionProvider().run(request, cancel_event=cancel_event)
         except Exception as exc:
             error = normalize_exception(exc)
             return self._finish(record, status="failed", error=asdict(error))
 
-        status: JobStatus = "succeeded" if result.success else "failed"
+        if cancel_event and cancel_event.is_set():
+            status: JobStatus = "cancelled"
+            error = {"code": "cancelled", "message": result.stderr or "Job was cancelled."}
+        else:
+            status = "succeeded" if result.success else "failed"
+            error = None if result.success else {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
         return self._finish(
             record,
             status=status,
             result=payload,
             artifacts=result.artifacts,
-            error=None if result.success else {"code": "execution_failed", "message": result.stderr},
+            error=error,
         )
 
     def run_index_rebuild(
@@ -176,10 +215,18 @@ class LocalJobRunner:
         source_paths: list[str],
         *,
         request_id: str | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> JobRecord:
         request = {"source_paths": source_paths}
-        record = self._start("index_rebuild", request, request_id)
+        record = self._mark_running(record) if record else self._start("index_rebuild", request, request_id)
         try:
+            if cancel_event and cancel_event.is_set():
+                return self._finish(
+                    record,
+                    status="cancelled",
+                    error={"code": "cancelled", "message": "Job was cancelled."},
+                )
             paths = [self._resolve_pdf_path(source_path) for source_path in source_paths]
             _store, chunks = ingestion.rebuild_vector_store_from_pdfs(paths)
         except Exception as exc:
@@ -223,3 +270,111 @@ class LocalJobRunner:
         if path not in selectable:
             raise ValueError(f"PDF path is not in the selectable corpus: {source_path}")
         return path
+
+
+class AsyncJobManager:
+    """In-process background queue for local no-key jobs."""
+
+    def __init__(self, store: LocalJobStore | None = None):
+        self.store = store or LocalJobStore()
+        self.runner = LocalJobRunner(self.store)
+        self._queue: queue.Queue[str] = queue.Queue()
+        self._events: dict[str, threading.Event] = {}
+        self._lock = threading.Lock()
+        self._worker: threading.Thread | None = None
+
+    def enqueue_mock_image(
+        self,
+        request: ImageGenerationRequest,
+        *,
+        request_id: str | None = None,
+    ) -> JobRecord:
+        record = self.runner._enqueue("image_generation", asdict(request), request_id)
+        self._enqueue(record)
+        return record
+
+    def enqueue_local_python(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        request_id: str | None = None,
+    ) -> JobRecord:
+        record = self.runner._enqueue("code_execution", asdict(request), request_id)
+        self._enqueue(record)
+        return record
+
+    def enqueue_index_rebuild(
+        self,
+        source_paths: list[str],
+        *,
+        request_id: str | None = None,
+    ) -> JobRecord:
+        record = self.runner._enqueue("index_rebuild", {"source_paths": source_paths}, request_id)
+        self._enqueue(record)
+        return record
+
+    def cancel(self, job_id: str) -> JobRecord | None:
+        with self._lock:
+            event = self._events.get(job_id)
+            if event:
+                event.set()
+        return self.store.cancel(job_id)
+
+    def _enqueue(self, record: JobRecord) -> None:
+        with self._lock:
+            self._events[record.job_id] = threading.Event()
+            if self._worker is None or not self._worker.is_alive():
+                self._worker = threading.Thread(target=self._work_loop, daemon=True)
+                self._worker.start()
+        self._queue.put(record.job_id)
+
+    def _work_loop(self) -> None:
+        while True:
+            try:
+                job_id = self._queue.get(timeout=1)
+            except queue.Empty:
+                return
+            try:
+                self._run_job(job_id)
+            finally:
+                self._queue.task_done()
+
+    def _run_job(self, job_id: str) -> None:
+        record = self.store.get(job_id)
+        if record is None:
+            return
+        event = self._events.get(job_id)
+        if record.status == "cancelled" or (event and event.is_set()):
+            self.store.cancel(job_id)
+            return
+        if record.kind == "image_generation":
+            self.runner.run_mock_image(
+                ImageGenerationRequest(**record.request),
+                request_id=record.request_id,
+                record=record,
+                cancel_event=event,
+            )
+        elif record.kind == "code_execution":
+            self.runner.run_local_python(
+                CodeExecutionRequest(**record.request),
+                request_id=record.request_id,
+                record=record,
+                cancel_event=event,
+            )
+        elif record.kind == "index_rebuild":
+            self.runner.run_index_rebuild(
+                record.request.get("source_paths", []),
+                request_id=record.request_id,
+                record=record,
+                cancel_event=event,
+            )
+
+
+_ASYNC_JOB_MANAGER: AsyncJobManager | None = None
+
+
+def get_async_job_manager() -> AsyncJobManager:
+    global _ASYNC_JOB_MANAGER
+    if _ASYNC_JOB_MANAGER is None:
+        _ASYNC_JOB_MANAGER = AsyncJobManager()
+    return _ASYNC_JOB_MANAGER

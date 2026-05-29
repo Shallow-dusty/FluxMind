@@ -137,19 +137,25 @@ The current production workflow remains RAG Q&A, corpus selection, PDF
 upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
 
-The Streamlit sidebar includes a local job panel for development workflows. The
-FastAPI service exposes the same local no-key job endpoints:
+The Streamlit sidebar includes a local job panel for development workflows. It
+submits jobs to an in-process background queue and displays persisted JSONL
+status. The FastAPI service exposes both immediate local endpoints and queued
+local endpoints:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`
 - `POST /jobs/index/rebuild`
+- `POST /jobs/async/image/mock`
+- `POST /jobs/async/code/python-local`
+- `POST /jobs/async/index/rebuild`
 - `GET /jobs`
 - `GET /jobs/{job_id}`
 - `POST /jobs/{job_id}/cancel`
 - `POST /jobs/{job_id}/retry`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under
-`artifacts/`; both directories are git-ignored runtime state.
+`artifacts/`; both directories are git-ignored runtime state. This queue is a
+no-key development bridge, not a durable multi-worker job system.
 
 ## 📚 Building the Knowledge Base
 
@@ -188,7 +194,7 @@ FluxMind/
 │   ├── ingestion.py       # PDF loading, chunking, and indexing
 │   ├── capabilities.py    # Image/code execution provider contracts
 │   ├── providers.py       # Local no-key provider implementations
-│   ├── jobs.py            # Local JSONL job records and runner
+│   ├── jobs.py            # Local JSONL job records, runner, and async queue
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)

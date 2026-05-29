@@ -101,9 +101,10 @@ def main() -> int:
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
-    check("LocalJobRunner" in app_source, "Streamlit local job panel installed", failures)
+    check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
+    check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
@@ -144,7 +145,8 @@ def main() -> int:
             "curl -sS --max-time 10 http://127.0.0.1:18502/health; "
             "test -f /opt/fluxmind/app.py; "
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
-            "grep -q 'LocalJobRunner' /opt/fluxmind/app.py; "
+            "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
+            "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "

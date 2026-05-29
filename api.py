@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query
 from src.ingestion import build_vector_store
-from src.jobs import JobRecord, LocalJobRunner, LocalJobStore
+from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
 
 API_TOKEN = os.getenv("FLUXMIND_API_TOKEN", "")
@@ -170,6 +170,31 @@ def create_mock_image_job(
     return JobResponse(job=job_to_dict(job))
 
 
+@app.post("/jobs/async/image/mock", response_model=JobResponse, summary="Queue no-key mock image job")
+def enqueue_mock_image_job(
+    req: MockImageJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue deterministic local SVG artifact generation without an external provider key."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    job = get_async_job_manager().enqueue_mock_image(
+        ImageGenerationRequest(
+            prompt=req.prompt,
+            style=req.style,
+            size=req.size,
+            reference_uris=req.reference_uris,
+        ),
+        request_id=request_id,
+    )
+    return JobResponse(job=job_to_dict(job))
+
+
 @app.post("/jobs/code/python-local", response_model=JobResponse, summary="Run local Python job")
 def create_local_python_job(
     req: LocalPythonJobRequest,
@@ -196,6 +221,32 @@ def create_local_python_job(
     return JobResponse(job=job_to_dict(job))
 
 
+@app.post("/jobs/async/code/python-local", response_model=JobResponse, summary="Queue local Python job")
+def enqueue_local_python_job(
+    req: LocalPythonJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue a development-only local Python job without hosted sandbox keys."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.entrypoint.strip():
+        raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    job = get_async_job_manager().enqueue_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint=req.entrypoint,
+            files=req.files,
+            timeout_s=req.timeout_s,
+            memory_mb=req.memory_mb,
+        ),
+        request_id=request_id,
+    )
+    return JobResponse(job=job_to_dict(job))
+
+
 @app.post("/jobs/index/rebuild", response_model=JobResponse, summary="Run local index rebuild job")
 def create_index_rebuild_job(
     req: IndexRebuildJobRequest,
@@ -210,6 +261,23 @@ def create_index_rebuild_job(
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
     job = LocalJobRunner().run_index_rebuild(req.source_paths, request_id=request_id)
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/async/index/rebuild", response_model=JobResponse, summary="Queue local index rebuild job")
+def enqueue_index_rebuild_job(
+    req: IndexRebuildJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue local FAISS rebuild from selected project PDFs."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.source_paths:
+        raise HTTPException(status_code=400, detail="At least one source path is required")
+    job = get_async_job_manager().enqueue_index_rebuild(req.source_paths, request_id=request_id)
     return JobResponse(job=job_to_dict(job))
 
 
@@ -248,7 +316,7 @@ def cancel_job(
 ):
     """Mark a queued/running local job as cancelled."""
     verify_api_token(authorization, x_api_key)
-    job = LocalJobStore().cancel(job_id)
+    job = get_async_job_manager().cancel(job_id) or LocalJobStore().cancel(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return JobResponse(job=job_to_dict(job))

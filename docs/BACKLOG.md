@@ -62,8 +62,8 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: local synchronous job model implemented; async queue and true running
-cancellation remain planned
+Status: local JSONL job model plus in-process async queue implemented; durable
+multi-worker queue, retry backoff, and full running cancellation remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
 - `POST /jobs/image/mock` creates a mock image-generation job.
@@ -71,17 +71,21 @@ cancellation remain planned
   job.
 - `POST /jobs/index/rebuild` rebuilds the FAISS index from selected PDFs as a
   persisted job.
+- `POST /jobs/async/image/mock`, `POST /jobs/async/code/python-local`, and
+  `POST /jobs/async/index/rebuild` enqueue those local jobs through an
+  in-process background worker.
 - `GET /jobs` lists latest jobs.
 - `GET /jobs/{job_id}` returns persisted job status.
 - `POST /jobs/{job_id}/retry` retries failed/cancelled local jobs with a new
   job ID.
 - `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
-  states.
+  states. Running local Python jobs observe cancellation; index rebuild
+  cancellation is only checked before execution starts.
 - Streamlit sidebar can trigger selected-PDF index rebuild jobs, mock image
   jobs, local Python jobs, and display latest job status.
-- Still planned: async queue, true cancellation of running work, retry
-  scheduler/backoff, richer timeout policy, and richer UI controls for
-  cancellation/retry.
+- Still planned: durable queue/database-backed worker, true cancellation of all
+  running work, retry scheduler/backoff, richer timeout policy, and richer UI
+  controls for cancellation/retry.
 
 Acceptance:
 
@@ -89,8 +93,9 @@ Acceptance:
   request IDs.
 - Failed code-execution jobs preserve stderr/error details.
 - API and Streamlit can show running/succeeded/failed states through job status.
-- Remaining: long-running work still needs a real async runner before it stops
-  blocking request handlers.
+- Queued local job endpoints return without blocking request handlers.
+- Remaining: production-grade long-running work still needs a durable worker
+  outside the Streamlit/API processes.
 
 ## WP4: Image and Diagram Generation
 

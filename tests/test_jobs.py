@@ -1,7 +1,19 @@
+import time
 from pathlib import Path
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
-from src.jobs import LocalJobRunner, LocalJobStore
+from src.jobs import AsyncJobManager, LocalJobRunner, LocalJobStore
+
+
+def wait_for_status(store: LocalJobStore, job_id: str, statuses: set[str], timeout_s: float = 3):
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        job = store.get(job_id)
+        if job and job.status in statuses:
+            return job
+        time.sleep(0.02)
+    job = store.get(job_id)
+    raise AssertionError(f"Job {job_id} did not reach {statuses}; last={job.status if job else None}")
 
 
 def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):
@@ -91,3 +103,45 @@ def test_job_store_list_cancel_and_retry(tmp_path: Path):
     assert retried.job_id != failed.job_id
     assert [job.job_id for job in store.list_latest(limit=2)]
     assert store.cancel("missing") is None
+
+
+def test_async_manager_runs_queued_python_job(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+
+    queued = manager.enqueue_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('async-ok')"},
+        )
+    )
+    finished = wait_for_status(store, queued.job_id, {"succeeded"})
+
+    assert queued.status == "queued"
+    assert finished.result["stdout"] == "async-ok\n"
+
+
+def test_async_manager_cancels_running_python_job(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+
+    queued = manager.enqueue_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": (
+                    "import time\n"
+                    "time.sleep(5)\n"
+                    "print('too-late')\n"
+                )
+            },
+            timeout_s=10,
+        )
+    )
+    wait_for_status(store, queued.job_id, {"running"})
+    manager.cancel(queued.job_id)
+    cancelled = wait_for_status(store, queued.job_id, {"cancelled"})
+
+    assert cancelled.error["code"] == "cancelled"

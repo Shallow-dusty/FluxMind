@@ -31,8 +31,9 @@ made.
 Current no-key feature work now includes local provider implementations:
 `MockImageGenerationProvider` writes deterministic SVG artifacts, and
 `LocalPythonExecutionProvider` exercises the code-execution contract for
-development. These are wired through local job endpoints, but not into the
-Streamlit UI or any real external provider.
+development. These are wired through immediate local job endpoints, async
+in-process job endpoints, and the Streamlit local job panel, but not into any
+real external provider.
 
 ## Workspace Reference Migration
 
@@ -211,11 +212,13 @@ provider switches first. Only real external activation is deferred.
 - Add an evaluation set: standard SMC/flux questions with expected citation
   behavior and regression scoring.
 
-Current progress: a local JSONL job store and no-key job endpoints exist for
-mock image generation, development-only Python execution, and selected-PDF
-index rebuilds. List/status/retry/cancel endpoints exist. The Streamlit sidebar
-can trigger no-key jobs and display latest job state. This proves the
-UI/API/status/artifact shape but is not yet an async durable queue or database.
+Current progress: a local JSONL job store, immediate no-key job endpoints, and
+in-process async no-key job endpoints exist for mock image generation,
+development-only Python execution, and selected-PDF index rebuilds.
+List/status/retry/cancel endpoints exist. The Streamlit sidebar can trigger
+queued no-key jobs and display latest job state. This proves the
+UI/API/status/artifact shape but is not yet a durable multi-worker queue or
+database.
 
 ### Phase 2: Better RAG
 
@@ -309,9 +312,10 @@ operational decisions are made.
    source of truth for platformization work.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
-5. Extend the local job model to async execution, true running cancellation,
-   retry backoff, and richer UI retry/cancel controls before enabling real
-   external image generation or code execution providers.
+5. Replace the local in-process job queue with durable worker/storage
+   foundations, then add true running cancellation, retry backoff, and richer
+   UI retry/cancel controls before enabling real external image generation or
+   code execution providers.
 
 ## Open Decisions
 

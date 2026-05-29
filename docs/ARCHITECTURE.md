@@ -38,9 +38,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   generation and isolated Python/Octave/MATLAB-compatible execution.
 - `src/providers.py`: no-key local providers for artifact storage, mock SVG
   diagram generation, and development-only Python execution.
-- `src/jobs.py`: local JSONL job records and synchronous no-key job runner for
-  mock image generation, development-only Python execution, and selected-PDF
-  index rebuilds.
+- `src/jobs.py`: local JSONL job records, immediate runner, and in-process
+  background queue for mock image generation, development-only Python
+  execution, and selected-PDF index rebuilds.
 - `scripts/health_check.py`: local, HTTP, and SSH runtime checks.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
@@ -78,21 +78,25 @@ API request
   -> UI polls or subscribes to job status
 ```
 
-The first job boundary now exists as a local synchronous runner:
+The first job boundary now exists as a local runner plus an in-process
+background queue:
 
 ```text
 API request
   -> create JSONL job record
-  -> run local no-key provider
+  -> enqueue or run local no-key provider
   -> persist result/artifact/error
   -> expose status through GET /jobs and GET /jobs/{job_id}
 ```
 
 The local runner also supports retrying failed/cancelled jobs and marking
-queued/running records as cancelled. The next step is to make this runner
-asynchronous, add actual cancellation of running work, and improve observability.
-The Streamlit sidebar can already trigger selected-PDF index jobs, mock SVG
-image jobs, local Python jobs, and display recent job status. Real external
-providers can be attached later without changing the UI/API workflow.
+queued/running records as cancelled. The async queue is process-local and
+JSONL-backed; it is useful for no-key development, but it is not a durable
+multi-worker platform queue. Running local Python jobs observe cancellation.
+Index rebuild jobs currently check cancellation before execution starts, so
+mid-rebuild cancellation remains a later worker/storage concern. The Streamlit
+sidebar can trigger selected-PDF index jobs, mock SVG image jobs, local Python
+jobs, and display recent job status. Real external providers can be attached
+later without changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.

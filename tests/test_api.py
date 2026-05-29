@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import api
+from src.jobs import AsyncJobManager
 
 
 def test_verify_api_token_allows_when_unconfigured(monkeypatch):
@@ -179,3 +180,25 @@ def test_index_rebuild_job_endpoint(monkeypatch, tmp_path):
     assert job["status"] == "succeeded"
     assert job["request_id"] == "req-index"
     assert job["result"]["chunk_count"] == 9
+
+
+def test_async_python_job_endpoint_queues_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+    monkeypatch.setattr(api, "get_async_job_manager", lambda: manager)
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/async/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('async-api-ok')"},
+        },
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["status"] == "queued"
+    manager._queue.join()
+    assert store.get(job["job_id"]).status == "succeeded"

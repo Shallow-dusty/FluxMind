@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import html
 import hashlib
+import threading
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from src.capabilities import (
@@ -83,7 +85,12 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
     still requires a dedicated isolated service with explicit resource limits.
     """
 
-    def run(self, request: CodeExecutionRequest) -> CodeExecutionResult:
+    def run(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        cancel_event: threading.Event | None = None,
+    ) -> CodeExecutionResult:
         if request.language != "python":
             return CodeExecutionResult(
                 exit_code=2,
@@ -106,25 +113,44 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                     stderr=f"Entrypoint not found: {request.entrypoint}",
                 )
 
-            try:
-                proc = subprocess.run(
-                    [sys.executable, str(entrypoint)],
-                    cwd=workdir,
-                    text=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=request.timeout_s,
-                    check=False,
-                )
-            except subprocess.TimeoutExpired as exc:
-                return CodeExecutionResult(
-                    exit_code=124,
-                    stdout=exc.stdout or "",
-                    stderr=f"Execution timed out after {request.timeout_s}s",
-                )
+            proc = subprocess.Popen(
+                [sys.executable, str(entrypoint)],
+                cwd=workdir,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            started = time.monotonic()
+            while proc.poll() is None:
+                if cancel_event and cancel_event.is_set():
+                    proc.terminate()
+                    try:
+                        stdout, stderr = proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        stdout, stderr = proc.communicate()
+                    return CodeExecutionResult(
+                        exit_code=130,
+                        stdout=stdout or "",
+                        stderr=(stderr or "") + "Execution cancelled.",
+                    )
+                if time.monotonic() - started > request.timeout_s:
+                    proc.terminate()
+                    try:
+                        stdout, stderr = proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        stdout, stderr = proc.communicate()
+                    return CodeExecutionResult(
+                        exit_code=124,
+                        stdout=stdout or "",
+                        stderr=(stderr or "") + f"Execution timed out after {request.timeout_s}s",
+                    )
+                time.sleep(0.05)
 
+            stdout, stderr = proc.communicate()
             return CodeExecutionResult(
                 exit_code=proc.returncode,
-                stdout=proc.stdout,
-                stderr=proc.stderr,
+                stdout=stdout,
+                stderr=stderr,
             )
