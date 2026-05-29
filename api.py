@@ -73,6 +73,10 @@ class IndexRebuildJobRequest(BaseModel):
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths")
 
 
+class RetryScheduleRequest(BaseModel):
+    delay_s: int = Field(default=30, ge=0, le=3600, description="Delay before retry execution")
+
+
 class JobResponse(BaseModel):
     job: dict = Field(..., description="Persisted local job record")
 
@@ -125,6 +129,8 @@ def job_to_dict(record: JobRecord) -> dict:
         "error": record.error,
         "attempts": record.attempts,
         "request_id": record.request_id,
+        "parent_job_id": record.parent_job_id,
+        "not_before": record.not_before,
     }
 
 
@@ -416,6 +422,24 @@ def retry_job(
     verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
     job = LocalJobRunner().retry(job_id, request_id=request_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/{job_id}/retry-scheduled", response_model=JobResponse, summary="Schedule local job retry")
+def schedule_retry_job(
+    job_id: str,
+    req: RetryScheduleRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue a failed/cancelled local job retry after a bounded backoff delay."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    job = get_async_job_manager().schedule_retry(job_id, delay_s=req.delay_s, request_id=request_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return JobResponse(job=job_to_dict(job))

@@ -23,7 +23,9 @@ def test_streamlit_local_job_panel_is_installed():
     assert "enqueue_local_python" in APP_SOURCE
     assert "cancel_job" in APP_SOURCE
     assert "retry_job" in APP_SOURCE
+    assert "schedule_retry" in APP_SOURCE
     assert "LocalJobRunner().retry" in APP_SOURCE
+    assert "get_async_job_manager().schedule_retry" in APP_SOURCE
 
 
 def test_streamlit_artifact_gallery_is_installed():

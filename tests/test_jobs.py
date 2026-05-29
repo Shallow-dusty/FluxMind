@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
-from src.jobs import AsyncJobManager, LocalJobRunner, LocalJobStore
+from src.jobs import AsyncJobManager, LocalJobRunner, LocalJobStore, parse_utc
 
 
 def wait_for_status(store: LocalJobStore, job_id: str, statuses: set[str], timeout_s: float = 3):
@@ -112,6 +112,50 @@ def test_job_store_list_cancel_and_retry(tmp_path: Path):
     assert retried.job_id != failed.job_id
     assert [job.job_id for job in store.list_latest(limit=2)]
     assert store.cancel("missing") is None
+
+
+def test_runner_schedules_retry_with_backoff_metadata(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    failed = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(2)"},
+        )
+    )
+
+    scheduled = runner.schedule_retry(failed.job_id, delay_s=30, request_id="req-backoff")
+
+    assert scheduled is not None
+    assert scheduled.status == "queued"
+    assert scheduled.parent_job_id == failed.job_id
+    assert scheduled.request_id == "req-backoff"
+    assert scheduled.not_before is not None
+    assert parse_utc(scheduled.not_before) > parse_utc(scheduled.created_at)
+
+
+def test_async_manager_runs_zero_delay_scheduled_retry(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+    failed = LocalJobRunner(store).run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('retry-ok')\nraise SystemExit(1)"},
+        )
+    )
+    failed.request["files"] = {"main.py": "print('retry-ok')"}
+    store.append(failed)
+
+    scheduled = manager.schedule_retry(failed.job_id, delay_s=0)
+
+    assert scheduled is not None
+    assert scheduled.parent_job_id == failed.job_id
+    manager._queue.join()
+    finished = store.get(scheduled.job_id)
+    assert finished.status == "succeeded"
+    assert finished.result["stdout"] == "retry-ok\n"
 
 
 def test_job_store_mirrors_current_state_to_sqlite(tmp_path: Path):

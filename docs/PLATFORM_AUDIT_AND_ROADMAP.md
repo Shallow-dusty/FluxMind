@@ -226,12 +226,13 @@ provider switches first. Only real external activation is deferred.
   scoring for standard SMC/flux questions.
 
 Current progress: a local JSONL job history, SQLite current-state job index,
-immediate no-key job endpoints, and in-process async no-key job endpoints exist
-for mock image generation, development-only Python execution, and selected-PDF
-index rebuilds.
-List/status/retry/cancel endpoints exist. The Streamlit sidebar can trigger
-queued no-key jobs, display latest job state, cancel queued/running jobs, and
-retry failed/cancelled jobs. This proves the
+immediate no-key job endpoints, in-process async no-key job endpoints, and local
+scheduled retry/backoff exist for mock image generation, development-only Python
+execution, and selected-PDF index rebuilds.
+List/status/retry/scheduled-retry/cancel endpoints exist. The Streamlit sidebar
+can trigger queued no-key jobs, display latest job state, cancel queued/running
+jobs, and retry failed/cancelled jobs immediately or after a local backoff delay.
+This proves the
 UI/API/status/artifact shape but is not yet a durable multi-worker queue or
 database-backed worker.
 
@@ -350,8 +351,8 @@ systems.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
 5. Replace the local in-process job queue with durable worker/storage
-   foundations, then add true running cancellation, retry backoff, and richer
-   UI retry/cancel controls before enabling real external image generation or
+   foundations, then add true running cancellation, durable retry scheduling,
+   and richer timeout policy before enabling real external image generation or
    code execution providers.
 
 ## Open Decisions

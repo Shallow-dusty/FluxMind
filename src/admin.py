@@ -69,6 +69,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     job_kind_counts = Counter(job.kind for job in jobs)
     failed_jobs = [job for job in jobs if job.status == "failed"]
     cancelled_jobs = [job for job in jobs if job.status == "cancelled"]
+    scheduled_jobs = [job for job in jobs if job.status == "queued" and job.not_before]
 
     papers = refresh_paper_metadata()
     artifact_count = sum(len(job.artifacts) for job in jobs)
@@ -86,6 +87,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "by_kind": dict(sorted(job_kind_counts.items())),
             "failed": len(failed_jobs),
             "cancelled": len(cancelled_jobs),
+            "scheduled": len(scheduled_jobs),
             "storage": {
                 "jsonl_exists": JOBS_FILE.exists(),
                 "jsonl_bytes": JOBS_FILE.stat().st_size if JOBS_FILE.exists() else 0,

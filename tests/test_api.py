@@ -273,6 +273,34 @@ def test_job_list_cancel_and_retry_endpoints(tmp_path, monkeypatch):
     assert cancel_response.status_code == 200
 
 
+def test_scheduled_retry_endpoint_queues_backoff_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+    monkeypatch.setattr(api, "get_async_job_manager", lambda: manager)
+
+    client = TestClient(api.app)
+    created = api.LocalJobRunner(store).run_local_python(
+        api.CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(5)"},
+        )
+    )
+    response = client.post(
+        f"/jobs/{created.job_id}/retry-scheduled",
+        json={"delay_s": 30},
+        headers={"X-Request-ID": "req-scheduled"},
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["status"] == "queued"
+    assert job["parent_job_id"] == created.job_id
+    assert job["request_id"] == "req-scheduled"
+    assert job["not_before"] is not None
+
+
 def test_index_rebuild_job_endpoint(monkeypatch, tmp_path):
     paper = tmp_path / "papers" / "library" / "paper.pdf"
     paper.parent.mkdir(parents=True)

@@ -102,18 +102,21 @@ API request
   -> expose status through GET /jobs and GET /jobs/{job_id}
 ```
 
-The local runner also supports retrying failed/cancelled jobs and marking
-queued/running records as cancelled. Job transitions are retained in append-only
-JSONL and mirrored into `jobs/jobs.sqlite3` as a local current-state index. The
-async queue is still process-local; it is useful for no-key development and
-SQLite-backed status queries, but it is not yet a durable multi-worker platform
-queue. Running local Python jobs observe cancellation.
+The local runner also supports retrying failed/cancelled jobs, scheduling a
+failed/cancelled job retry after a bounded local backoff delay, and marking
+queued/running records as cancelled. Scheduled retries preserve
+`parent_job_id` and `not_before` metadata. Job transitions are retained in
+append-only JSONL and mirrored into `jobs/jobs.sqlite3` as a local current-state
+index. The async queue is still process-local; it is useful for no-key
+development, SQLite-backed status queries, and local delayed retry, but it is
+not yet a durable multi-worker platform queue. Running local Python jobs
+observe cancellation.
 Index rebuild jobs currently check cancellation before execution starts, so
 mid-rebuild cancellation remains a later worker/storage concern. The Streamlit
 sidebar can trigger selected-PDF index jobs, mock SVG image jobs, local Python
 jobs, display recent job status, cancel queued/running jobs, and retry
-failed/cancelled jobs. Real external providers can be attached later without
-changing the UI/API workflow.
+failed/cancelled jobs immediately or after a local backoff delay. Real external
+providers can be attached later without changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.
 

@@ -155,6 +155,7 @@ local endpoints:
 - `GET /jobs/{job_id}`
 - `POST /jobs/{job_id}/cancel`
 - `POST /jobs/{job_id}/retry`
+- `POST /jobs/{job_id}/retry-scheduled`
 - `GET /artifacts`
 - `GET /artifacts/{artifact_id}`
 - `GET /corpus/papers`
@@ -166,6 +167,8 @@ metadata is persisted under `metadata/`, also git-ignored runtime state. This
 queue and metadata file are no-key development bridges, not durable multi-worker
 infrastructure. Job writes are also mirrored to `jobs/jobs.sqlite3` as a local
 current-state index for faster status queries and future worker migration.
+Failed/cancelled jobs can also be scheduled for delayed local retry with
+`not_before` metadata and parent-job lineage.
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
 artifacts, runtime directories, and disabled external-provider/productization
 switches.

@@ -66,6 +66,7 @@ I18N = {
         "latest_jobs": "最近任务",
         "cancel_job": "取消任务",
         "retry_job": "重试任务",
+        "schedule_retry": "延迟重试",
         "latest_artifacts": "最近产物",
         "no_artifacts": "暂无产物",
         "download_artifact": "下载产物",
@@ -143,6 +144,7 @@ I18N = {
         "latest_jobs": "Latest jobs",
         "cancel_job": "Cancel job",
         "retry_job": "Retry job",
+        "schedule_retry": "Schedule retry",
         "latest_artifacts": "Latest artifacts",
         "no_artifacts": "No artifacts yet",
         "download_artifact": "Download artifact",
@@ -352,6 +354,14 @@ def render_latest_jobs() -> None:
                     retried = LocalJobRunner().retry(job.job_id)
                     render_job_result(retried or job)
                     st.rerun()
+                if st.button(
+                    text["schedule_retry"],
+                    key=f"retry_later_{job.job_id}",
+                    use_container_width=True,
+                ):
+                    retried = get_async_job_manager().schedule_retry(job.job_id, delay_s=30)
+                    render_job_result(retried or job)
+                    st.rerun()
 
 
 def render_latest_artifacts() -> None:
@@ -391,6 +401,7 @@ def render_admin_status() -> None:
             "by_status": jobs["by_status"],
             "by_kind": jobs["by_kind"],
             "failed": jobs["failed"],
+            "scheduled": jobs["scheduled"],
             "storage": jobs["storage"],
         }
     )

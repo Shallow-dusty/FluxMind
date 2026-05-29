@@ -7,7 +7,7 @@ import queue
 import sqlite3
 import threading
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,6 +31,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def parse_utc(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def future_utc(seconds: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(seconds=max(seconds, 0))).isoformat()
+
+
 @dataclass
 class JobRecord:
     """Serializable local job state."""
@@ -46,6 +54,8 @@ class JobRecord:
     error: dict[str, Any] | None = None
     attempts: int = 0
     request_id: str | None = None
+    parent_job_id: str | None = None
+    not_before: str | None = None
 
 
 class LocalJobStore:
@@ -122,6 +132,16 @@ class LocalJobStore:
         record.error = {"code": "cancelled", "message": "Job was cancelled."}
         self.append(record)
         return record
+
+    def scheduled_count(self) -> int:
+        now = datetime.now(timezone.utc)
+        return sum(
+            1
+            for job in self.list_latest(limit=10000)
+            if job.status == "queued"
+            and job.not_before
+            and parse_utc(job.not_before) > now
+        )
 
     def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -226,7 +246,15 @@ class LocalJobRunner:
         self.store.append(record)
         return record
 
-    def _enqueue(self, kind: JobKind, request: dict[str, Any], request_id: str | None) -> JobRecord:
+    def _enqueue(
+        self,
+        kind: JobKind,
+        request: dict[str, Any],
+        request_id: str | None,
+        *,
+        parent_job_id: str | None = None,
+        not_before: str | None = None,
+    ) -> JobRecord:
         now = utc_now()
         record = JobRecord(
             job_id=new_request_id(),
@@ -237,6 +265,8 @@ class LocalJobRunner:
             request=request,
             attempts=0,
             request_id=request_id,
+            parent_job_id=parent_job_id,
+            not_before=not_before,
         )
         self.store.append(record)
         return record
@@ -364,6 +394,26 @@ class LocalJobRunner:
             return self.run_index_rebuild(job.request.get("source_paths", []), request_id=request_id)
         return job
 
+    def schedule_retry(
+        self,
+        job_id: str,
+        *,
+        delay_s: int = 30,
+        request_id: str | None = None,
+    ) -> JobRecord | None:
+        job = self.store.get(job_id)
+        if job is None:
+            return None
+        if job.status not in {"failed", "cancelled"}:
+            return job
+        return self._enqueue(
+            job.kind,
+            job.request,
+            request_id,
+            parent_job_id=job.job_id,
+            not_before=future_utc(delay_s),
+        )
+
     @staticmethod
     def _resolve_pdf_path(source_path: str) -> Path:
         path = (PROJECT_ROOT / source_path).resolve()
@@ -420,6 +470,19 @@ class AsyncJobManager:
         self._enqueue(record)
         return record
 
+    def schedule_retry(
+        self,
+        job_id: str,
+        *,
+        delay_s: int = 30,
+        request_id: str | None = None,
+    ) -> JobRecord | None:
+        record = self.runner.schedule_retry(job_id, delay_s=delay_s, request_id=request_id)
+        if record is None or record.status != "queued":
+            return record
+        self._enqueue(record)
+        return record
+
     def cancel(self, job_id: str) -> JobRecord | None:
         with self._lock:
             event = self._events.get(job_id)
@@ -433,7 +496,26 @@ class AsyncJobManager:
             if self._worker is None or not self._worker.is_alive():
                 self._worker = threading.Thread(target=self._work_loop, daemon=True)
                 self._worker.start()
-        self._queue.put(record.job_id)
+        delay_s = self._delay_seconds(record)
+        if delay_s > 0:
+            timer = threading.Timer(delay_s, self._put_job, args=(record.job_id,))
+            timer.daemon = True
+            timer.start()
+        else:
+            self._put_job(record.job_id)
+
+    def _put_job(self, job_id: str) -> None:
+        with self._lock:
+            if self._worker is None or not self._worker.is_alive():
+                self._worker = threading.Thread(target=self._work_loop, daemon=True)
+                self._worker.start()
+        self._queue.put(job_id)
+
+    @staticmethod
+    def _delay_seconds(record: JobRecord) -> float:
+        if not record.not_before:
+            return 0
+        return max(0.0, (parse_utc(record.not_before) - datetime.now(timezone.utc)).total_seconds())
 
     def _work_loop(self) -> None:
         while True:

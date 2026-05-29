@@ -116,8 +116,10 @@ def main() -> int:
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
+    check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
+    check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
@@ -162,9 +164,11 @@ def main() -> int:
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
+            "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "test -f /opt/fluxmind/src/admin.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS jobs' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"
