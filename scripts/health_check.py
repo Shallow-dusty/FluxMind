@@ -109,6 +109,7 @@ def main() -> int:
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
+    check("artifact_id" in app_source and "artifact_metadata" in app_source, "Streamlit artifact reference metadata installed", failures)
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
@@ -124,6 +125,9 @@ def main() -> int:
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
     check("rerank_documents" in chain_source and "lexical_relevance_score" in chain_source, "local reranker installed", failures)
+    check("Generated Artifact References" in chain_source and "generated_artifact_context" in chain_source, "artifact references in RAG context installed", failures)
+    artifacts_source = (PROJECT_ROOT / "src" / "artifacts.py").read_text(encoding="utf-8")
+    check("format_artifact_references" in artifacts_source, "artifact reference formatter installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
@@ -164,6 +168,7 @@ def main() -> int:
             "test -f /opt/fluxmind/app.py; "
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
+            "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
@@ -176,6 +181,8 @@ def main() -> int:
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
             "grep -q 'rerank_documents' /opt/fluxmind/src/chain.py; "
+            "grep -q 'Generated Artifact References' /opt/fluxmind/src/chain.py; "
+            "grep -q 'format_artifact_references' /opt/fluxmind/src/artifacts.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"

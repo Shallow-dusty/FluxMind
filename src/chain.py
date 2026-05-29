@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 
+from src.artifacts import LocalArtifactRegistry, format_artifact_references
 from src.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL, TOP_K, FAISS_INDEX_DIR
 from src.embeddings import get_embedding_model
 from src.runtime import ProviderError, normalize_exception
@@ -46,6 +47,12 @@ You are FluxMind, an expert research copilot specializing in:
 
 ## Retrieved Context:
 {context}
+
+## Generated Artifact References:
+{artifact_context}
+
+If a generated diagram, plot, or file is relevant, cite it by its stable
+`[Artifact:<id>]` reference. Do not invent artifact IDs.
 """
 
 USER_TEMPLATE = "{question}"
@@ -189,6 +196,15 @@ def format_context(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
+def generated_artifact_context(*, limit: int = 5) -> str:
+    """Return recent generated artifact references for optional answer citation."""
+    try:
+        artifacts = LocalArtifactRegistry().list_artifacts(limit=limit)
+    except Exception:
+        return "(Generated artifact registry is unavailable.)"
+    return format_artifact_references(artifacts, limit=limit)
+
+
 def normalize_answer_mode(answer_mode: str | None) -> AnswerMode:
     """Return a supported answer mode, defaulting to explanation."""
     if answer_mode in ANSWER_MODE_INSTRUCTIONS:
@@ -230,6 +246,7 @@ def query(
     # Retrieve
     context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
+    artifact_context = generated_artifact_context()
 
     # Build prompt
     prompt = ChatPromptTemplate.from_messages([
@@ -244,6 +261,7 @@ def query(
         response = chain.invoke(
             {
                 "context": context,
+                "artifact_context": artifact_context,
                 "question": question,
                 "answer_mode": mode,
                 "mode_instruction": ANSWER_MODE_INSTRUCTIONS[mode],
@@ -261,12 +279,14 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
     mode = normalize_answer_mode(answer_mode)
     context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
+    artifact_context = generated_artifact_context()
 
     messages = [
         {
             "role": "system",
             "content": SYSTEM_PROMPT.format(
                 context=context,
+                artifact_context=artifact_context,
                 answer_mode=mode,
                 mode_instruction=ANSWER_MODE_INSTRUCTIONS[mode],
             ),

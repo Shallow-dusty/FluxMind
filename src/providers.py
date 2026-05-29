@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import html
 import hashlib
+import json
 import mimetypes
 import threading
 import subprocess
@@ -95,7 +96,22 @@ class MockImageGenerationProvider(ImageGenerationProvider):
 """
         digest = hashlib.sha256(f"{request.style}\n{request.prompt}".encode()).hexdigest()[:12]
         name = f"diagram-{digest}.svg"
-        return self.store.write_text(f"mock-images/{name}", svg, "image/svg+xml")
+        artifact = self.store.write_text(f"mock-images/{name}", svg, "image/svg+xml")
+        return GeneratedArtifact(
+            kind=artifact.kind,
+            uri=artifact.uri,
+            mime_type=artifact.mime_type,
+            title=artifact.title,
+            metadata={
+                **artifact.metadata,
+                "model": "local-mock-svg-v1",
+                "prompt": request.prompt,
+                "style": request.style,
+                "size": request.size,
+                "reference_uris": json.dumps(request.reference_uris, ensure_ascii=False),
+                "cost_estimate_usd": "0",
+            },
+        )
 
 
 class LocalPythonExecutionProvider(CodeExecutionProvider):
@@ -213,7 +229,13 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                     uri=artifact.uri,
                     mime_type=artifact.mime_type,
                     title=relative,
-                    metadata={**artifact.metadata, "source": relative},
+                    metadata={
+                        **artifact.metadata,
+                        "source": relative,
+                        "language": request.language,
+                        "entrypoint": request.entrypoint,
+                        "cost_estimate_usd": "0",
+                    },
                 )
             )
         return artifacts

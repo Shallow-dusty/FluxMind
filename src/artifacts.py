@@ -83,3 +83,35 @@ class LocalArtifactRegistry:
         if artifact is None:
             raise FileNotFoundError("Artifact not found.")
         return artifact, local_artifact_path(artifact.uri)
+
+
+def format_artifact_references(
+    artifacts: list[ArtifactRecord],
+    *,
+    limit: int = 5,
+) -> str:
+    """Format generated artifacts so RAG answers can cite stable artifact IDs."""
+    if not artifacts:
+        return "(No generated artifacts are currently available.)"
+
+    parts: list[str] = []
+    for artifact in artifacts[:limit]:
+        metadata = artifact.metadata or {}
+        prompt = str(metadata.get("prompt") or "").strip()
+        style = str(metadata.get("style") or "").strip()
+        source_refs = str(metadata.get("reference_uris") or "").strip()
+        details = [
+            f"kind={artifact.kind}",
+            f"mime={artifact.mime_type}",
+            f"job={artifact.job_id}",
+        ]
+        if artifact.title:
+            details.append(f"title={artifact.title}")
+        if style:
+            details.append(f"style={style}")
+        if source_refs:
+            details.append(f"references={source_refs}")
+        if prompt:
+            details.append(f"prompt={prompt}")
+        parts.append(f"[Artifact:{artifact.artifact_id}] " + "; ".join(details))
+    return "\n".join(parts)

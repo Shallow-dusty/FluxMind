@@ -5,6 +5,7 @@ from langchain_core.documents import Document
 from src.chain import (
     ANSWER_MODE_INSTRUCTIONS,
     format_context,
+    generated_artifact_context,
     hybrid_retrieve,
     normalize_answer_mode,
     rerank_documents,
@@ -76,6 +77,33 @@ def test_rerank_documents_keeps_original_order_for_equal_scores():
     second = Document(page_content="alpha", metadata={"source": "b.pdf"})
 
     assert rerank_documents("alpha", [first, second], k=2) == [first, second]
+
+
+def test_generated_artifact_context_formats_recent_artifacts(monkeypatch):
+    class FakeRegistry:
+        def list_artifacts(self, *, limit):
+            assert limit == 5
+            from src.artifacts import ArtifactRecord
+
+            return [
+                ArtifactRecord(
+                    artifact_id="abc123",
+                    job_id="job1",
+                    job_kind="image_generation",
+                    kind="image",
+                    uri="file:///tmp/diagram.svg",
+                    mime_type="image/svg+xml",
+                    title="diagram.svg",
+                    metadata={"prompt": "SMC diagram", "style": "engineering"},
+                )
+            ]
+
+    monkeypatch.setattr("src.chain.LocalArtifactRegistry", FakeRegistry)
+
+    context = generated_artifact_context()
+
+    assert "[Artifact:abc123]" in context
+    assert "SMC diagram" in context
 
 
 def test_tokenize_query_supports_cjk_terms():

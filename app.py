@@ -73,6 +73,8 @@ I18N = {
         "latest_artifacts": "最近产物",
         "no_artifacts": "暂无产物",
         "download_artifact": "下载产物",
+        "artifact_id": "产物 ID",
+        "artifact_metadata": "产物元数据",
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
         "status_jobs": "任务",
@@ -153,6 +155,8 @@ I18N = {
         "latest_artifacts": "Latest artifacts",
         "no_artifacts": "No artifacts yet",
         "download_artifact": "Download artifact",
+        "artifact_id": "Artifact ID",
+        "artifact_metadata": "Artifact metadata",
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
         "status_jobs": "Jobs",
@@ -378,6 +382,10 @@ def render_latest_artifacts() -> None:
         label = f"{artifact.kind} · {artifact.title or artifact.artifact_id}"
         with st.expander(label):
             st.caption(f"{artifact.job_kind} · {artifact.job_id}")
+            st.caption(f"{text['artifact_id']}: {artifact.artifact_id}")
+            if artifact.metadata:
+                st.caption(text["artifact_metadata"])
+                st.json(artifact.metadata)
             st.code(artifact.uri, language="text")
             try:
                 path = local_artifact_path(artifact.uri)

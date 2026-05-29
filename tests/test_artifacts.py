@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from src.artifacts import LocalArtifactRegistry, artifact_id_for_uri, local_artifact_path
+from src.artifacts import (
+    LocalArtifactRegistry,
+    artifact_id_for_uri,
+    format_artifact_references,
+    local_artifact_path,
+)
 from src.capabilities import ImageGenerationRequest
 from src.jobs import LocalJobRunner, LocalJobStore
 
@@ -19,6 +24,9 @@ def test_artifact_registry_lists_job_artifacts(tmp_path: Path, monkeypatch):
     assert artifacts[0].job_id == job.job_id
     assert artifacts[0].kind == "image"
     assert artifacts[0].artifact_id == artifact_id_for_uri(job.artifacts[0]["uri"])
+    assert artifacts[0].metadata["prompt"] == "SMC"
+    assert artifacts[0].metadata["model"] == "local-mock-svg-v1"
+    assert artifacts[0].metadata["cost_estimate_usd"] == "0"
     assert local_artifact_path(artifacts[0].uri).exists()
 
 
@@ -29,3 +37,24 @@ def test_local_artifact_path_rejects_escaped_file(tmp_path: Path, monkeypatch):
 
     with pytest.raises(ValueError, match="escapes"):
         local_artifact_path(outside.resolve().as_uri())
+
+
+def test_format_artifact_references_exposes_stable_ids(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", tmp_path / "artifacts")
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    LocalJobRunner(store).run_mock_image(
+        ImageGenerationRequest(
+            prompt="Sliding mode observer block diagram",
+            style="control-diagram",
+            reference_uris=["paper://smc#page=3"],
+        )
+    )
+
+    artifacts = LocalArtifactRegistry(store).list_artifacts()
+    context = format_artifact_references(artifacts)
+
+    assert f"[Artifact:{artifacts[0].artifact_id}]" in context
+    assert "control-diagram" in context
+    assert "Sliding mode observer block diagram" in context
+    assert "paper://smc#page=3" in context

@@ -273,6 +273,8 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert job["status"] == "succeeded"
     assert job["request_id"] == "req-image"
     assert job["artifacts"][0]["mime_type"] == "image/svg+xml"
+    assert job["artifacts"][0]["metadata"]["prompt"] == "Draw an SMC observer"
+    assert job["artifacts"][0]["metadata"]["cost_estimate_usd"] == "0"
 
     loaded = client.get(f"/jobs/{job['job_id']}")
     assert loaded.status_code == 200
