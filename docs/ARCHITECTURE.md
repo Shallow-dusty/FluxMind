@@ -1,6 +1,6 @@
 # FluxMind Architecture
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 
 ## Current Runtime
 
@@ -51,6 +51,10 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   storage layers before public platform use.
 - Code execution and image generation must remain provider-backed services.
   They should not run inside the UI process or the synchronous `/query` path.
+- Provider-key, account, license, or sandbox-dependent capabilities are
+  intentionally deferred. This includes image generation, hosted code
+  execution, real MATLAB integration, multi-user accounts, quotas, and billing.
+  `src/capabilities.py` is only the contract boundary for later work.
 
 ## Next Architecture Step
 

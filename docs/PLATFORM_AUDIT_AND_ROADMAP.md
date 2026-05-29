@@ -20,6 +20,12 @@ durable multi-user platform. The main gap is not the RAG prototype; it is the
 missing platform layer around identity, jobs, storage, observability, safety,
 and isolated execution.
 
+Current implementation boundary: provider-key, account, license, or sandbox
+dependent features are not being implemented in this iteration. The repository
+may keep interface contracts for those capabilities, but production remains
+limited to RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
+token-protected FastAPI `/query` endpoint.
+
 ## Workspace Reference Migration
 
 FluxMind has been moved from the temporary AI-Prism index `80` to the formal
@@ -167,6 +173,10 @@ Storage
 
 ## Roadmap
 
+The roadmap below is directional. Phases that require external provider keys,
+paid accounts, MATLAB licensing, or sandbox infrastructure are explicitly
+deferred until those operational decisions are made.
+
 ### Phase 0: Stabilize the Current App
 
 - Expand smoke tests for `api.py`, active paper selection, and deployment
@@ -202,6 +212,9 @@ Storage
 
 ### Phase 3: Image and Diagram Generation Interface
 
+Status: deferred. This phase requires a configured image provider key/account
+and artifact storage decisions.
+
 Use an internal provider interface before binding the app to one vendor:
 
 ```python
@@ -225,6 +238,10 @@ reserve conversational editing for later.
 Reference: https://platform.openai.com/docs/guides/image-generation
 
 ### Phase 4: Code Execution
+
+Status: deferred. This phase requires isolated execution infrastructure. Real
+MATLAB support additionally requires license/account decisions; GNU Octave or
+Python-only execution should be considered before MATLAB.
 
 Do not run user code in the Streamlit/API process. Add an execution provider:
 
@@ -253,6 +270,9 @@ Reference: https://developers.cloudflare.com/sandbox/
 
 ### Phase 5: Productization
 
+Status: deferred. This phase requires identity, API-key lifecycle, quota, and
+cost-accounting decisions.
+
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.
 - Add accounts, private corpora, exportable reports, artifact galleries, and
@@ -267,10 +287,11 @@ Reference: https://developers.cloudflare.com/sandbox/
 2. Expand tests and the local smoke command into a deploy gate.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-4. Introduce a small provider abstraction for LLM calls and future artifact
-   generators.
-5. Move long-running operations to explicit jobs before adding code execution
-   or image generation.
+4. Keep `src/capabilities.py` as the future provider boundary, but do not wire
+   image generation or code execution without explicit key/account/sandbox
+   decisions.
+5. Move long-running operations to explicit jobs before reconsidering code
+   execution or image generation.
 
 ## Open Decisions
 

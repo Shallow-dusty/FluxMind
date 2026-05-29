@@ -126,6 +126,16 @@ Current public URL: `https://smy.hyper-dusty.cloud/`.
 - [`docs/demo-script.md`](docs/demo-script.md) — five-minute demo script and defense Q&A
 - [`docs/handover.html`](docs/handover.html) — single-file delivery handover
 
+## Deferred Capabilities
+
+`src/capabilities.py` intentionally defines future provider contracts only.
+Image generation, hosted code execution, real MATLAB integration, and
+multi-user product features are not active in the current deployment because
+they require additional provider keys, accounts, licensing, or sandbox
+infrastructure. The current production scope remains RAG Q&A, corpus selection,
+PDF upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
+endpoint.
+
 ## 📚 Building the Knowledge Base
 
 1. Use the sidebar paper selector to choose bundled papers from `papers/library/`

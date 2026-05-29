@@ -1,6 +1,6 @@
 # FluxMind Implementation Backlog
 
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 
 This backlog turns the platform roadmap into concrete implementation packages.
 It is intentionally ordered by dependency, not by excitement.
@@ -60,7 +60,7 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: planned
+Status: deferred until a provider/sandbox implementation is selected
 
 - Introduce job records for PDF parsing, indexing, image generation, and code
   execution.
@@ -75,7 +75,7 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: planned
+Status: deferred; requires a configured image provider key/account
 
 - Implement the `ImageGenerationProvider` contract.
 - Start with engineering diagrams and paper-figure redrafts.
@@ -91,7 +91,8 @@ Acceptance:
 
 ## WP5: Code Execution
 
-Status: planned
+Status: deferred; requires isolated execution infrastructure and, for MATLAB,
+license/account decisions
 
 - Implement the `CodeExecutionProvider` contract.
 - Start with Python numerical snippets and generated plots.
@@ -109,7 +110,7 @@ Acceptance:
 
 ## WP6: Product Shell
 
-Status: planned
+Status: deferred; requires identity/API-key/quota decisions
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.
