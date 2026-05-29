@@ -82,6 +82,6 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["jobs"]["storage"]["jsonl_exists"] is True
     assert status["jobs"]["storage"]["sqlite_exists"] is True
     assert status["artifacts"] == {"total": 1, "bytes": 4}
-    assert status["corpus"] == {"papers": 1, "active": 1, "indexed": 1, "failed": 0}
+    assert status["corpus"] == {"papers": 1, "active": 1, "available": 0, "indexed": 1, "failed": 0}
     assert status["config"]["external_providers_enabled"] is False
     assert all("path" in item for item in status["runtime_dirs"])

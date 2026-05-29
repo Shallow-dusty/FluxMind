@@ -45,8 +45,10 @@ fully scored.
 Current corpus storage work includes a local JSON metadata registry in
 `metadata/corpus.json` with checksums, source paths, titles, active/indexed
 state, chunk counts, and parse/index error fields. `GET /corpus/papers` exposes
-that state through the API. This is still a local baseline, not the final
-multi-user database.
+that state through the API. `PUT /corpus/active` persists active/deactivated
+paper selection without direct runtime-file edits; an index rebuild is still
+required to make FAISS exactly match a changed selection. This is still a local
+baseline, not the final multi-user database.
 
 ## Workspace Reference Migration
 
@@ -237,7 +239,9 @@ UI/API/status/artifact shape but is not yet a durable multi-worker queue or
 database-backed worker.
 
 Corpus metadata progress: local paper metadata exists and can be listed through
-the API. Upload and selected-PDF rebuild flows update the local metadata file.
+the API. Active/deactivated paper selection can be updated through the API and
+Streamlit without direct filesystem edits. Upload and selected-PDF rebuild flows
+update the local metadata file.
 Durable user/corpus/chunk/artifact/job metadata is still planned.
 
 ### Phase 2: Better RAG

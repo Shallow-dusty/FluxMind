@@ -129,6 +129,66 @@ def test_corpus_papers_endpoint_returns_metadata(monkeypatch):
     assert response.json()["papers"][0]["indexed_status"] == "indexed"
 
 
+def test_update_active_corpus_endpoint_persists_selection(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    def fake_set_active(source_paths):
+        assert source_paths == ["papers/library/paper.pdf"]
+        return [
+            PaperRecord(
+                paper_id="p1",
+                source_path="papers/library/paper.pdf",
+                filename="paper.pdf",
+                source_kind="library",
+                checksum_sha256="a" * 64,
+                title="Paper",
+                active=True,
+                indexed_status="active",
+                updated_at="2026-05-30T00:00:00+00:00",
+            ),
+            PaperRecord(
+                paper_id="p2",
+                source_path="papers/library/off.pdf",
+                filename="off.pdf",
+                source_kind="library",
+                checksum_sha256="b" * 64,
+                title="Off",
+                active=False,
+                indexed_status="available",
+                updated_at="2026-05-30T00:00:00+00:00",
+            ),
+        ]
+
+    monkeypatch.setattr(api, "set_active_paper_source_paths", fake_set_active)
+
+    client = TestClient(api.app)
+    response = client.put(
+        "/corpus/active",
+        json={"source_paths": ["papers/library/paper.pdf"]},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["active_source_paths"] == ["papers/library/paper.pdf"]
+    assert payload["rebuild_required"] is True
+    assert payload["papers"][1]["active"] is False
+
+
+def test_update_active_corpus_endpoint_rejects_invalid_selection(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    def fail(_source_paths):
+        raise ValueError("PDF path is not in the selectable corpus: missing.pdf")
+
+    monkeypatch.setattr(api, "set_active_paper_source_paths", fail)
+
+    client = TestClient(api.app)
+    response = client.put("/corpus/active", json={"source_paths": ["missing.pdf"]})
+
+    assert response.status_code == 400
+    assert "selectable corpus" in response.json()["detail"]
+
+
 def test_admin_status_endpoint_returns_no_secret_status(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
 

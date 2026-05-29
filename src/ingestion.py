@@ -126,6 +126,31 @@ def save_active_paper_paths(paths: list[Path]) -> None:
     )
 
 
+def resolve_selectable_source_paths(source_paths: list[str]) -> list[Path]:
+    """Resolve project-relative source paths and require selectable PDFs."""
+    selectable = {path.resolve().relative_to(PROJECT_ROOT).as_posix(): path for path in discover_pdfs()}
+    paths: list[Path] = []
+    seen: set[str] = set()
+    for source_path in source_paths:
+        key = source_path.strip()
+        if not key:
+            continue
+        if key not in selectable:
+            raise ValueError(f"PDF path is not in the selectable corpus: {source_path}")
+        if key in seen:
+            continue
+        seen.add(key)
+        paths.append(selectable[key])
+    return paths
+
+
+def set_active_paper_source_paths(source_paths: list[str]) -> list[PaperRecord]:
+    """Persist the active corpus selection without rebuilding the FAISS index."""
+    paths = resolve_selectable_source_paths(source_paths)
+    save_active_paper_paths(paths)
+    return refresh_paper_metadata()
+
+
 def load_pdf(path: Path) -> list[Document]:
     """Extract text from a single PDF using PyMuPDF."""
     documents = []

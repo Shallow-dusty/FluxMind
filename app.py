@@ -23,6 +23,7 @@ from src.ingestion import (
     load_active_paper_paths,
     load_library_manifest,
     rebuild_vector_store_from_pdfs,
+    set_active_paper_source_paths,
 )
 from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
@@ -50,6 +51,8 @@ I18N = {
         "selected_papers": "当前入库论文",
         "select_papers": "选择要进入 RAG 的论文",
         "apply_selection": "应用选择并重建索引",
+        "save_selection": "仅保存启用状态",
+        "selection_saved": "启用状态已保存；如需立即更新检索范围，请重建索引",
         "no_selectable_papers": "还没有可选 PDF",
         "view_papers": "查看论文",
         "no_papers": "知识库暂无论文",
@@ -128,6 +131,8 @@ I18N = {
         "selected_papers": "Active papers",
         "select_papers": "Choose papers for RAG",
         "apply_selection": "Apply Selection and Rebuild Index",
+        "save_selection": "Save Active State Only",
+        "selection_saved": "Active state saved; rebuild the index to update retrieval scope",
         "no_selectable_papers": "No selectable PDFs yet",
         "view_papers": "View papers",
         "no_papers": "No papers in knowledge base yet",
@@ -461,6 +466,13 @@ with st.sidebar:
                     _, chunks = rebuild_vector_store_from_pdfs(paths)
                     st.success(f"{text['rebuilt']} ({chunks} chunks)")
                     st.rerun()
+        if st.button(text["save_selection"], use_container_width=True):
+            if not selected:
+                st.warning(text["select_at_least_one"])
+            else:
+                set_active_paper_source_paths(selected)
+                st.success(text["selection_saved"])
+                st.rerun()
         if st.button(text["run_index_job"], use_container_width=True):
             if not selected:
                 st.warning(text["select_at_least_one"])

@@ -14,7 +14,7 @@ from src.admin import collect_admin_status
 from src.artifacts import LocalArtifactRegistry
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query
-from src.ingestion import build_vector_store, refresh_paper_metadata
+from src.ingestion import build_vector_store, refresh_paper_metadata, set_active_paper_source_paths
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
 
@@ -73,6 +73,10 @@ class IndexRebuildJobRequest(BaseModel):
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths")
 
 
+class ActiveCorpusRequest(BaseModel):
+    source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths to keep active")
+
+
 class RetryScheduleRequest(BaseModel):
     delay_s: int = Field(default=30, ge=0, le=3600, description="Delay before retry execution")
 
@@ -87,6 +91,12 @@ class JobListResponse(BaseModel):
 
 class CorpusPapersResponse(BaseModel):
     papers: list[dict] = Field(..., description="Current local corpus paper metadata")
+
+
+class ActiveCorpusResponse(BaseModel):
+    papers: list[dict] = Field(..., description="Updated local corpus paper metadata")
+    active_source_paths: list[str] = Field(..., description="Persisted active paper source paths")
+    rebuild_required: bool = Field(..., description="Whether the FAISS index should be rebuilt to apply selection")
 
 
 class ArtifactListResponse(BaseModel):
@@ -184,6 +194,28 @@ def list_corpus_papers(
     verify_api_token(authorization, x_api_key)
     papers = [record_to_dict(record) for record in refresh_paper_metadata()]
     return CorpusPapersResponse(papers=papers)
+
+
+@app.put("/corpus/active", response_model=ActiveCorpusResponse, summary="Update active corpus selection")
+def update_active_corpus(
+    req: ActiveCorpusRequest,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Persist active/deactivated papers without requiring filesystem edits."""
+    verify_api_token(authorization, x_api_key)
+    if not req.source_paths:
+        raise HTTPException(status_code=400, detail="At least one source path is required")
+    try:
+        papers = [record_to_dict(record) for record in set_active_paper_source_paths(req.source_paths)]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
+    return ActiveCorpusResponse(
+        papers=papers,
+        active_source_paths=active_source_paths,
+        rebuild_required=True,
+    )
 
 
 @app.get("/admin/status", response_model=AdminStatusResponse, summary="Inspect local runtime status")

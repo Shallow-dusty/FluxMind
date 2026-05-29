@@ -137,6 +137,10 @@ The first corpus storage boundary is `metadata/corpus.json`, managed through
 path, checksum, manifest title fields, source kind, active flag, indexed status,
 chunk count, and parse/index error slots. Upload and selected-PDF rebuild flows
 update this file, and FastAPI exposes it through `GET /corpus/papers`.
+`PUT /corpus/active` validates project-relative source paths against the
+selectable corpus, persists the active/deactivated selection to
+`faiss_index/active_papers.json`, refreshes local metadata, and returns
+`rebuild_required=true` so clients can decide whether to trigger an index job.
 
 This is still a local development store. It makes corpus state inspectable
 without reading the filesystem manually, but it is not the future multi-user

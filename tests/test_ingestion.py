@@ -60,3 +60,51 @@ def test_refresh_paper_metadata_marks_active_indexed(tmp_path: Path, monkeypatch
     assert records[0].title == "Paper"
     assert records[0].active is True
     assert records[0].indexed_status == "indexed"
+
+
+def test_set_active_paper_source_paths_persists_selection(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    upload_dir = root / "papers" / "uploads"
+    index_dir = root / "faiss_index"
+    library.mkdir(parents=True)
+    upload_dir.mkdir(parents=True)
+    first = library / "first.pdf"
+    second = upload_dir / "second.pdf"
+    first.write_bytes(b"first")
+    second.write_bytes(b"second")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", upload_dir)
+    monkeypatch.setattr(ingestion, "PAPER_LIBRARY_MANIFEST", library / "manifest.json")
+    monkeypatch.setattr(ingestion, "FAISS_INDEX_DIR", index_dir)
+    monkeypatch.setattr(ingestion, "ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
+    monkeypatch.setattr("src.metadata.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.metadata.PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", root / "metadata" / "corpus.json")
+
+    records = ingestion.set_active_paper_source_paths(["papers/uploads/second.pdf"])
+
+    assert (index_dir / "active_papers.json").read_text(encoding="utf-8").strip() == (
+        '[\n  "papers/uploads/second.pdf"\n]'
+    )
+    assert [record.source_path for record in records if record.active] == [
+        "papers/uploads/second.pdf"
+    ]
+
+
+def test_set_active_paper_source_paths_rejects_unselectable(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    library.mkdir(parents=True)
+    (library / "paper.pdf").write_bytes(b"paper")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", root / "papers" / "uploads")
+
+    with pytest.raises(ValueError, match="selectable corpus"):
+        ingestion.set_active_paper_source_paths(["papers/library/missing.pdf"])

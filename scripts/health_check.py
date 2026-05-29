@@ -113,6 +113,7 @@ def main() -> int:
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
     check("/corpus/papers" in api_source, "corpus metadata route installed", failures)
+    check("/corpus/active" in api_source, "active corpus selection route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
@@ -163,6 +164,7 @@ def main() -> int:
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/active' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
             "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "

@@ -159,6 +159,7 @@ local endpoints:
 - `GET /artifacts`
 - `GET /artifacts/{artifact_id}`
 - `GET /corpus/papers`
+- `PUT /corpus/active`
 - `GET /admin/status`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under
@@ -172,6 +173,9 @@ Failed/cancelled jobs can also be scheduled for delayed local retry with
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
 artifacts, runtime directories, and disabled external-provider/productization
 switches.
+`PUT /corpus/active` lets API clients persist paper activation/deactivation
+state without editing `active_papers.json` directly; a rebuild is still required
+to make the FAISS index exactly match the changed selection.
 
 ## RAG Quality Baseline
 

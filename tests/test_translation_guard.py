@@ -26,6 +26,7 @@ def test_streamlit_local_job_panel_is_installed():
     assert "schedule_retry" in APP_SOURCE
     assert "LocalJobRunner().retry" in APP_SOURCE
     assert "get_async_job_manager().schedule_retry" in APP_SOURCE
+    assert "set_active_paper_source_paths(selected)" in APP_SOURCE
 
 
 def test_streamlit_artifact_gallery_is_installed():

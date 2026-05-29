@@ -52,8 +52,8 @@ Acceptance:
 
 ## WP2: Corpus and Storage Layer
 
-Status: local JSON corpus metadata baseline implemented; durable database/object
-storage remains planned
+Status: local JSON corpus metadata baseline and active/deactivated selection
+workflow implemented; durable database/object storage remains planned
 
 - `src/metadata.py` stores local paper metadata in git-ignored
   `metadata/corpus.json`.
@@ -61,17 +61,19 @@ storage remains planned
   indexed status, chunk count, and parse/index error fields.
 - `GET /corpus/papers` lists the current local paper metadata without requiring
   manual filesystem inspection.
+- `PUT /corpus/active` persists activation/deactivation choices after validating
+  project-relative source paths against the selectable corpus.
 - Upload and selected-PDF index rebuild flows update paper metadata.
 - Decide storage path: local volume first or object storage plus relational DB.
 - Still planned: durable metadata for chunks, corpora, jobs, artifacts, users,
   ownership, and retention; object storage or relational DB; richer
-  deactivation/reactivation workflows.
+  durable deactivation/reactivation workflows across multiple users/corpora.
 
 Acceptance:
 
 - Rebuilding an index is a job with status and logs.
 - A paper can be indexed and traced to source path/checksum/chunk count.
-- Remaining: deactivation/reactivation needs a stronger corpus model.
+- Active/deactivated state can be managed without editing runtime files by hand.
 - Storage state can be listed without reading raw filesystem layout manually.
 
 ## WP3: Job System

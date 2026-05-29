@@ -107,6 +107,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         corpus={
             "papers": len(papers),
             "active": sum(1 for paper in papers if paper.active),
+            "available": sum(1 for paper in papers if not paper.active),
             "indexed": sum(1 for paper in papers if paper.indexed_status == "indexed"),
             "failed": sum(1 for paper in papers if paper.indexed_status == "failed"),
         },

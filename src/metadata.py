@@ -104,7 +104,12 @@ class CorpusMetadataStore:
         if path.parent == PROJECT_ROOT / "papers":
             source_kind = "paper"
         current_status = current.get("indexed_status", "available")
-        status = indexed_status or ("active" if active and current_status == "available" else current_status)
+        if indexed_status:
+            status = indexed_status
+        elif active:
+            status = "active" if current_status == "available" else current_status
+        else:
+            status = "available" if current_status in {"active", "indexed"} else current_status
         record = PaperRecord(
             paper_id=current.get("paper_id", hashlib.sha256(source_path.encode()).hexdigest()[:16]),
             source_path=source_path,

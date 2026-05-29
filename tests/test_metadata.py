@@ -53,3 +53,21 @@ def test_refresh_from_files_marks_active_papers(tmp_path: Path, monkeypatch):
     ]
     assert records[0].active is True
     assert records[1].active is False
+
+
+def test_refresh_from_files_marks_deactivated_paper_available(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    library.mkdir(parents=True)
+    paper = library / "paper.pdf"
+    paper.write_bytes(b"paper")
+
+    monkeypatch.setattr("src.metadata.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.metadata.PAPERS_LIBRARY_DIR", library)
+    store = CorpusMetadataStore(root / "metadata" / "corpus.json")
+    store.upsert_paper(paper, active=True, indexed_status="indexed")
+
+    records = store.refresh_from_files([paper], active_paths=[])
+
+    assert records[0].active is False
+    assert records[0].indexed_status == "available"
