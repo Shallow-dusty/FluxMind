@@ -44,6 +44,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   file/plot capture.
 - `src/artifacts.py`: local artifact registry and safe file export helpers for
   artifacts referenced by persisted jobs.
+- `src/admin.py`: no-secret local admin/runtime status for queue, corpus,
+  artifact, directory, and disabled-provider/productization switches.
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
   background queue for mock image generation, development-only Python
   execution, and selected-PDF index rebuilds.
@@ -150,3 +152,13 @@ mock diagrams, plots, and execution files can be listed and exported without
 exposing raw filesystem paths. Export only supports local `file://` artifacts
 that resolve under `ARTIFACTS_DIR`. The Streamlit sidebar also reads the local
 artifact registry and renders recent artifacts with download buttons.
+
+## Admin Status
+
+`GET /admin/status` exposes a token-protected, no-secret operations snapshot for
+local development and production checks. It reports job counts by status/kind,
+latest failed local jobs, corpus paper counts, artifact counts/bytes, runtime
+directory existence/writability/bytes, public model names, and explicit disabled
+switches for external providers plus identity/quotas/billing. The Streamlit
+sidebar renders the same status so common operational questions do not require
+SSH or raw filesystem inspection.

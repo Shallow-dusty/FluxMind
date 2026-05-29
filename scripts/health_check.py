@@ -86,6 +86,7 @@ def main() -> int:
         "src/providers.py",
         "src/jobs.py",
         "src/artifacts.py",
+        "src/admin.py",
         "src/metadata.py",
         "src/evaluation.py",
         "eval/rag_baseline.json",
@@ -107,8 +108,10 @@ def main() -> int:
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
+    check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("/artifacts" in api_source, "artifact export route installed", failures)
+    check("/admin/status" in api_source, "admin status route installed", failures)
     check("/corpus/papers" in api_source, "corpus metadata route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
@@ -154,9 +157,11 @@ def main() -> int:
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
+            "grep -q '/admin/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
+            "test -f /opt/fluxmind/src/admin.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"

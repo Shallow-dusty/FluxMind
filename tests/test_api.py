@@ -129,6 +129,31 @@ def test_corpus_papers_endpoint_returns_metadata(monkeypatch):
     assert response.json()["papers"][0]["indexed_status"] == "indexed"
 
 
+def test_admin_status_endpoint_returns_no_secret_status(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    class FakeStatus:
+        def to_dict(self):
+            return {
+                "jobs": {"total": 0},
+                "config": {
+                    "llm_model": "test-model",
+                    "external_providers_enabled": False,
+                },
+            }
+
+    monkeypatch.setattr(api, "collect_admin_status", lambda: FakeStatus())
+
+    client = TestClient(api.app)
+    response = client.get("/admin/status")
+
+    assert response.status_code == 200
+    payload = response.json()["status"]
+    assert payload["jobs"]["total"] == 0
+    assert payload["config"]["llm_model"] == "test-model"
+    assert "api_key" not in str(payload).lower()
+
+
 def test_artifact_list_and_download_endpoints(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     artifact_root = tmp_path / "artifacts"

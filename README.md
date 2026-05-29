@@ -158,12 +158,15 @@ local endpoints:
 - `GET /artifacts`
 - `GET /artifacts/{artifact_id}`
 - `GET /corpus/papers`
+- `GET /admin/status`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under
 `artifacts/`; both directories are git-ignored runtime state. Corpus paper
 metadata is persisted under `metadata/`, also git-ignored runtime state. This
 queue and metadata file are no-key development bridges, not durable
-multi-worker/database infrastructure.
+multi-worker/database infrastructure. `GET /admin/status` exposes no-secret
+runtime counts for jobs, corpus papers, artifacts, runtime directories, and
+disabled external-provider/productization switches.
 
 ## RAG Quality Baseline
 
@@ -213,6 +216,7 @@ FluxMind/
 │   ├── capabilities.py    # Image/code execution provider contracts
 │   ├── providers.py       # Local no-key provider implementations
 │   ├── jobs.py            # Local JSONL job records, runner, and async queue
+│   ├── admin.py           # No-secret local runtime/admin status
 │   ├── metadata.py        # Local JSON corpus metadata registry
 │   ├── evaluation.py      # Offline RAG evaluation and citation checks
 │   └── chain.py           # RAG chain (retrieval + LLM generation)

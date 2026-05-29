@@ -334,6 +334,12 @@ operational decisions are made.
 - Add admin views for queue health, provider failures, token spend, and corpus
   storage.
 
+Current progress: the first no-key admin foundation exists through
+`GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
+corpus, artifact, runtime-directory, public model, and disabled-provider/product
+switch state without exposing API keys or requiring real identity/billing
+systems.
+
 ## Near-Term Implementation Plan
 
 1. Land the current numbering/docs/streaming fix.

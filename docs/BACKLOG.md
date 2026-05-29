@@ -163,15 +163,23 @@ Acceptance:
 
 ## WP6: Product Shell
 
-Status: planned; implement local/admin foundations first, keep public identity,
+Status: local/admin status foundation implemented; keep public identity,
 API-key lifecycle, quotas, and billing disabled until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.
-- Add admin views for queue health, provider errors, token spend, and storage.
+- `GET /admin/status` exposes no-secret local runtime status for job counts,
+  failed jobs, corpus counts, artifact counts/bytes, runtime directory
+  existence/writability/bytes, public model names, and disabled external
+  provider/productization switches.
+- Streamlit includes a local runtime status panel for common operational checks.
+- Still planned: queue-health depth beyond JSONL counts, provider failure
+  history beyond failed jobs, real token spend, durable storage dashboards, and
+  user/workspace admin once identity exists.
 
 Acceptance:
 
 - Multiple corpora can coexist without leaking documents or generated artifacts.
 - User-facing workflows are not tied to local server filesystem assumptions.
-- Operational state is inspectable without SSH for common questions.
+- Operational state is inspectable without SSH for common local runtime
+  questions.

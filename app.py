@@ -11,6 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+from src.admin import collect_admin_status
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.artifacts import LocalArtifactRegistry, local_artifact_path
 from src.chain import query_stream
@@ -68,6 +69,12 @@ I18N = {
         "latest_artifacts": "最近产物",
         "no_artifacts": "暂无产物",
         "download_artifact": "下载产物",
+        "admin_status": "运行状态",
+        "refresh_status": "刷新状态",
+        "status_jobs": "任务",
+        "status_artifacts": "产物",
+        "status_corpus": "语料",
+        "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
         "mock_image_job": "生成本地 SVG 图",
@@ -139,6 +146,12 @@ I18N = {
         "latest_artifacts": "Latest artifacts",
         "no_artifacts": "No artifacts yet",
         "download_artifact": "Download artifact",
+        "admin_status": "Runtime status",
+        "refresh_status": "Refresh status",
+        "status_jobs": "Jobs",
+        "status_artifacts": "Artifacts",
+        "status_corpus": "Corpus",
+        "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
         "mock_image_job": "Generate Local SVG",
@@ -365,6 +378,29 @@ def render_latest_artifacts() -> None:
                 st.caption(str(exc))
 
 
+def render_admin_status() -> None:
+    status = collect_admin_status().to_dict()
+    jobs = status["jobs"]
+    artifacts = status["artifacts"]
+    corpus = status["corpus"]
+
+    st.caption(text["status_jobs"])
+    st.json(
+        {
+            "total": jobs["total"],
+            "by_status": jobs["by_status"],
+            "by_kind": jobs["by_kind"],
+            "failed": jobs["failed"],
+        }
+    )
+    st.caption(text["status_artifacts"])
+    st.json({"total": artifacts["total"], "bytes": artifacts["bytes"]})
+    st.caption(text["status_corpus"])
+    st.json(corpus)
+    st.caption(text["status_runtime_dirs"])
+    st.json(status["runtime_dirs"])
+
+
 # ── Sidebar: Knowledge Base Management ──
 with st.sidebar:
     st.title("⚡ FluxMind")
@@ -489,6 +525,11 @@ with st.sidebar:
 
     with st.expander(text["latest_artifacts"]):
         render_latest_artifacts()
+
+    with st.expander(text["admin_status"]):
+        if st.button(text["refresh_status"], use_container_width=True):
+            st.rerun()
+        render_admin_status()
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")

@@ -30,3 +30,9 @@ def test_streamlit_artifact_gallery_is_installed():
     assert "LocalArtifactRegistry" in APP_SOURCE
     assert "render_latest_artifacts()" in APP_SOURCE
     assert "st.download_button" in APP_SOURCE
+
+
+def test_streamlit_admin_status_panel_is_installed():
+    assert "collect_admin_status" in APP_SOURCE
+    assert "render_admin_status()" in APP_SOURCE
+    assert "admin_status" in APP_SOURCE

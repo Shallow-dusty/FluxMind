@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from src.admin import collect_admin_status
 from src.artifacts import LocalArtifactRegistry
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query
@@ -86,6 +87,10 @@ class CorpusPapersResponse(BaseModel):
 
 class ArtifactListResponse(BaseModel):
     artifacts: list[dict] = Field(..., description="Generated local artifacts")
+
+
+class AdminStatusResponse(BaseModel):
+    status: dict = Field(..., description="Local admin/runtime status")
 
 
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
@@ -173,6 +178,16 @@ def list_corpus_papers(
     verify_api_token(authorization, x_api_key)
     papers = [record_to_dict(record) for record in refresh_paper_metadata()]
     return CorpusPapersResponse(papers=papers)
+
+
+@app.get("/admin/status", response_model=AdminStatusResponse, summary="Inspect local runtime status")
+def admin_status(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Return no-secret local runtime status for operations and admin UI."""
+    verify_api_token(authorization, x_api_key)
+    return AdminStatusResponse(status=collect_admin_status().to_dict())
 
 
 @app.post("/query", response_model=QueryResponse, summary="Ask FluxMind")
