@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import api
 from src.jobs import AsyncJobManager
 from src.metadata import PaperRecord
+from src.artifacts import artifact_id_for_uri
 
 
 def test_verify_api_token_allows_when_unconfigured(monkeypatch):
@@ -126,6 +127,47 @@ def test_corpus_papers_endpoint_returns_metadata(monkeypatch):
     assert response.status_code == 200
     assert response.json()["papers"][0]["source_path"] == "papers/library/paper.pdf"
     assert response.json()["papers"][0]["indexed_status"] == "indexed"
+
+
+def test_artifact_list_and_download_endpoints(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    artifact_root = tmp_path / "artifacts"
+    artifact_path = artifact_root / "code-runs" / "run" / "result.txt"
+    artifact_path.parent.mkdir(parents=True)
+    artifact_path.write_text("artifact-body", encoding="utf-8")
+    uri = artifact_path.resolve().as_uri()
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = api.LocalJobRunner(store)
+    job = runner.run_local_python(
+        api.CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(1)"},
+        )
+    )
+    job.status = "succeeded"
+    job.artifacts = [
+        {
+            "kind": "text",
+            "uri": uri,
+            "mime_type": "text/plain",
+            "title": "result.txt",
+            "metadata": {"provider": "local"},
+        }
+    ]
+    store.append(job)
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", artifact_root)
+    monkeypatch.setattr("src.artifacts.LocalJobStore", lambda: store)
+
+    client = TestClient(api.app)
+    listed = client.get("/artifacts")
+    artifact_id = artifact_id_for_uri(uri)
+    downloaded = client.get(f"/artifacts/{artifact_id}")
+
+    assert listed.status_code == 200
+    assert listed.json()["artifacts"][0]["artifact_id"] == artifact_id
+    assert downloaded.status_code == 200
+    assert downloaded.text == "artifact-body"
 
 
 def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):

@@ -7,8 +7,10 @@ from dataclasses import asdict
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from src.artifacts import LocalArtifactRegistry
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query
 from src.ingestion import build_vector_store, refresh_paper_metadata
@@ -82,6 +84,10 @@ class CorpusPapersResponse(BaseModel):
     papers: list[dict] = Field(..., description="Current local corpus paper metadata")
 
 
+class ArtifactListResponse(BaseModel):
+    artifacts: list[dict] = Field(..., description="Generated local artifacts")
+
+
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
     if not API_TOKEN:
@@ -119,6 +125,43 @@ def job_to_dict(record: JobRecord) -> dict:
 
 def record_to_dict(record) -> dict:
     return asdict(record)
+
+
+@app.get("/artifacts", response_model=ArtifactListResponse, summary="List local artifacts")
+def list_artifacts(
+    limit: int = 100,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """List artifacts produced by local jobs."""
+    verify_api_token(authorization, x_api_key)
+    bounded_limit = min(max(limit, 1), 500)
+    artifacts = [
+        asdict(artifact)
+        for artifact in LocalArtifactRegistry().list_artifacts(limit=bounded_limit)
+    ]
+    return ArtifactListResponse(artifacts=artifacts)
+
+
+@app.get("/artifacts/{artifact_id}", summary="Download local artifact")
+def download_artifact(
+    artifact_id: str,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Download a local generated artifact by stable artifact ID."""
+    verify_api_token(authorization, x_api_key)
+    try:
+        artifact, path = LocalArtifactRegistry().export_path(artifact_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Artifact not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return FileResponse(
+        path,
+        media_type=artifact.mime_type,
+        filename=artifact.title or path.name,
+    )
 
 
 @app.get("/corpus/papers", response_model=CorpusPapersResponse, summary="List corpus papers")

@@ -33,7 +33,8 @@ Current no-key feature work now includes local provider implementations:
 `LocalPythonExecutionProvider` exercises the code-execution contract for
 development, including generated file and plot artifact capture. These are
 wired through immediate local job endpoints, async in-process job endpoints,
-and the Streamlit local job panel, but not into any real external provider.
+artifact list/export endpoints, and the Streamlit local job panel, but not into
+any real external provider.
 
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
@@ -286,6 +287,10 @@ GNU Octave or Python-only execution should be considered before MATLAB.
 Current progress: the local Python provider captures stdout, stderr, exit code,
 generated files, and generated image plots as persisted artifacts. It remains a
 development provider, not an isolated production sandbox.
+
+Artifact progress: generated local artifacts can be listed and downloaded
+through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
+and execution outputs an export path before real provider storage is configured.
 
 Do not run user code in the Streamlit/API process. Add an execution provider:
 

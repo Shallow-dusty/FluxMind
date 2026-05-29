@@ -113,12 +113,14 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: planned; implement provider-neutral plumbing and a no-key mock/local
-provider first, keep real image-provider activation disabled until a key/account
-is configured
+Status: provider-neutral plumbing, no-key mock provider, and local artifact
+export implemented; real image-provider activation remains disabled until a
+key/account is configured
 
 - `MockImageGenerationProvider` implements the `ImageGenerationProvider`
   contract with deterministic local SVG output.
+- `GET /artifacts` lists generated local artifacts from persisted jobs.
+- `GET /artifacts/{artifact_id}` exports local file artifacts by stable ID.
 - Start with engineering diagrams and paper-figure redrafts.
 - Store prompt, provider, model, size, source references, output URI, and cost
   metadata.
@@ -128,7 +130,8 @@ Acceptance:
 
 - A request can generate an artifact record with a stable URI.
 - Generated mock diagrams produce persisted artifact URIs.
-- Remaining: generated diagrams can be referenced from answers and exported.
+- Generated diagrams and execution artifacts can be listed and exported.
+- Remaining: generated diagrams can be referenced from RAG answers.
 - Provider can be swapped without changing the UI flow.
 
 ## WP5: Code Execution

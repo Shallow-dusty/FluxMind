@@ -154,6 +154,8 @@ local endpoints:
 - `GET /jobs/{job_id}`
 - `POST /jobs/{job_id}/cancel`
 - `POST /jobs/{job_id}/retry`
+- `GET /artifacts`
+- `GET /artifacts/{artifact_id}`
 - `GET /corpus/papers`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under

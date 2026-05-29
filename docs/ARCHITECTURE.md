@@ -42,6 +42,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/providers.py`: no-key local providers for artifact storage, mock SVG
   diagram generation, and development-only Python execution with generated
   file/plot capture.
+- `src/artifacts.py`: local artifact registry and safe file export helpers for
+  artifacts referenced by persisted jobs.
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
   background queue for mock image generation, development-only Python
   execution, and selected-PDF index rebuilds.
@@ -141,3 +143,8 @@ artifacts; text files are returned as `text` artifacts; other small outputs are
 returned as `file` artifacts. This gives the UI/API/job model a concrete
 artifact shape for generated plots and files before any hosted sandbox or
 MATLAB/Octave backend is activated.
+
+FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
+mock diagrams, plots, and execution files can be listed and exported without
+exposing raw filesystem paths. Export only supports local `file://` artifacts
+that resolve under `ARTIFACTS_DIR`.
