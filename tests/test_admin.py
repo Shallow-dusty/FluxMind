@@ -18,6 +18,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr("src.jobs.JOBS_FILE", jobs_dir / "jobs.jsonl")
     monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
     monkeypatch.setattr("src.admin.JOBS_DIR", jobs_dir)
+    monkeypatch.setattr("src.admin.JOBS_FILE", jobs_dir / "jobs.jsonl")
+    monkeypatch.setattr("src.admin.JOBS_DB_FILE", jobs_dir / "jobs.sqlite3")
     monkeypatch.setattr("src.admin.ARTIFACTS_DIR", artifacts_dir)
     monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
     monkeypatch.setattr("src.admin.FAISS_INDEX_DIR", index_dir)
@@ -77,6 +79,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["jobs"]["by_status"] == {"failed": 1, "succeeded": 1}
     assert status["jobs"]["by_kind"] == {"code_execution": 1, "image_generation": 1}
     assert status["jobs"]["latest_failed"][0]["job_id"] == "job-fail"
+    assert status["jobs"]["storage"]["jsonl_exists"] is True
+    assert status["jobs"]["storage"]["sqlite_exists"] is True
     assert status["artifacts"] == {"total": 1, "bytes": 4}
     assert status["corpus"] == {"papers": 1, "active": 1, "indexed": 1, "failed": 0}
     assert status["config"]["external_providers_enabled"] is False

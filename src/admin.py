@@ -12,7 +12,9 @@ from src.config import (
     ARTIFACTS_DIR,
     EMBEDDING_MODEL,
     FAISS_INDEX_DIR,
+    JOBS_DB_FILE,
     JOBS_DIR,
+    JOBS_FILE,
     LLM_BASE_URL,
     LLM_MODEL,
     METADATA_DIR,
@@ -84,6 +86,12 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "by_kind": dict(sorted(job_kind_counts.items())),
             "failed": len(failed_jobs),
             "cancelled": len(cancelled_jobs),
+            "storage": {
+                "jsonl_exists": JOBS_FILE.exists(),
+                "jsonl_bytes": JOBS_FILE.stat().st_size if JOBS_FILE.exists() else 0,
+                "sqlite_exists": JOBS_DB_FILE.exists(),
+                "sqlite_bytes": JOBS_DB_FILE.stat().st_size if JOBS_DB_FILE.exists() else 0,
+            },
             "latest_failed": [
                 {
                     "job_id": job.job_id,

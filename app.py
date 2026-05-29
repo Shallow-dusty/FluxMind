@@ -391,6 +391,7 @@ def render_admin_status() -> None:
             "by_status": jobs["by_status"],
             "by_kind": jobs["by_kind"],
             "failed": jobs["failed"],
+            "storage": jobs["storage"],
         }
     )
     st.caption(text["status_artifacts"])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import queue
+import sqlite3
 import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -48,17 +49,26 @@ class JobRecord:
 
 
 class LocalJobStore:
-    """Append-only JSONL job store with latest-record reads."""
+    """JSONL history plus SQLite current-state index for local jobs."""
 
-    def __init__(self, path: Path | None = None):
+    def __init__(self, path: Path | None = None, db_path: Path | None = None):
         self.path = path or JOBS_FILE
+        self.db_path = db_path or self.path.with_suffix(".sqlite3")
 
     def append(self, record: JobRecord) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+        self._upsert_sqlite(record)
 
     def get(self, job_id: str) -> JobRecord | None:
+        self._ensure_sqlite()
+        record = self._get_sqlite(job_id)
+        if record is not None:
+            return record
+        return self._get_jsonl(job_id)
+
+    def _get_jsonl(self, job_id: str) -> JobRecord | None:
         latest: dict[str, Any] | None = None
         if not self.path.exists():
             return None
@@ -72,6 +82,22 @@ class LocalJobStore:
         return JobRecord(**latest) if latest else None
 
     def list_latest(self, *, limit: int = 50) -> list[JobRecord]:
+        self._ensure_sqlite()
+        if self.db_path.exists():
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT payload
+                    FROM jobs
+                    ORDER BY updated_at DESC, created_at DESC
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+            return [JobRecord(**json.loads(row["payload"])) for row in rows]
+        return self._list_latest_jsonl(limit=limit)
+
+    def _list_latest_jsonl(self, *, limit: int = 50) -> list[JobRecord]:
         latest: dict[str, dict[str, Any]] = {}
         if not self.path.exists():
             return []
@@ -96,6 +122,87 @@ class LocalJobStore:
         record.error = {"code": "cancelled", "message": "Job was cancelled."}
         self.append(record)
         return record
+
+    def _connect(self) -> sqlite3.Connection:
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _ensure_sqlite(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS jobs (
+                    job_id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    request_id TEXT,
+                    attempts INTEGER NOT NULL,
+                    payload TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_updated_at ON jobs(updated_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_kind ON jobs(kind)")
+        if self.path.exists():
+            for record in self._list_latest_jsonl(limit=10000):
+                self._upsert_sqlite(record)
+
+    def _upsert_sqlite(self, record: JobRecord) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS jobs (
+                    job_id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    request_id TEXT,
+                    attempts INTEGER NOT NULL,
+                    payload TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO jobs (
+                    job_id, kind, status, created_at, updated_at, request_id,
+                    attempts, payload
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(job_id) DO UPDATE SET
+                    kind=excluded.kind,
+                    status=excluded.status,
+                    updated_at=excluded.updated_at,
+                    request_id=excluded.request_id,
+                    attempts=excluded.attempts,
+                    payload=excluded.payload
+                """,
+                (
+                    record.job_id,
+                    record.kind,
+                    record.status,
+                    record.created_at,
+                    record.updated_at,
+                    record.request_id,
+                    record.attempts,
+                    json.dumps(asdict(record), ensure_ascii=False),
+                ),
+            )
+
+    def _get_sqlite(self, job_id: str) -> JobRecord | None:
+        if not self.db_path.exists():
+            return None
+        with self._connect() as conn:
+            row = conn.execute("SELECT payload FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        if row is None:
+            return None
+        return JobRecord(**json.loads(row["payload"]))
 
 
 class LocalJobRunner:

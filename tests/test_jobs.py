@@ -1,4 +1,5 @@
 import time
+import sqlite3
 from pathlib import Path
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
@@ -111,6 +112,47 @@ def test_job_store_list_cancel_and_retry(tmp_path: Path):
     assert retried.job_id != failed.job_id
     assert [job.job_id for job in store.list_latest(limit=2)]
     assert store.cancel("missing") is None
+
+
+def test_job_store_mirrors_current_state_to_sqlite(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+
+    job = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('sqlite-ok')"},
+        )
+    )
+
+    assert store.db_path.exists()
+    with sqlite3.connect(store.db_path) as conn:
+        row = conn.execute(
+            "SELECT status, attempts FROM jobs WHERE job_id = ?",
+            (job.job_id,),
+        ).fetchone()
+    assert row == ("succeeded", 1)
+    assert store.get(job.job_id).result["stdout"] == "sqlite-ok\n"
+
+
+def test_job_store_migrates_existing_jsonl_to_sqlite(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    job = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(4)"},
+        )
+    )
+    store.db_path.unlink()
+
+    migrated = LocalJobStore(tmp_path / "jobs.jsonl")
+
+    assert migrated.get(job.job_id).status == "failed"
+    assert migrated.db_path.exists()
+    assert migrated.list_latest(limit=1)[0].job_id == job.job_id
 
 
 def test_async_manager_runs_queued_python_job(tmp_path: Path):

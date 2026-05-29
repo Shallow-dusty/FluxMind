@@ -225,14 +225,15 @@ provider switches first. Only real external activation is deferred.
 - Extend the offline evaluation set into live or recorded-model regression
   scoring for standard SMC/flux questions.
 
-Current progress: a local JSONL job store, immediate no-key job endpoints, and
-in-process async no-key job endpoints exist for mock image generation,
-development-only Python execution, and selected-PDF index rebuilds.
+Current progress: a local JSONL job history, SQLite current-state job index,
+immediate no-key job endpoints, and in-process async no-key job endpoints exist
+for mock image generation, development-only Python execution, and selected-PDF
+index rebuilds.
 List/status/retry/cancel endpoints exist. The Streamlit sidebar can trigger
 queued no-key jobs, display latest job state, cancel queued/running jobs, and
 retry failed/cancelled jobs. This proves the
 UI/API/status/artifact shape but is not yet a durable multi-worker queue or
-database.
+database-backed worker.
 
 Corpus metadata progress: local paper metadata exists and can be listed through
 the API. Upload and selected-PDF rebuild flows update the local metadata file.

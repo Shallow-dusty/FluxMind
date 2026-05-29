@@ -26,6 +26,7 @@ ACTIVE_PAPERS_FILE = FAISS_INDEX_DIR / "active_papers.json"
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
 JOBS_DIR = PROJECT_ROOT / "jobs"
 JOBS_FILE = JOBS_DIR / "jobs.jsonl"
+JOBS_DB_FILE = JOBS_DIR / "jobs.sqlite3"
 METADATA_DIR = PROJECT_ROOT / "metadata"
 CORPUS_METADATA_FILE = METADATA_DIR / "corpus.json"
 

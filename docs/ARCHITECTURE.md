@@ -96,16 +96,18 @@ background queue:
 
 ```text
 API request
-  -> create JSONL job record
+  -> create JSONL job history record and SQLite current-state row
   -> enqueue or run local no-key provider
   -> persist result/artifact/error
   -> expose status through GET /jobs and GET /jobs/{job_id}
 ```
 
 The local runner also supports retrying failed/cancelled jobs and marking
-queued/running records as cancelled. The async queue is process-local and
-JSONL-backed; it is useful for no-key development, but it is not a durable
-multi-worker platform queue. Running local Python jobs observe cancellation.
+queued/running records as cancelled. Job transitions are retained in append-only
+JSONL and mirrored into `jobs/jobs.sqlite3` as a local current-state index. The
+async queue is still process-local; it is useful for no-key development and
+SQLite-backed status queries, but it is not yet a durable multi-worker platform
+queue. Running local Python jobs observe cancellation.
 Index rebuild jobs currently check cancellation before execution starts, so
 mid-rebuild cancellation remains a later worker/storage concern. The Streamlit
 sidebar can trigger selected-PDF index jobs, mock SVG image jobs, local Python

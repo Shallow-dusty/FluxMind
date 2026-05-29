@@ -163,10 +163,12 @@ local endpoints:
 These endpoints persist JSONL job records under `jobs/` and artifacts under
 `artifacts/`; both directories are git-ignored runtime state. Corpus paper
 metadata is persisted under `metadata/`, also git-ignored runtime state. This
-queue and metadata file are no-key development bridges, not durable
-multi-worker/database infrastructure. `GET /admin/status` exposes no-secret
-runtime counts for jobs, corpus papers, artifacts, runtime directories, and
-disabled external-provider/productization switches.
+queue and metadata file are no-key development bridges, not durable multi-worker
+infrastructure. Job writes are also mirrored to `jobs/jobs.sqlite3` as a local
+current-state index for faster status queries and future worker migration.
+`GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
+artifacts, runtime directories, and disabled external-provider/productization
+switches.
 
 ## RAG Quality Baseline
 

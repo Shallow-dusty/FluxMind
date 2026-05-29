@@ -76,10 +76,13 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: local JSONL job model plus in-process async queue implemented; durable
-multi-worker queue, retry backoff, and full running cancellation remain planned
+Status: local JSONL history plus SQLite current-state index and in-process async
+queue implemented; durable multi-worker queue, retry backoff, and full running
+cancellation remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
+- Job writes are mirrored into `jobs/jobs.sqlite3` for current-state lookups and
+  migration toward durable worker storage.
 - `POST /jobs/image/mock` creates a mock image-generation job.
 - `POST /jobs/code/python-local` creates a development-only Python execution
   job.
@@ -99,8 +102,9 @@ multi-worker queue, retry backoff, and full running cancellation remain planned
   jobs, local Python jobs, and display latest job status.
 - Streamlit recent-job panel can cancel queued/running jobs and retry
   failed/cancelled jobs.
-- Still planned: durable queue/database-backed worker, true cancellation of all
-  running work, retry scheduler/backoff, and richer timeout policy.
+- Still planned: durable queue/database-backed worker beyond the local SQLite
+  state mirror, true cancellation of all running work, retry scheduler/backoff,
+  and richer timeout policy.
 
 Acceptance:
 
