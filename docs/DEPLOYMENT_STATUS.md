@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 03:14 CST
+Last live check: 2026-05-30 03:20 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `5e2eefc`
+Last restarted application-code commit: `efbdc0e`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 03:14 CST after syncing application commit
-`5e2eefc` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 03:20 CST after syncing application commit
+`efbdc0e` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -116,6 +116,8 @@ deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
 SQLite job mirror        present in /opt/fluxmind/src/jobs.py
 scheduled retry/backoff  present in /opt/fluxmind/src/jobs.py
+queued job recovery      present in /opt/fluxmind/src/jobs.py; API startup calls recover_queued_jobs
+admin queue health       present in /opt/fluxmind/src/admin.py; authenticated API returned queue_health
 deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed admin layer     present in /opt/fluxmind/src/admin.py
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
@@ -146,6 +148,7 @@ job retry route          present in /opt/fluxmind/api.py
 scheduled retry route    present in /opt/fluxmind/api.py
 admin status jobs        5 total, 4 failed historical/smoke local code jobs
 admin status job storage jobs.jsonl 6474 bytes; jobs.sqlite3 32768 bytes
+admin status queue       queued 0, due 0, scheduled 0, running 0
 admin status corpus      6 papers, 6 active, 6 indexed
 admin status artifacts   1 artifact, 2 bytes
 active paper count      6
