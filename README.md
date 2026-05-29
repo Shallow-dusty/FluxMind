@@ -141,7 +141,11 @@ The FastAPI service also exposes local no-key job endpoints for development:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`
+- `POST /jobs/index/rebuild`
+- `GET /jobs`
 - `GET /jobs/{job_id}`
+- `POST /jobs/{job_id}/cancel`
+- `POST /jobs/{job_id}/retry`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under
 `artifacts/`; both directories are git-ignored runtime state.

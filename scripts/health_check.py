@@ -101,6 +101,9 @@ def main() -> int:
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
+    api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
+    check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
+    check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)

@@ -126,3 +126,56 @@ def test_missing_job_returns_404(monkeypatch, tmp_path):
     response = client.get("/jobs/missing")
 
     assert response.status_code == 404
+
+
+def test_job_list_cancel_and_retry_endpoints(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    created = client.post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {"main.py": "raise SystemExit(3)"},
+        },
+    ).json()["job"]
+
+    listed = client.get("/jobs").json()["jobs"]
+    assert listed[0]["job_id"] == created["job_id"]
+
+    retried = client.post(f"/jobs/{created['job_id']}/retry").json()["job"]
+    assert retried["job_id"] != created["job_id"]
+    assert retried["kind"] == "code_execution"
+
+    cancel_response = client.post(f"/jobs/{created['job_id']}/cancel")
+    assert cancel_response.status_code == 200
+
+
+def test_index_rebuild_job_endpoint(monkeypatch, tmp_path):
+    paper = tmp_path / "papers" / "library" / "paper.pdf"
+    paper.parent.mkdir(parents=True)
+    paper.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    monkeypatch.setattr("src.jobs.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("src.jobs.ingestion.discover_pdfs", lambda: [paper])
+    monkeypatch.setattr(
+        "src.jobs.ingestion.rebuild_vector_store_from_pdfs",
+        lambda paths: (object(), 9),
+    )
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/index/rebuild",
+        json={"source_paths": ["papers/library/paper.pdf"]},
+        headers={"X-Request-ID": "req-index"},
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "index_rebuild"
+    assert job["status"] == "succeeded"
+    assert job["request_id"] == "req-index"
+    assert job["result"]["chunk_count"] == 9

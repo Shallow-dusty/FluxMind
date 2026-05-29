@@ -39,7 +39,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/providers.py`: no-key local providers for artifact storage, mock SVG
   diagram generation, and development-only Python execution.
 - `src/jobs.py`: local JSONL job records and synchronous no-key job runner for
-  mock image generation and development-only Python execution.
+  mock image generation, development-only Python execution, and selected-PDF
+  index rebuilds.
 - `scripts/health_check.py`: local, HTTP, and SSH runtime checks.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
@@ -84,11 +85,13 @@ API request
   -> create JSONL job record
   -> run local no-key provider
   -> persist result/artifact/error
-  -> expose status through GET /jobs/{job_id}
+  -> expose status through GET /jobs and GET /jobs/{job_id}
 ```
 
-The next step is to make this runner asynchronous and extend it to PDF indexing,
-retry policy, cancellation, and richer observability. Real external providers
-can be attached later without changing the UI/API workflow.
+The local runner also supports retrying failed/cancelled jobs and marking
+queued/running records as cancelled. The next step is to make this runner
+asynchronous, add actual cancellation of running work, and improve observability.
+Real external providers can be attached later without changing the UI/API
+workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.

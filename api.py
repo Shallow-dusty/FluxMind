@@ -61,8 +61,16 @@ class LocalPythonJobRequest(BaseModel):
     memory_mb: int = Field(default=512, ge=64, le=4096)
 
 
+class IndexRebuildJobRequest(BaseModel):
+    source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths")
+
+
 class JobResponse(BaseModel):
     job: dict = Field(..., description="Persisted local job record")
+
+
+class JobListResponse(BaseModel):
+    jobs: list[dict] = Field(..., description="Latest local job records")
 
 
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
@@ -188,6 +196,36 @@ def create_local_python_job(
     return JobResponse(job=job_to_dict(job))
 
 
+@app.post("/jobs/index/rebuild", response_model=JobResponse, summary="Run local index rebuild job")
+def create_index_rebuild_job(
+    req: IndexRebuildJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Rebuild the local FAISS index from selected project PDFs as a persisted job."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.source_paths:
+        raise HTTPException(status_code=400, detail="At least one source path is required")
+    job = LocalJobRunner().run_index_rebuild(req.source_paths, request_id=request_id)
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.get("/jobs", response_model=JobListResponse, summary="List local jobs")
+def list_jobs(
+    limit: int = 50,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """List latest local job records."""
+    verify_api_token(authorization, x_api_key)
+    bounded_limit = min(max(limit, 1), 200)
+    jobs = [job_to_dict(job) for job in LocalJobStore().list_latest(limit=bounded_limit)]
+    return JobListResponse(jobs=jobs)
+
+
 @app.get("/jobs/{job_id}", response_model=JobResponse, summary="Get local job status")
 def get_job(
     job_id: str,
@@ -197,6 +235,37 @@ def get_job(
     """Fetch the latest persisted state for a local job."""
     verify_api_token(authorization, x_api_key)
     job = LocalJobStore().get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/{job_id}/cancel", response_model=JobResponse, summary="Cancel local job")
+def cancel_job(
+    job_id: str,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Mark a queued/running local job as cancelled."""
+    verify_api_token(authorization, x_api_key)
+    job = LocalJobStore().cancel(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/{job_id}/retry", response_model=JobResponse, summary="Retry local job")
+def retry_job(
+    job_id: str,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Retry a failed/cancelled local job with a new job ID."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    job = LocalJobRunner().retry(job_id, request_id=request_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return JobResponse(job=job_to_dict(job))

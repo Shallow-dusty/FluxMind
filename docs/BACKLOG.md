@@ -62,16 +62,23 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: local synchronous job model implemented; async queue, cancellation, and
-retry scheduler remain planned
+Status: local synchronous job model implemented; async queue and true running
+cancellation remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
 - `POST /jobs/image/mock` creates a mock image-generation job.
 - `POST /jobs/code/python-local` creates a development-only Python execution
   job.
+- `POST /jobs/index/rebuild` rebuilds the FAISS index from selected PDFs as a
+  persisted job.
+- `GET /jobs` lists latest jobs.
 - `GET /jobs/{job_id}` returns persisted job status.
-- Still planned: PDF parse/index jobs, async queue, cancellation, retry
-  scheduler, timeout policy, and UI job status display.
+- `POST /jobs/{job_id}/retry` retries failed/cancelled local jobs with a new
+  job ID.
+- `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
+  states.
+- Still planned: async queue, true cancellation of running work, retry
+  scheduler/backoff, richer timeout policy, and UI job status display.
 
 Acceptance:
 

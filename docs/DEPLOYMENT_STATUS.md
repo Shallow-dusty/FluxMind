@@ -110,6 +110,7 @@ deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
 job API routes           present in /opt/fluxmind/api.py
+index rebuild job route  present in /opt/fluxmind/api.py
 active paper count      6
 FAISS index size        786477 bytes
 bot-resume              healthy

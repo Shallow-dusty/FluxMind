@@ -28,8 +28,8 @@ from src.config import ARTIFACTS_DIR
 class LocalArtifactStore:
     """Persist generated artifacts under the project artifact directory."""
 
-    def __init__(self, root: Path = ARTIFACTS_DIR):
-        self.root = root
+    def __init__(self, root: Path | None = None):
+        self.root = root or ARTIFACTS_DIR
 
     def write_text(self, relative_path: str, content: str, mime_type: str) -> GeneratedArtifact:
         path = self.root / relative_path
