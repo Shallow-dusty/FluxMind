@@ -28,8 +28,8 @@ Acceptance:
 
 ## WP1: RAG Quality Baseline
 
-Status: offline baseline implemented; live quality scoring, reranking, and
-full citation correctness remain planned
+Status: offline baseline and local hybrid retrieval implemented; live quality
+scoring, reranking, and full citation correctness remain planned
 
 - `eval/rag_baseline.json` contains a small control-engineering evaluation set.
 - Each case records expected source papers/pages and fixture snippets.
@@ -40,6 +40,9 @@ full citation correctness remain planned
   malformed streaming chunks.
 - Answer modes exist in the prompt/API/UI: explanation, derivation,
   implementation, literature review, and code generation.
+- `src.chain.hybrid_retrieve()` merges FAISS vector hits with local keyword
+  matches from the indexed docstore, dedupes chunks, and keeps the final context
+  bounded by `TOP_K`.
 - Still planned: live retrieval-quality scoring, citation verification against
   generated model answers, reranking, and regression thresholds on real eval
   answers.

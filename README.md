@@ -185,7 +185,8 @@ expected source/page references, fixture answers, and provider-error fixtures.
 context refs such as `[1]` and that provider failures normalize to stable
 user-facing codes. The `/query` API and Streamlit UI accept answer modes:
 `explanation`, `derivation`, `implementation`, `literature_review`, and
-`code_generation`.
+`code_generation`. Retrieval uses FAISS vector search plus local keyword
+supplementation from the indexed docstore, deduped and capped at `TOP_K`.
 
 ## 📚 Building the Knowledge Base
 

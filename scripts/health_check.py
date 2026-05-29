@@ -121,6 +121,8 @@ def main() -> int:
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
+    chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
+    check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
@@ -171,6 +173,7 @@ def main() -> int:
             "test -f /opt/fluxmind/src/admin.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS jobs' /opt/fluxmind/src/jobs.py; "
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"

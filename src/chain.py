@@ -50,6 +50,7 @@ You are FluxMind, an expert research copilot specializing in:
 
 USER_TEMPLATE = "{question}"
 _BRACKET_CITATION_RE = re.compile(r"(?<!\!)\[(\d+)\]")
+_TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,74 @@ def get_vector_store() -> FAISS | None:
             allow_dangerous_deserialization=True,
         )
     return None
+
+
+def tokenize_query(text: str) -> set[str]:
+    """Tokenize Latin/CJK text for lightweight local keyword retrieval."""
+    return {
+        token.lower()
+        for token in _TOKEN_RE.findall(text)
+        if len(token.strip()) >= 2
+    }
+
+
+def iter_index_documents(store: FAISS) -> list[Document]:
+    """Best-effort document extraction from a LangChain FAISS store."""
+    docstore = getattr(store, "docstore", None)
+    raw_docs = getattr(docstore, "_dict", None)
+    if isinstance(raw_docs, dict):
+        return [doc for doc in raw_docs.values() if isinstance(doc, Document)]
+    return []
+
+
+def keyword_search_documents(store: FAISS, question: str, *, k: int) -> list[Document]:
+    """Return locally keyword-matched chunks from the FAISS docstore."""
+    query_terms = tokenize_query(question)
+    if not query_terms:
+        return []
+
+    scored: list[tuple[int, int, Document]] = []
+    for index, doc in enumerate(iter_index_documents(store)):
+        content_terms = tokenize_query(doc.page_content)
+        metadata_terms = tokenize_query(
+            " ".join(str(value) for value in doc.metadata.values())
+        )
+        score = len(query_terms & content_terms) * 2 + len(query_terms & metadata_terms)
+        if score:
+            scored.append((score, -index, doc))
+
+    scored.sort(reverse=True)
+    return [doc for _score, _index, doc in scored[:k]]
+
+
+def document_key(doc: Document) -> tuple[str, str, str]:
+    """Stable-ish dedupe key for retrieved chunks."""
+    return (
+        str(doc.metadata.get("source_path") or doc.metadata.get("source") or ""),
+        str(doc.metadata.get("page") or ""),
+        doc.page_content[:160],
+    )
+
+
+def hybrid_retrieve(question: str, *, k: int = TOP_K) -> list[Document]:
+    """Retrieve context with vector search plus local keyword supplementation."""
+    store = get_vector_store()
+    if store is None:
+        return []
+
+    vector_docs = store.similarity_search(question, k=k)
+    keyword_docs = keyword_search_documents(store, question, k=k)
+    merged: list[Document] = []
+    seen: set[tuple[str, str, str]] = set()
+    for doc in vector_docs + keyword_docs:
+        key = document_key(doc)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(doc)
+        if len(merged) >= k:
+            break
+    return merged
 
 
 def format_context(docs: list[Document]) -> str:
@@ -141,11 +210,7 @@ def query(
     mode = normalize_answer_mode(answer_mode)
 
     # Retrieve
-    store = get_vector_store()
-    context_docs = []
-    if store:
-        context_docs = store.similarity_search(question, k=TOP_K)
-
+    context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
 
     # Build prompt
@@ -176,8 +241,7 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
     """Streaming RAG. Surfaces `reasoning_content` (for reasoning models like MiMo) as a
     blockquoted thinking block before the final answer."""
     mode = normalize_answer_mode(answer_mode)
-    store = get_vector_store()
-    context_docs = store.similarity_search(question, k=TOP_K) if store else []
+    context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
 
     messages = [

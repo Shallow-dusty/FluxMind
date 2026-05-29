@@ -130,6 +130,12 @@ normalize to stable user-facing codes. This does not prove live answer quality
 yet; it establishes the regression harness that later live or recorded model
 answers can plug into without changing the deployment gate.
 
+Retrieval now uses `src.chain.hybrid_retrieve()` for both non-streaming and
+streaming answers. It starts with FAISS vector search, supplements with local
+keyword matches from the indexed docstore when available, dedupes chunks, and
+keeps the final context bounded by `TOP_K`. This is a local no-key retrieval
+improvement, not a replacement for later reranking or live answer scoring.
+
 ## Corpus Metadata
 
 The first corpus storage boundary is `metadata/corpus.json`, managed through

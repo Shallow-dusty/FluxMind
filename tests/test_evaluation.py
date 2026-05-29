@@ -5,7 +5,9 @@ from langchain_core.documents import Document
 from src.chain import (
     ANSWER_MODE_INSTRUCTIONS,
     format_context,
+    hybrid_retrieve,
     normalize_answer_mode,
+    tokenize_query,
     validate_numbered_citations,
 )
 from src.evaluation import evaluate_config, load_eval_config
@@ -40,6 +42,37 @@ def test_numbered_citation_validation_rejects_unknown_refs():
     assert result.valid_refs == [1]
     assert result.invalid_refs == [3]
     assert result.missing_required_refs == [2]
+
+
+def test_hybrid_retrieve_adds_keyword_hits_after_vector_hits(monkeypatch):
+    vector_doc = Document(
+        page_content="sliding mode reaching law",
+        metadata={"source": "vector.pdf", "page": 1},
+    )
+    keyword_doc = Document(
+        page_content="flux linkage observer uses MRAS estimation",
+        metadata={"source": "keyword.pdf", "page": 2},
+    )
+
+    class FakeDocstore:
+        _dict = {"v": vector_doc, "k": keyword_doc}
+
+    class FakeStore:
+        docstore = FakeDocstore()
+
+        def similarity_search(self, _question, *, k):
+            return [vector_doc][:k]
+
+    monkeypatch.setattr("src.chain.get_vector_store", lambda: FakeStore())
+
+    docs = hybrid_retrieve("flux observer", k=2)
+
+    assert docs == [vector_doc, keyword_doc]
+
+
+def test_tokenize_query_supports_cjk_terms():
+    assert "磁链" in tokenize_query("磁链 observer")
+    assert "observer" in tokenize_query("磁链 observer")
 
 
 def test_offline_eval_config_passes():

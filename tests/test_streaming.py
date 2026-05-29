@@ -19,7 +19,7 @@ class _FakeStreamClient:
 
 
 def test_query_stream_formats_reasoning_before_answer(monkeypatch):
-    monkeypatch.setattr(chain, "get_vector_store", lambda: None)
+    monkeypatch.setattr(chain, "hybrid_retrieve", lambda question, *, k: [])
     monkeypatch.setattr(chain, "OpenAI", lambda **_kwargs: _FakeStreamClient())
 
     assert "".join(chain.query_stream("Explain SMC")) == (
@@ -39,7 +39,7 @@ def test_query_stream_plain_content_without_reasoning(monkeypatch):
                         ]
                     )
 
-    monkeypatch.setattr(chain, "get_vector_store", lambda: None)
+    monkeypatch.setattr(chain, "hybrid_retrieve", lambda question, *, k: [])
     monkeypatch.setattr(chain, "OpenAI", lambda **_kwargs: PlainClient())
 
     assert "".join(chain.query_stream("Explain SMC")) == "plain answer"
@@ -53,7 +53,7 @@ def test_query_stream_wraps_provider_errors(monkeypatch):
                 def create(**_kwargs):
                     raise TimeoutError("timed out")
 
-    monkeypatch.setattr(chain, "get_vector_store", lambda: None)
+    monkeypatch.setattr(chain, "hybrid_retrieve", lambda question, *, k: [])
     monkeypatch.setattr(chain, "OpenAI", lambda **_kwargs: FailingClient())
 
     try:
