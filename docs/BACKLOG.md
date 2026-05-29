@@ -62,19 +62,25 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: planned; build the local job model first, keep external provider
-activation disabled until keys/sandbox decisions are made
+Status: local synchronous job model implemented; async queue, cancellation, and
+retry scheduler remain planned
 
-- Introduce job records for PDF parsing, indexing, image generation, and code
-  execution.
-- Add retry, cancellation, timeout, and artifact URI fields.
-- Expose job status to API and UI.
+- Local JSONL job records exist in `src/jobs.py`.
+- `POST /jobs/image/mock` creates a mock image-generation job.
+- `POST /jobs/code/python-local` creates a development-only Python execution
+  job.
+- `GET /jobs/{job_id}` returns persisted job status.
+- Still planned: PDF parse/index jobs, async queue, cancellation, retry
+  scheduler, timeout policy, and UI job status display.
 
 Acceptance:
 
-- Long-running work no longer blocks the request handler.
-- Failed jobs preserve useful stderr/error details.
-- The UI can show queued/running/succeeded/failed states.
+- Job records preserve request, result, artifacts, errors, attempts, and
+  request IDs.
+- Failed code-execution jobs preserve stderr/error details.
+- API can show running/succeeded/failed states through job status.
+- Remaining: long-running work still needs a real async runner before it stops
+  blocking request handlers.
 
 ## WP4: Image and Diagram Generation
 
@@ -92,7 +98,8 @@ is configured
 Acceptance:
 
 - A request can generate an artifact record with a stable URI.
-- Generated diagrams can be referenced from answers and exported.
+- Generated mock diagrams produce persisted artifact URIs.
+- Remaining: generated diagrams can be referenced from answers and exported.
 - Provider can be swapped without changing the UI flow.
 
 ## WP5: Code Execution
@@ -114,7 +121,8 @@ Acceptance:
 - User code never runs inside the Streamlit or FastAPI process.
 - Execution results are reproducible from stored input files and environment
   metadata.
-- A failed execution returns structured diagnostics without breaking the app.
+- A failed local execution returns structured diagnostics without breaking the
+  app.
 
 ## WP6: Product Shell
 

@@ -84,6 +84,7 @@ def main() -> int:
         "src/ingestion.py",
         "src/capabilities.py",
         "src/providers.py",
+        "src/jobs.py",
         "docs/DEPLOYMENT_STATUS.md",
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
@@ -107,6 +108,10 @@ def main() -> int:
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
     else:
         print("skip artifact directory is absent")
+    if (PROJECT_ROOT / "jobs").exists():
+        print(f"info job bytes={directory_size_bytes(PROJECT_ROOT / 'jobs')}")
+    else:
+        print("skip job directory is absent")
 
     index_file = PROJECT_ROOT / "faiss_index" / "index.faiss"
     if index_file.exists():

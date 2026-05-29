@@ -10,6 +10,7 @@ venv/
 *.faiss
 faiss_index/
 artifacts/
+jobs/
 papers/*.pdf
 papers/uploads/
 .streamlit/secrets.toml

@@ -72,3 +72,57 @@ def test_query_normalizes_provider_errors(monkeypatch):
         "message": "The model provider timed out. Please retry the request.",
         "request_id": "req-timeout",
     }
+
+
+def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/image/mock",
+        json={"prompt": "Draw an SMC observer"},
+        headers={"X-Request-ID": "req-image"},
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "image_generation"
+    assert job["status"] == "succeeded"
+    assert job["request_id"] == "req-image"
+    assert job["artifacts"][0]["mime_type"] == "image/svg+xml"
+
+    loaded = client.get(f"/jobs/{job['job_id']}")
+    assert loaded.status_code == 200
+    assert loaded.json()["job"]["job_id"] == job["job_id"]
+
+
+def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('api-job-ok')"},
+        },
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "code_execution"
+    assert job["status"] == "succeeded"
+    assert job["result"]["stdout"] == "api-job-ok\n"
+
+
+def test_missing_job_returns_404(monkeypatch, tmp_path):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    response = client.get("/jobs/missing")
+
+    assert response.status_code == 404

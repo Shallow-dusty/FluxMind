@@ -108,6 +108,7 @@ deployed stream guard   present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
+deployed job layer       present in /opt/fluxmind/src/jobs.py
 active paper count      6
 FAISS index size        786477 bytes
 bot-resume              healthy

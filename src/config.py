@@ -24,6 +24,8 @@ PAPER_LIBRARY_MANIFEST = PAPERS_LIBRARY_DIR / "manifest.json"
 FAISS_INDEX_DIR = PROJECT_ROOT / "faiss_index"
 ACTIVE_PAPERS_FILE = FAISS_INDEX_DIR / "active_papers.json"
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
+JOBS_DIR = PROJECT_ROOT / "jobs"
+JOBS_FILE = JOBS_DIR / "jobs.jsonl"
 
 # RAG parameters
 CHUNK_SIZE = 1000

@@ -31,7 +31,8 @@ made.
 Current no-key feature work now includes local provider implementations:
 `MockImageGenerationProvider` writes deterministic SVG artifacts, and
 `LocalPythonExecutionProvider` exercises the code-execution contract for
-development. These are not wired into the public production workflow yet.
+development. These are wired through local job endpoints, but not into the
+Streamlit UI or any real external provider.
 
 ## Workspace Reference Migration
 
@@ -127,7 +128,8 @@ Reference context:
 - Request IDs are logged for UI/API requests, but latency, retrieval hits,
   token usage, and provider failures are not persisted.
 - No execution sandbox. Any future Python/MATLAB compiler feature must not run
-  arbitrary code in the main web/API process.
+  arbitrary code in the main web/API process. The current local Python provider
+  is a development contract exercise only.
 
 ## Target Product Direction
 
@@ -208,6 +210,10 @@ provider switches first. Only real external activation is deferred.
 - Add corpus-level status: queued, parsing, indexed, failed, stale.
 - Add an evaluation set: standard SMC/flux questions with expected citation
   behavior and regression scoring.
+
+Current progress: a local JSONL job store and no-key job endpoints exist for
+mock image generation and development-only Python execution. This proves the
+API/status/artifact shape but is not yet a durable queue or database.
 
 ### Phase 2: Better RAG
 
@@ -301,8 +307,9 @@ operational decisions are made.
    source of truth for platformization work.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
-5. Move long-running operations to explicit jobs before enabling real external
-   image generation or code execution providers.
+5. Extend the local job model to async execution, PDF indexing, cancellation,
+   and retries before enabling real external image generation or code execution
+   providers.
 
 ## Open Decisions
 

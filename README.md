@@ -137,6 +137,15 @@ The current production workflow remains RAG Q&A, corpus selection, PDF
 upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
 
+The FastAPI service also exposes local no-key job endpoints for development:
+
+- `POST /jobs/image/mock`
+- `POST /jobs/code/python-local`
+- `GET /jobs/{job_id}`
+
+These endpoints persist JSONL job records under `jobs/` and artifacts under
+`artifacts/`; both directories are git-ignored runtime state.
+
 ## 📚 Building the Knowledge Base
 
 1. Use the sidebar paper selector to choose bundled papers from `papers/library/`
@@ -174,10 +183,12 @@ FluxMind/
 │   ├── ingestion.py       # PDF loading, chunking, and indexing
 │   ├── capabilities.py    # Image/code execution provider contracts
 │   ├── providers.py       # Local no-key provider implementations
+│   ├── jobs.py            # Local JSONL job records and runner
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)
 ├── artifacts/             # Generated local artifacts (git-ignored)
+├── jobs/                  # Local job records (git-ignored)
 ├── assets/                # Architecture diagrams and images
 ├── docs/                  # Additional documentation
 ├── scripts/               # Local and deployment health checks
