@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 03:08 CST
+Last live check: 2026-05-30 03:14 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `416dcdc`
+Last restarted application-code commit: `5e2eefc`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 03:08 CST after syncing application commit
-`416dcdc` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 03:14 CST after syncing application commit
+`5e2eefc` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -122,9 +122,12 @@ deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
 hybrid retrieval         present in /opt/fluxmind/src/chain.py; query uses hybrid_retrieve
 local reranker           present in /opt/fluxmind/src/chain.py; hybrid_retrieve uses rerank_documents
+artifact references      present in /opt/fluxmind/src/chain.py; RAG prompt includes Generated Artifact References
+artifact formatter       present in /opt/fluxmind/src/artifacts.py; stable artifact IDs can be cited
+mock image metadata      present in /opt/fluxmind/src/providers.py; local-mock-svg-v1 metadata installed
 execution artifacts      local code job captured result.txt artifact
 artifact export route    present; authenticated local API listed result.txt
-artifact gallery         present in /opt/fluxmind/app.py
+artifact gallery         present in /opt/fluxmind/app.py; stable IDs and metadata rendered
 admin status panel       present in /opt/fluxmind/app.py
 admin status route       present; authenticated local API returned runtime state
 job SQLite state         /opt/fluxmind/jobs/jobs.sqlite3 exists; 2 current rows
