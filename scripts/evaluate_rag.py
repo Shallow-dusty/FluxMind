@@ -26,7 +26,7 @@ def main() -> int:
     args = parser.parse_args()
 
     config = load_eval_config(args.file)
-    case_results, provider_results = evaluate_config(config)
+    case_results, provider_results, recorded_results = evaluate_config(config)
 
     failures: list[str] = []
     for result in case_results:
@@ -43,6 +43,12 @@ def main() -> int:
         )
         if not result.ok:
             failures.append(f"provider fixture {result.fixture_id}")
+
+    for result in recorded_results:
+        status = "ok" if result.ok else "fail"
+        print(f"{status:4} recorded answer {result.case_id}: {result.message}")
+        if not result.ok:
+            failures.append(f"recorded answer {result.case_id}")
 
     if failures:
         print("\nFailed checks:")

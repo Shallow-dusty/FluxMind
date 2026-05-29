@@ -136,6 +136,12 @@ def main() -> int:
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
+    eval_config = json.loads((PROJECT_ROOT / "eval" / "rag_baseline.json").read_text(encoding="utf-8"))
+    check(
+        any(case.get("recorded_answer") for case in eval_config.get("cases", [])),
+        "recorded answer eval fixtures installed",
+        failures,
+    )
     if (PROJECT_ROOT / "artifacts").exists():
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
     else:

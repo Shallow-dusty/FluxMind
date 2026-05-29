@@ -12,7 +12,12 @@ from src.chain import (
     tokenize_query,
     validate_numbered_citations,
 )
-from src.evaluation import evaluate_config, load_eval_config
+from src.evaluation import (
+    answer_term_coverage,
+    evaluate_config,
+    evaluate_recorded_answer,
+    load_eval_config,
+)
 
 
 def test_answer_mode_normalization_and_context_refs():
@@ -114,9 +119,42 @@ def test_tokenize_query_supports_cjk_terms():
 def test_offline_eval_config_passes():
     config = load_eval_config(Path("eval/rag_baseline.json"))
 
-    case_results, provider_results = evaluate_config(config)
+    case_results, provider_results, recorded_results = evaluate_config(config)
 
     assert case_results
     assert provider_results
+    assert recorded_results
     assert all(result.ok for result in case_results)
     assert all(result.ok for result in provider_results)
+    assert all(result.ok for result in recorded_results)
+
+
+def test_recorded_answer_gate_rejects_missing_terms_and_citations():
+    result = evaluate_recorded_answer(
+        {
+            "id": "bad-recorded",
+            "expected_refs": [
+                {"source": "a.pdf", "page": 1, "snippet": "alpha"},
+                {"source": "b.pdf", "page": 2, "snippet": "beta"},
+            ],
+            "recorded_answer": "Only cites one source [1].",
+            "required_answer_terms": ["observer", "switching"],
+            "minimum_answer_term_coverage": 0.5,
+        }
+    )
+
+    assert result is not None
+    assert not result.ok
+    assert result.citation_validation.missing_required_refs == [2]
+    assert result.missing_terms == ["observer", "switching"]
+
+
+def test_answer_term_coverage_is_case_insensitive():
+    coverage, matched, missing = answer_term_coverage(
+        "The SOGIFO-X observer supports Sensorless control.",
+        ["sogifo-x", "sensorless", "regression"],
+    )
+
+    assert coverage == 2 / 3
+    assert matched == ["sogifo-x", "sensorless"]
+    assert missing == ["regression"]

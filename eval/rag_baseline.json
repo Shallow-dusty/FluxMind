@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Offline FluxMind RAG baseline. Fixture answers validate citation shape without calling an LLM.",
+  "description": "Offline FluxMind RAG baseline. Fixture and recorded answers validate citation shape and key-term coverage without calling an LLM.",
   "cases": [
     {
       "id": "smc-chattering-explanation",
@@ -18,7 +18,10 @@
           "snippet": "Chattering-attenuated terminal SMC combines disturbance observation and terminal sliding surfaces."
         }
       ],
-      "fixture_answer": "Chattering reduction should be explained as a design tradeoff, with PMSM SMC taxonomy context [1] and disturbance-observer terminal SMC evidence [2]."
+      "fixture_answer": "Chattering reduction should be explained as a design tradeoff, with PMSM SMC taxonomy context [1] and disturbance-observer terminal SMC evidence [2].",
+      "recorded_answer": "Sliding-mode controllers reduce chattering by treating switching gain, boundary layers, and disturbance-observer compensation as design tradeoffs. For PMSM control, the review frames chattering reduction as a core SMC research concern [1]. Chattering-attenuated terminal SMC then combines disturbance observation with terminal sliding surfaces to reduce switching ripple while preserving robustness [2].",
+      "required_answer_terms": ["chattering", "switching gain", "disturbance", "terminal sliding"],
+      "minimum_answer_term_coverage": 0.75
     },
     {
       "id": "flux-observer-literature-review",
@@ -36,7 +39,10 @@
           "snippet": "SOGIFO-X flux observer algorithm for optimizing sensorless PMSM control."
         }
       ],
-      "fixture_answer": "A literature-review answer should compare the regression observer's wide-speed motivation [1] with SOGIFO-X filtering and observer design claims [2]."
+      "fixture_answer": "A literature-review answer should compare the regression observer's wide-speed motivation [1] with SOGIFO-X filtering and observer design claims [2].",
+      "recorded_answer": "A regression flux observer emphasizes model-based IPMSM sensorless operation across a wide speed range [1]. SOGIFO-X focuses on optimized filtering and observer structure for sensorless PMSM control [2]. A useful comparison should separate the regression model's speed-range motivation from the SOGIFO-X algorithm's filtering and observer-design emphasis.",
+      "required_answer_terms": ["regression", "wide speed", "SOGIFO-X", "sensorless"],
+      "minimum_answer_term_coverage": 0.75
     },
     {
       "id": "smo-code-generation",
@@ -49,7 +55,10 @@
           "snippet": "Sensorless PMSM control based on a sliding mode observer."
         }
       ],
-      "fixture_answer": "The MATLAB-style observer skeleton should identify measured currents, voltage inputs, and switching gains, while citing the PMSM SMO context [1]."
+      "fixture_answer": "The MATLAB-style observer skeleton should identify measured currents, voltage inputs, and switching gains, while citing the PMSM SMO context [1].",
+      "recorded_answer": "A MATLAB-style PMSM sliding-mode observer should define measured currents, voltage inputs, stator resistance, observer gains, and a switching or saturation function. The code skeleton should keep the SMO state update tied to the sensorless PMSM observer context [1].",
+      "required_answer_terms": ["MATLAB", "measured currents", "voltage inputs", "switching"],
+      "minimum_answer_term_coverage": 0.75
     }
   ],
   "provider_failure_fixtures": [
