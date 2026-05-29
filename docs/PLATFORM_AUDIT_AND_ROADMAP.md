@@ -213,8 +213,9 @@ provider switches first. Only real external activation is deferred.
 
 Current progress: a local JSONL job store and no-key job endpoints exist for
 mock image generation, development-only Python execution, and selected-PDF
-index rebuilds. List/status/retry/cancel endpoints exist. This proves the
-API/status/artifact shape but is not yet an async durable queue or database.
+index rebuilds. List/status/retry/cancel endpoints exist. The Streamlit sidebar
+can trigger no-key jobs and display latest job state. This proves the
+UI/API/status/artifact shape but is not yet an async durable queue or database.
 
 ### Phase 2: Better RAG
 
@@ -309,8 +310,8 @@ operational decisions are made.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
 5. Extend the local job model to async execution, true running cancellation,
-   retry backoff, and UI job status before enabling real external image
-   generation or code execution providers.
+   retry backoff, and richer UI retry/cancel controls before enabling real
+   external image generation or code execution providers.
 
 ## Open Decisions
 

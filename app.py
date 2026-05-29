@@ -11,6 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query_stream
 from src.config import MAX_UPLOAD_SIZE_MB, PAPERS_LIBRARY_DIR, PROJECT_ROOT
 from src.ingestion import (
@@ -21,6 +22,7 @@ from src.ingestion import (
     load_library_manifest,
     rebuild_vector_store_from_pdfs,
 )
+from src.jobs import LocalJobRunner, LocalJobStore
 from src.runtime import logger, new_request_id, normalize_exception
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
@@ -58,6 +60,19 @@ I18N = {
         "rebuilt": "索引已重建",
         "select_at_least_one": "请至少选择一篇论文",
         "upload_failed": "上传失败：{error}",
+        "jobs": "本地任务",
+        "latest_jobs": "最近任务",
+        "no_jobs": "暂无任务",
+        "run_index_job": "以任务重建索引",
+        "mock_image_job": "生成本地 SVG 图",
+        "mock_image_prompt": "图示提示词",
+        "run_mock_image": "运行图示任务",
+        "python_job": "运行本地 Python",
+        "python_entrypoint": "入口文件",
+        "python_files": "文件内容",
+        "run_python_job": "运行 Python 任务",
+        "job_created": "任务已完成：{job_id} ({status})",
+        "job_failed": "任务失败：{message}",
         "about": "关于",
         "about_text": """
         **FluxMind** 是面向控制工程的 RAG 研究助手。
@@ -103,6 +118,19 @@ I18N = {
         "rebuilt": "Index rebuilt!",
         "select_at_least_one": "Select at least one paper",
         "upload_failed": "Upload failed: {error}",
+        "jobs": "Local Jobs",
+        "latest_jobs": "Latest jobs",
+        "no_jobs": "No jobs yet",
+        "run_index_job": "Rebuild Index as Job",
+        "mock_image_job": "Generate Local SVG",
+        "mock_image_prompt": "Diagram prompt",
+        "run_mock_image": "Run Image Job",
+        "python_job": "Run Local Python",
+        "python_entrypoint": "Entrypoint",
+        "python_files": "File contents",
+        "run_python_job": "Run Python Job",
+        "job_created": "Job completed: {job_id} ({status})",
+        "job_failed": "Job failed: {message}",
         "about": "About",
         "about_text": """
         **FluxMind** is a RAG-based research copilot for control engineering.
@@ -236,6 +264,33 @@ def render_streaming_response(prompt: str) -> str:
     return response
 
 
+def render_job_result(job) -> None:
+    """Render a compact job outcome in the sidebar."""
+    if job.status == "succeeded":
+        st.success(text["job_created"].format(job_id=job.job_id, status=job.status))
+    else:
+        message = (job.error or {}).get("message", job.status)
+        st.error(text["job_failed"].format(message=message))
+
+
+def render_latest_jobs() -> None:
+    jobs = LocalJobStore().list_latest(limit=5)
+    if not jobs:
+        st.caption(text["no_jobs"])
+        return
+    for job in jobs:
+        label = f"{job.status} · {job.kind} · {job.job_id}"
+        with st.expander(label):
+            st.caption(job.updated_at)
+            if job.result:
+                st.json(job.result)
+            if job.artifacts:
+                for artifact in job.artifacts:
+                    st.code(artifact.get("uri", ""), language="text")
+            if job.error:
+                st.json(job.error)
+
+
 # ── Sidebar: Knowledge Base Management ──
 with st.sidebar:
     st.title("⚡ FluxMind")
@@ -278,6 +333,13 @@ with st.sidebar:
                     _, chunks = rebuild_vector_store_from_pdfs(paths)
                     st.success(f"{text['rebuilt']} ({chunks} chunks)")
                     st.rerun()
+        if st.button(text["run_index_job"], use_container_width=True):
+            if not selected:
+                st.warning(text["select_at_least_one"])
+            else:
+                with st.spinner(text["rebuilding"]):
+                    job = LocalJobRunner().run_index_rebuild(selected)
+                    render_job_result(job)
         with st.expander(text["view_papers"]):
             for p in selectable_papers:
                 marker = "✓" if rel_path(p) in active_defaults else " "
@@ -303,6 +365,47 @@ with st.sidebar:
                     st.error(text["upload_failed"].format(error=exc))
 
     st.caption(f"Max upload: {MAX_UPLOAD_SIZE_MB} MB")
+
+    st.divider()
+    st.subheader(f"🧪 {text['jobs']}")
+    with st.expander(text["mock_image_job"]):
+        image_prompt = st.text_area(
+            text["mock_image_prompt"],
+            value="Draw a sliding-mode observer block diagram",
+            key="mock_image_prompt",
+            height=80,
+        )
+        if st.button(text["run_mock_image"], use_container_width=True):
+            job = LocalJobRunner().run_mock_image(
+                request=ImageGenerationRequest(prompt=image_prompt)
+            )
+            render_job_result(job)
+
+    with st.expander(text["python_job"]):
+        entrypoint = st.text_input(
+            text["python_entrypoint"],
+            value="main.py",
+            key="python_entrypoint",
+        )
+        code = st.text_area(
+            text["python_files"],
+            value="print('fluxmind job ok')",
+            key="python_job_code",
+            height=120,
+        )
+        if st.button(text["run_python_job"], use_container_width=True):
+            job = LocalJobRunner().run_local_python(
+                CodeExecutionRequest(
+                    language="python",
+                    entrypoint=entrypoint,
+                    files={entrypoint: code},
+                    timeout_s=10,
+                )
+            )
+            render_job_result(job)
+
+    with st.expander(text["latest_jobs"]):
+        render_latest_jobs()
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")

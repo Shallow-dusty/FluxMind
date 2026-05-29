@@ -105,6 +105,7 @@ Cloudflare API HTTP     200 at https://api-smy.hyper-dusty.cloud/health
 public UI HTTP          200 at http://223.6.253.9:18501/
 public API health HTTP  200 at http://223.6.253.9:18502/health
 deployed stream guard   present in /opt/fluxmind/app.py
+deployed job panel      present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py

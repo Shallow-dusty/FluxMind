@@ -27,7 +27,7 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 ## Module Boundaries
 
 - `app.py`: Streamlit UI, bilingual labels, PDF selection/upload controls, chat
-  rendering, browser-translation guard.
+  rendering, browser-translation guard, and local no-key job panel.
 - `api.py`: FastAPI request contract, token verification, lifecycle startup.
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
   reasoning-aware streaming.
@@ -91,7 +91,8 @@ API request
 The local runner also supports retrying failed/cancelled jobs and marking
 queued/running records as cancelled. The next step is to make this runner
 asynchronous, add actual cancellation of running work, and improve observability.
-Real external providers can be attached later without changing the UI/API
-workflow.
+The Streamlit sidebar can already trigger selected-PDF index jobs, mock SVG
+image jobs, local Python jobs, and display recent job status. Real external
+providers can be attached later without changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.

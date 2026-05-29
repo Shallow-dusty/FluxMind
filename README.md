@@ -137,7 +137,8 @@ The current production workflow remains RAG Q&A, corpus selection, PDF
 upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
 
-The FastAPI service also exposes local no-key job endpoints for development:
+The Streamlit sidebar includes a local job panel for development workflows. The
+FastAPI service exposes the same local no-key job endpoints:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`

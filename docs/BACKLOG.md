@@ -77,15 +77,18 @@ cancellation remain planned
   job ID.
 - `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
   states.
+- Streamlit sidebar can trigger selected-PDF index rebuild jobs, mock image
+  jobs, local Python jobs, and display latest job status.
 - Still planned: async queue, true cancellation of running work, retry
-  scheduler/backoff, richer timeout policy, and UI job status display.
+  scheduler/backoff, richer timeout policy, and richer UI controls for
+  cancellation/retry.
 
 Acceptance:
 
 - Job records preserve request, result, artifacts, errors, attempts, and
   request IDs.
 - Failed code-execution jobs preserve stderr/error details.
-- API can show running/succeeded/failed states through job status.
+- API and Streamlit can show running/succeeded/failed states through job status.
 - Remaining: long-running work still needs a real async runner before it stops
   blocking request handlers.
 
