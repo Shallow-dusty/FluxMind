@@ -33,8 +33,10 @@ Current no-key feature work now includes local provider implementations:
 `LocalPythonExecutionProvider` exercises the code-execution contract for
 development, including generated file and plot artifact capture. These are
 wired through immediate local job endpoints, async in-process job endpoints,
-artifact list/export endpoints, and the Streamlit local job panel, but not into
-any real external provider.
+artifact list/export endpoints, and the Streamlit local job panel. Generated
+artifacts now carry provider-neutral prompt/style/source-reference/cost metadata
+and recent artifacts are available to RAG answers as stable `[Artifact:<id>]`
+references, but not through any real external provider.
 
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
@@ -262,9 +264,9 @@ Durable user/corpus/chunk/artifact/job metadata is still planned.
 
 ### Phase 3: Image and Diagram Generation Interface
 
-Status: planned. Build provider-neutral plumbing and a no-key mock/local
-provider first. Real image-provider activation remains disabled until a
-key/account and artifact storage policy are configured.
+Status: provider-neutral plumbing and a no-key mock/local provider exist. Real
+image-provider activation remains disabled until a key/account and artifact
+storage policy are configured.
 
 Use an internal provider interface before binding the app to one vendor:
 
@@ -280,6 +282,11 @@ Initial use cases should be engineering-specific:
 - Observer/controller architecture diagrams.
 - Paper figure redrafts.
 - Simulation result plots generated from code outputs.
+
+Current progress: mock diagram artifacts store prompt, style, size, source
+references, provider/model, and zero-cost metadata. The Streamlit artifact
+gallery exposes stable artifact IDs and metadata, and RAG prompts can include
+recent generated diagrams, plots, and files as `[Artifact:<id>]` references.
 
 OpenAI's current image docs separate simple Image API generation/edits from
 Responses API image tools for conversational, iterative image workflows. That

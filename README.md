@@ -142,8 +142,8 @@ endpoint.
 The Streamlit sidebar includes a local job panel for development workflows. It
 submits jobs to an in-process background queue and displays persisted JSONL
 status with cancel/retry controls plus a local artifact gallery with download
-buttons. The FastAPI service exposes both immediate local endpoints and queued
-local endpoints:
+buttons, stable artifact IDs, and provider-neutral metadata. The FastAPI
+service exposes both immediate local endpoints and queued local endpoints:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`
@@ -173,6 +173,11 @@ Failed/cancelled jobs can also be scheduled for delayed local retry with
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
 artifacts, runtime directories, and disabled external-provider/productization
 switches.
+Generated mock diagrams and execution outputs include no-key metadata such as
+prompt, style, size, source references, model/provider, and zero-cost estimates.
+Recent artifacts are also injected into the RAG prompt as stable
+`[Artifact:<id>]` references so answers can point to generated local diagrams,
+plots, or files without activating a real image provider.
 `PUT /corpus/active` lets API clients persist paper activation/deactivation
 state without editing `active_papers.json` directly; a rebuild is still required
 to make the FAISS index exactly match the changed selection.

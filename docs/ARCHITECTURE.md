@@ -43,7 +43,7 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   diagram generation, and development-only Python execution with generated
   file/plot capture.
 - `src/artifacts.py`: local artifact registry and safe file export helpers for
-  artifacts referenced by persisted jobs.
+  artifacts referenced by persisted jobs and RAG answer context.
 - `src/admin.py`: no-secret local admin/runtime status for queue, corpus,
   artifact, directory, and disabled-provider/productization switches.
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
@@ -138,6 +138,12 @@ reranker, before keeping the final context bounded by `TOP_K`. This is a local
 retrieval-quality baseline, not a replacement for later learned reranking or
 live answer scoring.
 
+Recent generated artifacts are formatted by
+`src.artifacts.format_artifact_references()` and injected into the RAG prompt as
+`[Artifact:<id>]` references. The model can cite those IDs when a generated
+diagram, plot, or file is relevant, but it is explicitly instructed not to
+invent artifact IDs.
+
 ## Corpus Metadata
 
 The first corpus storage boundary is `metadata/corpus.json`, managed through
@@ -168,7 +174,10 @@ FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
 mock diagrams, plots, and execution files can be listed and exported without
 exposing raw filesystem paths. Export only supports local `file://` artifacts
 that resolve under `ARTIFACTS_DIR`. The Streamlit sidebar also reads the local
-artifact registry and renders recent artifacts with download buttons.
+artifact registry and renders recent artifacts with stable IDs, metadata, and
+download buttons. Mock diagram artifacts store prompt, style, size, source
+references, provider/model, and zero-cost metadata, giving later real image
+providers a concrete metadata shape without using external keys.
 
 ## Admin Status
 

@@ -128,18 +128,21 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: provider-neutral plumbing, no-key mock provider, and local artifact
-export implemented; real image-provider activation remains disabled until a
-key/account is configured
+Status: provider-neutral plumbing, no-key mock provider, local artifact export,
+artifact metadata, and RAG artifact references implemented; real image-provider
+activation remains disabled until a key/account is configured
 
 - `MockImageGenerationProvider` implements the `ImageGenerationProvider`
   contract with deterministic local SVG output.
 - `GET /artifacts` lists generated local artifacts from persisted jobs.
 - `GET /artifacts/{artifact_id}` exports local file artifacts by stable ID.
-- Streamlit sidebar includes a local artifact gallery with download buttons.
+- Streamlit sidebar includes a local artifact gallery with stable IDs,
+  provider-neutral metadata, and download buttons.
+- Mock diagrams store prompt, style, size, source references, provider/model,
+  and zero-cost metadata without external keys.
+- RAG prompts include recent generated artifacts as stable `[Artifact:<id>]`
+  references so answers can point to local diagrams, plots, or files.
 - Start with engineering diagrams and paper-figure redrafts.
-- Store prompt, provider, model, size, source references, output URI, and cost
-  metadata.
 - Keep generated images as artifacts rather than inline chat-only blobs.
 
 Acceptance:
@@ -148,7 +151,6 @@ Acceptance:
 - Generated mock diagrams produce persisted artifact URIs.
 - Generated diagrams and execution artifacts can be listed and exported.
 - Generated local artifacts can be downloaded from Streamlit.
-- Remaining: generated diagrams can be referenced from RAG answers.
 - Provider can be swapped without changing the UI flow.
 
 ## WP5: Code Execution
