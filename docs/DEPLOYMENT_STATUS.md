@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 02:18 CST
+Last live check: 2026-05-30 02:22 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `f7b6091`
+Last restarted application-code commit: `e169806`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 02:18 CST after syncing application commit
-`f7b6091` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 02:22 CST after syncing application commit
+`e169806` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -114,9 +114,11 @@ deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
+deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
 execution artifacts      local code job captured result.txt artifact
+artifact export route    present; authenticated local API listed result.txt
 offline RAG eval         passed in /opt/fluxmind
 corpus metadata route    present in /opt/fluxmind/api.py
 corpus metadata papers   6 indexed papers via authenticated local API check
