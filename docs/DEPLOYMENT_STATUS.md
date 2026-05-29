@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 01:57 CST
+Last live check: 2026-05-30 02:05 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `0f8cb91`
+Last restarted application-code commit: `2865dcb`
 
 ```
 Host          Trace-Twin
@@ -86,8 +86,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:57 CST after syncing application commit
-`0f8cb91` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 02:05 CST after syncing application commit
+`2865dcb` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -110,9 +110,12 @@ deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
+deployed eval layer      present in /opt/fluxmind/src/evaluation.py
+offline RAG eval         passed in /opt/fluxmind
 job API routes           present in /opt/fluxmind/api.py
 index rebuild job route  present in /opt/fluxmind/api.py
 async index job route    present in /opt/fluxmind/api.py
+query answer mode        present in /opt/fluxmind/api.py
 job retry route          present in /opt/fluxmind/api.py
 active paper count      6
 FAISS index size        786477 bytes
