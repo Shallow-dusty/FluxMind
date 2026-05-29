@@ -9,6 +9,7 @@ build/
 venv/
 *.faiss
 faiss_index/
+artifacts/
 papers/*.pdf
 papers/uploads/
 .streamlit/secrets.toml

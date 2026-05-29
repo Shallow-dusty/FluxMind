@@ -106,7 +106,7 @@ public UI HTTP          200 at http://223.6.253.9:18501/
 public API health HTTP  200 at http://223.6.253.9:18502/health
 deployed stream guard   present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
-deferred roadmap docs    present in /opt/fluxmind/docs/BACKLOG.md
+no-key provider docs     present in /opt/fluxmind/docs/BACKLOG.md
 bot-resume              healthy
 bot-lingju              healthy
 available memory        about 2.2 GiB

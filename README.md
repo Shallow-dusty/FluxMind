@@ -126,14 +126,15 @@ Current public URL: `https://smy.hyper-dusty.cloud/`.
 - [`docs/demo-script.md`](docs/demo-script.md) — five-minute demo script and defense Q&A
 - [`docs/handover.html`](docs/handover.html) — single-file delivery handover
 
-## Deferred Capabilities
+## No-Key Capability Development
 
-`src/capabilities.py` intentionally defines future provider contracts only.
-Image generation, hosted code execution, real MATLAB integration, and
-multi-user product features are not active in the current deployment because
-they require additional provider keys, accounts, licensing, or sandbox
-infrastructure. The current production scope remains RAG Q&A, corpus selection,
-PDF upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
+`src/capabilities.py` defines provider contracts and `src/providers.py` contains
+local no-key implementations for artifact storage, mock SVG diagram generation,
+and development-only Python execution. Real external image providers, hosted
+sandboxes, MATLAB integration, multi-user identity, quotas, and billing stay
+disabled until keys, accounts, licenses, and runtime boundaries are configured.
+The current production workflow remains RAG Q&A, corpus selection, PDF
+upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
 
 ## 📚 Building the Knowledge Base
@@ -171,10 +172,12 @@ FluxMind/
 │   ├── config.py          # Configuration and environment variables
 │   ├── embeddings.py      # Local embedding model setup
 │   ├── ingestion.py       # PDF loading, chunking, and indexing
-│   ├── capabilities.py    # Future image/code execution provider contracts
+│   ├── capabilities.py    # Image/code execution provider contracts
+│   ├── providers.py       # Local no-key provider implementations
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)
+├── artifacts/             # Generated local artifacts (git-ignored)
 ├── assets/                # Architecture diagrams and images
 ├── docs/                  # Additional documentation
 ├── scripts/               # Local and deployment health checks

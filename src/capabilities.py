@@ -1,8 +1,9 @@
-"""Forward-compatible capability contracts for FluxMind platform features.
+"""Provider-neutral capability contracts for FluxMind platform features.
 
-These protocols intentionally have no provider implementation yet. They keep
-future image generation and code execution integrations behind explicit
-interfaces instead of coupling them to Streamlit or the RAG chain.
+These protocols keep image generation and code execution integrations behind
+explicit interfaces instead of coupling them to Streamlit or the RAG chain.
+Local no-key development providers live in `src.providers`; real external
+providers can be added behind the same contracts later.
 """
 
 from dataclasses import dataclass, field

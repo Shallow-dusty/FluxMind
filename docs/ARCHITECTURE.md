@@ -36,6 +36,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/embeddings.py`: local sentence-transformers embedding model factory.
 - `src/capabilities.py`: provider-neutral future contracts for image
   generation and isolated Python/Octave/MATLAB-compatible execution.
+- `src/providers.py`: no-key local providers for artifact storage, mock SVG
+  diagram generation, and development-only Python execution.
 - `scripts/health_check.py`: local, HTTP, and SSH runtime checks.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
@@ -51,10 +53,15 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   storage layers before public platform use.
 - Code execution and image generation must remain provider-backed services.
   They should not run inside the UI process or the synchronous `/query` path.
-- Provider-key, account, license, or sandbox-dependent capabilities are
-  intentionally deferred. This includes image generation, hosted code
-  execution, real MATLAB integration, multi-user accounts, quotas, and billing.
-  `src/capabilities.py` is only the contract boundary for later work.
+- Real external provider activation is intentionally disabled until keys,
+  accounts, licenses, or sandbox infrastructure are configured. Feature
+  development should still proceed behind provider-neutral interfaces, local
+  mocks, fixtures, and explicit runtime flags. This includes image generation,
+  hosted code execution, real MATLAB integration, multi-user accounts, quotas,
+  and billing.
+- `LocalPythonExecutionProvider` is a development provider only. It proves the
+  execution request/result contract, but production execution still needs a
+  dedicated isolated service.
 
 ## Next Architecture Step
 
@@ -68,8 +75,9 @@ API request
   -> UI polls or subscribes to job status
 ```
 
-That job boundary is the prerequisite for reliable PDF indexing, image
-generation, Python/Octave execution, quotas, cancellation, retries, and
-observability.
+That job boundary is the prerequisite for reliable PDF indexing, mock/local
+artifact generation, Python/Octave execution plumbing, quotas, cancellation,
+retries, and observability. Real external providers can be attached later
+without changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.
