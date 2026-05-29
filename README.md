@@ -167,12 +167,15 @@ These endpoints persist JSONL job records under `jobs/` and artifacts under
 metadata is persisted under `metadata/`, also git-ignored runtime state. This
 queue and metadata file are no-key development bridges, not durable multi-worker
 infrastructure. Job writes are also mirrored to `jobs/jobs.sqlite3` as a local
-current-state index for faster status queries and future worker migration.
+current-state index for faster status queries and future worker migration. On
+API startup, queued/scheduled local jobs are rehydrated from durable state and
+returned to the in-process worker queue; this preserves no-key delayed retries
+across service restarts, but it is still not a multi-worker distributed queue.
 Failed/cancelled jobs can also be scheduled for delayed local retry with
 `not_before` metadata and parent-job lineage.
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
-artifacts, runtime directories, and disabled external-provider/productization
-switches.
+queue health, artifacts, runtime directories, and disabled
+external-provider/productization switches.
 Generated mock diagrams and execution outputs include no-key metadata such as
 prompt, style, size, source references, model/provider, and zero-cost estimates.
 Recent artifacts are also injected into the RAG prompt as stable

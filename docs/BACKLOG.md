@@ -85,8 +85,9 @@ Acceptance:
 ## WP3: Job System
 
 Status: local JSONL history plus SQLite current-state index, in-process async
-queue, and scheduled retry/backoff implemented; durable multi-worker queue and
-full running cancellation remain planned
+queue, scheduled retry/backoff, restart recovery for queued jobs, and queue
+health implemented; distributed multi-worker queue and full running
+cancellation remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
 - Job writes are mirrored into `jobs/jobs.sqlite3` for current-state lookups and
@@ -105,6 +106,10 @@ full running cancellation remain planned
   job ID.
 - `POST /jobs/{job_id}/retry-scheduled` queues failed/cancelled local jobs for
   delayed retry with `parent_job_id` and `not_before` metadata.
+- `AsyncJobManager.recover_queued_jobs()` rehydrates queued/scheduled jobs from
+  SQLite/JSONL after service restart and returns them to the local worker queue.
+- `GET /admin/status` exposes `queue_health` with queued, due, scheduled,
+  running, and oldest queued timestamps.
 - `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
   states. Running local Python jobs observe cancellation; index rebuild
   cancellation is only checked before execution starts.
@@ -112,9 +117,9 @@ full running cancellation remain planned
   jobs, local Python jobs, and display latest job status.
 - Streamlit recent-job panel can cancel queued/running jobs and retry
   failed/cancelled jobs immediately or after a local backoff delay.
-- Still planned: durable queue/database-backed worker beyond the local SQLite
-  state mirror, true cancellation of all running work, durable retry scheduling,
-  and richer timeout policy.
+- Still planned: distributed database-backed worker beyond the local SQLite
+  recovery bridge, true cancellation of all running work, and richer timeout
+  policy.
 
 Acceptance:
 
@@ -123,7 +128,8 @@ Acceptance:
 - Failed code-execution jobs preserve stderr/error details.
 - API and Streamlit can show running/succeeded/failed states through job status.
 - Queued local job endpoints return without blocking request handlers.
-- Remaining: production-grade long-running work still needs a durable worker
+- Queued delayed retries can recover after API service restart.
+- Remaining: production-grade long-running work still needs a distributed worker
   outside the Streamlit/API processes.
 
 ## WP4: Image and Diagram Generation
@@ -189,9 +195,8 @@ API-key lifecycle, quotas, and billing disabled until decisions are made
   existence/writability/bytes, public model names, and disabled external
   provider/productization switches.
 - Streamlit includes a local runtime status panel for common operational checks.
-- Still planned: queue-health depth beyond JSONL counts, provider failure
-  history beyond failed jobs, real token spend, durable storage dashboards, and
-  user/workspace admin once identity exists.
+- Still planned: provider failure history beyond failed jobs, real token spend,
+  durable storage dashboards, and user/workspace admin once identity exists.
 
 Acceptance:
 

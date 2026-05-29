@@ -107,10 +107,11 @@ failed/cancelled job retry after a bounded local backoff delay, and marking
 queued/running records as cancelled. Scheduled retries preserve
 `parent_job_id` and `not_before` metadata. Job transitions are retained in
 append-only JSONL and mirrored into `jobs/jobs.sqlite3` as a local current-state
-index. The async queue is still process-local; it is useful for no-key
-development, SQLite-backed status queries, and local delayed retry, but it is
-not yet a durable multi-worker platform queue. Running local Python jobs
-observe cancellation.
+index. On API startup, `AsyncJobManager.recover_queued_jobs()` rehydrates
+queued/scheduled jobs from durable state and returns them to the process-local
+worker queue. This makes no-key delayed retries survive service restarts, while
+remaining short of a distributed multi-worker platform queue. Running local
+Python jobs observe cancellation.
 Index rebuild jobs currently check cancellation before execution starts, so
 mid-rebuild cancellation remains a later worker/storage concern. The Streamlit
 sidebar can trigger selected-PDF index jobs, mock SVG image jobs, local Python
@@ -183,8 +184,8 @@ providers a concrete metadata shape without using external keys.
 
 `GET /admin/status` exposes a token-protected, no-secret operations snapshot for
 local development and production checks. It reports job counts by status/kind,
-latest failed local jobs, corpus paper counts, artifact counts/bytes, runtime
-directory existence/writability/bytes, public model names, and explicit disabled
-switches for external providers plus identity/quotas/billing. The Streamlit
-sidebar renders the same status so common operational questions do not require
-SSH or raw filesystem inspection.
+durable queue health, latest failed local jobs, corpus paper counts, artifact
+counts/bytes, runtime directory existence/writability/bytes, public model names,
+and explicit disabled switches for external providers plus
+identity/quotas/billing. The Streamlit sidebar renders the same status so common
+operational questions do not require SSH or raw filesystem inspection.

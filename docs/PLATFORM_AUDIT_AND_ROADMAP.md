@@ -238,9 +238,11 @@ execution, and selected-PDF index rebuilds.
 List/status/retry/scheduled-retry/cancel endpoints exist. The Streamlit sidebar
 can trigger queued no-key jobs, display latest job state, cancel queued/running
 jobs, and retry failed/cancelled jobs immediately or after a local backoff delay.
-This proves the
-UI/API/status/artifact shape but is not yet a durable multi-worker queue or
-database-backed worker.
+Queued/scheduled jobs are rehydrated from SQLite/JSONL on API startup, and admin
+status exposes queue health including queued, due, scheduled, running, and
+oldest queued timestamps. This proves the UI/API/status/artifact shape and a
+local restart-recovery bridge, but it is not yet a distributed multi-worker
+queue or database-backed worker.
 
 Corpus metadata progress: local paper metadata exists and can be listed through
 the API. Active/deactivated paper selection can be updated through the API and
@@ -348,8 +350,7 @@ operational decisions are made.
 - Add accounts, private corpora, exportable reports, artifact galleries, and
   share links.
 - Add billing/cost accounting only after usage patterns are visible.
-- Add admin views for queue health, provider failures, token spend, and corpus
-  storage.
+- Add admin views for provider failures, token spend, and corpus storage.
 
 Current progress: the first no-key admin foundation exists through
 `GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
@@ -365,10 +366,10 @@ systems.
    source of truth for platformization work.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
-5. Replace the local in-process job queue with durable worker/storage
-   foundations, then add true running cancellation, durable retry scheduling,
-   and richer timeout policy before enabling real external image generation or
-   code execution providers.
+5. Replace the local restart-recovery queue bridge with distributed
+   worker/storage foundations, then add true running cancellation and richer
+   timeout policy before enabling real external image generation or code
+   execution providers.
 
 ## Open Decisions
 
