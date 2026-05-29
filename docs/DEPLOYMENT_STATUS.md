@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 01:43 CST
+Last live check: 2026-05-30 01:48 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `77ba86a`
+Last restarted application-code commit: `3eb2c34`
 
 ```
 Host          Trace-Twin
@@ -86,8 +86,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:43 CST after syncing application commit
-`77ba86a` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 01:48 CST after syncing application commit
+`3eb2c34` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
