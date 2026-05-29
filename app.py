@@ -23,7 +23,7 @@ from src.ingestion import (
     load_library_manifest,
     rebuild_vector_store_from_pdfs,
 )
-from src.jobs import LocalJobStore, get_async_job_manager
+from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
@@ -63,6 +63,8 @@ I18N = {
         "upload_failed": "上传失败：{error}",
         "jobs": "本地任务",
         "latest_jobs": "最近任务",
+        "cancel_job": "取消任务",
+        "retry_job": "重试任务",
         "latest_artifacts": "最近产物",
         "no_artifacts": "暂无产物",
         "download_artifact": "下载产物",
@@ -132,6 +134,8 @@ I18N = {
         "upload_failed": "Upload failed: {error}",
         "jobs": "Local Jobs",
         "latest_jobs": "Latest jobs",
+        "cancel_job": "Cancel job",
+        "retry_job": "Retry job",
         "latest_artifacts": "Latest artifacts",
         "no_artifacts": "No artifacts yet",
         "download_artifact": "Download artifact",
@@ -317,6 +321,24 @@ def render_latest_jobs() -> None:
                     st.code(artifact.get("uri", ""), language="text")
             if job.error:
                 st.json(job.error)
+            if job.status in {"queued", "running"}:
+                if st.button(
+                    text["cancel_job"],
+                    key=f"cancel_{job.job_id}",
+                    use_container_width=True,
+                ):
+                    cancelled = get_async_job_manager().cancel(job.job_id)
+                    render_job_result(cancelled or job)
+                    st.rerun()
+            if job.status in {"failed", "cancelled"}:
+                if st.button(
+                    text["retry_job"],
+                    key=f"retry_{job.job_id}",
+                    use_container_width=True,
+                ):
+                    retried = LocalJobRunner().retry(job.job_id)
+                    render_job_result(retried or job)
+                    st.rerun()
 
 
 def render_latest_artifacts() -> None:

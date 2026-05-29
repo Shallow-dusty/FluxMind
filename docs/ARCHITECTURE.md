@@ -107,8 +107,9 @@ multi-worker platform queue. Running local Python jobs observe cancellation.
 Index rebuild jobs currently check cancellation before execution starts, so
 mid-rebuild cancellation remains a later worker/storage concern. The Streamlit
 sidebar can trigger selected-PDF index jobs, mock SVG image jobs, local Python
-jobs, and display recent job status. Real external providers can be attached
-later without changing the UI/API workflow.
+jobs, display recent job status, cancel queued/running jobs, and retry
+failed/cancelled jobs. Real external providers can be attached later without
+changing the UI/API workflow.
 
 Implementation work packages are tracked in `docs/BACKLOG.md`.
 

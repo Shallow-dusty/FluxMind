@@ -229,7 +229,8 @@ Current progress: a local JSONL job store, immediate no-key job endpoints, and
 in-process async no-key job endpoints exist for mock image generation,
 development-only Python execution, and selected-PDF index rebuilds.
 List/status/retry/cancel endpoints exist. The Streamlit sidebar can trigger
-queued no-key jobs and display latest job state. This proves the
+queued no-key jobs, display latest job state, cancel queued/running jobs, and
+retry failed/cancelled jobs. This proves the
 UI/API/status/artifact shape but is not yet a durable multi-worker queue or
 database.
 

@@ -21,6 +21,9 @@ def test_streamlit_local_job_panel_is_installed():
     assert "enqueue_index_rebuild(selected)" in APP_SOURCE
     assert "enqueue_mock_image" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
+    assert "cancel_job" in APP_SOURCE
+    assert "retry_job" in APP_SOURCE
+    assert "LocalJobRunner().retry" in APP_SOURCE
 
 
 def test_streamlit_artifact_gallery_is_installed():

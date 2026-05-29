@@ -97,9 +97,10 @@ multi-worker queue, retry backoff, and full running cancellation remain planned
   cancellation is only checked before execution starts.
 - Streamlit sidebar can trigger selected-PDF index rebuild jobs, mock image
   jobs, local Python jobs, and display latest job status.
+- Streamlit recent-job panel can cancel queued/running jobs and retry
+  failed/cancelled jobs.
 - Still planned: durable queue/database-backed worker, true cancellation of all
-  running work, retry scheduler/backoff, richer timeout policy, and richer UI
-  controls for cancellation/retry.
+  running work, retry scheduler/backoff, and richer timeout policy.
 
 Acceptance:
 
