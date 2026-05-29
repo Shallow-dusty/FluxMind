@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 01:10 CST
+Last live check: 2026-05-30 01:18 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,6 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
+Last synced commit: `5c0440b`
 
 ```
 Host          Trace-Twin
@@ -85,7 +86,9 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:10 CST:
+Live checks refreshed on 2026-05-30 01:18 CST after syncing commit
+`5c0440b` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+`fluxmind-api.service`:
 
 ```
 fluxmind-ui.service     active
@@ -101,11 +104,16 @@ public UI HTTP          200 at http://223.6.253.9:18501/
 public API health HTTP  200 at http://223.6.253.9:18502/health
 deployed stream guard   present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
+deferred roadmap docs    present in /opt/fluxmind/docs/BACKLOG.md
 bot-resume              healthy
 bot-lingju              healthy
 available memory        about 2.2 GiB
 root disk free          26G
 ```
+
+During the restart window, Cloudflare briefly returned 502 because the tunnel
+reached the origin while the UI/API processes were restarting. Follow-up checks
+returned 200 for both HTTPS endpoints and raw diagnostic endpoints.
 
 ## Cloudflare Tunnel
 
