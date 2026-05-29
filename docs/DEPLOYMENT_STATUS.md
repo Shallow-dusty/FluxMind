@@ -9,7 +9,6 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced repository commit: `f258a90`
 Last restarted application-code commit: `5c0440b`
 
 ```
@@ -89,8 +88,9 @@ depend on downloading from Hugging Face.
 
 Live checks refreshed on 2026-05-30 01:18 CST after syncing application commit
 `5c0440b` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
-`fluxmind-api.service`. Commit `f258a90` only refreshes this deployment
-snapshot and was synced afterward without another service restart.
+`fluxmind-api.service`. Later documentation-only commits may be synced without
+another service restart; use `git log -1` in the source checkout for the latest
+repository revision.
 
 ```
 fluxmind-ui.service     active
