@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 01:32 CST
+Last live check: 2026-05-30 01:37 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `59304f6`
+Last restarted application-code commit: `b232c0a`
 
 ```
 Host          Trace-Twin
@@ -86,8 +86,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 01:32 CST after syncing application commit
-`59304f6` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 01:37 CST after syncing application commit
+`b232c0a` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -109,6 +109,7 @@ deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
 deployed job layer       present in /opt/fluxmind/src/jobs.py
+job API routes           present in /opt/fluxmind/api.py
 active paper count      6
 FAISS index size        786477 bytes
 bot-resume              healthy
