@@ -85,6 +85,7 @@ def main() -> int:
         "src/capabilities.py",
         "src/providers.py",
         "src/jobs.py",
+        "src/metadata.py",
         "src/evaluation.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
@@ -106,6 +107,7 @@ def main() -> int:
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
+    check("/corpus/papers" in api_source, "corpus metadata route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
@@ -149,6 +151,7 @@ def main() -> int:
             "test -f /opt/fluxmind/app.py; "
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
+            "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "

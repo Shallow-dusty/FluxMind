@@ -3,6 +3,7 @@
 import os
 import logging
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import query
-from src.ingestion import build_vector_store
+from src.ingestion import build_vector_store, refresh_paper_metadata
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.runtime import logger, new_request_id, normalize_exception
 
@@ -77,6 +78,10 @@ class JobListResponse(BaseModel):
     jobs: list[dict] = Field(..., description="Latest local job records")
 
 
+class CorpusPapersResponse(BaseModel):
+    papers: list[dict] = Field(..., description="Current local corpus paper metadata")
+
+
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
     if not API_TOKEN:
@@ -110,6 +115,21 @@ def job_to_dict(record: JobRecord) -> dict:
         "attempts": record.attempts,
         "request_id": record.request_id,
     }
+
+
+def record_to_dict(record) -> dict:
+    return asdict(record)
+
+
+@app.get("/corpus/papers", response_model=CorpusPapersResponse, summary="List corpus papers")
+def list_corpus_papers(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """List selectable papers with local metadata, active state, and index status."""
+    verify_api_token(authorization, x_api_key)
+    papers = [record_to_dict(record) for record in refresh_paper_metadata()]
+    return CorpusPapersResponse(papers=papers)
 
 
 @app.post("/query", response_model=QueryResponse, summary="Ask FluxMind")

@@ -41,6 +41,12 @@ numbered citation validation, provider-error fixtures, and selectable answer
 modes. It is a regression harness, not a claim that live model output has been
 fully scored.
 
+Current corpus storage work includes a local JSON metadata registry in
+`metadata/corpus.json` with checksums, source paths, titles, active/indexed
+state, chunk counts, and parse/index error fields. `GET /corpus/papers` exposes
+that state through the API. This is still a local baseline, not the final
+multi-user database.
+
 ## Workspace Reference Migration
 
 FluxMind has been moved from the temporary AI-Prism index `80` to the formal
@@ -225,6 +231,10 @@ List/status/retry/cancel endpoints exist. The Streamlit sidebar can trigger
 queued no-key jobs and display latest job state. This proves the
 UI/API/status/artifact shape but is not yet a durable multi-worker queue or
 database.
+
+Corpus metadata progress: local paper metadata exists and can be listed through
+the API. Upload and selected-PDF rebuild flows update the local metadata file.
+Durable user/corpus/chunk/artifact/job metadata is still planned.
 
 ### Phase 2: Better RAG
 

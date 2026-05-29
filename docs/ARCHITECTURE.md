@@ -32,7 +32,10 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
   reasoning-aware streaming, answer modes, and numbered citation validation.
 - `src/ingestion.py`: PDF discovery, upload name safety, PyMuPDF extraction,
-  chunking, FAISS persistence, active paper selection.
+  chunking, FAISS persistence, active paper selection, and paper metadata
+  refresh.
+- `src/metadata.py`: local JSON corpus metadata registry for selectable papers,
+  checksums, active/indexed state, chunk counts, and parse/index error fields.
 - `src/embeddings.py`: local sentence-transformers embedding model factory.
 - `src/capabilities.py`: provider-neutral future contracts for image
   generation and isolated Python/Octave/MATLAB-compatible execution.
@@ -115,3 +118,15 @@ that fixture answers only cite retrieved context refs and that provider errors
 normalize to stable user-facing codes. This does not prove live answer quality
 yet; it establishes the regression harness that later live or recorded model
 answers can plug into without changing the deployment gate.
+
+## Corpus Metadata
+
+The first corpus storage boundary is `metadata/corpus.json`, managed through
+`src.metadata.CorpusMetadataStore`. It records selectable papers with source
+path, checksum, manifest title fields, source kind, active flag, indexed status,
+chunk count, and parse/index error slots. Upload and selected-PDF rebuild flows
+update this file, and FastAPI exposes it through `GET /corpus/papers`.
+
+This is still a local development store. It makes corpus state inspectable
+without reading the filesystem manually, but it is not the future multi-user
+metadata database or object storage layer.

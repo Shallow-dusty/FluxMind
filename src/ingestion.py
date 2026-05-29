@@ -24,6 +24,7 @@ from src.config import (
     PROJECT_ROOT,
 )
 from src.embeddings import get_embedding_model
+from src.metadata import CorpusMetadataStore, PaperRecord
 
 
 _FS_RESERVED_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]+')
@@ -68,6 +69,15 @@ def load_library_manifest() -> dict[str, dict]:
     return json.loads(PAPER_LIBRARY_MANIFEST.read_text(encoding="utf-8"))
 
 
+def refresh_paper_metadata() -> list[PaperRecord]:
+    """Refresh local paper metadata from selectable files and active selection."""
+    return CorpusMetadataStore().refresh_from_files(
+        discover_pdfs(),
+        active_paths=load_active_paper_paths(),
+        manifest=load_library_manifest(),
+    )
+
+
 def discover_pdfs() -> list[Path]:
     """Return all selectable PDFs from the bundled library and uploads."""
     paths: list[Path] = []
@@ -95,6 +105,11 @@ def save_active_paper_paths(paths: list[Path]) -> None:
     ACTIVE_PAPERS_FILE.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
+    )
+    CorpusMetadataStore().refresh_from_files(
+        discover_pdfs(),
+        active_paths=paths,
+        manifest=load_library_manifest(),
     )
 
 
@@ -195,9 +210,27 @@ def build_vector_store(
 def rebuild_vector_store_from_pdfs(paths: list[Path]) -> tuple[FAISS, int]:
     """Rebuild the FAISS index from selected PDFs and persist the selection."""
     docs = load_pdfs(paths)
+    chunks = split_documents(docs) if docs else []
     store = build_vector_store(docs, rebuild=True)
     save_active_paper_paths(paths)
-    return store, len(split_documents(docs)) if docs else 0
+    chunk_count = len(chunks)
+    chunk_counts_by_source: dict[str, int] = {}
+    for chunk in chunks:
+        source_path = chunk.metadata.get("source_path")
+        if source_path:
+            chunk_counts_by_source[source_path] = chunk_counts_by_source.get(source_path, 0) + 1
+    manifest = load_library_manifest()
+    metadata_store = CorpusMetadataStore()
+    for path in paths:
+        source_path = _relative(path)
+        metadata_store.upsert_paper(
+            path,
+            manifest_entry=manifest.get(path.name, {}),
+            active=True,
+            indexed_status="indexed",
+            chunk_count=chunk_counts_by_source.get(source_path, 0),
+        )
+    return store, chunk_count
 
 
 def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
@@ -233,5 +266,12 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
     active = load_active_paper_paths()
     if pdf_path not in active:
         save_active_paper_paths(active + [pdf_path])
+
+    CorpusMetadataStore().upsert_paper(
+        pdf_path,
+        active=True,
+        indexed_status="indexed",
+        chunk_count=len(chunks),
+    )
 
     return pdf_path, len(chunks)

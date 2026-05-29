@@ -11,6 +11,7 @@ venv/
 faiss_index/
 artifacts/
 jobs/
+metadata/
 papers/*.pdf
 papers/uploads/
 .streamlit/secrets.toml

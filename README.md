@@ -153,10 +153,13 @@ local endpoints:
 - `GET /jobs/{job_id}`
 - `POST /jobs/{job_id}/cancel`
 - `POST /jobs/{job_id}/retry`
+- `GET /corpus/papers`
 
 These endpoints persist JSONL job records under `jobs/` and artifacts under
-`artifacts/`; both directories are git-ignored runtime state. This queue is a
-no-key development bridge, not a durable multi-worker job system.
+`artifacts/`; both directories are git-ignored runtime state. Corpus paper
+metadata is persisted under `metadata/`, also git-ignored runtime state. This
+queue and metadata file are no-key development bridges, not durable
+multi-worker/database infrastructure.
 
 ## RAG Quality Baseline
 
@@ -206,12 +209,14 @@ FluxMind/
 │   ├── capabilities.py    # Image/code execution provider contracts
 │   ├── providers.py       # Local no-key provider implementations
 │   ├── jobs.py            # Local JSONL job records, runner, and async queue
+│   ├── metadata.py        # Local JSON corpus metadata registry
 │   ├── evaluation.py      # Offline RAG evaluation and citation checks
 │   └── chain.py           # RAG chain (retrieval + LLM generation)
 ├── papers/                # Research paper PDFs (git-ignored)
 ├── faiss_index/           # Persistent FAISS index (git-ignored)
 ├── artifacts/             # Generated local artifacts (git-ignored)
 ├── jobs/                  # Local job records (git-ignored)
+├── metadata/              # Local corpus metadata records (git-ignored)
 ├── assets/                # Architecture diagrams and images
 ├── docs/                  # Additional documentation
 ├── eval/                  # Offline RAG evaluation fixtures

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 import api
 from src.jobs import AsyncJobManager
+from src.metadata import PaperRecord
 
 
 def test_verify_api_token_allows_when_unconfigured(monkeypatch):
@@ -96,6 +97,35 @@ def test_query_normalizes_provider_errors(monkeypatch):
         "message": "The model provider timed out. Please retry the request.",
         "request_id": "req-timeout",
     }
+
+
+def test_corpus_papers_endpoint_returns_metadata(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(
+        api,
+        "refresh_paper_metadata",
+        lambda: [
+            PaperRecord(
+                paper_id="p1",
+                source_path="papers/library/paper.pdf",
+                filename="paper.pdf",
+                source_kind="library",
+                checksum_sha256="a" * 64,
+                title="Paper",
+                active=True,
+                indexed_status="indexed",
+                chunk_count=3,
+                updated_at="2026-05-30T00:00:00+00:00",
+            )
+        ],
+    )
+
+    client = TestClient(api.app)
+    response = client.get("/corpus/papers")
+
+    assert response.status_code == 200
+    assert response.json()["papers"][0]["source_path"] == "papers/library/paper.pdf"
+    assert response.json()["papers"][0]["indexed_status"] == "indexed"
 
 
 def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
