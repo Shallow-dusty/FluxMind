@@ -49,8 +49,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/jobs.py`: local JSONL job records, immediate runner, and in-process
   background queue for mock image generation, development-only Python
   execution, and selected-PDF index rebuilds.
-- `src/evaluation.py`: offline RAG fixture evaluation, provider-error fixture
-  checks, and citation validation helpers.
+- `src/evaluation.py`: offline RAG fixture evaluation, recorded answer
+  key-term coverage, provider-error fixture checks, and citation validation
+  helpers.
 - `eval/rag_baseline.json`: no-network baseline cases with expected source/page
   references and fixture answers.
 - `scripts/evaluate_rag.py`: CLI gate for the offline RAG baseline.
@@ -125,11 +126,12 @@ Implementation work packages are tracked in `docs/BACKLOG.md`.
 
 The first RAG quality gate is intentionally offline. `eval/rag_baseline.json`
 stores domain questions, answer modes, expected source/page references, fixture
-answers, and provider failure fixtures. `scripts/evaluate_rag.py` validates
-that fixture answers only cite retrieved context refs and that provider errors
-normalize to stable user-facing codes. This does not prove live answer quality
-yet; it establishes the regression harness that later live or recorded model
-answers can plug into without changing the deployment gate.
+answers, recorded answers, required answer terms, and provider failure fixtures.
+`scripts/evaluate_rag.py` validates that fixture and recorded answers only cite
+retrieved context refs, that recorded answers meet deterministic key-term
+coverage thresholds, and that provider errors normalize to stable user-facing
+codes. This still avoids live provider calls; live answer scoring can plug into
+the same gate later.
 
 Retrieval now uses `src.chain.hybrid_retrieve()` for both non-streaming and
 streaming answers. It starts with FAISS vector search, supplements with local

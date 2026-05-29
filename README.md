@@ -191,10 +191,12 @@ to make the FAISS index exactly match the changed selection.
 ## RAG Quality Baseline
 
 `eval/rag_baseline.json` records offline control-engineering evaluation cases,
-expected source/page references, fixture answers, and provider-error fixtures.
-`python scripts/evaluate_rag.py` validates that fixture answers cite retrieved
-context refs such as `[1]` and that provider failures normalize to stable
-user-facing codes. The `/query` API and Streamlit UI accept answer modes:
+expected source/page references, fixture answers, recorded answers, key answer
+terms, and provider-error fixtures. `python scripts/evaluate_rag.py` validates
+that fixture and recorded answers cite retrieved context refs such as `[1]`,
+that recorded answers meet deterministic key-term coverage thresholds, and that
+provider failures normalize to stable user-facing codes. The `/query` API and
+Streamlit UI accept answer modes:
 `explanation`, `derivation`, `implementation`, `literature_review`, and
 `code_generation`. Retrieval uses FAISS vector search plus local keyword
 supplementation from the indexed docstore, deterministic lexical reranking,

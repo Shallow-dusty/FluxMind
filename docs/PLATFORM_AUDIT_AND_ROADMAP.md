@@ -43,10 +43,12 @@ references, but not through any real external provider.
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, provider-error fixtures, and selectable answer
-modes. Retrieval now uses a local hybrid path: FAISS vector hits plus keyword
-matches from the indexed docstore, with dedupe, deterministic lexical reranking,
-and a `TOP_K` context cap. This is a regression harness and retrieval baseline,
-not a claim that live model output has been fully scored.
+modes. The evaluator now also checks recorded answers for citation validity and
+deterministic key-term coverage thresholds. Retrieval now uses a local hybrid
+path: FAISS vector hits plus keyword matches from the indexed docstore, with
+dedupe, deterministic lexical reranking, and a `TOP_K` context cap. This is a
+regression harness and retrieval baseline, not a claim that fresh live model
+output has been fully scored.
 
 Current corpus storage work includes a local JSON metadata registry in
 `metadata/corpus.json` with checksums, source paths, titles, active/indexed
@@ -254,9 +256,10 @@ Durable user/corpus/chunk/artifact/job metadata is still planned.
 
 ### Phase 2: Better RAG
 
-- Current progress: answer modes and an offline fixture-based citation/provider
-  regression gate exist. Local hybrid vector+keyword retrieval and deterministic
-  lexical reranking exist. Live model-answer scoring remains planned.
+- Current progress: answer modes and an offline fixture/recorded-answer
+  citation/provider regression gate exist. Local hybrid vector+keyword
+  retrieval and deterministic lexical reranking exist. Fresh live model-answer
+  scoring remains planned.
 - Enrich PDFs with title, authors, DOI/arXiv ID, year, venue, and topic tags.
 - Add stronger hybrid retrieval/BM25 if local keyword matching is insufficient.
 - Add stronger learned/service reranking before final context assembly if the

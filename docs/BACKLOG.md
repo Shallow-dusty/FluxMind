@@ -28,15 +28,17 @@ Acceptance:
 
 ## WP1: RAG Quality Baseline
 
-Status: offline baseline, local hybrid retrieval, and deterministic lexical
-reranking implemented; live quality scoring and full citation correctness remain
-planned
+Status: offline baseline, recorded-answer scoring, local hybrid retrieval, and
+deterministic lexical reranking implemented; live provider scoring and full
+citation correctness remain planned
 
 - `eval/rag_baseline.json` contains a small control-engineering evaluation set.
-- Each case records expected source papers/pages and fixture snippets.
+- Each case records expected source papers/pages, fixture snippets, recorded
+  answers, required answer terms, and minimum answer-term coverage.
 - `src.chain.validate_numbered_citations()` validates answer citations like
   `[1]` against retrieved document refs.
-- `scripts/evaluate_rag.py` runs the offline baseline without network calls.
+- `scripts/evaluate_rag.py` runs the offline baseline without network calls and
+  fails recorded answers that miss required refs or key-term coverage thresholds.
 - Provider failure fixtures cover timeout, 429/rate-limit, empty output, and
   malformed streaming chunks.
 - Answer modes exist in the prompt/API/UI: explanation, derivation,
@@ -46,14 +48,15 @@ planned
   bounded by `TOP_K`.
 - `src.chain.rerank_documents()` applies a deterministic no-key lexical
   relevance reranker before context formatting.
-- Still planned: live retrieval-quality scoring, citation verification against
-  generated model answers, stronger learned/service reranking, and regression
-  thresholds on real eval answers.
+- Still planned: live provider retrieval-quality scoring, source/page
+  verification against newly generated model answers, stronger learned/service
+  reranking, and regression thresholds on real eval answers.
 
 Acceptance:
 
 - Evaluation command runs without network where fixtures are available.
 - Citation regressions fail locally before deployment.
+- Recorded answer coverage regressions fail locally before deployment.
 - Provider errors surface as structured user-facing messages.
 
 ## WP2: Corpus and Storage Layer
