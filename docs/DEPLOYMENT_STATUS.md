@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-05-30 03:20 CST
+Last live check: 2026-05-30 03:28 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last restarted application-code commit: `efbdc0e`
+Last restarted application-code commit: `3ddb936`
 
 ```
 Host          Trace-Twin
@@ -90,8 +90,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-05-30 03:20 CST after syncing application commit
-`efbdc0e` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
+Live checks refreshed on 2026-05-30 03:28 CST after syncing application commit
+`3ddb936` to `/opt/fluxmind` and restarting `fluxmind-ui.service` and
 `fluxmind-api.service`. Later documentation-only commits may be synced without
 another service restart; use `git log -1` in the source checkout for the latest
 repository revision.
@@ -113,6 +113,7 @@ deployed job panel      present in /opt/fluxmind/app.py
 deployed capabilities   present in /opt/fluxmind/src/capabilities.py
 deployed runtime layer   present in /opt/fluxmind/src/runtime.py
 deployed no-key providers present in /opt/fluxmind/src/providers.py
+local Octave provider    present in /opt/fluxmind/src/providers.py; gnu-octave-local metadata installed
 deployed job layer       present in /opt/fluxmind/src/jobs.py
 SQLite job mirror        present in /opt/fluxmind/src/jobs.py
 scheduled retry/backoff  present in /opt/fluxmind/src/jobs.py
@@ -143,6 +144,7 @@ active corpus smoke      PUT /corpus/active preserved 6 active papers; rebuild_r
 job API routes           present in /opt/fluxmind/api.py
 index rebuild job route  present in /opt/fluxmind/api.py
 async index job route    present in /opt/fluxmind/api.py
+Octave job routes        present in /opt/fluxmind/api.py; immediate and async routes installed
 query answer mode        present in /opt/fluxmind/api.py
 job retry route          present in /opt/fluxmind/api.py
 scheduled retry route    present in /opt/fluxmind/api.py
