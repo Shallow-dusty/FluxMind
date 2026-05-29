@@ -70,6 +70,13 @@ class LocalPythonJobRequest(BaseModel):
     memory_mb: int = Field(default=512, ge=64, le=4096)
 
 
+class LocalOctaveJobRequest(BaseModel):
+    entrypoint: str = Field(..., description="Octave-compatible entrypoint filename")
+    files: dict[str, str] = Field(..., description="Files to materialize for execution")
+    timeout_s: int = Field(default=30, ge=1, le=120)
+    memory_mb: int = Field(default=512, ge=64, le=4096)
+
+
 class IndexRebuildJobRequest(BaseModel):
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths")
 
@@ -358,6 +365,58 @@ def enqueue_local_python_job(
     job = get_async_job_manager().enqueue_local_python(
         CodeExecutionRequest(
             language="python",
+            entrypoint=req.entrypoint,
+            files=req.files,
+            timeout_s=req.timeout_s,
+            memory_mb=req.memory_mb,
+        ),
+        request_id=request_id,
+    )
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/code/octave-local", response_model=JobResponse, summary="Run local Octave-compatible job")
+def create_local_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Run a no-key local GNU Octave-compatible job when octave is installed."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.entrypoint.strip():
+        raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    job = LocalJobRunner().run_local_octave(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint=req.entrypoint,
+            files=req.files,
+            timeout_s=req.timeout_s,
+            memory_mb=req.memory_mb,
+        ),
+        request_id=request_id,
+    )
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/async/code/octave-local", response_model=JobResponse, summary="Queue local Octave-compatible job")
+def enqueue_local_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue a no-key local GNU Octave-compatible job when octave is installed."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    if not req.entrypoint.strip():
+        raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    job = get_async_job_manager().enqueue_local_octave(
+        CodeExecutionRequest(
+            language="octave",
             entrypoint=req.entrypoint,
             files=req.files,
             timeout_s=req.timeout_s,

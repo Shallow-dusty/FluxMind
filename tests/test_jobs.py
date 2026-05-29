@@ -73,6 +73,27 @@ def test_local_python_job_records_failure(tmp_path: Path):
     assert job.error["code"] == "execution_failed"
 
 
+def test_local_octave_job_records_missing_runtime_failure(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+
+    job = runner.run_local_octave(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"main.m": "disp('ok');"},
+        )
+    )
+
+    assert job.status == "failed"
+    assert job.kind == "code_execution"
+    assert job.request["language"] == "octave"
+    assert job.result["exit_code"] == 127
+    assert job.error["code"] == "runtime_unavailable"
+    assert "GNU Octave executable not found" in job.error["message"]
+
+
 def test_index_rebuild_job_records_selected_pdfs(tmp_path: Path, monkeypatch):
     paper = tmp_path / "papers" / "library" / "paper.pdf"
     paper.parent.mkdir(parents=True)

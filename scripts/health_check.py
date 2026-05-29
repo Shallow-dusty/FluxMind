@@ -110,6 +110,7 @@ def main() -> int:
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source, "Streamlit artifact reference metadata installed", failures)
+    check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
@@ -117,12 +118,15 @@ def main() -> int:
     check("/corpus/active" in api_source, "active corpus selection route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
+    check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
     check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
     check("recover_queued_jobs" in jobs_source and "queue_health" in jobs_source, "durable queued job recovery installed", failures)
+    providers_source = (PROJECT_ROOT / "src" / "providers.py").read_text(encoding="utf-8")
+    check("LocalOctaveExecutionProvider" in providers_source and "gnu-octave-local" in providers_source, "local Octave provider installed", failures)
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
     check("rerank_documents" in chain_source and "lexical_relevance_score" in chain_source, "local reranker installed", failures)
@@ -170,11 +174,14 @@ def main() -> int:
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
+            "grep -q 'enqueue_local_octave' /opt/fluxmind/app.py; "
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
             "grep -q '/corpus/active' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
+            "grep -q '/jobs/code/octave-local' /opt/fluxmind/api.py; "
+            "grep -q '/jobs/async/code/octave-local' /opt/fluxmind/api.py; "
             "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "test -f /opt/fluxmind/src/admin.py; "
@@ -182,6 +189,7 @@ def main() -> int:
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -q 'recover_queued_jobs' /opt/fluxmind/src/jobs.py; "
             "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
+            "grep -q 'LocalOctaveExecutionProvider' /opt/fluxmind/src/providers.py; "
             "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
             "grep -q 'rerank_documents' /opt/fluxmind/src/chain.py; "
             "grep -q 'Generated Artifact References' /opt/fluxmind/src/chain.py; "

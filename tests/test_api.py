@@ -301,6 +301,32 @@ def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatc
     assert job["result"]["stdout"] == "api-job-ok\n"
 
 
+def test_local_octave_job_endpoint_returns_structured_runtime_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/code/octave-local",
+        json={
+            "entrypoint": "main.m",
+            "files": {"main.m": "disp('api-octave-ok');"},
+        },
+        headers={"X-Request-ID": "req-octave"},
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "code_execution"
+    assert job["status"] == "failed"
+    assert job["request_id"] == "req-octave"
+    assert job["request"]["language"] == "octave"
+    assert job["result"]["exit_code"] == 127
+    assert job["error"]["code"] == "runtime_unavailable"
+    assert "GNU Octave executable not found" in job["error"]["message"]
+
+
 def test_missing_job_returns_404(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
@@ -412,3 +438,27 @@ def test_async_python_job_endpoint_queues_job(tmp_path, monkeypatch):
     assert job["status"] == "queued"
     manager._queue.join()
     assert store.get(job["job_id"]).status == "succeeded"
+
+
+def test_async_octave_job_endpoint_queues_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+    monkeypatch.setattr(api, "get_async_job_manager", lambda: manager)
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/async/code/octave-local",
+        json={
+            "entrypoint": "main.m",
+            "files": {"main.m": "disp('async-octave-ok');"},
+        },
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["status"] == "queued"
+    assert job["request"]["language"] == "octave"
+    manager._queue.join()
+    assert store.get(job["job_id"]).status == "failed"

@@ -90,6 +90,10 @@ I18N = {
         "python_entrypoint": "入口文件",
         "python_files": "文件内容",
         "run_python_job": "运行 Python 任务",
+        "octave_job": "运行本地 Octave 兼容脚本",
+        "octave_entrypoint": "Octave 入口文件",
+        "octave_files": "Octave 文件内容",
+        "run_octave_job": "运行 Octave 任务",
         "answer_mode": "回答模式",
         "answer_modes": {
             "explanation": "解释",
@@ -172,6 +176,10 @@ I18N = {
         "python_entrypoint": "Entrypoint",
         "python_files": "File contents",
         "run_python_job": "Run Python Job",
+        "octave_job": "Run Local Octave-Compatible Script",
+        "octave_entrypoint": "Octave entrypoint",
+        "octave_files": "Octave file contents",
+        "run_octave_job": "Run Octave Job",
         "answer_mode": "Answer Mode",
         "answer_modes": {
             "explanation": "Explanation",
@@ -548,6 +556,29 @@ with st.sidebar:
                     language="python",
                     entrypoint=entrypoint,
                     files={entrypoint: code},
+                    timeout_s=10,
+                )
+            )
+            render_job_result(job)
+
+    with st.expander(text["octave_job"]):
+        octave_entrypoint = st.text_input(
+            text["octave_entrypoint"],
+            value="main.m",
+            key="octave_entrypoint",
+        )
+        octave_code = st.text_area(
+            text["octave_files"],
+            value="disp('fluxmind octave job ok');",
+            key="octave_job_code",
+            height=120,
+        )
+        if st.button(text["run_octave_job"], use_container_width=True):
+            job = get_async_job_manager().enqueue_local_octave(
+                CodeExecutionRequest(
+                    language="octave",
+                    entrypoint=octave_entrypoint,
+                    files={octave_entrypoint: octave_code},
                     timeout_s=10,
                 )
             )

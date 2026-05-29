@@ -3,6 +3,7 @@ from pathlib import Path
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.providers import (
     LocalArtifactStore,
+    LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
 )
@@ -69,3 +70,46 @@ def test_local_python_execution_provider_rejects_non_python():
 
     assert result.success is False
     assert "Unsupported local language" in result.stderr
+
+
+def test_local_octave_execution_provider_reports_missing_binary(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+    provider = LocalOctaveExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"main.m": "disp('ok');"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 127
+    assert "GNU Octave executable not found" in result.stderr
+
+
+def test_local_octave_execution_provider_runs_when_binary_exists(tmp_path: Path, monkeypatch):
+    fake_octave = tmp_path / "octave"
+    fake_octave.write_text(
+        "#!/bin/sh\n"
+        "echo octave-ok\n"
+        "printf 'artifact-ok' > result.txt\n",
+        encoding="utf-8",
+    )
+    fake_octave.chmod(0o755)
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: str(fake_octave))
+    provider = LocalOctaveExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"main.m": "disp('ok');"},
+        )
+    )
+
+    assert result.success is True
+    assert result.stdout == "octave-ok\n"
+    assert result.artifacts[0].title == "result.txt"
+    assert result.artifacts[0].metadata["runtime"] == "gnu-octave-local"

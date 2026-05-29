@@ -19,7 +19,11 @@ from src.capabilities import (
 )
 from src.config import JOBS_FILE, PROJECT_ROOT
 from src import ingestion
-from src.providers import LocalPythonExecutionProvider, MockImageGenerationProvider
+from src.providers import (
+    LocalOctaveExecutionProvider,
+    LocalPythonExecutionProvider,
+    MockImageGenerationProvider,
+)
 from src.runtime import new_request_id, normalize_exception
 
 
@@ -364,7 +368,12 @@ class LocalJobRunner:
             error = {"code": "cancelled", "message": result.stderr or "Job was cancelled."}
         else:
             status = "succeeded" if result.success else "failed"
-            error = None if result.success else {"code": "execution_failed", "message": result.stderr}
+            if result.success:
+                error = None
+            elif result.exit_code == 127:
+                error = {"code": "runtime_unavailable", "message": result.stderr}
+            else:
+                error = {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
         return self._finish(
             record,
@@ -372,6 +381,63 @@ class LocalJobRunner:
             result=payload,
             artifacts=result.artifacts,
             error=error,
+        )
+
+    def run_local_octave(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        request_id: str | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> JobRecord:
+        record = self._mark_running(record) if record else self._start("code_execution", asdict(request), request_id)
+        try:
+            result = LocalOctaveExecutionProvider().run(request, cancel_event=cancel_event)
+        except Exception as exc:
+            error = normalize_exception(exc)
+            return self._finish(record, status="failed", error=asdict(error))
+
+        if cancel_event and cancel_event.is_set():
+            status: JobStatus = "cancelled"
+            error = {"code": "cancelled", "message": result.stderr or "Job was cancelled."}
+        else:
+            status = "succeeded" if result.success else "failed"
+            if result.success:
+                error = None
+            elif result.exit_code == 127:
+                error = {"code": "runtime_unavailable", "message": result.stderr}
+            else:
+                error = {"code": "execution_failed", "message": result.stderr}
+        payload = asdict(result)
+        return self._finish(
+            record,
+            status=status,
+            result=payload,
+            artifacts=result.artifacts,
+            error=error,
+        )
+
+    def run_local_code(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        request_id: str | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> JobRecord:
+        if request.language == "octave":
+            return self.run_local_octave(
+                request,
+                request_id=request_id,
+                record=record,
+                cancel_event=cancel_event,
+            )
+        return self.run_local_python(
+            request,
+            request_id=request_id,
+            record=record,
+            cancel_event=cancel_event,
         )
 
     def run_index_rebuild(
@@ -416,7 +482,7 @@ class LocalJobRunner:
         if job.kind == "image_generation":
             return self.run_mock_image(ImageGenerationRequest(**job.request), request_id=request_id)
         if job.kind == "code_execution":
-            return self.run_local_python(CodeExecutionRequest(**job.request), request_id=request_id)
+            return self.run_local_code(CodeExecutionRequest(**job.request), request_id=request_id)
         if job.kind == "index_rebuild":
             return self.run_index_rebuild(job.request.get("source_paths", []), request_id=request_id)
         return job
@@ -491,6 +557,16 @@ class AsyncJobManager:
         return record
 
     def enqueue_local_python(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        request_id: str | None = None,
+    ) -> JobRecord:
+        record = self.runner._enqueue("code_execution", asdict(request), request_id)
+        self._enqueue(record)
+        return record
+
+    def enqueue_local_octave(
         self,
         request: CodeExecutionRequest,
         *,
@@ -584,7 +660,7 @@ class AsyncJobManager:
                 cancel_event=event,
             )
         elif record.kind == "code_execution":
-            self.runner.run_local_python(
+            self.runner.run_local_code(
                 CodeExecutionRequest(**record.request),
                 request_id=record.request_id,
                 record=record,

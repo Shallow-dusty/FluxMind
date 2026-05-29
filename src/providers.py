@@ -11,6 +11,7 @@ import html
 import hashlib
 import json
 import mimetypes
+import shutil
 import threading
 import subprocess
 import sys
@@ -234,6 +235,152 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                         "source": relative,
                         "language": request.language,
                         "entrypoint": request.entrypoint,
+                        "cost_estimate_usd": "0",
+                    },
+                )
+            )
+        return artifacts
+
+
+class LocalOctaveExecutionProvider(CodeExecutionProvider):
+    """Run GNU Octave-compatible scripts when a local octave binary exists.
+
+    This is still a development provider. It does not activate MATLAB or a
+    hosted sandbox; it only provides the no-key execution contract and artifact
+    capture surface.
+    """
+
+    max_artifact_bytes = 2 * 1024 * 1024
+
+    def __init__(
+        self,
+        store: LocalArtifactStore | None = None,
+        *,
+        executable: str = "octave",
+    ):
+        self.store = store or LocalArtifactStore()
+        self.executable = executable
+
+    def run(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        cancel_event: threading.Event | None = None,
+    ) -> CodeExecutionResult:
+        if request.language != "octave":
+            return CodeExecutionResult(
+                exit_code=2,
+                stdout="",
+                stderr=f"Unsupported local language: {request.language}",
+            )
+
+        octave_bin = shutil.which(self.executable)
+        if octave_bin is None:
+            return CodeExecutionResult(
+                exit_code=127,
+                stdout="",
+                stderr=(
+                    "GNU Octave executable not found. Install octave or attach "
+                    "a hosted execution provider."
+                ),
+            )
+
+        with tempfile.TemporaryDirectory(prefix="fluxmind-octave-") as tmp:
+            workdir = Path(tmp)
+            input_files = set()
+            for name, content in request.files.items():
+                target = workdir / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+                input_files.add(target.resolve())
+
+            entrypoint = workdir / request.entrypoint
+            if not entrypoint.exists():
+                return CodeExecutionResult(
+                    exit_code=2,
+                    stdout="",
+                    stderr=f"Entrypoint not found: {request.entrypoint}",
+                )
+
+            proc = subprocess.Popen(
+                [octave_bin, "--quiet", "--no-gui", str(entrypoint)],
+                cwd=workdir,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            started = time.monotonic()
+            while proc.poll() is None:
+                if cancel_event and cancel_event.is_set():
+                    proc.terminate()
+                    try:
+                        stdout, stderr = proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        stdout, stderr = proc.communicate()
+                    return CodeExecutionResult(
+                        exit_code=130,
+                        stdout=stdout or "",
+                        stderr=(stderr or "") + "Execution cancelled.",
+                    )
+                if time.monotonic() - started > request.timeout_s:
+                    proc.terminate()
+                    try:
+                        stdout, stderr = proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        stdout, stderr = proc.communicate()
+                    return CodeExecutionResult(
+                        exit_code=124,
+                        stdout=stdout or "",
+                        stderr=(stderr or "") + f"Execution timed out after {request.timeout_s}s",
+                    )
+                time.sleep(0.05)
+
+            stdout, stderr = proc.communicate()
+            return CodeExecutionResult(
+                exit_code=proc.returncode,
+                stdout=stdout,
+                stderr=stderr,
+                artifacts=self._collect_artifacts(workdir, input_files, request),
+            )
+
+    def _collect_artifacts(
+        self,
+        workdir: Path,
+        input_files: set[Path],
+        request: CodeExecutionRequest,
+    ) -> list[GeneratedArtifact]:
+        artifacts: list[GeneratedArtifact] = []
+        digest = hashlib.sha256(
+            f"{request.language}\n{request.entrypoint}\n{sorted(request.files)}".encode()
+        ).hexdigest()[:12]
+        for path in sorted(item for item in workdir.rglob("*") if item.is_file()):
+            if path.resolve() in input_files:
+                continue
+            if path.stat().st_size > self.max_artifact_bytes:
+                continue
+            mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            relative = path.relative_to(workdir).as_posix()
+            safe_relative = relative.replace("/", "-")
+            artifact = self.store.copy_file(
+                f"octave-runs/{digest}/{safe_relative}",
+                path,
+                mime_type,
+            )
+            kind = "plot" if mime_type.startswith("image/") else artifact.kind
+            artifacts.append(
+                GeneratedArtifact(
+                    kind=kind,
+                    uri=artifact.uri,
+                    mime_type=artifact.mime_type,
+                    title=relative,
+                    metadata={
+                        **artifact.metadata,
+                        "source": relative,
+                        "language": request.language,
+                        "entrypoint": request.entrypoint,
+                        "runtime": "gnu-octave-local",
                         "cost_estimate_usd": "0",
                     },
                 )
