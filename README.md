@@ -131,10 +131,11 @@ Current public URL: `https://smy.hyper-dusty.cloud/`.
 
 `src/capabilities.py` defines provider contracts and `src/providers.py` contains
 local no-key implementations for artifact storage, mock SVG diagram generation,
-and development-only Python execution with generated file/plot artifact
-capture. Real external image providers, hosted sandboxes, MATLAB integration,
-multi-user identity, quotas, and billing stay disabled until keys, accounts,
-licenses, and runtime boundaries are configured.
+development-only Python execution, and GNU Octave-compatible local execution
+when an `octave` binary is installed. Generated file/plot artifacts are
+captured for both execution providers. Real external image providers, hosted
+sandboxes, MATLAB integration, multi-user identity, quotas, and billing stay
+disabled until keys, accounts, licenses, and runtime boundaries are configured.
 The current production workflow remains RAG Q&A, corpus selection, PDF
 upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
@@ -147,9 +148,11 @@ service exposes both immediate local endpoints and queued local endpoints:
 
 - `POST /jobs/image/mock`
 - `POST /jobs/code/python-local`
+- `POST /jobs/code/octave-local`
 - `POST /jobs/index/rebuild`
 - `POST /jobs/async/image/mock`
 - `POST /jobs/async/code/python-local`
+- `POST /jobs/async/code/octave-local`
 - `POST /jobs/async/index/rebuild`
 - `GET /jobs`
 - `GET /jobs/{job_id}`

@@ -40,8 +40,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/capabilities.py`: provider-neutral future contracts for image
   generation and isolated Python/Octave/MATLAB-compatible execution.
 - `src/providers.py`: no-key local providers for artifact storage, mock SVG
-  diagram generation, and development-only Python execution with generated
-  file/plot capture.
+  diagram generation, development-only Python execution, and GNU
+  Octave-compatible local execution with generated file/plot capture.
 - `src/artifacts.py`: local artifact registry and safe file export helpers for
   artifacts referenced by persisted jobs and RAG answer context.
 - `src/admin.py`: no-secret local admin/runtime status for queue, corpus,
@@ -164,12 +164,15 @@ metadata database or object storage layer.
 ## Execution Artifacts
 
 `LocalPythonExecutionProvider` runs development-only Python snippets in a
-temporary workdir, captures stdout/stderr/exit code, and persists generated
-files under `artifacts/code-runs/`. Image files are returned as `plot`
-artifacts; text files are returned as `text` artifacts; other small outputs are
-returned as `file` artifacts. This gives the UI/API/job model a concrete
-artifact shape for generated plots and files before any hosted sandbox or
-MATLAB/Octave backend is activated.
+temporary workdir. `LocalOctaveExecutionProvider` runs GNU Octave-compatible
+scripts through a local `octave` executable when one is installed, and returns a
+structured failure when the binary is absent. Both providers capture
+stdout/stderr/exit code and persist generated files under `artifacts/code-runs/`
+or `artifacts/octave-runs/`. Image files are returned as `plot` artifacts; text
+files are returned as `text` artifacts; other small outputs are returned as
+`file` artifacts. This gives the UI/API/job model a concrete artifact shape for
+generated plots and files before any hosted sandbox or real MATLAB backend is
+activated.
 
 FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
 mock diagrams, plots, and execution files can be listed and exported without

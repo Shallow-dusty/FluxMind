@@ -30,9 +30,11 @@ made.
 
 Current no-key feature work now includes local provider implementations:
 `MockImageGenerationProvider` writes deterministic SVG artifacts, and
-`LocalPythonExecutionProvider` exercises the code-execution contract for
-development, including generated file and plot artifact capture. These are
-wired through immediate local job endpoints, async in-process job endpoints,
+`LocalPythonExecutionProvider` and `LocalOctaveExecutionProvider` exercise the
+code-execution contract for development, including generated file and plot
+artifact capture. Octave-compatible jobs use a local `octave` executable when
+present and otherwise persist a structured runtime-unavailable failure. These
+are wired through immediate local job endpoints, async in-process job endpoints,
 artifact list/export endpoints, and the Streamlit local job panel. Generated
 artifacts now carry provider-neutral prompt/style/source-reference/cost metadata
 and recent artifacts are available to RAG answers as stable `[Artifact:<id>]`
@@ -299,14 +301,15 @@ Reference: https://platform.openai.com/docs/guides/image-generation
 
 ### Phase 4: Code Execution
 
-Status: planned. Build request/result plumbing, job state, and the sandbox
-boundary first. Real hosted execution remains disabled until infrastructure is
-configured. Real MATLAB support additionally requires license/account decisions;
-GNU Octave or Python-only execution should be considered before MATLAB.
+Status: local Python and Octave-compatible execution interfaces exist. Real
+hosted execution remains disabled until infrastructure is configured. Real
+MATLAB support additionally requires license/account decisions.
 
-Current progress: the local Python provider captures stdout, stderr, exit code,
-generated files, and generated image plots as persisted artifacts. It remains a
-development provider, not an isolated production sandbox.
+Current progress: the local Python provider and the local GNU Octave-compatible
+provider capture stdout, stderr, exit code, generated files, and generated image
+plots as persisted artifacts. The Octave-compatible provider returns structured
+runtime-unavailable diagnostics when the `octave` binary is absent. They remain
+development providers, not isolated production sandboxes.
 
 Artifact progress: generated local artifacts can be listed and downloaded
 through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
@@ -325,7 +328,7 @@ class CodeExecutionProvider:
 Recommended path:
 
 - Start with Python execution for numerical examples and plotting.
-- Add GNU Octave as a MATLAB-compatible stepping stone.
+- Keep GNU Octave as the MATLAB-compatible stepping stone.
 - Add real MATLAB only if licensing, server resources, and isolation are
   deliberately solved.
 - Capture stdout, stderr, exit code, generated files, and plots as artifacts.

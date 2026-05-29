@@ -161,16 +161,22 @@ Acceptance:
 
 ## WP5: Code Execution
 
-Status: local request/result plumbing and file/plot artifact capture
-implemented; real hosted execution, Octave, and MATLAB activation remain
-disabled until infrastructure and license/account decisions are made
+Status: local request/result plumbing, Python execution, Octave-compatible
+execution interface, and file/plot artifact capture implemented; real hosted
+execution and MATLAB activation remain disabled until infrastructure and
+license/account decisions are made
 
 - `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
   contract for development-only Python snippets.
-- Python snippets can capture stdout, stderr, exit code, generated text/file
-  artifacts, and generated image files as plot artifacts.
+- `LocalOctaveExecutionProvider` implements the same contract for GNU
+  Octave-compatible scripts when a local `octave` binary is installed; when it
+  is absent, jobs fail with a structured runtime-unavailable diagnostic.
+- Python and Octave-compatible snippets can capture stdout, stderr, exit code,
+  generated text/file artifacts, and generated image files as plot artifacts.
+- `POST /jobs/code/octave-local` and `POST /jobs/async/code/octave-local`
+  expose immediate and queued no-key Octave-compatible job flows.
+- Streamlit includes a local Octave-compatible job panel.
 - Job records persist execution artifacts alongside the execution result.
-- Still planned: GNU Octave before considering real MATLAB.
 - Still planned: run code in an isolated service with CPU, memory, timeout,
   filesystem, and network limits.
 
@@ -178,6 +184,8 @@ Acceptance:
 
 - Current development provider runs code in a child Python process and temporary
   workdir, but it is not a production sandbox.
+- Octave-compatible requests have stable API/UI/job behavior without enabling
+  real MATLAB licensing.
 - Execution results are reproducible from stored input files and environment
   metadata.
 - A failed local execution returns structured diagnostics without breaking the
