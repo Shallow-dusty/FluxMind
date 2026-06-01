@@ -114,6 +114,8 @@ I18N = {
         "status_corpus": "语料",
         "status_provider_failures": "Provider 错误",
         "status_query_usage": "查询用量估算",
+        "status_storage": "存储就绪状态",
+        "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
@@ -227,6 +229,8 @@ I18N = {
         "status_corpus": "Corpus",
         "status_provider_failures": "Provider failures",
         "status_query_usage": "Query usage estimates",
+        "status_storage": "Storage readiness",
+        "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
@@ -519,6 +523,8 @@ def render_admin_status() -> None:
     corpus = status["corpus"]
     provider_failures = status["provider_failures"]
     query_usage = status["query_usage"]
+    config = status["config"]
+    storage_readiness = config.get("storage_readiness", {})
 
     st.caption(text["status_jobs"])
     st.json(
@@ -546,6 +552,22 @@ def render_admin_status() -> None:
     st.json(provider_failures)
     st.caption(text["status_query_usage"])
     st.json(query_usage)
+    st.caption(text["status_storage"])
+    st.json(
+        {
+            "metadata": storage_readiness.get("metadata", {}),
+            "object_storage": storage_readiness.get("object_storage", {}),
+            "external_storage_configured": storage_readiness.get("external_storage_configured", False),
+            "external_storage_available": storage_readiness.get("external_storage_available", False),
+        }
+    )
+    st.caption(text["status_storage_paths"])
+    st.json(
+        {
+            "metadata": storage_readiness.get("local_metadata_paths", []),
+            "object_storage": storage_readiness.get("local_object_paths", []),
+        }
+    )
     st.caption(text["status_runtime_dirs"])
     st.json(status["runtime_dirs"])
     st.download_button(

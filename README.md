@@ -266,7 +266,8 @@ external-provider/productization switches. It also reports no-secret durable
 storage readiness for future metadata database and object-storage backends:
 local JSON/SQLite/filesystem storage remains active, while external database
 URLs, buckets, and endpoints are surfaced only as configured booleans and are
-not connected or exposed. Successful `/query` and
+not connected or exposed. The Streamlit runtime status panel displays the same
+storage readiness and local metadata/object storage paths. Successful `/query` and
 `/query/inspect` calls append no-secret estimated usage events with character
 counts and rough token estimates. When the provider response exposes token
 usage, FluxMind also stores no-secret provider prompt/completion/total token

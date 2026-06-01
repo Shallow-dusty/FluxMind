@@ -53,6 +53,10 @@ def test_streamlit_admin_status_panel_is_installed():
     assert "runtime_events" in APP_SOURCE
     assert "event_kind_filter" in APP_SOURCE
     assert "delete_enabled" in APP_SOURCE
+    assert "status_storage" in APP_SOURCE
+    assert "status_storage_paths" in APP_SOURCE
+    assert "storage_readiness" in APP_SOURCE
+    assert "external_storage_configured" in APP_SOURCE
 
 
 def test_streamlit_corpus_profile_report_download_is_installed():

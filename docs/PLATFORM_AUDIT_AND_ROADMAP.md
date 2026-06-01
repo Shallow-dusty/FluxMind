@@ -467,7 +467,9 @@ corpus, artifact, recent `/query` provider-failure events, estimated no-secret
 query usage, provider token usage when returned by the upstream response,
 runtime-directory, durable storage readiness, public model, and
 disabled-provider/product switch state without exposing API keys, storage
-credentials, or requiring real identity/billing systems. `GET
+credentials, or requiring real identity/billing systems. The Streamlit status
+panel now renders the same storage readiness and local metadata/object storage
+paths directly for dashboard use. `GET
 /admin/status/report` and the Streamlit status panel can export
 that same no-secret snapshot as a Markdown operations report for handoff or
 offline review. `POST /query/report` exports an answer, citation validation, and

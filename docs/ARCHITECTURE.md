@@ -310,7 +310,8 @@ usage, provider token usage when the upstream response exposes it, runtime
 directory existence/writability/bytes, public model names, durable storage
 readiness, code-execution backend readiness, Docker sandbox accessibility, and
 explicit disabled switches for external providers plus identity/quotas/billing. The
-Streamlit sidebar renders the same status so common operational questions do not
+Streamlit sidebar renders the same status, including durable storage readiness
+and local metadata/object storage paths, so common operational questions do not
 require SSH or raw filesystem inspection. `GET /admin/status/report` renders the
 same snapshot as a Markdown operations report, and the Streamlit runtime panel
 exposes the report as a download for handoff or offline review. `GET

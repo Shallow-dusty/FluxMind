@@ -370,9 +370,10 @@ Acceptance:
 
 Status: local/admin status foundation, reusable local corpus profiles,
 no-secret Markdown status-report export,
-Markdown query-report export, provider-failure event history, and estimated
-query-usage history implemented; keep public identity, API-key lifecycle, quotas,
-and billing disabled until decisions are made
+Markdown query-report export, provider-failure event history, estimated
+query-usage history, and local storage-readiness dashboard implemented; keep
+public identity, API-key lifecycle, quotas, and billing disabled until decisions
+are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.
@@ -383,6 +384,9 @@ and billing disabled until decisions are made
   existence/writability/bytes, public model names, and disabled external
   provider/productization switches.
 - Streamlit includes a local runtime status panel for common operational checks.
+- The Streamlit runtime status panel displays durable storage readiness and
+  local metadata/object storage paths from `/admin/status` without exposing
+  external storage credentials.
 - `GET /admin/status/report` and the Streamlit status panel can export the same
   no-secret status snapshot as a Markdown operations report.
 - `GET /admin/retention` returns a no-delete preview of upload/artifact files
@@ -409,5 +413,7 @@ Acceptance:
 - User-facing workflows are not tied to local server filesystem assumptions.
 - Operational state is inspectable without SSH for common local runtime
   questions.
+- Durable storage readiness is visible in the UI without activating external
+  storage accounts.
 - Local retention candidates can be previewed without deleting files or reading
   raw runtime directories by hand.

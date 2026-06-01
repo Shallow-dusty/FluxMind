@@ -127,6 +127,7 @@ def main() -> int:
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
     check("status_provider_failures" in app_source, "Streamlit provider failure status panel installed", failures)
     check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
+    check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
@@ -318,6 +319,8 @@ def main() -> int:
             "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
             "grep -q 'status_query_usage' /opt/fluxmind/app.py; "
+            "grep -q 'status_storage' /opt/fluxmind/app.py; "
+            "grep -q 'storage_readiness' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
             "grep -q 'artifact_search' /opt/fluxmind/app.py; "
             "grep -q 'enqueue_local_octave' /opt/fluxmind/app.py; "
