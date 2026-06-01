@@ -263,7 +263,7 @@ used by `POST /jobs/async/index/rebuild`.
 `POST /query/report` returns the generated answer, citation validation, and
 retrieved context refs as a Markdown research report for local export.
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
-queue health, artifacts, runtime directories, and disabled
+queue health, worker lease activity, artifacts, runtime directories, and disabled
 external-provider/productization switches. It also reports no-secret durable
 storage readiness for future metadata database and object-storage backends:
 local JSON/SQLite/filesystem storage remains active, while external database

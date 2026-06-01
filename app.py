@@ -537,6 +537,7 @@ def render_admin_status() -> None:
             "failed": jobs["failed"],
             "scheduled": jobs["scheduled"],
             "queue_health": jobs["queue_health"],
+            "worker_leases": jobs["worker_leases"],
             "storage": jobs["storage"],
         }
     )

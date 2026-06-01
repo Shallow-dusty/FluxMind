@@ -122,6 +122,7 @@ def main() -> int:
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     check("job_search" in app_source and "job_status_filter" in app_source, "Streamlit job filters installed", failures)
+    check("worker_leases" in app_source, "Streamlit worker lease status installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
@@ -180,6 +181,7 @@ def main() -> int:
     check("logs:" in jobs_source and "append_job_log" in jobs_source, "job transition logs installed", failures)
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
     check("recover_queued_jobs" in jobs_source and "queue_health" in jobs_source, "durable queued job recovery installed", failures)
+    check("worker_lease_health" in jobs_source and "active_worker_ids" in jobs_source, "worker lease health summary installed", failures)
     check("execution_timeout" in jobs_source, "local execution timeout error code installed", failures)
     check("deadline_at" in jobs_source and "job_deadline_exceeded" in jobs_source, "queued job deadline policy installed", failures)
     check("claim_next_due_job" in jobs_source and "lease_expires_at" in jobs_source, "durable worker lease foundation installed", failures)
@@ -231,6 +233,7 @@ def main() -> int:
     check("provider_failures" in admin_source and "list_runtime_events" in admin_source, "admin provider failure history installed", failures)
     check("collect_retention_preview" in admin_source and "delete_enabled" in admin_source, "no-delete retention preview installed", failures)
     check("query_usage" in admin_source and "estimated_total_tokens" in admin_source, "admin query usage estimates installed", failures)
+    check("worker_leases" in admin_source and "worker_lease_health" in admin_source, "admin worker lease status installed", failures)
     check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
     check("summarize_query_cost" in admin_source and "cost_source" in admin_source, "admin query cost estimates installed", failures)
     check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
@@ -317,6 +320,7 @@ def main() -> int:
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
             "grep -q 'job_search' /opt/fluxmind/app.py; "
+            "grep -q 'worker_leases' /opt/fluxmind/app.py; "
             "grep -q 'render_retention_preview' /opt/fluxmind/app.py; "
             "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
@@ -381,6 +385,7 @@ def main() -> int:
             "grep -q 'append_job_log' /opt/fluxmind/src/jobs.py; "
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -q 'recover_queued_jobs' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'worker_lease_health' /opt/fluxmind/src/jobs.py; "
             "grep -q 'execution_timeout' /opt/fluxmind/src/jobs.py; "
             "grep -q 'job_deadline_exceeded' /opt/fluxmind/src/jobs.py; "
             "grep -q 'claim_next_due_job' /opt/fluxmind/src/jobs.py; "
@@ -397,6 +402,7 @@ def main() -> int:
             "grep -q '_candidate_topic_tags_from_first_page' /opt/fluxmind/src/ingestion.py; "
             "grep -q '_find_existing_pdf_by_checksum' /opt/fluxmind/src/ingestion.py; "
             "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
+            "grep -q 'worker_leases' /opt/fluxmind/src/admin.py; "
             "grep -q 'LocalOctaveExecutionProvider' /opt/fluxmind/src/providers.py; "
             "grep -q 'docker_execution_status' /opt/fluxmind/src/providers.py; "
             "grep -q 'execution_limit_preexec' /opt/fluxmind/src/providers.py; "

@@ -333,6 +333,28 @@ def test_job_store_reclaims_expired_worker_lease(tmp_path: Path):
     assert parse_utc(reclaimed.lease_expires_at) > parse_utc(reclaimed.leased_at)
 
 
+def test_job_store_summarizes_worker_lease_health(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    active = runner._enqueue("image_generation", {"prompt": "active"}, "req-active")
+    expired = runner._enqueue("image_generation", {"prompt": "expired"}, "req-expired")
+    store.claim_job(active.job_id, worker_id="worker-a", lease_seconds=30)
+    expired_claim = store.claim_job(expired.job_id, worker_id="worker-b", lease_seconds=30)
+    expired_claim.lease_expires_at = "2000-01-01T00:00:00+00:00"
+    store.append(expired_claim)
+
+    health = store.worker_lease_health()
+
+    assert health["total_leased_jobs"] == 2
+    assert health["worker_ids"] == ["worker-a", "worker-b"]
+    assert health["by_worker"] == {"worker-a": 1, "worker-b": 1}
+    assert health["active_worker_ids"] == ["worker-a"]
+    assert health["expired_worker_ids"] == ["worker-b"]
+    assert health["active_leases"] == 1
+    assert health["expired_leases"] == 1
+    assert {item["worker_id"] for item in health["latest"]} == {"worker-a", "worker-b"}
+
+
 def test_job_store_releases_worker_lease(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     due = LocalJobRunner(store)._enqueue(

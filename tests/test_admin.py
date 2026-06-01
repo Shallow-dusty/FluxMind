@@ -197,6 +197,16 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "running_leased": 0,
         "oldest_queued_at": None,
     }
+    assert status["jobs"]["worker_leases"] == {
+        "total_leased_jobs": 0,
+        "worker_ids": [],
+        "by_worker": {},
+        "active_worker_ids": [],
+        "expired_worker_ids": [],
+        "active_leases": 0,
+        "expired_leases": 0,
+        "latest": [],
+    }
     assert status["artifacts"]["total"] == 1
     assert status["artifacts"]["bytes"] >= 4
     assert status["artifacts"]["storage"]["sqlite_exists"] is True
@@ -263,6 +273,7 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "Cost source: not_configured" in report
     assert "Pricing configured: false" in report
     assert "Reranker model configured: false" in report
+    assert "Worker leases:" in report
     assert "Code execution backend: local" in report
     assert "Docker execution available: false" in report
     assert "Metadata storage backend: local" in report

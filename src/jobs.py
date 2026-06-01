@@ -7,6 +7,7 @@ import queue
 import sqlite3
 import threading
 import time
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -268,6 +269,53 @@ class LocalJobStore:
             "lease_expired_queued": len(expired_leased_queued),
             "running_leased": len(running_leased),
             "oldest_queued_at": queued[0].created_at if queued else None,
+        }
+
+    def worker_lease_health(self, *, limit: int = 5) -> dict[str, Any]:
+        """Summarize no-secret worker lease activity for admin/status surfaces."""
+        now = datetime.now(timezone.utc)
+        leased_jobs = [
+            job for job in self.list_latest(limit=10000)
+            if job.worker_id
+        ]
+        by_worker = Counter(str(job.worker_id) for job in leased_jobs if job.worker_id)
+        active_jobs = [
+            job for job in leased_jobs
+            if job.status in {"queued", "running"}
+            and job.lease_expires_at
+            and parse_utc(job.lease_expires_at) > now
+        ]
+        expired_jobs = [
+            job for job in leased_jobs
+            if job.status in {"queued", "running"}
+            and job.lease_expires_at
+            and parse_utc(job.lease_expires_at) <= now
+        ]
+        latest = sorted(leased_jobs, key=lambda job: job.updated_at, reverse=True)[:limit]
+        return {
+            "total_leased_jobs": len(leased_jobs),
+            "worker_ids": sorted(by_worker),
+            "by_worker": dict(sorted(by_worker.items())),
+            "active_worker_ids": sorted({str(job.worker_id) for job in active_jobs if job.worker_id}),
+            "expired_worker_ids": sorted({str(job.worker_id) for job in expired_jobs if job.worker_id}),
+            "active_leases": len(active_jobs),
+            "expired_leases": len(expired_jobs),
+            "latest": [
+                {
+                    "job_id": job.job_id,
+                    "kind": job.kind,
+                    "status": job.status,
+                    "worker_id": job.worker_id,
+                    "updated_at": job.updated_at,
+                    "leased_at": job.leased_at,
+                    "lease_expires_at": job.lease_expires_at,
+                    "lease_expired": bool(
+                        job.lease_expires_at
+                        and parse_utc(job.lease_expires_at) <= now
+                    ),
+                }
+                for job in latest
+            ],
         }
 
     def claim_job(

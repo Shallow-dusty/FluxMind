@@ -208,8 +208,9 @@ queue, scheduled retry/backoff, restart recovery for queued jobs, queue health,
 queue-level deadlines, durable worker lease metadata, enabled local durable
 worker service foundation, stable execution timeout diagnostics, running Python
 cancellation for in-process and explicit durable local workers, and cancellable
-index-rebuild checkpoints implemented; distributed multi-worker queue and full
-running cancellation for every future worker type remain planned
+index-rebuild checkpoints plus admin worker-lease visibility implemented;
+distributed multi-worker queue and full running cancellation for every future
+worker type remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
 - Job writes are mirrored into `jobs/jobs.sqlite3` for current-state lookups and
@@ -246,6 +247,8 @@ running cancellation for every future worker type remain planned
 - `GET /admin/status` exposes `queue_health` with queued, due, scheduled,
   expired, running, leased queued, expired lease, running lease, and oldest
   queued timestamps.
+- `GET /admin/status` exposes `worker_leases` with no-secret worker IDs,
+  active/expired lease counts, and latest leased job summaries.
 - `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
   states. Running local Python jobs observe cancellation; index rebuild jobs
   check cancellation during PDF loading, splitting, and before committing rebuilt
@@ -272,6 +275,7 @@ Acceptance:
 - Remaining: production-grade long-running work still needs a distributed
   worker/storage backend beyond the local SQLite worker service, plus
   cancellation propagation for future non-local providers.
+- Worker/lease activity can be inspected without SSH or raw SQLite reads.
 
 ## WP4: Image and Diagram Generation
 

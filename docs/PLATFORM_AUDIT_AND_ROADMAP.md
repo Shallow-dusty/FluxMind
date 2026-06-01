@@ -290,7 +290,9 @@ health including queued, due, scheduled, expired, running, leased queued,
 expired lease, running lease, and oldest queued timestamps. In-process workers
 now claim queued jobs through the durable store with `worker_id`, `leased_at`,
 and `lease_expires_at` before provider execution, and expired queued leases can
-be reclaimed. `LocalDurableJobWorker`, `scripts/run_job_worker.py`, and
+be reclaimed. Admin status also exposes no-secret worker lease health with
+worker IDs, active/expired lease counts, and latest leased job summaries.
+`LocalDurableJobWorker`, `scripts/run_job_worker.py`, and
 `deploy/systemd/fluxmind-worker.service` can now claim and execute due queued
 jobs outside the API/Streamlit process as an enabled no-key local worker-service
 foundation. The explicit durable worker also polls durable job state while running

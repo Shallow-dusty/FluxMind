@@ -128,7 +128,9 @@ the in-process worker claims a queued job through the same durable store using
 `worker_id`, `leased_at`, and `lease_expires_at`; expired queued leases are
 claimable by another worker. This creates a local lease contract for the future
 worker/storage migration without changing the current process-local execution
-model. `LocalDurableJobWorker`, `scripts/run_job_worker.py`, and
+model. Admin status summarizes the same lease activity as `worker_leases`,
+including no-secret worker IDs, active/expired leases, and the latest leased job
+summaries. `LocalDurableJobWorker`, `scripts/run_job_worker.py`, and
 `deploy/systemd/fluxmind-worker.service` add an explicit local worker-service
 foundation that claims due jobs from the durable store and runs the existing
 local providers outside the API or UI services. While a durable worker runs a

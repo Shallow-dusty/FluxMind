@@ -227,6 +227,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     corpus = data.get("corpus", {})
     provider_failures = data.get("provider_failures", {})
     query_usage = data.get("query_usage", {})
+    worker_leases = jobs.get("worker_leases", {})
     config = data.get("config", {})
 
     lines = [
@@ -242,6 +243,10 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         f"- Failed: {jobs.get('failed', 0)}",
         f"- Scheduled: {jobs.get('scheduled', 0)}",
         f"- Queue health: {_format_counts(jobs.get('queue_health', {}))}",
+        f"- Worker leases: total={worker_leases.get('total_leased_jobs', 0)}, "
+        f"active={worker_leases.get('active_leases', 0)}, "
+        f"expired={worker_leases.get('expired_leases', 0)}, "
+        f"workers={','.join(worker_leases.get('worker_ids', [])) or 'none'}",
         f"- Storage: {_format_counts(jobs.get('storage', {}))}",
         "",
         "## Corpus",
@@ -777,6 +782,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "sqlite_bytes": JOBS_DB_FILE.stat().st_size if JOBS_DB_FILE.exists() else 0,
             },
             "queue_health": job_store.queue_health(),
+            "worker_leases": job_store.worker_lease_health(),
             "latest_failed": [
                 {
                     "job_id": job.job_id,
