@@ -105,10 +105,12 @@ def main() -> int:
         "src/admin.py",
         "src/runtime.py",
         "src/metadata.py",
+        "src/storage_manifest.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
+        "scripts/runtime_manifest.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -188,6 +190,10 @@ def main() -> int:
     check("record_query_usage" in api_source and "query_usage" in api_source, "query usage estimates are recorded", failures)
     check("provider_usage" in api_source and "provider_total_tokens" in api_source, "provider query usage passthrough installed", failures)
     check("warm_existing_vector_store" in api_source and "build_vector_store" not in api_source, "API startup avoids synchronous index rebuild", failures)
+    storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")
+    check("collect_runtime_backup_manifest" in storage_manifest_source and "secrets_exported" in storage_manifest_source, "runtime backup manifest installed", failures)
+    runtime_manifest_cli = (PROJECT_ROOT / "scripts" / "runtime_manifest.py").read_text(encoding="utf-8")
+    check("format_runtime_backup_manifest_markdown" in runtime_manifest_cli and "--format" in runtime_manifest_cli, "runtime manifest CLI installed", failures)
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
     check("logs:" in jobs_source and "append_job_log" in jobs_source, "job transition logs installed", failures)
