@@ -458,18 +458,19 @@ operational decisions are made.
   outgrow the demo UI.
 - Add accounts, private corpora, exportable reports, artifact galleries, and
   share links.
-- Add billing/cost accounting only after usage patterns are visible.
+- Add real billing attribution only after identity/workspace decisions are made.
 - Add admin views for provider failures, token spend, and corpus storage.
 
 Current progress: the first no-key admin foundation exists through
 `GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
 corpus, artifact, recent `/query` provider-failure events, estimated no-secret
 query usage, provider token usage when returned by the upstream response,
-runtime-directory, durable storage readiness, public model, and
+optional configured query-cost estimates, runtime-directory, durable storage
+readiness, public model, and
 disabled-provider/product switch state without exposing API keys, storage
 credentials, or requiring real identity/billing systems. The Streamlit status
-panel now renders the same storage readiness and local metadata/object storage
-paths directly for dashboard use. `GET
+panel now renders the same storage readiness, local metadata/object storage
+paths, and no-secret pricing status directly for dashboard use. `GET
 /admin/status/report` and the Streamlit status panel can export
 that same no-secret snapshot as a Markdown operations report for handoff or
 offline review. `POST /query/report` exports an answer, citation validation, and
@@ -481,8 +482,9 @@ deleting them, and the Streamlit admin panel exposes the same preview with local
 day/limit controls. `GET /admin/events` lists no-secret runtime events with
 local `kind`, `code`, and `q` filters, and the Streamlit admin panel exposes the
 same event viewer. Estimated query usage remains the fallback when provider
-usage data is absent; provider-specific pricing, billing attribution, and user
-cost dashboards remain blocked on product decisions.
+usage data is absent; provider-specific pricing is available as local
+configuration only, while billing attribution and user cost dashboards remain
+blocked on product decisions.
 
 ## Near-Term Implementation Plan
 

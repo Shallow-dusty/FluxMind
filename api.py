@@ -22,7 +22,14 @@ from src.admin import (
 from src.artifacts import LocalArtifactRegistry
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import get_vector_store, query_with_metadata, retrieve_with_metadata
-from src.config import FAISS_INDEX_DIR
+from src.config import (
+    FAISS_INDEX_DIR,
+    LLM_MODEL,
+    QUERY_COST_COMPLETION_USD_PER_1M,
+    QUERY_COST_PROMPT_USD_PER_1M,
+    QUERY_COST_PROVIDER,
+)
+from src.costs import summarize_query_cost
 from src.ingestion import refresh_paper_metadata, set_active_paper_source_paths
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.metadata import ChunkMetadataStore, CorpusProfileStore
@@ -331,6 +338,23 @@ def record_query_usage(
     """Append no-secret estimated query usage for local admin/cost-shape checks."""
     estimated_prompt_tokens = estimate_text_tokens(question)
     estimated_answer_tokens = estimate_text_tokens(answer)
+    provider_prompt_tokens = 0
+    provider_completion_tokens = 0
+    provider_usage_events = 0
+    if provider_usage:
+        provider_prompt_tokens = int(provider_usage.get("prompt_tokens", 0) or 0)
+        provider_completion_tokens = int(provider_usage.get("completion_tokens", 0) or 0)
+        provider_usage_events = 1
+    cost_summary = summarize_query_cost(
+        estimated_prompt_tokens=estimated_prompt_tokens,
+        estimated_completion_tokens=estimated_answer_tokens,
+        provider_prompt_tokens=provider_prompt_tokens,
+        provider_completion_tokens=provider_completion_tokens,
+        provider_usage_events=provider_usage_events,
+        provider=QUERY_COST_PROVIDER or LLM_MODEL,
+        prompt_usd_per_1m=QUERY_COST_PROMPT_USD_PER_1M,
+        completion_usd_per_1m=QUERY_COST_COMPLETION_USD_PER_1M,
+    )
     metadata = {
         "endpoint": endpoint,
         "answer_mode": answer_mode,
@@ -339,14 +363,15 @@ def record_query_usage(
         "estimated_prompt_tokens": estimated_prompt_tokens,
         "estimated_answer_tokens": estimated_answer_tokens,
         "estimated_total_tokens": estimated_prompt_tokens + estimated_answer_tokens,
-        "estimated_cost_usd": "0",
+        "estimated_cost_usd": cost_summary["estimated_cost_usd"],
+        "cost_source": cost_summary["cost_source"],
         "usage_source": "provider" if provider_usage else "estimated",
     }
     if provider_usage:
         metadata.update(
             {
-                "provider_prompt_tokens": int(provider_usage.get("prompt_tokens", 0) or 0),
-                "provider_completion_tokens": int(provider_usage.get("completion_tokens", 0) or 0),
+                "provider_prompt_tokens": provider_prompt_tokens,
+                "provider_completion_tokens": provider_completion_tokens,
                 "provider_total_tokens": int(provider_usage.get("total_tokens", 0) or 0),
             }
         )

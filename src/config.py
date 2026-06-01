@@ -33,6 +33,12 @@ OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "")
 OBJECT_STORAGE_ENDPOINT = os.getenv("OBJECT_STORAGE_ENDPOINT", "")
 OBJECT_STORAGE_REGION = os.getenv("OBJECT_STORAGE_REGION", "")
 
+# Optional local cost estimation. These rates are no-secret configuration used
+# only for admin estimates; FluxMind does not connect to external billing.
+QUERY_COST_PROVIDER = os.getenv("QUERY_COST_PROVIDER", "").strip()
+QUERY_COST_PROMPT_USD_PER_1M = os.getenv("QUERY_COST_PROMPT_USD_PER_1M", "0").strip()
+QUERY_COST_COMPLETION_USD_PER_1M = os.getenv("QUERY_COST_COMPLETION_USD_PER_1M", "0").strip()
+
 # Paths
 PAPERS_DIR = PROJECT_ROOT / "papers"
 PAPERS_LIBRARY_DIR = PAPERS_DIR / "library"

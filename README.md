@@ -155,6 +155,8 @@ that backend is configured and accessible by the runtime user. Real external
 image providers, hosted sandboxes, MATLAB
 integration, multi-user identity, quotas, and billing stay disabled until keys,
 accounts, licenses, and runtime boundaries are configured.
+Optional `QUERY_COST_*` rates only drive local no-secret USD estimates in admin
+views; they do not activate billing or provider account integration.
 The current production workflow remains RAG Q&A, corpus selection, PDF
 upload/indexing, Streamlit UI, and the token-protected FastAPI `/query`
 endpoint.
@@ -272,6 +274,12 @@ storage readiness and local metadata/object storage paths. Successful `/query` a
 counts and rough token estimates. When the provider response exposes token
 usage, FluxMind also stores no-secret provider prompt/completion/total token
 counts in the same local runtime event; this is usage visibility, not billing.
+When optional `QUERY_COST_PROVIDER`,
+`QUERY_COST_PROMPT_USD_PER_1M`, and
+`QUERY_COST_COMPLETION_USD_PER_1M` are configured, admin status estimates local
+USD query cost from provider token counts when available, or from the rough
+token estimates otherwise. The pricing status is exposed as no-secret
+configuration and explicitly keeps external billing disabled.
 `GET /admin/status/report` exports the same no-secret snapshot
 as a Markdown operations report for handoff or offline review. `GET
 /admin/retention` previews upload and artifact files that would match local

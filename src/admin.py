@@ -30,10 +30,14 @@ from src.config import (
     OBJECT_STORAGE_REGION,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
+    QUERY_COST_COMPLETION_USD_PER_1M,
+    QUERY_COST_PROMPT_USD_PER_1M,
+    QUERY_COST_PROVIDER,
     RERANKER_MODEL,
     RUNTIME_EVENTS_FILE,
 )
 from src.artifacts import LocalArtifactRegistry
+from src.costs import summarize_query_cost
 from src.ingestion import refresh_paper_metadata
 from src.jobs import LocalJobStore
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore
@@ -78,6 +82,13 @@ def _format_counts(counts: dict[str, Any]) -> str:
 
 def _format_bool(value: Any) -> str:
     return "true" if bool(value) else "false"
+
+
+def _query_cost_token_value(event: Any, provider_key: str, estimated_key: str) -> int:
+    provider_value = event.metadata.get(provider_key)
+    if event.metadata.get("usage_source") == "provider" and provider_value is not None:
+        return int(provider_value or 0)
+    return int(event.metadata.get(estimated_key, 0) or 0)
 
 
 def _local_model_path_exists(value: str) -> bool:
@@ -271,6 +282,11 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         f"- Provider total tokens: {query_usage.get('provider_total_tokens', 0)}",
         f"- Provider usage events: {query_usage.get('provider_usage_events', 0)}",
         f"- Estimated cost USD: {query_usage.get('estimated_cost_usd', '0')}",
+        f"- Cost source: {query_usage.get('cost_source', 'not_configured')}",
+        f"- Pricing configured: {_format_bool(query_usage.get('pricing', {}).get('configured', False))}",
+        f"- Pricing provider: {query_usage.get('pricing', {}).get('provider', 'unspecified')}",
+        f"- Prompt USD per 1M tokens: {query_usage.get('pricing', {}).get('prompt_usd_per_1m', '0')}",
+        f"- Completion USD per 1M tokens: {query_usage.get('pricing', {}).get('completion_usd_per_1m', '0')}",
     ]
 
     latest_failures = provider_failures.get("latest", [])
@@ -705,6 +721,32 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         int(event.metadata.get("provider_total_tokens", 0) or 0)
         for event in query_usage_events
     )
+    provider_usage_events = sum(
+        1
+        for event in query_usage_events
+        if event.metadata.get("usage_source") == "provider"
+    )
+    cost_prompt_tokens = sum(
+        _query_cost_token_value(event, "provider_prompt_tokens", "estimated_prompt_tokens")
+        for event in query_usage_events
+    )
+    cost_completion_tokens = sum(
+        _query_cost_token_value(event, "provider_completion_tokens", "estimated_answer_tokens")
+        for event in query_usage_events
+    )
+    query_cost = summarize_query_cost(
+        estimated_prompt_tokens=estimated_prompt_tokens,
+        estimated_completion_tokens=estimated_answer_tokens,
+        provider_prompt_tokens=provider_prompt_tokens,
+        provider_completion_tokens=provider_completion_tokens,
+        provider_usage_events=provider_usage_events,
+        total_events=len(query_usage_events),
+        cost_prompt_tokens=cost_prompt_tokens,
+        cost_completion_tokens=cost_completion_tokens,
+        provider=QUERY_COST_PROVIDER or LLM_MODEL,
+        prompt_usd_per_1m=QUERY_COST_PROMPT_USD_PER_1M,
+        completion_usd_per_1m=QUERY_COST_COMPLETION_USD_PER_1M,
+    )
 
     metadata_store = CorpusMetadataStore()
     profile_store = CorpusProfileStore()
@@ -779,12 +821,12 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "provider_prompt_tokens": provider_prompt_tokens,
             "provider_completion_tokens": provider_completion_tokens,
             "provider_total_tokens": provider_total_tokens,
-            "provider_usage_events": sum(
-                1
-                for event in query_usage_events
-                if event.metadata.get("usage_source") == "provider"
-            ),
-            "estimated_cost_usd": "0",
+            "provider_usage_events": provider_usage_events,
+            "estimated_cost_usd": query_cost["estimated_cost_usd"],
+            "cost_source": query_cost["cost_source"],
+            "cost_prompt_tokens": query_cost["cost_prompt_tokens"],
+            "cost_completion_tokens": query_cost["cost_completion_tokens"],
+            "pricing": query_cost["pricing"],
             "latest": [
                 {
                     "event_id": event.event_id,

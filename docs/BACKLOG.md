@@ -404,7 +404,13 @@ are made
   estimates. When provider responses include token usage, the same local events
   also store provider prompt/completion/total token counts and admin status
   aggregates them separately from estimates.
-- Still planned: durable storage dashboards, provider-specific cost pricing, and
+- Admin status and the Streamlit status panel expose optional no-secret
+  provider/model pricing configuration through `QUERY_COST_PROVIDER`,
+  `QUERY_COST_PROMPT_USD_PER_1M`, and
+  `QUERY_COST_COMPLETION_USD_PER_1M`. When rates are configured, FluxMind
+  estimates USD query cost from provider token counts when available and rough
+  estimated tokens otherwise; external billing remains disabled.
+- Still planned: durable storage dashboards, billing attribution, and
   user/workspace admin once identity exists.
 
 Acceptance:

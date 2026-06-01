@@ -127,6 +127,7 @@ def main() -> int:
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
     check("status_provider_failures" in app_source, "Streamlit provider failure status panel installed", failures)
     check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
+    check("status_cost_pricing" in app_source, "Streamlit query cost pricing panel installed", failures)
     check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
@@ -231,6 +232,7 @@ def main() -> int:
     check("collect_retention_preview" in admin_source and "delete_enabled" in admin_source, "no-delete retention preview installed", failures)
     check("query_usage" in admin_source and "estimated_total_tokens" in admin_source, "admin query usage estimates installed", failures)
     check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
+    check("summarize_query_cost" in admin_source and "cost_source" in admin_source, "admin query cost estimates installed", failures)
     check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
@@ -319,6 +321,7 @@ def main() -> int:
             "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
             "grep -q 'status_query_usage' /opt/fluxmind/app.py; "
+            "grep -q 'status_cost_pricing' /opt/fluxmind/app.py; "
             "grep -q 'status_storage' /opt/fluxmind/app.py; "
             "grep -q 'storage_readiness' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
@@ -434,6 +437,7 @@ def main() -> int:
             "grep -q 'collect_retention_preview' /opt/fluxmind/src/admin.py; "
             "grep -q 'query_usage' /opt/fluxmind/src/admin.py; "
             "grep -q 'provider_total_tokens' /opt/fluxmind/src/admin.py; "
+            "grep -q 'summarize_query_cost' /opt/fluxmind/src/admin.py; "
             "grep -q 'docker_execution' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_readiness_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'external_storage_configured' /opt/fluxmind/src/admin.py; "

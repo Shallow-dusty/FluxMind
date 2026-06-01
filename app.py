@@ -114,6 +114,7 @@ I18N = {
         "status_corpus": "语料",
         "status_provider_failures": "Provider 错误",
         "status_query_usage": "查询用量估算",
+        "status_cost_pricing": "成本估算配置",
         "status_storage": "存储就绪状态",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
@@ -229,6 +230,7 @@ I18N = {
         "status_corpus": "Corpus",
         "status_provider_failures": "Provider failures",
         "status_query_usage": "Query usage estimates",
+        "status_cost_pricing": "Cost estimate pricing",
         "status_storage": "Storage readiness",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
@@ -552,6 +554,8 @@ def render_admin_status() -> None:
     st.json(provider_failures)
     st.caption(text["status_query_usage"])
     st.json(query_usage)
+    st.caption(text["status_cost_pricing"])
+    st.json(query_usage.get("pricing", {}))
     st.caption(text["status_storage"])
     st.json(
         {

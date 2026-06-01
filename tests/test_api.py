@@ -114,6 +114,7 @@ def test_query_response_includes_request_id(monkeypatch):
     assert usage_events[0]["metadata"]["endpoint"] == "/query"
     assert usage_events[0]["metadata"]["estimated_total_tokens"] > 0
     assert usage_events[0]["metadata"]["usage_source"] == "provider"
+    assert usage_events[0]["metadata"]["cost_source"] == "not_configured"
     assert usage_events[0]["metadata"]["provider_total_tokens"] == 15
     assert "Explain SMC" not in str(usage_events[0]["metadata"])
 
@@ -1046,6 +1047,16 @@ def test_admin_status_report_endpoint_returns_markdown(monkeypatch):
                     "estimated_answer_tokens": 0,
                     "estimated_total_tokens": 0,
                     "estimated_cost_usd": "0",
+                    "cost_source": "not_configured",
+                    "pricing": {
+                        "configured": False,
+                        "reason": "not_configured",
+                        "provider": "test-model",
+                        "currency": "USD",
+                        "prompt_usd_per_1m": "0",
+                        "completion_usd_per_1m": "0",
+                        "external_billing_enabled": False,
+                    },
                     "latest": [],
                 },
                 "runtime_dirs": [],

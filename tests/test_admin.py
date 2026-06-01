@@ -215,6 +215,9 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["query_usage"]["provider_total_tokens"] == 12
     assert status["query_usage"]["provider_usage_events"] == 1
     assert status["query_usage"]["estimated_cost_usd"] == "0"
+    assert status["query_usage"]["cost_source"] == "not_configured"
+    assert status["query_usage"]["pricing"]["configured"] is False
+    assert status["query_usage"]["pricing"]["external_billing_enabled"] is False
     assert status["corpus"]["status"] == "indexed"
     assert status["corpus"]["papers"] == 1
     assert status["corpus"]["active"] == 1
@@ -257,6 +260,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "provider_timeout" in report
     assert "Estimated total tokens: 9" in report
     assert "Provider total tokens: 12" in report
+    assert "Cost source: not_configured" in report
+    assert "Pricing configured: false" in report
     assert "Reranker model configured: false" in report
     assert "Code execution backend: local" in report
     assert "Docker execution available: false" in report
@@ -265,6 +270,57 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "req-usage" in report
     assert "postgres://" not in report
     assert "api_key" not in report.lower()
+
+
+def test_collect_admin_status_estimates_cost_with_configured_rates(tmp_path, monkeypatch):
+    root = tmp_path
+    metadata_dir = root / "metadata"
+    metadata_dir.mkdir()
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.admin.JOBS_DIR", root / "jobs")
+    monkeypatch.setattr("src.admin.JOBS_FILE", root / "jobs" / "jobs.jsonl")
+    monkeypatch.setattr("src.admin.JOBS_DB_FILE", root / "jobs" / "jobs.sqlite3")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", root / "jobs" / "jobs.jsonl")
+    monkeypatch.setattr("src.admin.ARTIFACTS_DIR", root / "artifacts")
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", root / "artifacts")
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", root / "papers" / "uploads")
+    monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
+    monkeypatch.setattr("src.admin.FAISS_INDEX_DIR", root / "faiss_index")
+    monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
+    monkeypatch.setattr("src.runtime.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
+    monkeypatch.setattr("src.metadata.CHUNK_METADATA_DB_FILE", metadata_dir / "chunks.sqlite3")
+    monkeypatch.setattr("src.admin.refresh_paper_metadata", lambda: [])
+    monkeypatch.setattr("src.admin.QUERY_COST_PROVIDER", "mimo-deepseek")
+    monkeypatch.setattr("src.admin.QUERY_COST_PROMPT_USD_PER_1M", "2")
+    monkeypatch.setattr("src.admin.QUERY_COST_COMPLETION_USD_PER_1M", "5")
+
+    append_runtime_event(
+        kind="query_usage",
+        code="estimated_usage",
+        message="Estimated no-key query usage. This is not provider billing.",
+        request_id="req-usage",
+        metadata={
+            "endpoint": "/query",
+            "answer_mode": "explanation",
+            "estimated_prompt_tokens": 3,
+            "estimated_answer_tokens": 6,
+            "usage_source": "provider",
+            "provider_prompt_tokens": 4,
+            "provider_completion_tokens": 8,
+            "provider_total_tokens": 12,
+        },
+    )
+
+    status = collect_admin_status().to_dict()
+
+    assert status["query_usage"]["estimated_cost_usd"] == "0.000048"
+    assert status["query_usage"]["cost_source"] == "provider_tokens"
+    assert status["query_usage"]["cost_prompt_tokens"] == 4
+    assert status["query_usage"]["cost_completion_tokens"] == 8
+    assert status["query_usage"]["pricing"]["configured"] is True
+    assert status["query_usage"]["pricing"]["provider"] == "mimo-deepseek"
 
 
 def test_storage_readiness_status_reports_external_config_without_secrets(tmp_path, monkeypatch):
