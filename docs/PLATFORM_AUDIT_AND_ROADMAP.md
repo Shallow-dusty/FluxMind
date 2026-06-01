@@ -36,27 +36,61 @@ artifact capture. Octave-compatible jobs use a local `octave` executable when
 present and otherwise persist a structured runtime-unavailable failure. These
 are wired through immediate local job endpoints, async in-process job endpoints,
 artifact list/export endpoints, and the Streamlit local job panel. Generated
-artifacts now carry provider-neutral prompt/style/source-reference/cost metadata
-and recent artifacts are available to RAG answers as stable `[Artifact:<id>]`
-references, but not through any real external provider.
+artifact metadata is mirrored into local SQLite for current-state inspection.
+Generated artifacts now carry provider-neutral byte counts, SHA-256 checksums,
+prompt/style/source-reference/cost metadata, and admin status can verify local
+artifact integrity without exposing artifact contents. Recent artifacts are
+available to RAG answers as stable
+`[Artifact:<id>]` references, but not through any real external provider.
 
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
-numbered citation validation, provider-error fixtures, and selectable answer
-modes. The evaluator now also checks recorded answers for citation validity and
-deterministic key-term coverage thresholds. Retrieval now uses a local hybrid
-path: FAISS vector hits plus keyword matches from the indexed docstore, with
-dedupe, deterministic lexical reranking, and a `TOP_K` context cap. This is a
+numbered citation validation, source/page fixture verification, provider-error
+fixtures, generated-answer inspection metadata, and selectable answer modes. The
+evaluator now checks that expected PDF sources/pages contain their configured
+snippets, and checks recorded answers for citation validity plus deterministic
+key-term coverage thresholds. Retrieval now uses a local hybrid path: FAISS
+vector hits plus BM25-lite keyword matches from the indexed docstore, with
+dedupe, deterministic BM25-lite lexical reranking, optional no-key local
+CrossEncoder reranking when `RERANKER_MODEL` points to an existing local model
+path, and a `TOP_K` context cap. Missing or empty reranker paths fall back to
+BM25-lite without runtime downloads.
+`src.chain.retrieve_with_metadata()` and `POST /query/retrieve` expose
+retrieval-only source/page diagnostics without calling an LLM provider.
+`src.chain.query_with_metadata()` and `POST /query/inspect` expose generated
+answer citation validation against retrieved source/page refs. This is a
 regression harness and retrieval baseline, not a claim that fresh live model
 output has been fully scored.
 
 Current corpus storage work includes a local JSON metadata registry in
-`metadata/corpus.json` with checksums, source paths, titles, active/indexed
-state, chunk counts, and parse/index error fields. `GET /corpus/papers` exposes
-that state through the API. `PUT /corpus/active` persists active/deactivated
-paper selection without direct runtime-file edits; an index rebuild is still
-required to make FAISS exactly match a changed selection. This is still a local
-baseline, not the final multi-user database.
+`metadata/corpus.json` with checksums, source paths, titles, authors, year,
+DOI, arXiv ID, venue, topic tags, active/indexed state, chunk counts, and
+parse/index error fields. That state is now mirrored into
+`metadata/corpus.sqlite3` as a local current-state index. Indexed chunk metadata
+is mirrored into `metadata/chunks.sqlite3` with source path, page, chunk
+sequence, content hash, character count, and preview text. Uploaded PDFs are
+deduplicated by SHA-256 against the selectable local corpus before creating a
+new local upload file or adding duplicate chunks to FAISS. `GET /corpus/papers`
+exposes paper records through the API and supports local filters for query text,
+active state, source kind, and indexed status. `GET /corpus/chunks` exposes
+chunk records, and `GET /admin/status` reports JSON/SQLite corpus and chunk
+storage state. Corpus/profile JSON writes now use atomic replace to avoid
+transient empty reads during concurrent metadata refreshes. `PUT
+/corpus/active` persists active/deactivated paper selection
+without direct runtime-file edits; an index rebuild is still required to make
+FAISS exactly match a changed selection. Admin status now reports index freshness by
+comparing active paper source paths with chunk metadata source paths, so stale
+or missing index state is visible through the API. This is still a local
+baseline, not the final multi-user database. Reusable local corpus profiles now
+persist named active-paper selections under `metadata/corpus_profiles.json`, with
+API routes to list, upsert, inspect status, and activate them. Profile status
+reports paper availability, active-selection match, profile-vs-chunk index
+freshness, and rebuild requirement without changing the current active corpus.
+Profile status can be exported as a no-secret Markdown handoff report from both
+the API and the Streamlit corpus profile panel. Profiles can also be activated
+with a queued selected-PDF FAISS rebuild through the local async job manager.
+This gives multiple local corpus selections a no-key coexistence path without
+introducing real user/workspace permissions yet.
 
 ## Workspace Reference Migration
 
@@ -140,8 +174,11 @@ Reference context:
 - FAISS local storage is acceptable for one machine but not enough for
   multi-user corpus management, metadata search, or horizontal scaling.
 - `/query` is synchronous and can block on retrieval plus LLM latency.
-- Uploaded PDFs are stored locally without per-user ownership, quotas, malware
-  scanning, deduplication, or retention policy.
+- Uploaded PDFs are stored locally without per-user ownership, quotas, or
+  malware scanning. Local checksum deduplication now avoids writing duplicate
+  upload files or duplicate vector chunks for already indexed PDFs, and admin
+  retention preview shows age-based upload/artifact cleanup candidates without
+  deleting files.
 - The pytest suite, GitHub Actions CI gate, local/remote health checker, and
   offline RAG fixture evaluator now exist. They still do not cover live
   retrieval-quality scoring or model-answer citation correctness.
@@ -240,32 +277,75 @@ immediate no-key job endpoints, in-process async no-key job endpoints, and local
 scheduled retry/backoff exist for mock image generation, development-only Python
 execution, and selected-PDF index rebuilds.
 List/status/retry/scheduled-retry/cancel endpoints exist. The Streamlit sidebar
-can trigger queued no-key jobs, display latest job state, cancel queued/running
-jobs, and retry failed/cancelled jobs immediately or after a local backoff delay.
-Queued/scheduled jobs are rehydrated from SQLite/JSONL on API startup, and admin
-status exposes queue health including queued, due, scheduled, running, and
-oldest queued timestamps. This proves the UI/API/status/artifact shape and a
-local restart-recovery bridge, but it is not yet a distributed multi-worker
-queue or database-backed worker.
+can trigger queued no-key jobs, display filtered latest job state, cancel
+queued/running jobs, and retry failed/cancelled jobs immediately or after a local
+backoff delay. `GET /jobs` and the sidebar recent-job panel support local `q`,
+`status`, and `kind` filters for job inspection without raw JSONL/SQLite reads.
+Queued/scheduled jobs are rehydrated from SQLite/JSONL on API startup, async
+jobs and scheduled retries can set `queue_timeout_s`, and expired queued jobs
+fail before execution with `job_deadline_exceeded`. Admin status exposes queue
+health including queued, due, scheduled, expired, running, leased queued,
+expired lease, running lease, and oldest queued timestamps. In-process workers
+now claim queued jobs through the durable store with `worker_id`, `leased_at`,
+and `lease_expires_at` before provider execution, and expired queued leases can
+be reclaimed. `LocalDurableJobWorker`, `scripts/run_job_worker.py`, and
+`deploy/systemd/fluxmind-worker.service` can now claim and execute due queued
+jobs outside the API/Streamlit process as an enabled no-key local worker-service
+foundation. The explicit durable worker also polls durable job state while running
+local providers and forwards `cancelled` state through the existing
+`cancel_event` path, so local Python/Octave child processes can terminate
+outside the API process. Job records now include no-secret transition logs for
+queued, running, terminal, and cancelled states. This proves the
+UI/API/status/artifact shape and a local restart-recovery/lease/worker-service bridge,
+but it is not yet a distributed multi-worker queue or database-backed worker.
+Local execution timeouts now persist as `execution_timeout` so UI/API/admin
+surfaces can distinguish timeout failures from ordinary non-zero exits.
+API startup now warms only an already-present FAISS index and does not
+synchronously rebuild a missing index before binding the port; missing/corrupt
+index recovery should happen through explicit index rebuild jobs.
+Index rebuild jobs now observe cancellation during loading/splitting and before
+committing rebuilt index state, preventing a cancelled local rebuild from
+publishing new FAISS/chunk metadata after the cancellation signal is seen.
 
 Corpus metadata progress: local paper metadata exists and can be listed through
 the API. Active/deactivated paper selection can be updated through the API and
 Streamlit without direct filesystem edits. Upload and selected-PDF rebuild flows
 update the local metadata file.
+Corpus and chunk metadata are also mirrored into local SQLite for current-state
+inspection and future database migration.
+Admin status exposes local index freshness (`fresh`, `stale`, `missing`, or
+`empty`) so active-corpus changes that still need an index rebuild are visible
+without reading runtime files by hand.
+`GET /corpus/status` now exposes corpus lifecycle state directly as `queued`,
+`parsing`, `indexed`, `failed`, `stale`, or `empty`, using index rebuild jobs,
+paper status, and index freshness instead of requiring callers to infer status
+from multiple endpoints.
+Uploaded/unmanifested PDFs now get best-effort no-key bibliographic extraction
+from embedded PDF metadata and first-page title, author, DOI/arXiv, year, and
+keyword/index-term text, with curated seed-manifest values taking precedence.
 Durable user/corpus/chunk/artifact/job metadata is still planned.
 
 ### Phase 2: Better RAG
 
-- Current progress: answer modes and an offline fixture/recorded-answer
-  citation/provider regression gate exist. Local hybrid vector+keyword
-  retrieval and deterministic lexical reranking exist. Fresh live model-answer
-  scoring remains planned.
-- Enrich PDFs with title, authors, DOI/arXiv ID, year, venue, and topic tags.
-- Add stronger hybrid retrieval/BM25 if local keyword matching is insufficient.
-- Add stronger learned/service reranking before final context assembly if the
-  local lexical baseline is insufficient.
+- Current progress: answer modes, generated-answer citation inspection, numbered
+  citation prompt guards, an offline fixture/recorded-answer
+  citation/provider/source-page regression gate, and an optional live
+  `/query/inspect` regression gate exist. No-LLM `/query/retrieve` diagnostics
+  can inspect deployed retrieval context refs and source/page completeness
+  before generation, and `scripts/evaluate_rag.py --retrieval-url` can score
+  those deployed retrieval diagnostics as part of the no-key quality gate. Local
+  hybrid vector+BM25-lite keyword retrieval, deterministic BM25-lite reranking,
+  and optional no-key local CrossEncoder reranking exist. The evaluator can
+  export no-secret JSON summaries for deployment evidence. Broader live
+  model-answer scoring remains planned.
+- Continue broadening bibliographic enrichment where uploaded PDFs need stronger
+  multi-line author/affiliation parsing or external resolver-backed metadata.
+- Add external/service reranking only if the local BM25-lite and optional local
+  CrossEncoder baseline are insufficient and account/model operations are
+  deliberately activated.
 - Add citation verification: every cited source should map back to a retrieved
-  chunk and page.
+  chunk and page. Current inspect/live-eval plumbing verifies this for numbered
+  retrieved-context refs.
 - Add answer modes: explanation, derivation, implementation, literature review,
   and code generation.
 
@@ -290,10 +370,16 @@ Initial use cases should be engineering-specific:
 - Paper figure redrafts.
 - Simulation result plots generated from code outputs.
 
-Current progress: mock diagram artifacts store prompt, style, size, source
-references, provider/model, and zero-cost metadata. The Streamlit artifact
-gallery exposes stable artifact IDs and metadata, and RAG prompts can include
-recent generated diagrams, plots, and files as `[Artifact:<id>]` references.
+Current progress: mock diagram and execution artifacts store byte counts and
+SHA-256 checksums, while diagram artifacts also store prompt, style, size,
+source references, provider/model, and zero-cost metadata. Artifact metadata is
+mirrored into local SQLite as a current-state index, and admin status reports
+artifact integrity counts for ok/missing/unchecked/mismatched local files. The
+Streamlit artifact gallery exposes stable artifact IDs, metadata, local filters,
+and downloads, and `GET /artifacts` supports local `q`, `kind`, and `job_kind`
+filters for generated diagrams, plots, and files. RAG prompts can include recent
+generated diagrams, plots, and files as
+`[Artifact:<id>]` references.
 
 OpenAI's current image docs separate simple Image API generation/edits from
 Responses API image tools for conversational, iterative image workflows. That
@@ -311,8 +397,20 @@ MATLAB support additionally requires license/account decisions.
 Current progress: the local Python provider and the local GNU Octave-compatible
 provider capture stdout, stderr, exit code, generated files, and generated image
 plots as persisted artifacts. The Octave-compatible provider returns structured
-runtime-unavailable diagnostics when the `octave` binary is absent. They remain
-development providers, not isolated production sandboxes.
+runtime-unavailable diagnostics when the `octave` binary is absent. Local
+execution results now persist timeout/memory limit metadata plus no-secret
+environment/policy metadata for language, entrypoint, input file counts/bytes,
+provider runtime, local runtime availability/details, temporary workdir
+isolation, and the current lack of network-policy enforcement. Unix child
+processes receive address-space and CPU-time limits where supported. Input files
+and entrypoints are constrained to the per-run workdir, and symlink or
+out-of-workdir outputs are not exported as artifacts. File count, per-file bytes,
+and total input bytes are capped before materialization. They remain development
+providers, not isolated production sandboxes.
+`CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE` now expose a no-key Docker
+sandbox readiness surface through admin status, so operators can see whether a
+future container backend is configured and whether Docker is accessible to the
+runtime user without granting access silently or running a container.
 
 Artifact progress: generated local artifacts can be listed and downloaded
 through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
@@ -335,7 +433,7 @@ Recommended path:
 - Add real MATLAB only if licensing, server resources, and isolation are
   deliberately solved.
 - Capture stdout, stderr, exit code, generated files, and plots as artifacts.
-- Enforce quotas, timeouts, network policy, and per-session workspaces.
+- Enforce quotas, network policy, and per-session workspaces.
 
 Cloudflare Sandbox SDK is relevant for hosted isolated execution because it
 provides container-backed sandbox instances, command execution, files, and
@@ -360,9 +458,23 @@ operational decisions are made.
 
 Current progress: the first no-key admin foundation exists through
 `GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
-corpus, artifact, runtime-directory, public model, and disabled-provider/product
-switch state without exposing API keys or requiring real identity/billing
-systems.
+corpus, artifact, recent `/query` provider-failure events, estimated no-secret
+query usage, provider token usage when returned by the upstream response,
+runtime-directory, public model, and disabled-provider/product switch state
+without exposing API keys or requiring real identity/billing systems. `GET
+/admin/status/report` and the Streamlit status panel can export
+that same no-secret snapshot as a Markdown operations report for handoff or
+offline review. `POST /query/report` exports an answer, citation validation, and
+retrieved context refs as a Markdown research report. `GET
+/corpus/profiles/{profile_id}/report` exports one saved local corpus profile's
+read-only status as a Markdown handoff report. `GET /admin/retention`
+previews upload/artifact files matching age-based retention thresholds without
+deleting them, and the Streamlit admin panel exposes the same preview with local
+day/limit controls. `GET /admin/events` lists no-secret runtime events with
+local `kind`, `code`, and `q` filters, and the Streamlit admin panel exposes the
+same event viewer. Estimated query usage remains the fallback when provider
+usage data is absent; provider-specific pricing, billing attribution, and user
+cost dashboards remain blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
@@ -372,9 +484,9 @@ systems.
    source of truth for platformization work.
 4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
    disabled provider switches.
-5. Replace the local restart-recovery queue bridge with distributed
-   worker/storage foundations, then add true running cancellation and richer
-   timeout policy before enabling real external image generation or code
+5. Extend the local restart-recovery/lease/worker-service bridge into a
+   distributed worker/storage foundation, then add true running cancellation and
+   richer timeout policy before enabling real external image generation or code
    execution providers.
 
 ## Open Decisions
