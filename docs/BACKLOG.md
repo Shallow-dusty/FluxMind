@@ -330,9 +330,10 @@ Status: local request/result plumbing, Python execution, Octave-compatible
 execution interface, file/plot artifact capture, workdir path containment,
 input file size/count limits, no-secret execution environment/policy metadata,
 Unix child-process memory/CPU limit metadata/enforcement, and Docker sandbox
-readiness reporting implemented; real hosted execution, enabled Docker sandbox
-execution, and MATLAB activation remain disabled until infrastructure and
-license/account decisions are made
+readiness reporting plus Streamlit control-engineering execution templates
+implemented; real hosted execution, enabled Docker sandbox execution, and MATLAB
+activation remain disabled until infrastructure and license/account decisions
+are made
 
 - `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
   contract for development-only Python snippets.
@@ -359,6 +360,9 @@ license/account decisions are made
 - `POST /jobs/code/octave-local` and `POST /jobs/async/code/octave-local`
   expose immediate and queued no-key Octave-compatible job flows.
 - Streamlit includes a local Octave-compatible job panel.
+- Streamlit includes editable no-key Python and Octave-compatible templates for
+  SMC reaching-law and PMSM current-response examples that produce local
+  artifacts through the existing providers.
 - Job records persist execution artifacts alongside the execution result.
 - Still planned: actually run code in an isolated service/container with
   filesystem and network policy plus stronger production-grade resource limits.
@@ -369,6 +373,8 @@ Acceptance:
   workdir with path-containment checks, but it is not a production sandbox.
 - Octave-compatible requests have stable API/UI/job behavior without enabling
   real MATLAB licensing.
+- Local control-engineering examples can be launched without writing a blank
+  script while still running through the same development providers.
 - Execution results are reproducible from stored input files and environment
   metadata.
 - Docker/container execution readiness can be inspected without granting Docker

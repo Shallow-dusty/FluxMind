@@ -2,6 +2,7 @@ from pathlib import Path
 import hashlib
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
+from src.execution_templates import PYTHON_EXECUTION_TEMPLATES
 from src.providers import (
     LocalArtifactStore,
     LocalOctaveExecutionProvider,
@@ -139,6 +140,27 @@ def test_local_python_execution_provider_captures_generated_files(tmp_path: Path
     assert result.artifacts[1].metadata["checksum_sha256"] == hashlib.sha256(b"done").hexdigest()
     assert result.artifacts[1].metadata["byte_count"] == "4"
     assert Path(result.artifacts[1].uri.removeprefix("file://")).read_text(encoding="utf-8") == "done"
+
+
+def test_local_python_execution_provider_runs_smc_template(tmp_path: Path):
+    provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": PYTHON_EXECUTION_TEMPLATES["smc_reaching_law"]},
+        )
+    )
+
+    assert result.success is True
+    assert "wrote smc_reaching_law.csv and smc_reaching_law.svg" in result.stdout
+    assert [artifact.title for artifact in result.artifacts] == [
+        "smc_reaching_law.csv",
+        "smc_reaching_law.svg",
+    ]
+    assert result.artifacts[0].kind == "text"
+    assert result.artifacts[1].kind == "plot"
 
 
 def test_local_python_execution_provider_rejects_file_path_escape():

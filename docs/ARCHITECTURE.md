@@ -283,7 +283,10 @@ outputs are returned as `file` artifacts. Request files and entrypoints must sta
 inside the per-run workdir, and symlink or out-of-workdir outputs are not exported
 as artifacts. This gives the UI/API/job model a concrete artifact shape for
 generated plots and files before any hosted sandbox or real MATLAB backend is
-activated.
+activated. Streamlit layers editable no-key execution templates on top of the
+same provider path: a Python SMC reaching-law example writes CSV/SVG artifacts,
+and an Octave-compatible PMSM current-response example writes CSV output when a
+local Octave runtime exists.
 
 FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
 mock diagrams, plots, and execution files can be listed and exported without

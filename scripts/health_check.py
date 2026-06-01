@@ -106,6 +106,7 @@ def main() -> int:
         "src/runtime.py",
         "src/metadata.py",
         "src/evaluation.py",
+        "src/execution_templates.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
         "scripts/run_job_worker.py",
@@ -130,6 +131,8 @@ def main() -> int:
     check("job_search" in app_source and "job_status_filter" in app_source, "Streamlit job filters installed", failures)
     check("worker_leases" in app_source, "Streamlit worker lease status installed", failures)
     check("mock_image_template" in app_source, "Streamlit diagram template selector installed", failures)
+    check("PYTHON_EXECUTION_TEMPLATES" in app_source and "python_execution_template" in app_source, "Streamlit Python execution templates installed", failures)
+    check("OCTAVE_EXECUTION_TEMPLATES" in app_source and "octave_execution_template" in app_source, "Streamlit Octave execution templates installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
@@ -200,6 +203,8 @@ def main() -> int:
     check("--forever" in worker_source and "run_polling" in worker_source, "durable worker long-running CLI mode installed", failures)
     worker_unit = (PROJECT_ROOT / "deploy" / "systemd" / "fluxmind-worker.service").read_text(encoding="utf-8")
     check("scripts/run_job_worker.py --forever" in worker_unit and "NoNewPrivileges=true" in worker_unit, "durable worker systemd unit installed", failures)
+    execution_template_source = (PROJECT_ROOT / "src" / "execution_templates.py").read_text(encoding="utf-8")
+    check("smc_reaching_law" in execution_template_source and "pmsm_current_decay" in execution_template_source, "local execution templates installed", failures)
     ingestion_source = (PROJECT_ROOT / "src" / "ingestion.py").read_text(encoding="utf-8")
     check("IngestionCancelled" in ingestion_source and "_raise_if_cancelled" in ingestion_source, "cancellable ingestion checkpoints installed", failures)
     check("extract_pdf_bibliographic_metadata" in ingestion_source and "paper_metadata_entries" in ingestion_source, "uploaded PDF metadata extraction installed", failures)
@@ -330,6 +335,10 @@ def main() -> int:
             "grep -q 'job_search' /opt/fluxmind/app.py; "
             "grep -q 'worker_leases' /opt/fluxmind/app.py; "
             "grep -q 'mock_image_template' /opt/fluxmind/app.py; "
+            "grep -q 'PYTHON_EXECUTION_TEMPLATES' /opt/fluxmind/app.py; "
+            "grep -q 'OCTAVE_EXECUTION_TEMPLATES' /opt/fluxmind/app.py; "
+            "grep -q 'smc_reaching_law' /opt/fluxmind/src/execution_templates.py; "
+            "grep -q 'pmsm_current_decay' /opt/fluxmind/src/execution_templates.py; "
             "grep -q 'render_retention_preview' /opt/fluxmind/app.py; "
             "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "

@@ -22,6 +22,7 @@ from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.artifacts import LocalArtifactRegistry, local_artifact_path
 from src.chain import query_stream
 from src.config import MAX_UPLOAD_SIZE_MB, PAPERS_LIBRARY_DIR, PROJECT_ROOT
+from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
 from src.ingestion import (
     build_vector_store,
     discover_pdfs,
@@ -126,12 +127,19 @@ I18N = {
         "run_mock_image": "运行图示任务",
         "python_job": "运行本地 Python",
         "python_entrypoint": "入口文件",
+        "python_template": "Python 模板",
         "python_files": "文件内容",
         "run_python_job": "运行 Python 任务",
         "octave_job": "运行本地 Octave 兼容脚本",
         "octave_entrypoint": "Octave 入口文件",
+        "octave_template": "Octave 模板",
         "octave_files": "Octave 文件内容",
         "run_octave_job": "运行 Octave 任务",
+        "execution_templates": {
+            "hello": "最小输出",
+            "smc_reaching_law": "SMC 趋近律响应",
+            "pmsm_current_decay": "PMSM 电流响应",
+        },
         "answer_mode": "回答模式",
         "answer_modes": {
             "explanation": "解释",
@@ -243,12 +251,19 @@ I18N = {
         "run_mock_image": "Run Image Job",
         "python_job": "Run Local Python",
         "python_entrypoint": "Entrypoint",
+        "python_template": "Python template",
         "python_files": "File contents",
         "run_python_job": "Run Python Job",
         "octave_job": "Run Local Octave-Compatible Script",
         "octave_entrypoint": "Octave entrypoint",
+        "octave_template": "Octave template",
         "octave_files": "Octave file contents",
         "run_octave_job": "Run Octave Job",
+        "execution_templates": {
+            "hello": "Minimal output",
+            "smc_reaching_law": "SMC reaching-law response",
+            "pmsm_current_decay": "PMSM current response",
+        },
         "answer_mode": "Answer Mode",
         "answer_modes": {
             "explanation": "Explanation",
@@ -830,6 +845,12 @@ with st.sidebar:
             render_job_result(job)
 
     with st.expander(text["python_job"]):
+        python_template = st.selectbox(
+            text["python_template"],
+            options=list(PYTHON_EXECUTION_TEMPLATES),
+            format_func=lambda value: text["execution_templates"][value],
+            key="python_execution_template",
+        )
         entrypoint = st.text_input(
             text["python_entrypoint"],
             value="main.py",
@@ -837,9 +858,9 @@ with st.sidebar:
         )
         code = st.text_area(
             text["python_files"],
-            value="print('fluxmind job ok')",
-            key="python_job_code",
-            height=120,
+            value=PYTHON_EXECUTION_TEMPLATES[python_template],
+            key=f"python_job_code_{python_template}",
+            height=220,
         )
         if st.button(text["run_python_job"], use_container_width=True):
             job = get_async_job_manager().enqueue_local_python(
@@ -853,6 +874,12 @@ with st.sidebar:
             render_job_result(job)
 
     with st.expander(text["octave_job"]):
+        octave_template = st.selectbox(
+            text["octave_template"],
+            options=list(OCTAVE_EXECUTION_TEMPLATES),
+            format_func=lambda value: text["execution_templates"][value],
+            key="octave_execution_template",
+        )
         octave_entrypoint = st.text_input(
             text["octave_entrypoint"],
             value="main.m",
@@ -860,9 +887,9 @@ with st.sidebar:
         )
         octave_code = st.text_area(
             text["octave_files"],
-            value="disp('fluxmind octave job ok');",
-            key="octave_job_code",
-            height=120,
+            value=OCTAVE_EXECUTION_TEMPLATES[octave_template],
+            key=f"octave_job_code_{octave_template}",
+            height=180,
         )
         if st.button(text["run_octave_job"], use_container_width=True):
             job = get_async_job_manager().enqueue_local_octave(

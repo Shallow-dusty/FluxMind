@@ -416,7 +416,9 @@ processes receive address-space and CPU-time limits where supported. Input files
 and entrypoints are constrained to the per-run workdir, and symlink or
 out-of-workdir outputs are not exported as artifacts. File count, per-file bytes,
 and total input bytes are capped before materialization. They remain development
-providers, not isolated production sandboxes.
+providers, not isolated production sandboxes. The Streamlit job panel now offers
+editable local Python and Octave-compatible control-engineering templates, so
+SMC/PMSM example jobs can produce artifacts without requiring a blank script.
 `CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE` now expose a no-key Docker
 sandbox readiness surface through admin status, so operators can see whether a
 future container backend is configured and whether Docker is accessible to the

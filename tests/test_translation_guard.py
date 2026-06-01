@@ -22,6 +22,10 @@ def test_streamlit_local_job_panel_is_installed():
     assert "enqueue_mock_image" in APP_SOURCE
     assert "mock_image_template" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
+    assert "PYTHON_EXECUTION_TEMPLATES" in APP_SOURCE
+    assert "python_execution_template" in APP_SOURCE
+    assert "OCTAVE_EXECUTION_TEMPLATES" in APP_SOURCE
+    assert "octave_execution_template" in APP_SOURCE
     assert "cancel_job" in APP_SOURCE
     assert "job_search" in APP_SOURCE
     assert "job_status_filter" in APP_SOURCE

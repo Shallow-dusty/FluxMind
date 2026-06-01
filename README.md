@@ -149,7 +149,9 @@ receive address-space and CPU-time limits where supported. Execution results
 persist no-secret reproducibility metadata for the language, entrypoint, input
 file counts/bytes, provider runtime, local runtime version, temporary workdir
 isolation, and the current fact that network policy is not enforced by these
-development providers. `CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE`
+development providers. Streamlit includes local Python and Octave-compatible
+control-engineering templates for SMC/PMSM examples so artifact-producing jobs
+can be started without writing a blank script from scratch. `CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE`
 define a future no-key Docker sandbox backend, and admin status reports whether
 that backend is configured and accessible by the runtime user. Real external
 image providers, hosted sandboxes, MATLAB
