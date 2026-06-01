@@ -20,6 +20,7 @@ def test_streamlit_local_job_panel_is_installed():
     assert "get_async_job_manager" in APP_SOURCE
     assert "enqueue_index_rebuild(selected)" in APP_SOURCE
     assert "enqueue_mock_image" in APP_SOURCE
+    assert "mock_image_template" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
     assert "cancel_job" in APP_SOURCE
     assert "job_search" in APP_SOURCE

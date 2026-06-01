@@ -27,6 +27,7 @@ def test_capability_dataclasses_are_provider_neutral():
     )
 
     assert image_request.style == "engineering-diagram"
+    assert image_request.diagram_template == "generic"
     assert execution_request.timeout_s == 30
     assert execution_result.success is True
     assert execution_result.artifacts[0].uri == "artifact://diagram.png"

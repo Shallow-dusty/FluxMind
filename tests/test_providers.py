@@ -14,15 +14,41 @@ from src.providers import (
 def test_mock_image_provider_writes_svg_artifact(tmp_path: Path):
     provider = MockImageGenerationProvider(LocalArtifactStore(tmp_path))
 
-    artifact = provider.generate(ImageGenerationRequest(prompt="SMC observer"))
+    artifact = provider.generate(
+        ImageGenerationRequest(
+            prompt="SMC observer",
+            diagram_template="sliding-mode-observer",
+        )
+    )
 
     assert artifact.kind == "image"
     assert artifact.mime_type == "image/svg+xml"
     assert artifact.metadata["provider"] == "local"
+    assert artifact.metadata["diagram_template"] == "sliding-mode-observer"
     artifact_path = Path(artifact.uri.removeprefix("file://"))
     assert artifact_path.exists()
+    svg = artifact_path.read_text(encoding="utf-8")
+    assert "Sliding-Mode Observer" in svg
+    assert "estimated states feedback" in svg
     assert artifact.metadata["checksum_sha256"] == hashlib.sha256(artifact_path.read_bytes()).hexdigest()
     assert artifact.metadata["byte_count"] == str(artifact_path.stat().st_size)
+
+
+def test_mock_image_provider_supports_paper_redraft_template(tmp_path: Path):
+    provider = MockImageGenerationProvider(LocalArtifactStore(tmp_path))
+
+    artifact = provider.generate(
+        ImageGenerationRequest(
+            prompt="Redraft the response curve from Fig. 2",
+            diagram_template="paper-figure-redraft",
+        )
+    )
+
+    artifact_path = Path(artifact.uri.removeprefix("file://"))
+    svg = artifact_path.read_text(encoding="utf-8")
+    assert artifact.metadata["diagram_template"] == "paper-figure-redraft"
+    assert "Paper Figure Redraft" in svg
+    assert "redraft" in svg
 
 
 def test_local_python_execution_provider_runs_snippet():

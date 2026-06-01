@@ -296,8 +296,11 @@ recent artifacts with stable IDs, metadata, local filters, and download buttons.
 `GET /artifacts` and the sidebar gallery support local `q`, `kind`, and
 `job_kind` filters for narrowing generated diagrams, plots, and files. Local
 artifact records include byte counts and SHA-256 checksums, and mock diagram
-artifacts layer prompt, style, size, source references, provider/model, and
-zero-cost metadata on top. Admin status verifies current local files against those
+artifacts layer prompt, style, local SVG template, size, source references,
+provider/model, and zero-cost metadata on top. The local templates cover generic
+engineering diagrams, sliding-mode observers, PMSM control loops, and
+paper-figure redraft scaffolds before any real image provider is activated.
+Admin status verifies current local files against those
 checksums and byte counts without reading artifact contents into user-facing
 responses, giving later real image providers a concrete metadata and integrity
 shape without using external keys.

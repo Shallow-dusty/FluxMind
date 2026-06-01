@@ -100,6 +100,7 @@ class MockImageJobRequest(BaseModel):
     prompt: str = Field(..., description="Diagram prompt")
     style: str = Field(default="engineering-diagram")
     size: str = Field(default="1024x1024")
+    diagram_template: str = Field(default="generic", description="Local SVG template")
     reference_uris: list[str] = Field(default_factory=list)
     queue_timeout_s: int | None = Field(default=None, ge=1, le=86400, description="Optional async queue deadline in seconds")
 
@@ -1007,6 +1008,7 @@ def create_mock_image_job(
             prompt=req.prompt,
             style=req.style,
             size=req.size,
+            diagram_template=req.diagram_template,
             reference_uris=req.reference_uris,
         ),
         request_id=request_id,
@@ -1032,6 +1034,7 @@ def enqueue_mock_image_job(
             prompt=req.prompt,
             style=req.style,
             size=req.size,
+            diagram_template=req.diagram_template,
             reference_uris=req.reference_uris,
         ),
         request_id=request_id,

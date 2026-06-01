@@ -296,6 +296,7 @@ def format_artifact_references(
         metadata = artifact.metadata or {}
         prompt = str(metadata.get("prompt") or "").strip()
         style = str(metadata.get("style") or "").strip()
+        diagram_template = str(metadata.get("diagram_template") or "").strip()
         source_refs = str(metadata.get("reference_uris") or "").strip()
         details = [
             f"kind={artifact.kind}",
@@ -306,6 +307,8 @@ def format_artifact_references(
             details.append(f"title={artifact.title}")
         if style:
             details.append(f"style={style}")
+        if diagram_template:
+            details.append(f"template={diagram_template}")
         if source_refs:
             details.append(f"references={source_refs}")
         if prompt:

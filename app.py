@@ -122,6 +122,7 @@ I18N = {
         "run_index_job": "以任务重建索引",
         "mock_image_job": "生成本地 SVG 图",
         "mock_image_prompt": "图示提示词",
+        "mock_image_template": "图示模板",
         "run_mock_image": "运行图示任务",
         "python_job": "运行本地 Python",
         "python_entrypoint": "入口文件",
@@ -238,6 +239,7 @@ I18N = {
         "run_index_job": "Rebuild Index as Job",
         "mock_image_job": "Generate Local SVG",
         "mock_image_prompt": "Diagram prompt",
+        "mock_image_template": "Diagram template",
         "run_mock_image": "Run Image Job",
         "python_job": "Run Local Python",
         "python_entrypoint": "Entrypoint",
@@ -802,6 +804,16 @@ with st.sidebar:
     st.divider()
     st.subheader(f"🧪 {text['jobs']}")
     with st.expander(text["mock_image_job"]):
+        image_template = st.selectbox(
+            text["mock_image_template"],
+            options=[
+                "generic",
+                "sliding-mode-observer",
+                "pmsm-control-loop",
+                "paper-figure-redraft",
+            ],
+            key="mock_image_template",
+        )
         image_prompt = st.text_area(
             text["mock_image_prompt"],
             value="Draw a sliding-mode observer block diagram",
@@ -810,7 +822,10 @@ with st.sidebar:
         )
         if st.button(text["run_mock_image"], use_container_width=True):
             job = get_async_job_manager().enqueue_mock_image(
-                request=ImageGenerationRequest(prompt=image_prompt)
+                request=ImageGenerationRequest(
+                    prompt=image_prompt,
+                    diagram_template=image_template,
+                )
             )
             render_job_result(job)
 

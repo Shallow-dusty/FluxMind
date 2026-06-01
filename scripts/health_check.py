@@ -129,6 +129,7 @@ def main() -> int:
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
     check("job_search" in app_source and "job_status_filter" in app_source, "Streamlit job filters installed", failures)
     check("worker_leases" in app_source, "Streamlit worker lease status installed", failures)
+    check("mock_image_template" in app_source, "Streamlit diagram template selector installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
@@ -206,6 +207,7 @@ def main() -> int:
     check("_find_existing_pdf_by_checksum" in ingestion_source and "_sha256_bytes" in ingestion_source, "uploaded PDF checksum dedup installed", failures)
     providers_source = (PROJECT_ROOT / "src" / "providers.py").read_text(encoding="utf-8")
     check("LocalOctaveExecutionProvider" in providers_source and "gnu-octave-local" in providers_source, "local Octave provider installed", failures)
+    check("sliding-mode-observer" in providers_source and "paper-figure-redraft" in providers_source, "local diagram templates installed", failures)
     check("docker_execution_status" in providers_source and "docker_permission_denied" in providers_source, "docker execution readiness status installed", failures)
     check("execution_limit_preexec" in providers_source and "cpu_limit_enforced" in providers_source, "local execution CPU/memory resource metadata installed", failures)
     check("provider_runtime" in providers_source and "python_version" in providers_source, "local execution environment metadata installed", failures)
@@ -327,6 +329,7 @@ def main() -> int:
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
             "grep -q 'job_search' /opt/fluxmind/app.py; "
             "grep -q 'worker_leases' /opt/fluxmind/app.py; "
+            "grep -q 'mock_image_template' /opt/fluxmind/app.py; "
             "grep -q 'render_retention_preview' /opt/fluxmind/app.py; "
             "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
@@ -410,6 +413,8 @@ def main() -> int:
             "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
             "grep -q 'worker_leases' /opt/fluxmind/src/admin.py; "
             "grep -q 'LocalOctaveExecutionProvider' /opt/fluxmind/src/providers.py; "
+            "grep -q 'sliding-mode-observer' /opt/fluxmind/src/providers.py; "
+            "grep -q 'paper-figure-redraft' /opt/fluxmind/src/providers.py; "
             "grep -q 'docker_execution_status' /opt/fluxmind/src/providers.py; "
             "grep -q 'execution_limit_preexec' /opt/fluxmind/src/providers.py; "
             "grep -q 'cpu_limit_enforced' /opt/fluxmind/src/providers.py; "

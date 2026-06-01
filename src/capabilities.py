@@ -12,6 +12,12 @@ from typing import Literal, Protocol
 
 ArtifactKind = Literal["image", "plot", "file", "text"]
 CodeLanguage = Literal["python", "octave", "matlab"]
+DiagramTemplate = Literal[
+    "generic",
+    "sliding-mode-observer",
+    "pmsm-control-loop",
+    "paper-figure-redraft",
+]
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,7 @@ class ImageGenerationRequest:
     prompt: str
     style: str = "engineering-diagram"
     size: str = "1024x1024"
+    diagram_template: DiagramTemplate = "generic"
     reference_uris: list[str] = field(default_factory=list)
 
 

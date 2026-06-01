@@ -378,14 +378,17 @@ Initial use cases should be engineering-specific:
 - Simulation result plots generated from code outputs.
 
 Current progress: mock diagram and execution artifacts store byte counts and
-SHA-256 checksums, while diagram artifacts also store prompt, style, size,
-source references, provider/model, and zero-cost metadata. Artifact metadata is
-mirrored into local SQLite as a current-state index, and admin status reports
-artifact integrity counts for ok/missing/unchecked/mismatched local files. The
-Streamlit artifact gallery exposes stable artifact IDs, metadata, local filters,
-and downloads, and `GET /artifacts` supports local `q`, `kind`, and `job_kind`
-filters for generated diagrams, plots, and files. RAG prompts can include recent
-generated diagrams, plots, and files as
+SHA-256 checksums, while diagram artifacts also store prompt, style, local SVG
+template, size, source references, provider/model, and zero-cost metadata. The
+no-key local SVG templates now cover generic engineering diagrams,
+sliding-mode-observer blocks, PMSM control loops, and paper-figure redraft
+scaffolds. Artifact metadata is mirrored into local SQLite as a current-state
+index, and admin status reports artifact integrity counts for
+ok/missing/unchecked/mismatched local files. The Streamlit artifact gallery
+exposes stable artifact IDs, metadata, local filters, and downloads, and
+`GET /artifacts` supports local `q`, `kind`, and `job_kind` filters for
+generated diagrams, plots, and files. RAG prompts can include recent generated
+diagrams, plots, and files as
 `[Artifact:<id>]` references.
 
 OpenAI's current image docs separate simple Image API generation/edits from

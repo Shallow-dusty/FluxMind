@@ -1140,7 +1140,7 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     client = TestClient(api.app)
     response = client.post(
         "/jobs/image/mock",
-        json={"prompt": "Draw an SMC observer"},
+        json={"prompt": "Draw an SMC observer", "diagram_template": "sliding-mode-observer"},
         headers={"X-Request-ID": "req-image"},
     )
 
@@ -1151,6 +1151,7 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert job["request_id"] == "req-image"
     assert job["artifacts"][0]["mime_type"] == "image/svg+xml"
     assert job["artifacts"][0]["metadata"]["prompt"] == "Draw an SMC observer"
+    assert job["artifacts"][0]["metadata"]["diagram_template"] == "sliding-mode-observer"
     assert job["artifacts"][0]["metadata"]["cost_estimate_usd"] == "0"
     assert [entry["status"] for entry in job["logs"]] == ["running", "succeeded"]
 

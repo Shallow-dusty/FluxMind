@@ -319,7 +319,7 @@ class LocalArtifactStore:
 
 
 class MockImageGenerationProvider(ImageGenerationProvider):
-    """Create deterministic SVG placeholder diagrams without external keys."""
+    """Create deterministic SVG engineering diagrams without external keys."""
 
     def __init__(self, store: LocalArtifactStore | None = None):
         self.store = store or LocalArtifactStore()
@@ -327,17 +327,20 @@ class MockImageGenerationProvider(ImageGenerationProvider):
     def generate(self, request: ImageGenerationRequest) -> GeneratedArtifact:
         safe_prompt = html.escape(request.prompt[:240])
         safe_style = html.escape(request.style)
+        template = request.diagram_template if request.diagram_template in {
+            "generic",
+            "sliding-mode-observer",
+            "pmsm-control-loop",
+            "paper-figure-redraft",
+        } else "generic"
+        title, body = self._template_svg_body(template)
         svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <rect width="1024" height="1024" fill="#f8fafc"/>
-  <rect x="96" y="152" width="832" height="720" rx="24" fill="#ffffff" stroke="#1f2937" stroke-width="4"/>
-  <text x="512" y="244" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" fill="#111827">FluxMind Diagram Stub</text>
+  <rect x="96" y="128" width="832" height="744" rx="20" fill="#ffffff" stroke="#1f2937" stroke-width="4"/>
+  <text x="512" y="210" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#111827">{title}</text>
   <text x="512" y="314" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#4b5563">style: {safe_style}</text>
-  <rect x="192" y="424" width="220" height="112" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
-  <rect x="604" y="424" width="220" height="112" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
-  <path d="M420 480 H596" stroke="#111827" stroke-width="6" marker-end="url(#arrow)"/>
-  <text x="302" y="492" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#1e3a8a">Input</text>
-  <text x="714" y="492" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#14532d">Observer</text>
-  <text x="512" y="668" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#111827">{safe_prompt}</text>
+  {body}
+  <text x="512" y="812" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#111827">{safe_prompt}</text>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
       <path d="M0,0 L0,6 L9,3 z" fill="#111827"/>
@@ -345,7 +348,7 @@ class MockImageGenerationProvider(ImageGenerationProvider):
   </defs>
 </svg>
 """
-        digest = hashlib.sha256(f"{request.style}\n{request.prompt}".encode()).hexdigest()[:12]
+        digest = hashlib.sha256(f"{template}\n{request.style}\n{request.prompt}".encode()).hexdigest()[:12]
         name = f"diagram-{digest}.svg"
         artifact = self.store.write_text(f"mock-images/{name}", svg, "image/svg+xml")
         return GeneratedArtifact(
@@ -359,9 +362,74 @@ class MockImageGenerationProvider(ImageGenerationProvider):
                 "prompt": request.prompt,
                 "style": request.style,
                 "size": request.size,
+                "diagram_template": template,
                 "reference_uris": json.dumps(request.reference_uris, ensure_ascii=False),
                 "cost_estimate_usd": "0",
             },
+        )
+
+    @staticmethod
+    def _template_svg_body(template: str) -> tuple[str, str]:
+        if template == "sliding-mode-observer":
+            return (
+                "Sliding-Mode Observer",
+                """
+  <rect x="152" y="420" width="170" height="96" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+  <text x="237" y="477" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#1e3a8a">Plant</text>
+  <rect x="424" y="420" width="176" height="96" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+  <text x="512" y="456" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#075985">Sliding</text>
+  <text x="512" y="484" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#075985">Surface</text>
+  <rect x="704" y="420" width="168" height="96" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+  <text x="788" y="477" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#14532d">Observer</text>
+  <path d="M324 468 H416" stroke="#111827" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M604 468 H696" stroke="#111827" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M788 520 C788 650 237 650 237 522" fill="none" stroke="#7c3aed" stroke-width="5" marker-end="url(#arrow)"/>
+  <text x="512" y="630" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#5b21b6">estimated states feedback</text>
+""",
+            )
+        if template == "pmsm-control-loop":
+            return (
+                "PMSM Control Loop",
+                """
+  <rect x="132" y="405" width="155" height="96" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="3"/>
+  <text x="210" y="461" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#92400e">Reference</text>
+  <circle cx="360" cy="453" r="48" fill="#ffffff" stroke="#374151" stroke-width="3"/>
+  <text x="360" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#111827">Σ</text>
+  <rect x="456" y="405" width="160" height="96" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+  <text x="536" y="461" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#1e3a8a">SMC</text>
+  <rect x="704" y="405" width="150" height="96" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+  <text x="779" y="461" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#14532d">PMSM</text>
+  <path d="M288 453 H306" stroke="#111827" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M408 453 H448" stroke="#111827" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M620 453 H696" stroke="#111827" stroke-width="5" marker-end="url(#arrow)"/>
+  <path d="M780 506 C780 656 360 656 360 507" fill="none" stroke="#7c3aed" stroke-width="5" marker-end="url(#arrow)"/>
+  <text x="552" y="637" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#5b21b6">speed/current feedback</text>
+""",
+            )
+        if template == "paper-figure-redraft":
+            return (
+                "Paper Figure Redraft",
+                """
+  <rect x="158" y="390" width="708" height="272" rx="12" fill="#f9fafb" stroke="#374151" stroke-width="3"/>
+  <path d="M205 604 C300 478 384 560 468 450 C552 340 626 494 792 418" fill="none" stroke="#2563eb" stroke-width="6"/>
+  <path d="M210 610 H812" stroke="#111827" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M210 610 V420" stroke="#111827" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="818" y="646" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#111827">time</text>
+  <text x="250" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#111827">state</text>
+  <rect x="626" y="552" width="178" height="60" rx="8" fill="#ffffff" stroke="#6b7280" stroke-width="2"/>
+  <path d="M646 582 H704" stroke="#2563eb" stroke-width="5"/>
+  <text x="728" y="589" font-family="Arial, sans-serif" font-size="18" fill="#111827">redraft</text>
+""",
+            )
+        return (
+            "FluxMind Engineering Diagram",
+            """
+  <rect x="192" y="424" width="220" height="112" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="3"/>
+  <rect x="604" y="424" width="220" height="112" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+  <path d="M420 480 H596" stroke="#111827" stroke-width="6" marker-end="url(#arrow)"/>
+  <text x="302" y="492" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#1e3a8a">Input</text>
+  <text x="714" y="492" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#14532d">Observer</text>
+""",
         )
 
 

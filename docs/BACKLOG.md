@@ -281,13 +281,16 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: provider-neutral plumbing, no-key mock provider, local artifact export,
-artifact metadata with SQLite current-state mirror, and RAG artifact references
-implemented; real image-provider activation remains disabled until a key/account
-is configured
+Status: provider-neutral plumbing, no-key mock provider, local SVG engineering
+diagram templates, local artifact export, artifact metadata with SQLite
+current-state mirror, and RAG artifact references implemented; real
+image-provider activation remains disabled until a key/account is configured
 
 - `MockImageGenerationProvider` implements the `ImageGenerationProvider`
   contract with deterministic local SVG output.
+- Local SVG templates cover generic engineering diagrams,
+  sliding-mode-observer blocks, PMSM control loops, and paper-figure redraft
+  scaffolds without external image providers.
 - `GET /artifacts` lists generated local artifacts from persisted jobs.
 - `GET /artifacts/{artifact_id}` exports local file artifacts by stable ID.
 - `GET /artifacts` supports local `q`, `kind`, and `job_kind` filters for
@@ -299,17 +302,18 @@ is configured
 - Streamlit sidebar includes a local artifact gallery with stable IDs,
   provider-neutral metadata, local filters, and download buttons.
 - Mock diagrams and execution artifacts store byte counts and SHA-256 checksums
-  in provider-neutral metadata, with prompt/style/source-reference/model/cost
-  fields layered on diagram artifacts without external keys.
+  in provider-neutral metadata, with prompt/style/template/source-reference/
+  model/cost fields layered on diagram artifacts without external keys.
 - RAG prompts include recent generated artifacts as stable `[Artifact:<id>]`
   references so answers can point to local diagrams, plots, or files.
-- Start with engineering diagrams and paper-figure redrafts.
 - Keep generated images as artifacts rather than inline chat-only blobs.
 
 Acceptance:
 
 - A request can generate an artifact record with a stable URI.
 - Generated mock diagrams produce persisted artifact URIs.
+- Generated mock diagrams can use engineering-specific templates instead of only
+  a generic placeholder.
 - Generated diagrams and execution artifacts can be listed and exported.
 - Generated local artifacts can be downloaded from Streamlit.
 - Generated local artifact metadata can be inspected without scanning raw job

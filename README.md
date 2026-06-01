@@ -288,8 +288,10 @@ panel exposes the same retention preview with local day/limit controls. `GET
 /admin/events` lists no-secret runtime events with local `kind`, `code`, and
 `q` filters, and the Streamlit admin panel exposes the same event inspection
 controls.
-Generated mock diagrams and execution outputs include no-key metadata such as
-prompt, style, size, source references, model/provider, and zero-cost estimates.
+Generated mock diagrams can use local SVG templates for generic engineering
+diagrams, sliding-mode observers, PMSM control loops, and paper-figure redrafts.
+Diagram and execution outputs include no-key metadata such as prompt, style,
+template, size, source references, model/provider, and zero-cost estimates.
 Artifact metadata is mirrored into `artifacts/artifacts.sqlite3` as a local
 current-state index while the job history remains the append-only source of
 execution transitions.

@@ -74,6 +74,7 @@ def test_format_artifact_references_exposes_stable_ids(tmp_path: Path, monkeypat
         ImageGenerationRequest(
             prompt="Sliding mode observer block diagram",
             style="control-diagram",
+            diagram_template="sliding-mode-observer",
             reference_uris=["paper://smc#page=3"],
         )
     )
@@ -83,6 +84,7 @@ def test_format_artifact_references_exposes_stable_ids(tmp_path: Path, monkeypat
 
     assert f"[Artifact:{artifacts[0].artifact_id}]" in context
     assert "control-diagram" in context
+    assert "template=sliding-mode-observer" in context
     assert "Sliding mode observer block diagram" in context
     assert "paper://smc#page=3" in context
 
