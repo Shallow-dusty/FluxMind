@@ -144,6 +144,7 @@ def main() -> int:
     check("status_cost_pricing" in app_source, "Streamlit query cost pricing panel installed", failures)
     check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
     check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
+    check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
@@ -159,6 +160,7 @@ def main() -> int:
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
+    check("/admin/runtime-manifest" in api_source and "collect_runtime_backup_manifest" in api_source, "admin runtime manifest route installed", failures)
     check("/admin/retention" in api_source and "collect_retention_preview" in api_source, "admin retention preview route installed", failures)
     check("/admin/events" in api_source and "list_runtime_events" in api_source, "admin runtime events route installed", failures)
     check("/corpus/papers" in api_source, "corpus metadata route installed", failures)

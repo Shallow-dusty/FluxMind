@@ -34,6 +34,7 @@ from src.ingestion import refresh_paper_metadata, set_active_paper_source_paths
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.metadata import ChunkMetadataStore, CorpusProfileStore
 from src.runtime import append_runtime_event, estimate_text_tokens, list_runtime_events, logger, new_request_id, normalize_exception
+from src.storage_manifest import collect_runtime_backup_manifest, format_runtime_backup_manifest_markdown
 
 API_TOKEN = os.getenv("FLUXMIND_API_TOKEN", "")
 logging.basicConfig(level=os.getenv("FLUXMIND_LOG_LEVEL", "INFO"))
@@ -206,6 +207,10 @@ class RetentionPreviewResponse(BaseModel):
 
 class RuntimeEventsResponse(BaseModel):
     events: list[dict] = Field(..., description="Latest no-secret local runtime events")
+
+
+class RuntimeManifestResponse(BaseModel):
+    manifest: dict = Field(..., description="No-secret local runtime backup manifest")
 
 
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
@@ -707,6 +712,31 @@ def admin_status_report(
         report,
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="fluxmind-admin-status.md"'},
+    )
+
+
+@app.get("/admin/runtime-manifest", response_model=RuntimeManifestResponse, summary="Inspect runtime backup manifest")
+def admin_runtime_manifest(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Return a no-secret backup manifest for excluded local runtime state."""
+    verify_api_token(authorization, x_api_key)
+    return RuntimeManifestResponse(manifest=collect_runtime_backup_manifest())
+
+
+@app.get("/admin/runtime-manifest/report", summary="Download runtime backup manifest report")
+def admin_runtime_manifest_report(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Return the no-secret runtime backup manifest as portable Markdown."""
+    verify_api_token(authorization, x_api_key)
+    report = format_runtime_backup_manifest_markdown(collect_runtime_backup_manifest())
+    return PlainTextResponse(
+        report,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="fluxmind-runtime-manifest.md"'},
     )
 
 

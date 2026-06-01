@@ -35,6 +35,7 @@ from src.ingestion import (
 from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.metadata import CorpusProfileStore
 from src.runtime import list_runtime_events, logger, new_request_id, normalize_exception
+from src.storage_manifest import collect_runtime_backup_manifest, format_runtime_backup_manifest_markdown
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -100,6 +101,7 @@ I18N = {
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
         "download_status_report": "下载状态报告",
+        "download_runtime_manifest": "下载运行时备份清单",
         "retention_preview": "保留预览",
         "upload_retention_days": "上传保留天数",
         "artifact_retention_days": "产物保留天数",
@@ -118,6 +120,7 @@ I18N = {
         "status_cost_pricing": "成本估算配置",
         "status_storage": "存储就绪状态",
         "status_storage_inventory": "本地存储盘点",
+        "status_runtime_manifest": "运行时备份清单",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
@@ -225,6 +228,7 @@ I18N = {
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
         "download_status_report": "Download status report",
+        "download_runtime_manifest": "Download runtime manifest",
         "retention_preview": "Retention preview",
         "upload_retention_days": "Upload retention days",
         "artifact_retention_days": "Artifact retention days",
@@ -243,6 +247,7 @@ I18N = {
         "status_cost_pricing": "Cost estimate pricing",
         "status_storage": "Storage readiness",
         "status_storage_inventory": "Local storage inventory",
+        "status_runtime_manifest": "Runtime backup manifest",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
@@ -588,6 +593,19 @@ def render_admin_status() -> None:
     )
     st.caption(text["status_storage_inventory"])
     st.json(storage)
+    runtime_manifest = collect_runtime_backup_manifest()
+    st.caption(text["status_runtime_manifest"])
+    st.json(
+        {
+            "mode": runtime_manifest["mode"],
+            "content_exported": runtime_manifest["content_exported"],
+            "secrets_exported": runtime_manifest["secrets_exported"],
+            "env_file_present": runtime_manifest["env_file_present"],
+            "env_file_content_exported": runtime_manifest["env_file_content_exported"],
+            "total_files": runtime_manifest["total_files"],
+            "total_bytes": runtime_manifest["total_bytes"],
+        }
+    )
     st.caption(text["status_storage_paths"])
     st.json(
         {
@@ -604,6 +622,14 @@ def render_admin_status() -> None:
         mime="text/markdown",
         use_container_width=True,
         key="download_admin_status_report",
+    )
+    st.download_button(
+        text["download_runtime_manifest"],
+        data=format_runtime_backup_manifest_markdown(runtime_manifest).encode("utf-8"),
+        file_name="fluxmind-runtime-manifest.md",
+        mime="text/markdown",
+        use_container_width=True,
+        key="download_runtime_manifest",
     )
 
 

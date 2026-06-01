@@ -1082,6 +1082,59 @@ def test_admin_status_report_endpoint_returns_markdown(monkeypatch):
     assert "api_key" not in response.text.lower()
 
 
+def test_admin_runtime_manifest_endpoint_returns_no_secret_manifest(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    manifest = {
+        "mode": "local_runtime_backup_manifest",
+        "content_exported": False,
+        "secrets_exported": False,
+        "env_file_present": True,
+        "env_file_content_exported": False,
+        "total_files": 2,
+        "total_bytes": 123,
+        "groups": [],
+    }
+    monkeypatch.setattr(api, "collect_runtime_backup_manifest", lambda: manifest)
+
+    client = TestClient(api.app)
+    response = client.get("/admin/runtime-manifest")
+
+    assert response.status_code == 200
+    payload = response.json()["manifest"]
+    assert payload["mode"] == "local_runtime_backup_manifest"
+    assert payload["content_exported"] is False
+    assert payload["secrets_exported"] is False
+    assert payload["env_file_content_exported"] is False
+    assert "api_key" not in str(payload).lower()
+
+
+def test_admin_runtime_manifest_report_endpoint_returns_markdown(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    manifest = {
+        "mode": "local_runtime_backup_manifest",
+        "content_exported": False,
+        "secrets_exported": False,
+        "env_file_present": True,
+        "env_file_content_exported": False,
+        "total_files": 2,
+        "total_bytes": 123,
+        "groups": [],
+    }
+    monkeypatch.setattr(api, "collect_runtime_backup_manifest", lambda: manifest)
+
+    client = TestClient(api.app)
+    response = client.get("/admin/runtime-manifest/report")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert "fluxmind-runtime-manifest.md" in response.headers["content-disposition"]
+    assert "# FluxMind Runtime Backup Manifest" in response.text
+    assert "Secrets exported: false" in response.text
+    assert "api_key" not in response.text.lower()
+
+
 def test_artifact_list_and_download_endpoints(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     artifact_root = tmp_path / "artifacts"
