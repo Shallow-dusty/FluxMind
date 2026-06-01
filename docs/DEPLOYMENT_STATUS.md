@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:32 CST
+Last live check: 2026-06-02 02:36 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `2a599b6` plus the prior
+Last synced source baseline: local checkout through `be45512` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,7 +94,17 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:32 CST after syncing optional no-secret
+Live checks refreshed on 2026-06-02 02:36 CST after syncing worker lease health
+visibility to `/opt/fluxmind`, restarting `fluxmind-api.service`,
+`fluxmind-ui.service`, and `fluxmind-worker.service`, and confirming the
+Cloudflare tunnel stayed active. The first immediate API probe hit the known
+startup warmup window before port `18502` was bound; journal showed uvicorn
+completed model/FAISS warmup and bound the port about 21 seconds after restart.
+The follow-up remote health passed with public UI/API 200, remote source grep
+found `worker_lease_health` and `worker_leases`, and authenticated
+`/admin/status` reported `worker_leases` with `total=1`, `active=0`,
+`expired=0`, `workers=['fluxmind-worker-1']`, and `latest=1`. Live checks
+refreshed on 2026-06-02 02:32 CST after syncing optional no-secret
 query-cost pricing estimates to `/opt/fluxmind`, restarting
 `fluxmind-api.service` and `fluxmind-ui.service`, and confirming
 `fluxmind-worker.service` plus the Cloudflare tunnel stayed active. Remote
@@ -303,6 +313,7 @@ durable worker cancellation present in /opt/fluxmind/src/jobs.py; remote isolate
 worker systemd service   enabled and active; ExecStart uses scripts/run_job_worker.py --forever --worker-id fluxmind-worker-1; production store smoke returned remote_worker_service_smoke=ok job_id=296d2d4aab16
 execution sandbox readiness present in /opt/fluxmind/src/providers.py and /opt/fluxmind/src/admin.py; admin status returned backend=local configured=false available=false reason=not_configured docker_executable=docker image=python:3.12-slim
 admin queue health       present in /opt/fluxmind/src/admin.py; authenticated API returned queue_health
+admin worker leases      present in /opt/fluxmind/src/jobs.py, /opt/fluxmind/src/admin.py, and /opt/fluxmind/app.py; authenticated smoke returned total=1 active=0 expired=0 workers=['fluxmind-worker-1'] latest=1
 deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed admin layer     present in /opt/fluxmind/src/admin.py
 admin status report      present in /opt/fluxmind/src/admin.py and /opt/fluxmind/api.py; authenticated smoke returned text/markdown
