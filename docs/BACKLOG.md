@@ -131,8 +131,8 @@ first-page author/keyword fallback, SQLite current-state paper/chunk metadata
 mirrors, checksum-based uploaded-PDF deduplication, active/deactivated
 selection workflow, corpus lifecycle status, local paper metadata filtering, and
 admin index freshness plus durable storage readiness checks implemented; durable
-local storage inventory implemented; durable multi-user database/object storage
-migration remains planned
+local storage inventory and no-secret runtime backup manifest implemented;
+durable multi-user database/object storage migration remains planned
 
 - `src/metadata.py` stores local paper metadata in git-ignored
   `metadata/corpus.json`.
@@ -168,6 +168,10 @@ migration remains planned
 - `GET /admin/status` reports local storage inventory for metadata, jobs,
   artifacts, uploads, and FAISS index files as paths, file counts, byte totals,
   and known-file existence flags without returning file contents.
+- `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
+  the local state trees that source deploys exclude, with file counts, byte
+  totals, and SHA-256 hashes for known metadata/job/index files without
+  exporting file contents or `.env` values.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
@@ -206,6 +210,8 @@ Acceptance:
 - Named local corpus selection status can be exported without reading raw
   profile JSON or activating the selection.
 - Storage state can be listed without reading raw filesystem layout manually.
+- Runtime backup scope can be inspected before manual backup or storage
+  migration without copying runtime contents into source control.
 - Future database/object-storage readiness can be inspected without committing
   credentials, opening external connections, or migrating runtime data.
 - Paper metadata can be searched or filtered locally without fetching and
@@ -396,8 +402,9 @@ Status: local/admin status foundation, reusable local corpus profiles,
 no-secret Markdown status-report export,
 Markdown query-report export, provider-failure event history, estimated
 query-usage history, local storage-readiness dashboard, and local storage
-inventory dashboard implemented; keep public identity, API-key lifecycle,
-quotas, and billing disabled until decisions are made
+inventory dashboard plus no-secret runtime backup manifest implemented; keep
+public identity, API-key lifecycle, quotas, and billing disabled until decisions
+are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.
