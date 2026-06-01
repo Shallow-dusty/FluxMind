@@ -1,6 +1,10 @@
 {
   "version": 1,
-  "description": "Offline FluxMind RAG baseline. Fixture and recorded answers validate citation shape and key-term coverage without calling an LLM.",
+  "description": "FluxMind RAG baseline. Offline fixture and recorded answers validate citation shape and key-term coverage without calling an LLM; optional live scoring uses /query/inspect when an API URL/token is provided.",
+  "live_eval": {
+    "minimum_expected_context_ref_coverage": 0.5,
+    "timeout_s": 120
+  },
   "cases": [
     {
       "id": "smc-chattering-explanation",
@@ -9,19 +13,23 @@
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
           "page": 1,
-          "snippet": "SMC for PMSM speed control discusses chattering reduction as a research concern."
+          "snippet": "Sliding-Mode Control Strategies for PMSM speed control"
         },
         {
           "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
           "page": 1,
-          "snippet": "Chattering-attenuated terminal SMC combines disturbance observation and terminal sliding surfaces."
+          "snippet": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control"
         }
       ],
       "fixture_answer": "Chattering reduction should be explained as a design tradeoff, with PMSM SMC taxonomy context [1] and disturbance-observer terminal SMC evidence [2].",
       "recorded_answer": "Sliding-mode controllers reduce chattering by treating switching gain, boundary layers, and disturbance-observer compensation as design tradeoffs. For PMSM control, the review frames chattering reduction as a core SMC research concern [1]. Chattering-attenuated terminal SMC then combines disturbance observation with terminal sliding surfaces to reduce switching ripple while preserving robustness [2].",
       "required_answer_terms": ["chattering", "switching gain", "disturbance", "terminal sliding"],
-      "minimum_answer_term_coverage": 0.75
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["chattering", "switching", "disturbance", "sliding"],
+      "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "flux-observer-literature-review",
@@ -30,19 +38,23 @@
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
           "page": 1,
-          "snippet": "Regression model-based flux observer for IPMSM sensorless control across a wide speed range."
+          "snippet": "Regression Model-Based Flux Observer for IPMSM Sensorless Control"
         },
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
           "page": 1,
-          "snippet": "SOGIFO-X flux observer algorithm for optimizing sensorless PMSM control."
+          "snippet": "SOGIFO-X Flux Observer Algorithm"
         }
       ],
       "fixture_answer": "A literature-review answer should compare the regression observer's wide-speed motivation [1] with SOGIFO-X filtering and observer design claims [2].",
       "recorded_answer": "A regression flux observer emphasizes model-based IPMSM sensorless operation across a wide speed range [1]. SOGIFO-X focuses on optimized filtering and observer structure for sensorless PMSM control [2]. A useful comparison should separate the regression model's speed-range motivation from the SOGIFO-X algorithm's filtering and observer-design emphasis.",
       "required_answer_terms": ["regression", "wide speed", "SOGIFO-X", "sensorless"],
-      "minimum_answer_term_coverage": 0.75
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["regression", "SOGIFO-X", "flux", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "smo-code-generation",
@@ -51,14 +63,17 @@
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
           "page": 1,
-          "snippet": "Sensorless PMSM control based on a sliding mode observer."
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
         }
       ],
       "fixture_answer": "The MATLAB-style observer skeleton should identify measured currents, voltage inputs, and switching gains, while citing the PMSM SMO context [1].",
       "recorded_answer": "A MATLAB-style PMSM sliding-mode observer should define measured currents, voltage inputs, stator resistance, observer gains, and a switching or saturation function. The code skeleton should keep the SMO state update tied to the sensorless PMSM observer context [1].",
       "required_answer_terms": ["MATLAB", "measured currents", "voltage inputs", "switching"],
-      "minimum_answer_term_coverage": 0.75
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["MATLAB", "observer", "switching", "voltage"],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "provider_failure_fixtures": [

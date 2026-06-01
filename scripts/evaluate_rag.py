@@ -4,13 +4,21 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.evaluation import evaluate_config, load_eval_config  # noqa: E402
+from src.evaluation import (  # noqa: E402
+    build_evaluation_report,
+    evaluate_config,
+    evaluate_live_config,
+    evaluate_live_retrieval_config,
+    load_eval_config,
+)
 
 DEFAULT_EVAL_FILE = PROJECT_ROOT / "eval" / "rag_baseline.json"
 
@@ -23,10 +31,41 @@ def main() -> int:
         default=DEFAULT_EVAL_FILE,
         help="Offline evaluation JSON file",
     )
+    parser.add_argument(
+        "--live-url",
+        help="Optional deployed API base URL for live /query/inspect regression scoring",
+    )
+    parser.add_argument(
+        "--retrieval-url",
+        help="Optional deployed API base URL for no-LLM /query/retrieve regression scoring",
+    )
+    parser.add_argument(
+        "--api-key",
+        default="",
+        help="API key for --live-url. Prefer --api-key-env for normal use.",
+    )
+    parser.add_argument(
+        "--api-key-env",
+        default="FLUXMIND_API_TOKEN",
+        help="Environment variable that contains the API key for --live-url",
+    )
+    parser.add_argument(
+        "--live-timeout",
+        type=float,
+        default=None,
+        help="Per-case timeout in seconds for live /query/inspect calls",
+    )
+    parser.add_argument(
+        "--json-report",
+        type=Path,
+        help="Optional path for a no-secret machine-readable evaluation report",
+    )
     args = parser.parse_args()
 
     config = load_eval_config(args.file)
     case_results, provider_results, recorded_results = evaluate_config(config)
+    live_results = []
+    live_retrieval_results = []
 
     failures: list[str] = []
     for result in case_results:
@@ -49,6 +88,57 @@ def main() -> int:
         print(f"{status:4} recorded answer {result.case_id}: {result.message}")
         if not result.ok:
             failures.append(f"recorded answer {result.case_id}")
+
+    if args.live_url:
+        api_key = args.api_key or os.getenv(args.api_key_env, "")
+        live_results = evaluate_live_config(
+            config,
+            base_url=args.live_url,
+            api_token=api_key,
+            timeout_s=args.live_timeout,
+        )
+        for result in live_results:
+            status = "ok" if result.ok else "fail"
+            print(
+                f"{status:4} live answer {result.case_id}: "
+                f"{result.message} request_id={result.request_id}"
+            )
+            if not result.ok:
+                failures.append(f"live answer {result.case_id}")
+
+    if args.retrieval_url:
+        api_key = args.api_key or os.getenv(args.api_key_env, "")
+        live_retrieval_results = evaluate_live_retrieval_config(
+            config,
+            base_url=args.retrieval_url,
+            api_token=api_key,
+            timeout_s=args.live_timeout,
+        )
+        for result in live_retrieval_results:
+            status = "ok" if result.ok else "fail"
+            print(
+                f"{status:4} live retrieval {result.case_id}: "
+                f"{result.message} request_id={result.request_id}"
+            )
+            if not result.ok:
+                failures.append(f"live retrieval {result.case_id}")
+
+    if args.json_report:
+        args.json_report.parent.mkdir(parents=True, exist_ok=True)
+        report = build_evaluation_report(
+            config,
+            case_results=case_results,
+            provider_results=provider_results,
+            recorded_results=recorded_results,
+            live_results=live_results,
+            live_retrieval_results=live_retrieval_results,
+            eval_file=args.file,
+        )
+        args.json_report.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        print(f"info wrote evaluation report: {args.json_report}")
 
     if failures:
         print("\nFailed checks:")
