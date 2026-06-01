@@ -140,6 +140,7 @@ def main() -> int:
     check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
     check("status_cost_pricing" in app_source, "Streamlit query cost pricing panel installed", failures)
     check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
+    check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
@@ -251,6 +252,7 @@ def main() -> int:
     check("summarize_query_cost" in admin_source and "cost_source" in admin_source, "admin query cost estimates installed", failures)
     check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
+    check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
     check("corpus_index_status" in admin_source, "admin corpus index freshness installed", failures)
@@ -345,6 +347,7 @@ def main() -> int:
             "grep -q 'status_query_usage' /opt/fluxmind/app.py; "
             "grep -q 'status_cost_pricing' /opt/fluxmind/app.py; "
             "grep -q 'status_storage' /opt/fluxmind/app.py; "
+            "grep -q 'status_storage_inventory' /opt/fluxmind/app.py; "
             "grep -q 'storage_readiness' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
             "grep -q 'artifact_search' /opt/fluxmind/app.py; "
@@ -466,6 +469,8 @@ def main() -> int:
             "grep -q 'summarize_query_cost' /opt/fluxmind/src/admin.py; "
             "grep -q 'docker_execution' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_readiness_status' /opt/fluxmind/src/admin.py; "
+            "grep -q 'storage_inventory_status' /opt/fluxmind/src/admin.py; "
+            "grep -q 'content_scanned' /opt/fluxmind/src/admin.py; "
             "grep -q 'external_storage_configured' /opt/fluxmind/src/admin.py; "
             "grep -q 'reranker_model_configured' /opt/fluxmind/src/admin.py; "
             "grep -q 'reranker_model_available' /opt/fluxmind/src/admin.py; "
