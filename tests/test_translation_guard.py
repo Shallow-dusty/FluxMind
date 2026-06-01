@@ -22,6 +22,9 @@ def test_streamlit_local_job_panel_is_installed():
     assert "enqueue_mock_image" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
     assert "cancel_job" in APP_SOURCE
+    assert "job_search" in APP_SOURCE
+    assert "job_status_filter" in APP_SOURCE
+    assert "job_kind_filter" in APP_SOURCE
     assert "retry_job" in APP_SOURCE
     assert "schedule_retry" in APP_SOURCE
     assert "LocalJobRunner().retry" in APP_SOURCE
@@ -32,10 +35,28 @@ def test_streamlit_local_job_panel_is_installed():
 def test_streamlit_artifact_gallery_is_installed():
     assert "LocalArtifactRegistry" in APP_SOURCE
     assert "render_latest_artifacts()" in APP_SOURCE
+    assert "artifact_search" in APP_SOURCE
+    assert "artifact_kind_filter" in APP_SOURCE
+    assert "artifact_job_kind_filter" in APP_SOURCE
     assert "st.download_button" in APP_SOURCE
 
 
 def test_streamlit_admin_status_panel_is_installed():
     assert "collect_admin_status" in APP_SOURCE
+    assert "collect_retention_preview" in APP_SOURCE
+    assert "list_runtime_events" in APP_SOURCE
     assert "render_admin_status()" in APP_SOURCE
+    assert "render_retention_preview()" in APP_SOURCE
+    assert "render_runtime_events()" in APP_SOURCE
     assert "admin_status" in APP_SOURCE
+    assert "retention_preview" in APP_SOURCE
+    assert "runtime_events" in APP_SOURCE
+    assert "event_kind_filter" in APP_SOURCE
+    assert "delete_enabled" in APP_SOURCE
+
+
+def test_streamlit_corpus_profile_report_download_is_installed():
+    assert "collect_corpus_profile_status" in APP_SOURCE
+    assert "format_corpus_profile_status_report" in APP_SOURCE
+    assert "download_profile_report" in APP_SOURCE
+    assert "corpus_profile_report_download" in APP_SOURCE

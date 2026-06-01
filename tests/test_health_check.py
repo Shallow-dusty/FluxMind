@@ -1,4 +1,5 @@
 import scripts.health_check as health_check
+import subprocess
 
 
 def test_http_status_retries_after_transient_error(monkeypatch):
@@ -33,3 +34,16 @@ def test_directory_size_bytes_counts_nested_files(tmp_path):
     (nested / "b").write_text("45", encoding="utf-8")
 
     assert health_check.directory_size_bytes(tmp_path) == 5
+
+
+def test_run_ssh_reports_timeout_without_traceback(monkeypatch):
+    def fake_run(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=["ssh"], timeout=25, output="partial")
+
+    monkeypatch.setattr(health_check.subprocess, "run", fake_run)
+
+    code, output = health_check.run_ssh("root@example.test", "true", 10)
+
+    assert code == 124
+    assert "partial" in output
+    assert "timed out" in output

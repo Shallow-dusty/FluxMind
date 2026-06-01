@@ -42,22 +42,32 @@ def http_status(url: str, timeout: float, retries: int) -> int | None:
 
 
 def run_ssh(host: str, command: str, timeout: float) -> tuple[int, str]:
-    proc = subprocess.run(
-        [
-            "ssh",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            f"ConnectTimeout={int(timeout)}",
-            host,
-            command,
-        ],
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=timeout + 15,
-    )
+    ssh_command = [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        f"ConnectTimeout={int(timeout)}",
+        host,
+        command,
+    ]
+    try:
+        proc = subprocess.run(
+            ssh_command,
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout + 15,
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode(errors="replace")
+        detail = f"ssh command timed out after {timeout + 15:.1f}s"
+        return 124, f"{output.rstrip()}\n{detail}\n" if output else f"{detail}\n"
+    except FileNotFoundError:
+        return 127, "ssh executable not found\n"
     return proc.returncode, proc.stdout
 
 
@@ -87,10 +97,13 @@ def main() -> int:
         "src/jobs.py",
         "src/artifacts.py",
         "src/admin.py",
+        "src/runtime.py",
         "src/metadata.py",
         "src/evaluation.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
+        "scripts/run_job_worker.py",
+        "deploy/systemd/fluxmind-worker.service",
         "docs/DEPLOYMENT_STATUS.md",
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
@@ -108,40 +121,152 @@ def main() -> int:
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
     check("notranslate" in app_source and 'translate", "no"' in app_source, "translation guard installed", failures)
     check("get_async_job_manager" in app_source, "Streamlit async job panel installed", failures)
+    check("job_search" in app_source and "job_status_filter" in app_source, "Streamlit job filters installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
-    check("artifact_id" in app_source and "artifact_metadata" in app_source, "Streamlit artifact reference metadata installed", failures)
+    check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
+    check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
+    check("status_provider_failures" in app_source, "Streamlit provider failure status panel installed", failures)
+    check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
+    check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
+    check(
+        "CorpusProfileStore" in app_source
+        and "activate_profile_rebuild" in app_source
+        and "collect_corpus_profile_status" in app_source
+        and "format_corpus_profile_status_report" in app_source
+        and "corpus_profile_report_download" in app_source,
+        "Streamlit corpus profile panel installed",
+        failures,
+    )
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("/artifacts" in api_source, "artifact export route installed", failures)
+    check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
+    check("/admin/retention" in api_source and "collect_retention_preview" in api_source, "admin retention preview route installed", failures)
+    check("/admin/events" in api_source and "list_runtime_events" in api_source, "admin runtime events route installed", failures)
     check("/corpus/papers" in api_source, "corpus metadata route installed", failures)
+    check("filter_paper_records" in api_source and "indexed_status" in api_source, "corpus paper metadata filters installed", failures)
+    check("/corpus/chunks" in api_source and "page: int | None" in api_source and "q=q" in api_source, "corpus chunk metadata route installed", failures)
+    check("/corpus/status" in api_source and "collect_corpus_status" in api_source, "corpus lifecycle status route installed", failures)
     check("/corpus/active" in api_source, "active corpus selection route installed", failures)
+    check(
+        "/corpus/profiles" in api_source
+        and "CorpusProfileStore" in api_source
+        and "corpus_profile_status" in api_source,
+        "corpus profile routes installed",
+        failures,
+    )
+    check("/corpus/profiles/{profile_id}/report" in api_source and "format_corpus_profile_status_report" in api_source, "corpus profile report route installed", failures)
+    check("/corpus/profiles/{profile_id}/rebuild" in api_source, "corpus profile rebuild route installed", failures)
+    check("/query/inspect" in api_source and "query_with_metadata" in api_source, "query citation inspection route installed", failures)
+    check("/query/retrieve" in api_source and "retrieve_with_metadata" in api_source, "query retrieval diagnostics route installed", failures)
+    check("/query/report" in api_source and "format_query_report" in api_source, "query Markdown report route installed", failures)
+    check("/admin/status/report" in api_source and "format_admin_status_report" in api_source, "admin status report route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
+    check("status: str | None" in api_source and "kind: str | None" in api_source and "q=q" in api_source, "job metadata filters installed", failures)
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
     check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
+    check('"logs": record.logs' in api_source, "job transition logs exposed by API", failures)
+    check("append_runtime_event" in api_source, "query provider failures are recorded", failures)
+    check("record_query_usage" in api_source and "query_usage" in api_source, "query usage estimates are recorded", failures)
+    check("provider_usage" in api_source and "provider_total_tokens" in api_source, "provider query usage passthrough installed", failures)
+    check("warm_existing_vector_store" in api_source and "build_vector_store" not in api_source, "API startup avoids synchronous index rebuild", failures)
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
+    check("logs:" in jobs_source and "append_job_log" in jobs_source, "job transition logs installed", failures)
     check("not_before" in jobs_source and "schedule_retry" in jobs_source, "scheduled retry/backoff installed", failures)
     check("recover_queued_jobs" in jobs_source and "queue_health" in jobs_source, "durable queued job recovery installed", failures)
+    check("execution_timeout" in jobs_source, "local execution timeout error code installed", failures)
+    check("deadline_at" in jobs_source and "job_deadline_exceeded" in jobs_source, "queued job deadline policy installed", failures)
+    check("claim_next_due_job" in jobs_source and "lease_expires_at" in jobs_source, "durable worker lease foundation installed", failures)
+    check("LocalDurableJobWorker" in jobs_source and "run_once" in jobs_source, "explicit durable worker loop installed", failures)
+    check("_monitor_cancellation" in jobs_source and "cancel_poll_interval_s" in jobs_source, "durable worker cancellation polling installed", failures)
+    check("IngestionCancelled" in jobs_source and "run_index_rebuild" in jobs_source, "index rebuild cancellation handling installed", failures)
+    worker_source = (PROJECT_ROOT / "scripts" / "run_job_worker.py").read_text(encoding="utf-8")
+    check("LocalDurableJobWorker" in worker_source and "--worker-id" in worker_source, "durable worker CLI installed", failures)
+    check("--forever" in worker_source and "run_polling" in worker_source, "durable worker long-running CLI mode installed", failures)
+    worker_unit = (PROJECT_ROOT / "deploy" / "systemd" / "fluxmind-worker.service").read_text(encoding="utf-8")
+    check("scripts/run_job_worker.py --forever" in worker_unit and "NoNewPrivileges=true" in worker_unit, "durable worker systemd unit installed", failures)
+    ingestion_source = (PROJECT_ROOT / "src" / "ingestion.py").read_text(encoding="utf-8")
+    check("IngestionCancelled" in ingestion_source and "_raise_if_cancelled" in ingestion_source, "cancellable ingestion checkpoints installed", failures)
+    check("extract_pdf_bibliographic_metadata" in ingestion_source and "paper_metadata_entries" in ingestion_source, "uploaded PDF metadata extraction installed", failures)
+    check("_candidate_authors_from_first_page" in ingestion_source and "_candidate_topic_tags_from_first_page" in ingestion_source, "first-page author/keyword extraction installed", failures)
+    check("_find_existing_pdf_by_checksum" in ingestion_source and "_sha256_bytes" in ingestion_source, "uploaded PDF checksum dedup installed", failures)
     providers_source = (PROJECT_ROOT / "src" / "providers.py").read_text(encoding="utf-8")
     check("LocalOctaveExecutionProvider" in providers_source and "gnu-octave-local" in providers_source, "local Octave provider installed", failures)
+    check("docker_execution_status" in providers_source and "docker_permission_denied" in providers_source, "docker execution readiness status installed", failures)
+    check("execution_limit_preexec" in providers_source and "cpu_limit_enforced" in providers_source, "local execution CPU/memory resource metadata installed", failures)
+    check("provider_runtime" in providers_source and "python_version" in providers_source, "local execution environment metadata installed", failures)
+    check("filesystem_isolation" in providers_source and "network_policy_enforced" in providers_source, "local execution policy metadata installed", failures)
+    check("_resolve_workdir_path" in providers_source and "_is_collectable_output" in providers_source, "local execution path containment installed", failures)
+    check("MAX_EXECUTION_FILES" in providers_source and "MAX_EXECUTION_TOTAL_BYTES" in providers_source, "local execution input size limits installed", failures)
+    check("checksum_sha256" in providers_source and "byte_count" in providers_source, "local artifact checksum metadata installed", failures)
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)
-    check("rerank_documents" in chain_source and "lexical_relevance_score" in chain_source, "local reranker installed", failures)
+    check("rerank_documents" in chain_source and "bm25_relevance_scores" in chain_source, "local BM25-lite reranker installed", failures)
+    check("learned_rerank_documents" in chain_source and "RERANKER_MODEL" in chain_source, "optional local learned reranker installed", failures)
+    check("seen_sources" in chain_source and "source diversity" in chain_source, "source-diverse reranking installed", failures)
+    check("citation_instruction" in chain_source and "Valid numbered source refs" in chain_source, "numbered citation prompt guard installed", failures)
+    check("neutralize_invalid_numbered_citations" in chain_source, "invalid numbered citation neutralizer installed", failures)
+    check("RetrievalDiagnostics" in chain_source and "retrieve_with_metadata" in chain_source, "no-LLM retrieval diagnostics installed", failures)
+    check("provider_usage_from_response" in chain_source and "usage_metadata" in chain_source, "provider token usage extraction installed", failures)
     check("Generated Artifact References" in chain_source and "generated_artifact_context" in chain_source, "artifact references in RAG context installed", failures)
     artifacts_source = (PROJECT_ROOT / "src" / "artifacts.py").read_text(encoding="utf-8")
     check("format_artifact_references" in artifacts_source, "artifact reference formatter installed", failures)
+    check("CREATE TABLE IF NOT EXISTS artifacts" in artifacts_source and "storage_status" in artifacts_source, "artifact SQLite metadata mirror installed", failures)
+    check("integrity_status" in artifacts_source and "checksum_mismatch" in artifacts_source, "artifact integrity status installed", failures)
+    metadata_source = (PROJECT_ROOT / "src" / "metadata.py").read_text(encoding="utf-8")
+    check("CREATE TABLE IF NOT EXISTS papers" in metadata_source and "storage_status" in metadata_source, "corpus SQLite metadata mirror installed", failures)
+    check("CorpusProfileStore" in metadata_source and "CORPUS_PROFILES_FILE" in metadata_source, "corpus profile store installed", failures)
+    check("atomic_write_json" in metadata_source and "NamedTemporaryFile" in metadata_source, "atomic corpus JSON writes installed", failures)
+    check("doi" in metadata_source and "arxiv_id" in metadata_source and "topic_tags" in metadata_source, "paper bibliographic enrichment fields installed", failures)
+    check("CREATE TABLE IF NOT EXISTS chunks" in metadata_source and "ChunkMetadataStore" in metadata_source, "chunk SQLite metadata mirror installed", failures)
+    check("def source_paths" in metadata_source, "chunk metadata source path listing installed", failures)
+    check("page: int | None" in metadata_source and "preview LIKE" in metadata_source, "chunk metadata filters installed", failures)
+    admin_source = (PROJECT_ROOT / "src" / "admin.py").read_text(encoding="utf-8")
+    check("provider_failures" in admin_source and "list_runtime_events" in admin_source, "admin provider failure history installed", failures)
+    check("collect_retention_preview" in admin_source and "delete_enabled" in admin_source, "no-delete retention preview installed", failures)
+    check("query_usage" in admin_source and "estimated_total_tokens" in admin_source, "admin query usage estimates installed", failures)
+    check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
+    check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
+    check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
+    check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
+    check("corpus_index_status" in admin_source, "admin corpus index freshness installed", failures)
+    check("corpus_status_from_state" in admin_source and "index_jobs" in admin_source, "corpus lifecycle status installed", failures)
+    check("format_admin_status_report" in admin_source, "admin status Markdown report installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
+    check(
+        any(item.get("doi") or item.get("arxiv_id") for item in manifest.values()),
+        "seed paper manifest has DOI/arXiv enrichment",
+        failures,
+    )
     eval_config = json.loads((PROJECT_ROOT / "eval" / "rag_baseline.json").read_text(encoding="utf-8"))
     check(
         any(case.get("recorded_answer") for case in eval_config.get("cases", [])),
         "recorded answer eval fixtures installed",
         failures,
     )
+    check(
+        all(
+            all(ref.get("source_path") and ref.get("snippet") for ref in case.get("expected_refs", []))
+            for case in eval_config.get("cases", [])
+        ),
+        "source/page eval references installed",
+        failures,
+    )
+    evaluation_source = (PROJECT_ROOT / "src" / "evaluation.py").read_text(encoding="utf-8")
+    check("verify_source_reference" in evaluation_source, "source/page eval verification installed", failures)
+    check("evaluate_live_config" in evaluation_source and "query_inspect_payload" in evaluation_source, "live RAG eval scoring installed", failures)
+    check("evaluate_live_retrieval_config" in evaluation_source and "query_retrieve_payload" in evaluation_source, "live retrieval eval scoring installed", failures)
+    check("build_evaluation_report" in evaluation_source and "schema_version" in evaluation_source, "RAG eval JSON report builder installed", failures)
+    evaluate_rag_source = (PROJECT_ROOT / "scripts" / "evaluate_rag.py").read_text(encoding="utf-8")
+    check("--live-url" in evaluate_rag_source and "evaluate_live_config" in evaluate_rag_source, "live RAG eval CLI installed", failures)
+    check("--retrieval-url" in evaluate_rag_source and "evaluate_live_retrieval_config" in evaluate_rag_source, "live retrieval eval CLI installed", failures)
+    check("--json-report" in evaluate_rag_source and "build_evaluation_report" in evaluate_rag_source, "RAG eval JSON report CLI installed", failures)
     if (PROJECT_ROOT / "artifacts").exists():
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
     else:
@@ -173,33 +298,134 @@ def main() -> int:
     if args.ssh_host:
         command = (
             "set -e; "
-            "systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service docker.service; "
+            "systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service fluxmind-worker.service docker.service; "
             "ss -ltnp | egrep '18501|18502'; "
             "curl -sS --max-time 10 http://127.0.0.1:18502/health; "
             "test -f /opt/fluxmind/app.py; "
             "grep -q 'render_streaming_response' /opt/fluxmind/app.py; "
             "grep -q 'get_async_job_manager' /opt/fluxmind/app.py; "
+            "grep -q 'job_search' /opt/fluxmind/app.py; "
+            "grep -q 'render_retention_preview' /opt/fluxmind/app.py; "
+            "grep -q 'render_runtime_events' /opt/fluxmind/app.py; "
+            "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
+            "grep -q 'status_query_usage' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
+            "grep -q 'artifact_search' /opt/fluxmind/app.py; "
             "grep -q 'enqueue_local_octave' /opt/fluxmind/app.py; "
+            "grep -q 'CorpusProfileStore' /opt/fluxmind/app.py; "
+            "grep -q 'collect_corpus_profile_status' /opt/fluxmind/app.py; "
+            "grep -q 'format_corpus_profile_status_report' /opt/fluxmind/app.py; "
+            "grep -q 'corpus_profile_report_download' /opt/fluxmind/app.py; "
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
+            "grep -q 'job_kind: str | None' /opt/fluxmind/api.py; "
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
+            "grep -q '/admin/retention' /opt/fluxmind/api.py; "
+            "grep -q '/admin/events' /opt/fluxmind/api.py; "
             "grep -q '/corpus/papers' /opt/fluxmind/api.py; "
+            "grep -q 'filter_paper_records' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/chunks' /opt/fluxmind/api.py; "
+            "grep -q 'page: int | None' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/status' /opt/fluxmind/api.py; "
             "grep -q '/corpus/active' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/profiles' /opt/fluxmind/api.py; "
+            "grep -q 'corpus_profile_status' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/profiles/{profile_id}/report' /opt/fluxmind/api.py; "
+            "grep -q 'format_corpus_profile_status_report' /opt/fluxmind/api.py; "
+            "grep -q '/corpus/profiles/{profile_id}/rebuild' /opt/fluxmind/api.py; "
+            "grep -q 'activate_profile_rebuild' /opt/fluxmind/app.py; "
+            "grep -q '/query/inspect' /opt/fluxmind/api.py; "
+            "grep -q '/query/retrieve' /opt/fluxmind/api.py; "
+            "grep -q '/query/report' /opt/fluxmind/api.py; "
+            "grep -q 'query_with_metadata' /opt/fluxmind/api.py; "
+            "grep -q 'retrieve_with_metadata' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/index/rebuild' /opt/fluxmind/api.py; "
+            "grep -q 'q=q' /opt/fluxmind/api.py; "
             "grep -q '/jobs/code/octave-local' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/code/octave-local' /opt/fluxmind/api.py; "
             "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
+            "grep -q '\"logs\": record.logs' /opt/fluxmind/api.py; "
+            "grep -q '/admin/status/report' /opt/fluxmind/api.py; "
+            "grep -q 'append_runtime_event' /opt/fluxmind/api.py; "
+            "grep -q 'record_query_usage' /opt/fluxmind/api.py; "
+            "grep -q 'provider_total_tokens' /opt/fluxmind/api.py; "
+            "grep -q 'warm_existing_vector_store' /opt/fluxmind/api.py; "
+            "! grep -q 'build_vector_store' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "test -f /opt/fluxmind/src/admin.py; "
+            "test -f /opt/fluxmind/src/runtime.py; "
+            "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'CorpusProfileStore' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'atomic_write_json' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'NamedTemporaryFile' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'arxiv_id' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'topic_tags' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'CREATE TABLE IF NOT EXISTS chunks' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'def source_paths' /opt/fluxmind/src/metadata.py; "
+            "grep -q 'preview LIKE' /opt/fluxmind/src/metadata.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS jobs' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'append_job_log' /opt/fluxmind/src/jobs.py; "
             "grep -q 'schedule_retry' /opt/fluxmind/src/jobs.py; "
             "grep -q 'recover_queued_jobs' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'execution_timeout' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'job_deadline_exceeded' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'claim_next_due_job' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'lease_expires_at' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'LocalDurableJobWorker' /opt/fluxmind/src/jobs.py; "
+            "grep -q '_monitor_cancellation' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'LocalDurableJobWorker' /opt/fluxmind/scripts/run_job_worker.py; "
+            "grep -q -- '--forever' /opt/fluxmind/scripts/run_job_worker.py; "
+            "grep -q 'scripts/run_job_worker.py --forever' /etc/systemd/system/fluxmind-worker.service; "
+            "grep -q 'IngestionCancelled' /opt/fluxmind/src/jobs.py; "
+            "grep -q '_raise_if_cancelled' /opt/fluxmind/src/ingestion.py; "
+            "grep -q 'extract_pdf_bibliographic_metadata' /opt/fluxmind/src/ingestion.py; "
+            "grep -q '_candidate_authors_from_first_page' /opt/fluxmind/src/ingestion.py; "
+            "grep -q '_candidate_topic_tags_from_first_page' /opt/fluxmind/src/ingestion.py; "
+            "grep -q '_find_existing_pdf_by_checksum' /opt/fluxmind/src/ingestion.py; "
             "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
             "grep -q 'LocalOctaveExecutionProvider' /opt/fluxmind/src/providers.py; "
+            "grep -q 'docker_execution_status' /opt/fluxmind/src/providers.py; "
+            "grep -q 'execution_limit_preexec' /opt/fluxmind/src/providers.py; "
+            "grep -q 'cpu_limit_enforced' /opt/fluxmind/src/providers.py; "
+            "grep -q 'provider_runtime' /opt/fluxmind/src/providers.py; "
+            "grep -q 'python_version' /opt/fluxmind/src/providers.py; "
+            "grep -q 'filesystem_isolation' /opt/fluxmind/src/providers.py; "
+            "grep -q 'network_policy_enforced' /opt/fluxmind/src/providers.py; "
+            "grep -q '_resolve_workdir_path' /opt/fluxmind/src/providers.py; "
+            "grep -q 'MAX_EXECUTION_TOTAL_BYTES' /opt/fluxmind/src/providers.py; "
+            "grep -q 'checksum_sha256' /opt/fluxmind/src/providers.py; "
+            "grep -q 'byte_count' /opt/fluxmind/src/providers.py; "
             "grep -q 'hybrid_retrieve' /opt/fluxmind/src/chain.py; "
-            "grep -q 'rerank_documents' /opt/fluxmind/src/chain.py; "
+            "grep -q 'bm25_relevance_scores' /opt/fluxmind/src/chain.py; "
+            "grep -q 'learned_rerank_documents' /opt/fluxmind/src/chain.py; "
+            "grep -q 'RERANKER_MODEL' /opt/fluxmind/src/chain.py; "
+            "grep -q 'seen_sources' /opt/fluxmind/src/chain.py; "
+            "grep -q 'citation_instruction' /opt/fluxmind/src/chain.py; "
+            "grep -q 'neutralize_invalid_numbered_citations' /opt/fluxmind/src/chain.py; "
+            "grep -q 'RetrievalDiagnostics' /opt/fluxmind/src/chain.py; "
+            "grep -q 'retrieve_with_metadata' /opt/fluxmind/src/chain.py; "
+            "grep -q 'provider_usage_from_response' /opt/fluxmind/src/chain.py; "
+            "grep -q 'QueryResult' /opt/fluxmind/src/chain.py; "
+            "grep -q 'missing_source_page_refs' /opt/fluxmind/src/chain.py; "
             "grep -q 'Generated Artifact References' /opt/fluxmind/src/chain.py; "
+            "grep -q 'evaluate_live_config' /opt/fluxmind/src/evaluation.py; "
+            "grep -q 'evaluate_live_retrieval_config' /opt/fluxmind/src/evaluation.py; "
+            "grep -q 'build_evaluation_report' /opt/fluxmind/src/evaluation.py; "
+            "grep -q -- '--live-url' /opt/fluxmind/scripts/evaluate_rag.py; "
+            "grep -q -- '--retrieval-url' /opt/fluxmind/scripts/evaluate_rag.py; "
+            "grep -q -- '--json-report' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q 'format_artifact_references' /opt/fluxmind/src/artifacts.py; "
+            "grep -q 'CREATE TABLE IF NOT EXISTS artifacts' /opt/fluxmind/src/artifacts.py; "
+            "grep -q 'integrity_status' /opt/fluxmind/src/artifacts.py; "
+            "grep -q 'provider_failures' /opt/fluxmind/src/admin.py; "
+            "grep -q 'collect_retention_preview' /opt/fluxmind/src/admin.py; "
+            "grep -q 'query_usage' /opt/fluxmind/src/admin.py; "
+            "grep -q 'provider_total_tokens' /opt/fluxmind/src/admin.py; "
+            "grep -q 'docker_execution' /opt/fluxmind/src/admin.py; "
+            "grep -q 'reranker_model_configured' /opt/fluxmind/src/admin.py; "
+            "grep -q 'reranker_model_available' /opt/fluxmind/src/admin.py; "
+            "grep -q 'corpus_index_status' /opt/fluxmind/src/admin.py; "
+            "grep -q 'corpus_status_from_state' /opt/fluxmind/src/admin.py; "
+            "grep -q 'format_admin_status_report' /opt/fluxmind/src/admin.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"
@@ -210,6 +436,85 @@ def main() -> int:
             "papers = json.loads(active.read_text()) if active.exists() else []\n"
             "print(f'active_papers={len(papers)}')\n"
             "print(f'faiss_index_bytes={(root / \"faiss_index\" / \"index.faiss\").stat().st_size}')\n"
+            "chunks = root / 'metadata' / 'chunks.sqlite3'\n"
+            "rows = 0\n"
+            "chunk_sources = []\n"
+            "if chunks.exists():\n"
+            "    import sqlite3\n"
+            "    with sqlite3.connect(chunks) as conn:\n"
+            "        rows = conn.execute('SELECT COUNT(*) FROM chunks').fetchone()[0]\n"
+            "        chunk_sources = [row[0] for row in conn.execute('SELECT DISTINCT source_path FROM chunks ORDER BY source_path')]\n"
+            "print(f'chunk_metadata_rows={rows}')\n"
+            "print(f'chunk_metadata_sources={len(chunk_sources)}')\n"
+            "if papers and rows <= 0:\n"
+            "    raise SystemExit('chunk metadata rows missing for active corpus')\n"
+            "missing = sorted(set(papers) - set(chunk_sources))\n"
+            "extra = sorted(set(chunk_sources) - set(papers))\n"
+            "print(f'index_fresh={not missing and not extra}')\n"
+            "if missing or extra:\n"
+            "    raise SystemExit(f'chunk metadata source mismatch missing={missing} extra={extra}')\n"
+            "from urllib import parse, request\n"
+            "token = ''\n"
+            "env = root / '.env'\n"
+            "if env.exists():\n"
+            "    for line in env.read_text(encoding='utf-8').splitlines():\n"
+            "        if line.startswith('FLUXMIND_API_TOKEN='):\n"
+            "            token = line.split('=', 1)[1].strip()\n"
+            "            break\n"
+            "headers = {'X-API-Key': token} if token else {}\n"
+            "def api_get(path):\n"
+            "    req = request.Request('http://127.0.0.1:18502' + path, headers=headers)\n"
+            "    with request.urlopen(req, timeout=10) as resp:\n"
+            "        return json.loads(resp.read().decode('utf-8'))\n"
+            "def api_get_text(path):\n"
+            "    req = request.Request('http://127.0.0.1:18502' + path, headers=headers)\n"
+            "    with request.urlopen(req, timeout=10) as resp:\n"
+            "        return resp.read().decode('utf-8')\n"
+            "def api_post(path, payload):\n"
+            "    post_headers = dict(headers)\n"
+            "    post_headers['Content-Type'] = 'application/json'\n"
+            "    data = json.dumps(payload).encode('utf-8')\n"
+            "    req = request.Request('http://127.0.0.1:18502' + path, data=data, headers=post_headers, method='POST')\n"
+            "    with request.urlopen(req, timeout=20) as resp:\n"
+            "        return json.loads(resp.read().decode('utf-8'))\n"
+            "admin_status = api_get('/admin/status').get('status', {})\n"
+            "docker_execution = admin_status.get('config', {}).get('docker_execution', {})\n"
+            "if 'configured' not in docker_execution or 'available' not in docker_execution:\n"
+            "    raise SystemExit('admin status missing docker execution readiness')\n"
+            "print(f'docker_execution_readiness=configured={docker_execution.get(\"configured\")} available={docker_execution.get(\"available\")} reason={docker_execution.get(\"reason\")}')\n"
+            "sample_chunks = api_get('/corpus/chunks?limit=1').get('chunks', [])\n"
+            "if sample_chunks:\n"
+            "    sample = sample_chunks[0]\n"
+            "    q = (sample.get('preview') or '').split()[0]\n"
+            "    params = {'source_path': sample['source_path'], 'limit': 10}\n"
+            "    if sample.get('page') is not None:\n"
+            "        params['page'] = sample['page']\n"
+            "    if q:\n"
+            "        params['q'] = q\n"
+            "    filtered = api_get('/corpus/chunks?' + parse.urlencode(params)).get('chunks', [])\n"
+            "    missing = api_get('/corpus/chunks?' + parse.urlencode({'source_path': sample['source_path'], 'q': 'definitely-no-such-chunk-token'})).get('chunks', [])\n"
+            "    if not any(chunk.get('chunk_id') == sample.get('chunk_id') for chunk in filtered):\n"
+            "        raise SystemExit('chunk filter smoke did not return the sampled chunk')\n"
+            "    if missing:\n"
+            "        raise SystemExit('chunk filter smoke returned rows for an impossible query')\n"
+            "    print(f'chunk_filter_smoke={sample.get(\"chunk_id\")} filtered_count={len(filtered)} missing_filter_count={len(missing)}')\n"
+            "else:\n"
+            "    print('chunk_filter_smoke=skipped no chunk samples')\n"
+            "retrieval = api_post('/query/retrieve', {'question': 'sliding mode control observer', 'answer_mode': 'literature_review'}).get('retrieval', {})\n"
+            "if int(retrieval.get('context_count') or 0) <= 0:\n"
+            "    raise SystemExit('retrieval diagnostics returned no context refs')\n"
+            "if retrieval.get('missing_source_page_refs'):\n"
+            "    raise SystemExit(f'retrieval diagnostics missing source/page refs: {retrieval.get(\"missing_source_page_refs\")}')\n"
+            "print(f'retrieval_smoke=context_count={retrieval.get(\"context_count\")} ok={retrieval.get(\"ok\")}')\n"
+            "profiles = api_get('/corpus/profiles').get('profiles', [])\n"
+            "if profiles:\n"
+            "    profile_id = profiles[0]['profile_id']\n"
+            "    report = api_get_text('/corpus/profiles/' + parse.quote(profile_id, safe='') + '/report')\n"
+            "    if '# FluxMind Corpus Profile Status' not in report or 'Profile ID:' not in report:\n"
+            "        raise SystemExit('corpus profile report smoke returned unexpected markdown')\n"
+            "    print(f'corpus_profile_report_smoke={profile_id}')\n"
+            "else:\n"
+            "    print('corpus_profile_report_smoke=skipped no profiles')\n"
             "PY\n"
             "journalctl -u fluxmind-api.service -u fluxmind-ui.service --since '30 minutes ago' --no-pager | "
             "egrep -i 'error|exception|traceback' | tail -20 || true; "

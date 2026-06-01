@@ -11,7 +11,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from src.admin import collect_admin_status
+from src.admin import (
+    collect_admin_status,
+    collect_corpus_profile_status,
+    collect_retention_preview,
+    format_admin_status_report,
+    format_corpus_profile_status_report,
+)
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.artifacts import LocalArtifactRegistry, local_artifact_path
 from src.chain import query_stream
@@ -26,7 +32,8 @@ from src.ingestion import (
     set_active_paper_source_paths,
 )
 from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
-from src.runtime import logger, new_request_id, normalize_exception
+from src.metadata import CorpusProfileStore
+from src.runtime import list_runtime_events, logger, new_request_id, normalize_exception
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -53,6 +60,14 @@ I18N = {
         "apply_selection": "应用选择并重建索引",
         "save_selection": "仅保存启用状态",
         "selection_saved": "启用状态已保存；如需立即更新检索范围，请重建索引",
+        "corpus_profiles": "语料配置",
+        "profile_name": "配置名称",
+        "save_profile": "保存当前选择为配置",
+        "activate_profile": "启用配置",
+        "activate_profile_rebuild": "启用配置并以任务重建索引",
+        "download_profile_report": "下载配置状态报告",
+        "profile_report_failed": "配置报告生成失败：{error}",
+        "profile_saved": "语料配置已保存",
         "no_selectable_papers": "还没有可选 PDF",
         "view_papers": "查看论文",
         "no_papers": "知识库暂无论文",
@@ -67,19 +82,38 @@ I18N = {
         "upload_failed": "上传失败：{error}",
         "jobs": "本地任务",
         "latest_jobs": "最近任务",
+        "job_search": "任务搜索",
+        "job_status_filter": "任务状态",
+        "job_kind_filter": "任务类型",
         "cancel_job": "取消任务",
         "retry_job": "重试任务",
         "schedule_retry": "延迟重试",
         "latest_artifacts": "最近产物",
+        "artifact_search": "产物搜索",
+        "artifact_kind_filter": "产物类型",
+        "artifact_job_filter": "任务类型",
         "no_artifacts": "暂无产物",
         "download_artifact": "下载产物",
         "artifact_id": "产物 ID",
         "artifact_metadata": "产物元数据",
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
+        "download_status_report": "下载状态报告",
+        "retention_preview": "保留预览",
+        "upload_retention_days": "上传保留天数",
+        "artifact_retention_days": "产物保留天数",
+        "retention_limit": "候选上限",
+        "retention_uploads": "上传候选",
+        "retention_artifacts": "产物候选",
+        "runtime_events": "运行事件",
+        "event_kind_filter": "事件类型",
+        "event_code_filter": "事件代码",
+        "event_search": "事件搜索",
         "status_jobs": "任务",
         "status_artifacts": "产物",
         "status_corpus": "语料",
+        "status_provider_failures": "Provider 错误",
+        "status_query_usage": "查询用量估算",
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
@@ -139,6 +173,14 @@ I18N = {
         "apply_selection": "Apply Selection and Rebuild Index",
         "save_selection": "Save Active State Only",
         "selection_saved": "Active state saved; rebuild the index to update retrieval scope",
+        "corpus_profiles": "Corpus profiles",
+        "profile_name": "Profile name",
+        "save_profile": "Save Current Selection as Profile",
+        "activate_profile": "Activate Profile",
+        "activate_profile_rebuild": "Activate Profile and Rebuild as Job",
+        "download_profile_report": "Download Profile Status Report",
+        "profile_report_failed": "Profile report failed: {error}",
+        "profile_saved": "Corpus profile saved",
         "no_selectable_papers": "No selectable PDFs yet",
         "view_papers": "View papers",
         "no_papers": "No papers in knowledge base yet",
@@ -153,19 +195,38 @@ I18N = {
         "upload_failed": "Upload failed: {error}",
         "jobs": "Local Jobs",
         "latest_jobs": "Latest jobs",
+        "job_search": "Job search",
+        "job_status_filter": "Job status",
+        "job_kind_filter": "Job kind",
         "cancel_job": "Cancel job",
         "retry_job": "Retry job",
         "schedule_retry": "Schedule retry",
         "latest_artifacts": "Latest artifacts",
+        "artifact_search": "Artifact search",
+        "artifact_kind_filter": "Artifact kind",
+        "artifact_job_filter": "Job kind",
         "no_artifacts": "No artifacts yet",
         "download_artifact": "Download artifact",
         "artifact_id": "Artifact ID",
         "artifact_metadata": "Artifact metadata",
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
+        "download_status_report": "Download status report",
+        "retention_preview": "Retention preview",
+        "upload_retention_days": "Upload retention days",
+        "artifact_retention_days": "Artifact retention days",
+        "retention_limit": "Candidate limit",
+        "retention_uploads": "Upload candidates",
+        "retention_artifacts": "Artifact candidates",
+        "runtime_events": "Runtime events",
+        "event_kind_filter": "Event kind",
+        "event_code_filter": "Event code",
+        "event_search": "Event search",
         "status_jobs": "Jobs",
         "status_artifacts": "Artifacts",
         "status_corpus": "Corpus",
+        "status_provider_failures": "Provider failures",
+        "status_query_usage": "Query usage estimates",
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
@@ -338,7 +399,28 @@ def render_job_result(job) -> None:
 
 
 def render_latest_jobs() -> None:
-    jobs = LocalJobStore().list_latest(limit=5)
+    job_query = st.text_input(text["job_search"], value="", key="job_search")
+    col_status, col_kind = st.columns(2)
+    with col_status:
+        job_status = st.selectbox(
+            text["job_status_filter"],
+            options=["", "queued", "running", "succeeded", "failed", "cancelled"],
+            format_func=lambda value: value or "all",
+            key="job_status_filter",
+        )
+    with col_kind:
+        job_kind = st.selectbox(
+            text["job_kind_filter"],
+            options=["", "image_generation", "code_execution", "index_rebuild"],
+            format_func=lambda value: value or "all",
+            key="job_kind_filter",
+        )
+    jobs = LocalJobStore().list_latest(
+        limit=5,
+        status=job_status or None,
+        kind=job_kind or None,
+        q=job_query or None,
+    )
     if not jobs:
         st.caption(text["no_jobs"])
         return
@@ -382,7 +464,28 @@ def render_latest_jobs() -> None:
 
 
 def render_latest_artifacts() -> None:
-    artifacts = LocalArtifactRegistry().list_artifacts(limit=5)
+    artifact_query = st.text_input(text["artifact_search"], value="", key="artifact_search")
+    col_kind, col_job_kind = st.columns(2)
+    with col_kind:
+        artifact_kind = st.selectbox(
+            text["artifact_kind_filter"],
+            options=["", "image", "plot", "text", "file"],
+            format_func=lambda value: value or "all",
+            key="artifact_kind_filter",
+        )
+    with col_job_kind:
+        artifact_job_kind = st.selectbox(
+            text["artifact_job_filter"],
+            options=["", "image_generation", "code_execution", "index_rebuild"],
+            format_func=lambda value: value or "all",
+            key="artifact_job_kind_filter",
+        )
+    artifacts = LocalArtifactRegistry().list_artifacts(
+        limit=5,
+        kind=artifact_kind or None,
+        job_kind=artifact_job_kind or None,
+        q=artifact_query or None,
+    )
     if not artifacts:
         st.caption(text["no_artifacts"])
         return
@@ -414,6 +517,8 @@ def render_admin_status() -> None:
     jobs = status["jobs"]
     artifacts = status["artifacts"]
     corpus = status["corpus"]
+    provider_failures = status["provider_failures"]
+    query_usage = status["query_usage"]
 
     st.caption(text["status_jobs"])
     st.json(
@@ -428,11 +533,101 @@ def render_admin_status() -> None:
         }
     )
     st.caption(text["status_artifacts"])
-    st.json({"total": artifacts["total"], "bytes": artifacts["bytes"]})
+    st.json(
+        {
+            "total": artifacts["total"],
+            "bytes": artifacts["bytes"],
+            "integrity": artifacts["integrity"],
+        }
+    )
     st.caption(text["status_corpus"])
     st.json(corpus)
+    st.caption(text["status_provider_failures"])
+    st.json(provider_failures)
+    st.caption(text["status_query_usage"])
+    st.json(query_usage)
     st.caption(text["status_runtime_dirs"])
     st.json(status["runtime_dirs"])
+    st.download_button(
+        text["download_status_report"],
+        data=format_admin_status_report(status).encode("utf-8"),
+        file_name="fluxmind-admin-status.md",
+        mime="text/markdown",
+        use_container_width=True,
+        key="download_admin_status_report",
+    )
+
+
+def render_retention_preview() -> None:
+    col_upload, col_artifact, col_limit = st.columns(3)
+    with col_upload:
+        upload_days = st.number_input(
+            text["upload_retention_days"],
+            min_value=0,
+            max_value=3650,
+            value=30,
+            step=1,
+            key="retention_upload_days",
+        )
+    with col_artifact:
+        artifact_days = st.number_input(
+            text["artifact_retention_days"],
+            min_value=0,
+            max_value=3650,
+            value=30,
+            step=1,
+            key="retention_artifact_days",
+        )
+    with col_limit:
+        limit = st.number_input(
+            text["retention_limit"],
+            min_value=1,
+            max_value=500,
+            value=25,
+            step=1,
+            key="retention_limit",
+        )
+
+    preview = collect_retention_preview(
+        upload_days=int(upload_days),
+        artifact_days=int(artifact_days),
+        limit=int(limit),
+    )
+    st.json(
+        {
+            "mode": preview["mode"],
+            "delete_enabled": preview["delete_enabled"],
+            "limit": preview["limit"],
+        }
+    )
+    st.caption(text["retention_uploads"])
+    st.json(preview["uploads"])
+    st.caption(text["retention_artifacts"])
+    st.json(preview["artifacts"])
+
+
+def render_runtime_events() -> None:
+    event_query = st.text_input(text["event_search"], value="", key="event_search")
+    col_kind, col_code = st.columns(2)
+    with col_kind:
+        event_kind = st.selectbox(
+            text["event_kind_filter"],
+            options=["", "provider_failure", "query_usage"],
+            format_func=lambda value: value or "all",
+            key="event_kind_filter",
+        )
+    with col_code:
+        event_code = st.text_input(text["event_code_filter"], value="", key="event_code_filter")
+    events = list_runtime_events(
+        kind=event_kind or None,
+        code=event_code or None,
+        q=event_query or None,
+        limit=10,
+    )
+    if not events:
+        st.caption(text["no_jobs"])
+        return
+    st.json([event.__dict__ for event in events])
 
 
 # ── Sidebar: Knowledge Base Management ──
@@ -497,6 +692,60 @@ with st.sidebar:
                 with st.spinner(text["rebuilding"]):
                     job = get_async_job_manager().enqueue_index_rebuild(selected)
                     render_job_result(job)
+        with st.expander(text["corpus_profiles"]):
+            profile_store = CorpusProfileStore()
+            profile_name = st.text_input(
+                text["profile_name"],
+                value="",
+                key="corpus_profile_name",
+            )
+            if st.button(text["save_profile"], use_container_width=True):
+                if not selected:
+                    st.warning(text["select_at_least_one"])
+                else:
+                    profile_store.upsert_profile(
+                        name=profile_name or "Active corpus",
+                        source_paths=selected,
+                    )
+                    st.success(text["profile_saved"])
+                    st.rerun()
+            profiles = profile_store.list_profiles()
+            if profiles:
+                selected_profile = st.selectbox(
+                    text["corpus_profiles"],
+                    options=[profile.profile_id for profile in profiles],
+                    format_func=lambda profile_id: next(
+                        profile.name
+                        for profile in profiles
+                        if profile.profile_id == profile_id
+                    ),
+                    key="corpus_profile_select",
+                )
+                try:
+                    profile_status = collect_corpus_profile_status(selected_profile)
+                    profile_report = format_corpus_profile_status_report(profile_status)
+                    st.download_button(
+                        text["download_profile_report"],
+                        data=profile_report,
+                        file_name=f"fluxmind-corpus-profile-{selected_profile}.md",
+                        mime="text/markdown",
+                        key="corpus_profile_report_download",
+                        use_container_width=True,
+                    )
+                except Exception as exc:
+                    error = normalize_exception(exc)
+                    st.warning(text["profile_report_failed"].format(error=error.message))
+                if st.button(text["activate_profile"], use_container_width=True):
+                    profile = profile_store.get_profile(selected_profile)
+                    set_active_paper_source_paths(profile.source_paths)
+                    st.success(text["selection_saved"])
+                    st.rerun()
+                if st.button(text["activate_profile_rebuild"], use_container_width=True):
+                    profile = profile_store.get_profile(selected_profile)
+                    set_active_paper_source_paths(profile.source_paths)
+                    with st.spinner(text["rebuilding"]):
+                        job = get_async_job_manager().enqueue_index_rebuild(profile.source_paths)
+                        render_job_result(job)
         with st.expander(text["view_papers"]):
             for p in selectable_papers:
                 marker = "✓" if rel_path(p) in active_defaults else " "
@@ -594,6 +843,12 @@ with st.sidebar:
         if st.button(text["refresh_status"], use_container_width=True):
             st.rerun()
         render_admin_status()
+        st.divider()
+        st.caption(text["retention_preview"])
+        render_retention_preview()
+        st.divider()
+        st.caption(text["runtime_events"])
+        render_runtime_events()
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")
