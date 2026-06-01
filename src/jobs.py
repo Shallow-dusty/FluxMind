@@ -6,6 +6,7 @@ import json
 import queue
 import sqlite3
 import threading
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -43,6 +44,10 @@ def future_utc(seconds: int) -> str:
     return (datetime.now(timezone.utc) + timedelta(seconds=max(seconds, 0))).isoformat()
 
 
+def has_deadline_expired(record: "JobRecord") -> bool:
+    return bool(record.deadline_at and parse_utc(record.deadline_at) <= datetime.now(timezone.utc))
+
+
 @dataclass
 class JobRecord:
     """Serializable local job state."""
@@ -60,6 +65,28 @@ class JobRecord:
     request_id: str | None = None
     parent_job_id: str | None = None
     not_before: str | None = None
+    deadline_at: str | None = None
+    worker_id: str | None = None
+    leased_at: str | None = None
+    lease_expires_at: str | None = None
+    logs: list[dict[str, Any]] = field(default_factory=list)
+
+
+def append_job_log(record: JobRecord, status: str, message: str, **metadata: Any) -> None:
+    """Append a no-secret transition log entry to a local job record."""
+    entry: dict[str, Any] = {
+        "created_at": utc_now(),
+        "status": status,
+        "message": message,
+    }
+    clean_metadata = {
+        key: value
+        for key, value in metadata.items()
+        if value not in (None, "", [])
+    }
+    if clean_metadata:
+        entry["metadata"] = clean_metadata
+    record.logs.append(entry)
 
 
 class LocalJobStore:
@@ -95,7 +122,14 @@ class LocalJobStore:
                     latest = item
         return JobRecord(**latest) if latest else None
 
-    def list_latest(self, *, limit: int = 50) -> list[JobRecord]:
+    def list_latest(
+        self,
+        *,
+        limit: int = 50,
+        status: str | None = None,
+        kind: str | None = None,
+        q: str | None = None,
+    ) -> list[JobRecord]:
         self._ensure_sqlite()
         if self.db_path.exists():
             with self._connect() as conn:
@@ -106,10 +140,50 @@ class LocalJobStore:
                     ORDER BY updated_at DESC, created_at DESC
                     LIMIT ?
                     """,
-                    (limit,),
+                    (max(limit, 1000),),
                 ).fetchall()
-            return [JobRecord(**json.loads(row["payload"])) for row in rows]
-        return self._list_latest_jsonl(limit=limit)
+            records = [JobRecord(**json.loads(row["payload"])) for row in rows]
+            return self._filter_records(records, status=status, kind=kind, q=q)[:limit]
+        records = self._list_latest_jsonl(limit=max(limit, 1000))
+        return self._filter_records(records, status=status, kind=kind, q=q)[:limit]
+
+    @staticmethod
+    def _filter_records(
+        records: list[JobRecord],
+        *,
+        status: str | None = None,
+        kind: str | None = None,
+        q: str | None = None,
+    ) -> list[JobRecord]:
+        status = status.strip() if status else None
+        kind = kind.strip() if kind else None
+        query = (q or "").strip().casefold()
+        filtered: list[JobRecord] = []
+        for record in records:
+            if status and record.status != status:
+                continue
+            if kind and record.kind != kind:
+                continue
+            if query:
+                searchable = " ".join(
+                    str(value or "")
+                    for value in (
+                        record.job_id,
+                        record.kind,
+                        record.status,
+                        record.request_id,
+                        record.parent_job_id,
+                        json.dumps(record.request or {}, ensure_ascii=False, sort_keys=True),
+                        json.dumps(record.result or {}, ensure_ascii=False, sort_keys=True),
+                        json.dumps(record.error or {}, ensure_ascii=False, sort_keys=True),
+                        json.dumps(record.artifacts or [], ensure_ascii=False, sort_keys=True),
+                        json.dumps(record.logs or [], ensure_ascii=False, sort_keys=True),
+                    )
+                ).casefold()
+                if query not in searchable:
+                    continue
+            filtered.append(record)
+        return filtered
 
     def _list_latest_jsonl(self, *, limit: int = 50) -> list[JobRecord]:
         latest: dict[str, dict[str, Any]] = {}
@@ -134,6 +208,7 @@ class LocalJobStore:
         record.status = "cancelled"
         record.updated_at = utc_now()
         record.error = {"code": "cancelled", "message": "Job was cancelled."}
+        append_job_log(record, "cancelled", "Job was cancelled.", code="cancelled")
         self.append(record)
         return record
 
@@ -157,22 +232,167 @@ class LocalJobStore:
         """Summarize durable local queue state for admin/status surfaces."""
         now = datetime.now(timezone.utc)
         queued = self.list_queued(limit=10000)
+        active_leased_queued = [
+            job
+            for job in queued
+            if job.worker_id
+            and job.lease_expires_at
+            and parse_utc(job.lease_expires_at) > now
+        ]
+        expired_leased_queued = [
+            job
+            for job in queued
+            if job.worker_id
+            and job.lease_expires_at
+            and parse_utc(job.lease_expires_at) <= now
+        ]
         due = [
             job for job in queued
             if not job.not_before or parse_utc(job.not_before) <= now
+            if job not in active_leased_queued
         ]
         scheduled = [
             job for job in queued
             if job.not_before and parse_utc(job.not_before) > now
         ]
+        expired = [job for job in queued if has_deadline_expired(job)]
         running = [job for job in self.list_latest(limit=10000) if job.status == "running"]
+        running_leased = [job for job in running if job.worker_id]
         return {
             "queued": len(queued),
             "due": len(due),
             "scheduled": len(scheduled),
+            "expired": len(expired),
             "running": len(running),
+            "leased_queued": len(active_leased_queued),
+            "lease_expired_queued": len(expired_leased_queued),
+            "running_leased": len(running_leased),
             "oldest_queued_at": queued[0].created_at if queued else None,
         }
+
+    def claim_job(
+        self,
+        job_id: str,
+        *,
+        worker_id: str,
+        lease_seconds: int = 300,
+    ) -> JobRecord | None:
+        """Claim a queued job for a worker without starting provider execution."""
+        return self._claim_candidate(
+            worker_id=worker_id,
+            lease_seconds=lease_seconds,
+            job_id=job_id,
+        )
+
+    def claim_next_due_job(
+        self,
+        *,
+        worker_id: str,
+        lease_seconds: int = 300,
+    ) -> JobRecord | None:
+        """Claim the oldest due queued job for future durable worker loops."""
+        return self._claim_candidate(worker_id=worker_id, lease_seconds=lease_seconds)
+
+    def release_job_lease(self, job_id: str, *, worker_id: str | None = None) -> JobRecord | None:
+        """Clear a queued job lease so another worker can claim it."""
+        record = self.get(job_id)
+        if record is None:
+            return None
+        if worker_id is not None and record.worker_id != worker_id:
+            return record
+        record.worker_id = None
+        record.leased_at = None
+        record.lease_expires_at = None
+        record.updated_at = utc_now()
+        self.append(record)
+        return record
+
+    def _claim_candidate(
+        self,
+        *,
+        worker_id: str,
+        lease_seconds: int,
+        job_id: str | None = None,
+    ) -> JobRecord | None:
+        self._ensure_sqlite()
+        now = datetime.now(timezone.utc)
+        claimed: JobRecord | None = None
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if job_id:
+                rows = conn.execute(
+                    """
+                    SELECT payload
+                    FROM jobs
+                    WHERE job_id = ? AND status = 'queued'
+                    LIMIT 1
+                    """,
+                    (job_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT payload
+                    FROM jobs
+                    WHERE status = 'queued'
+                    ORDER BY created_at ASC
+                    LIMIT 1000
+                    """
+                ).fetchall()
+            for row in rows:
+                record = JobRecord(**json.loads(row["payload"]))
+                if not self._is_claimable(record, worker_id=worker_id, now=now):
+                    continue
+                record.worker_id = worker_id
+                record.leased_at = now.isoformat()
+                record.lease_expires_at = (
+                    now + timedelta(seconds=max(lease_seconds, 1))
+                ).isoformat()
+                record.updated_at = utc_now()
+                conn.execute(
+                    """
+                    UPDATE jobs
+                    SET updated_at = ?,
+                        worker_id = ?,
+                        leased_at = ?,
+                        lease_expires_at = ?,
+                        payload = ?
+                    WHERE job_id = ?
+                    """,
+                    (
+                        record.updated_at,
+                        record.worker_id,
+                        record.leased_at,
+                        record.lease_expires_at,
+                        json.dumps(asdict(record), ensure_ascii=False),
+                        record.job_id,
+                    ),
+                )
+                claimed = record
+                break
+        if claimed is not None:
+            self._append_jsonl(claimed)
+        return claimed
+
+    @staticmethod
+    def _is_claimable(
+        record: JobRecord,
+        *,
+        worker_id: str,
+        now: datetime,
+    ) -> bool:
+        if record.status != "queued":
+            return False
+        if record.not_before and parse_utc(record.not_before) > now:
+            return False
+        if (
+            record.worker_id
+            and record.worker_id != worker_id
+            and record.lease_expires_at
+            and parse_utc(record.lease_expires_at) > now
+        ):
+            return False
+        return True
 
     def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,56 +402,40 @@ class LocalJobStore:
 
     def _ensure_sqlite(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    kind TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    request_id TEXT,
-                    attempts INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )
-                """
-            )
+            self._create_jobs_table(conn)
+            self._ensure_jobs_columns(conn)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_updated_at ON jobs(updated_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_kind ON jobs(kind)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_not_before ON jobs(not_before)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_lease_expires_at ON jobs(lease_expires_at)")
         if self.path.exists():
             for record in self._list_latest_jsonl(limit=10000):
                 self._upsert_sqlite(record)
 
     def _upsert_sqlite(self, record: JobRecord) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    kind TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    request_id TEXT,
-                    attempts INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )
-                """
-            )
+            self._create_jobs_table(conn)
+            self._ensure_jobs_columns(conn)
             conn.execute(
                 """
                 INSERT INTO jobs (
                     job_id, kind, status, created_at, updated_at, request_id,
-                    attempts, payload
+                    attempts, not_before, deadline_at, worker_id, leased_at,
+                    lease_expires_at, payload
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(job_id) DO UPDATE SET
                     kind=excluded.kind,
                     status=excluded.status,
                     updated_at=excluded.updated_at,
                     request_id=excluded.request_id,
                     attempts=excluded.attempts,
+                    not_before=excluded.not_before,
+                    deadline_at=excluded.deadline_at,
+                    worker_id=excluded.worker_id,
+                    leased_at=excluded.leased_at,
+                    lease_expires_at=excluded.lease_expires_at,
                     payload=excluded.payload
                 """,
                 (
@@ -242,9 +446,54 @@ class LocalJobStore:
                     record.updated_at,
                     record.request_id,
                     record.attempts,
+                    record.not_before,
+                    record.deadline_at,
+                    record.worker_id,
+                    record.leased_at,
+                    record.lease_expires_at,
                     json.dumps(asdict(record), ensure_ascii=False),
                 ),
             )
+
+    @staticmethod
+    def _create_jobs_table(conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS jobs (
+                job_id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                request_id TEXT,
+                attempts INTEGER NOT NULL,
+                not_before TEXT,
+                deadline_at TEXT,
+                worker_id TEXT,
+                leased_at TEXT,
+                lease_expires_at TEXT,
+                payload TEXT NOT NULL
+            )
+            """
+        )
+
+    @staticmethod
+    def _ensure_jobs_columns(conn: sqlite3.Connection) -> None:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+        for column, definition in {
+            "not_before": "TEXT",
+            "deadline_at": "TEXT",
+            "worker_id": "TEXT",
+            "leased_at": "TEXT",
+            "lease_expires_at": "TEXT",
+        }.items():
+            if column not in columns:
+                conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {definition}")
+
+    def _append_jsonl(self, record: JobRecord) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
 
     def _get_sqlite(self, job_id: str) -> JobRecord | None:
         if not self.db_path.exists():
@@ -274,6 +523,7 @@ class LocalJobRunner:
             attempts=1,
             request_id=request_id,
         )
+        append_job_log(record, "running", f"{kind} job started.")
         self.store.append(record)
         return record
 
@@ -285,6 +535,7 @@ class LocalJobRunner:
         *,
         parent_job_id: str | None = None,
         not_before: str | None = None,
+        deadline_at: str | None = None,
     ) -> JobRecord:
         now = utc_now()
         record = JobRecord(
@@ -298,7 +549,9 @@ class LocalJobRunner:
             request_id=request_id,
             parent_job_id=parent_job_id,
             not_before=not_before,
+            deadline_at=deadline_at,
         )
+        append_job_log(record, "queued", f"{kind} job queued.")
         self.store.append(record)
         return record
 
@@ -306,6 +559,7 @@ class LocalJobRunner:
         record.status = "running"
         record.updated_at = utc_now()
         record.attempts += 1
+        append_job_log(record, "running", f"{record.kind} job started.")
         self.store.append(record)
         return record
 
@@ -323,6 +577,12 @@ class LocalJobRunner:
         record.result = result
         record.artifacts = [asdict(artifact) for artifact in artifacts or []]
         record.error = error
+        metadata: dict[str, Any] = {"artifact_count": len(record.artifacts)}
+        if result and "exit_code" in result:
+            metadata["exit_code"] = result["exit_code"]
+        if error:
+            metadata["error_code"] = error.get("code")
+        append_job_log(record, status, f"{record.kind} job {status}.", **metadata)
         self.store.append(record)
         return record
 
@@ -372,6 +632,8 @@ class LocalJobRunner:
                 error = None
             elif result.exit_code == 127:
                 error = {"code": "runtime_unavailable", "message": result.stderr}
+            elif result.exit_code == 124:
+                error = {"code": "execution_timeout", "message": result.stderr}
             else:
                 error = {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
@@ -407,6 +669,8 @@ class LocalJobRunner:
                 error = None
             elif result.exit_code == 127:
                 error = {"code": "runtime_unavailable", "message": result.stderr}
+            elif result.exit_code == 124:
+                error = {"code": "execution_timeout", "message": result.stderr}
             else:
                 error = {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
@@ -458,7 +722,13 @@ class LocalJobRunner:
                     error={"code": "cancelled", "message": "Job was cancelled."},
                 )
             paths = [self._resolve_pdf_path(source_path) for source_path in source_paths]
-            _store, chunks = ingestion.rebuild_vector_store_from_pdfs(paths)
+            _store, chunks = ingestion.rebuild_vector_store_from_pdfs(paths, cancel_event=cancel_event)
+        except ingestion.IngestionCancelled as exc:
+            return self._finish(
+                record,
+                status="cancelled",
+                error={"code": "cancelled", "message": str(exc)},
+            )
         except Exception as exc:
             error = normalize_exception(exc)
             return self._finish(record, status="failed", error=asdict(error))
@@ -492,6 +762,7 @@ class LocalJobRunner:
         job_id: str,
         *,
         delay_s: int = 30,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord | None:
         job = self.store.get(job_id)
@@ -505,6 +776,7 @@ class LocalJobRunner:
             request_id,
             parent_job_id=job.job_id,
             not_before=future_utc(delay_s),
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
         )
 
     @staticmethod
@@ -525,9 +797,18 @@ class LocalJobRunner:
 class AsyncJobManager:
     """In-process background queue for local no-key jobs."""
 
-    def __init__(self, store: LocalJobStore | None = None, *, recover_existing: bool = True):
+    def __init__(
+        self,
+        store: LocalJobStore | None = None,
+        *,
+        recover_existing: bool = True,
+        worker_id: str | None = None,
+        lease_seconds: int = 3600,
+    ):
         self.store = store or LocalJobStore()
         self.runner = LocalJobRunner(self.store)
+        self.worker_id = worker_id or f"in-process-{new_request_id()}"
+        self.lease_seconds = lease_seconds
         self._queue: queue.Queue[str] = queue.Queue()
         self._events: dict[str, threading.Event] = {}
         self._lock = threading.Lock()
@@ -550,9 +831,15 @@ class AsyncJobManager:
         self,
         request: ImageGenerationRequest,
         *,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue("image_generation", asdict(request), request_id)
+        record = self.runner._enqueue(
+            "image_generation",
+            asdict(request),
+            request_id,
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+        )
         self._enqueue(record)
         return record
 
@@ -560,9 +847,15 @@ class AsyncJobManager:
         self,
         request: CodeExecutionRequest,
         *,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue("code_execution", asdict(request), request_id)
+        record = self.runner._enqueue(
+            "code_execution",
+            asdict(request),
+            request_id,
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+        )
         self._enqueue(record)
         return record
 
@@ -570,9 +863,15 @@ class AsyncJobManager:
         self,
         request: CodeExecutionRequest,
         *,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue("code_execution", asdict(request), request_id)
+        record = self.runner._enqueue(
+            "code_execution",
+            asdict(request),
+            request_id,
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+        )
         self._enqueue(record)
         return record
 
@@ -580,9 +879,15 @@ class AsyncJobManager:
         self,
         source_paths: list[str],
         *,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue("index_rebuild", {"source_paths": source_paths}, request_id)
+        record = self.runner._enqueue(
+            "index_rebuild",
+            {"source_paths": source_paths},
+            request_id,
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+        )
         self._enqueue(record)
         return record
 
@@ -591,9 +896,15 @@ class AsyncJobManager:
         job_id: str,
         *,
         delay_s: int = 30,
+        queue_timeout_s: int | None = None,
         request_id: str | None = None,
     ) -> JobRecord | None:
-        record = self.runner.schedule_retry(job_id, delay_s=delay_s, request_id=request_id)
+        record = self.runner.schedule_retry(
+            job_id,
+            delay_s=delay_s,
+            queue_timeout_s=queue_timeout_s,
+            request_id=request_id,
+        )
         if record is None or record.status != "queued":
             return record
         self._enqueue(record)
@@ -645,12 +956,26 @@ class AsyncJobManager:
                 self._queue.task_done()
 
     def _run_job(self, job_id: str) -> None:
-        record = self.store.get(job_id)
+        record = self.store.claim_job(
+            job_id,
+            worker_id=self.worker_id,
+            lease_seconds=self.lease_seconds,
+        )
         if record is None:
             return
         event = self._events.get(job_id)
         if record.status == "cancelled" or (event and event.is_set()):
             self.store.cancel(job_id)
+            return
+        if has_deadline_expired(record):
+            self.runner._finish(
+                record,
+                status="failed",
+                error={
+                    "code": "job_deadline_exceeded",
+                    "message": "Job deadline passed before execution.",
+                },
+            )
             return
         if record.kind == "image_generation":
             self.runner.run_mock_image(
@@ -673,6 +998,118 @@ class AsyncJobManager:
                 record=record,
                 cancel_event=event,
             )
+
+
+class LocalDurableJobWorker:
+    """Explicit durable worker loop for future out-of-process local jobs."""
+
+    def __init__(
+        self,
+        store: LocalJobStore | None = None,
+        *,
+        worker_id: str | None = None,
+        lease_seconds: int = 3600,
+        cancel_poll_interval_s: float = 0.25,
+    ):
+        self.store = store or LocalJobStore()
+        self.runner = LocalJobRunner(self.store)
+        self.worker_id = worker_id or f"durable-{new_request_id()}"
+        self.lease_seconds = lease_seconds
+        self.cancel_poll_interval_s = cancel_poll_interval_s
+
+    def run_once(self) -> JobRecord | None:
+        """Claim and execute one due queued job from durable state."""
+        record = self.store.claim_next_due_job(
+            worker_id=self.worker_id,
+            lease_seconds=self.lease_seconds,
+        )
+        if record is None:
+            return None
+        return self._run_claimed_job(record)
+
+    def run_until_empty(self, *, max_jobs: int | None = None) -> list[JobRecord]:
+        """Run due jobs until no claimable job remains or max_jobs is reached."""
+        results: list[JobRecord] = []
+        while max_jobs is None or len(results) < max_jobs:
+            result = self.run_once()
+            if result is None:
+                break
+            results.append(result)
+        return results
+
+    def run_polling(
+        self,
+        *,
+        poll_interval_s: float = 2.0,
+        max_jobs: int | None = None,
+    ) -> list[JobRecord]:
+        """Poll durable state for due jobs; intended for manual/future service use."""
+        results: list[JobRecord] = []
+        while max_jobs is None or len(results) < max_jobs:
+            result = self.run_once()
+            if result is None:
+                time.sleep(max(poll_interval_s, 0.1))
+                continue
+            results.append(result)
+        return results
+
+    def _run_claimed_job(self, record: JobRecord) -> JobRecord:
+        if has_deadline_expired(record):
+            return self.runner._finish(
+                record,
+                status="failed",
+                error={
+                    "code": "job_deadline_exceeded",
+                    "message": "Job deadline passed before execution.",
+                },
+            )
+        cancel_event = threading.Event()
+        stop_monitor = threading.Event()
+        monitor = threading.Thread(
+            target=self._monitor_cancellation,
+            args=(record.job_id, cancel_event, stop_monitor),
+            daemon=True,
+        )
+        monitor.start()
+        try:
+            if record.kind == "image_generation":
+                return self.runner.run_mock_image(
+                    ImageGenerationRequest(**record.request),
+                    request_id=record.request_id,
+                    record=record,
+                    cancel_event=cancel_event,
+                )
+            if record.kind == "code_execution":
+                return self.runner.run_local_code(
+                    CodeExecutionRequest(**record.request),
+                    request_id=record.request_id,
+                    record=record,
+                    cancel_event=cancel_event,
+                )
+            if record.kind == "index_rebuild":
+                return self.runner.run_index_rebuild(
+                    record.request.get("source_paths", []),
+                    request_id=record.request_id,
+                    record=record,
+                    cancel_event=cancel_event,
+                )
+            return record
+        finally:
+            stop_monitor.set()
+            monitor.join(timeout=1)
+
+    def _monitor_cancellation(
+        self,
+        job_id: str,
+        cancel_event: threading.Event,
+        stop_monitor: threading.Event,
+    ) -> None:
+        while not stop_monitor.is_set() and not cancel_event.is_set():
+            record = self.store.get(job_id)
+            if record and record.status == "cancelled":
+                cancel_event.set()
+                return
+            time.sleep(max(self.cancel_poll_interval_s, 0.05))
 
 
 _ASYNC_JOB_MANAGER: AsyncJobManager | None = None

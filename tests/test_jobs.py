@@ -1,9 +1,11 @@
 import time
 import sqlite3
+import threading
 from pathlib import Path
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
-from src.jobs import AsyncJobManager, LocalJobRunner, LocalJobStore, parse_utc
+from src.ingestion import IngestionCancelled
+from src.jobs import AsyncJobManager, LocalDurableJobWorker, LocalJobRunner, LocalJobStore, future_utc, parse_utc
 
 
 def wait_for_status(store: LocalJobStore, job_id: str, statuses: set[str], timeout_s: float = 3):
@@ -29,6 +31,7 @@ def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):
     assert loaded.status == "succeeded"
     assert loaded.kind == "image_generation"
     assert loaded.artifacts[0]["mime_type"] == "image/svg+xml"
+    assert [entry["status"] for entry in loaded.logs] == ["running", "succeeded"]
 
 
 def test_local_python_job_persists_execution_result(tmp_path: Path, monkeypatch):
@@ -54,6 +57,8 @@ def test_local_python_job_persists_execution_result(tmp_path: Path, monkeypatch)
     assert job.result["stdout"] == "job-ok\n"
     assert job.artifacts[0]["title"] == "result.txt"
     assert store.get(job.job_id).result["exit_code"] == 0
+    assert job.logs[-1]["metadata"]["exit_code"] == 0
+    assert job.logs[-1]["metadata"]["artifact_count"] == 1
 
 
 def test_local_python_job_records_failure(tmp_path: Path):
@@ -71,6 +76,51 @@ def test_local_python_job_records_failure(tmp_path: Path):
     assert job.status == "failed"
     assert job.result["exit_code"] == 7
     assert job.error["code"] == "execution_failed"
+    assert job.logs[-1]["status"] == "failed"
+    assert job.logs[-1]["metadata"]["error_code"] == "execution_failed"
+
+
+def test_job_store_filters_latest_records(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    image_job = runner.run_mock_image(
+        ImageGenerationRequest(prompt="SMC observer filter smoke"),
+        request_id="req-image-filter",
+    )
+    failed_job = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(9)"},
+        ),
+        request_id="req-python-filter",
+    )
+
+    assert [job.job_id for job in store.list_latest(status="failed")] == [failed_job.job_id]
+    assert [job.job_id for job in store.list_latest(kind="image_generation")] == [image_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="observer filter")] == [image_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="req-python-filter")] == [failed_job.job_id]
+    assert store.list_latest(status="queued") == []
+
+
+def test_local_python_job_records_timeout_code(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+
+    job = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "import time\ntime.sleep(2)"},
+            timeout_s=1,
+        )
+    )
+
+    assert job.status == "failed"
+    assert job.result["exit_code"] == 124
+    assert job.error["code"] == "execution_timeout"
+    assert "timed out" in job.error["message"]
 
 
 def test_local_octave_job_records_missing_runtime_failure(tmp_path: Path, monkeypatch):
@@ -103,7 +153,7 @@ def test_index_rebuild_job_records_selected_pdfs(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("src.jobs.ingestion.discover_pdfs", lambda: [paper])
     monkeypatch.setattr(
         "src.jobs.ingestion.rebuild_vector_store_from_pdfs",
-        lambda paths: (object(), 12),
+        lambda paths, **_kwargs: (object(), 12),
     )
 
     store = LocalJobStore(tmp_path / "jobs.jsonl")
@@ -114,6 +164,31 @@ def test_index_rebuild_job_records_selected_pdfs(tmp_path: Path, monkeypatch):
     assert job.kind == "index_rebuild"
     assert job.result["paper_count"] == 1
     assert job.result["chunk_count"] == 12
+
+
+def test_index_rebuild_job_records_mid_rebuild_cancellation(tmp_path: Path, monkeypatch):
+    paper = tmp_path / "papers" / "library" / "paper.pdf"
+    paper.parent.mkdir(parents=True)
+    paper.write_bytes(b"%PDF-1.4")
+
+    def cancelled_rebuild(_paths, *, cancel_event):
+        assert cancel_event is not None
+        cancel_event.set()
+        raise IngestionCancelled("Index rebuild was cancelled.")
+
+    monkeypatch.setattr("src.jobs.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("src.jobs.ingestion.discover_pdfs", lambda: [paper])
+    monkeypatch.setattr(
+        "src.jobs.ingestion.rebuild_vector_store_from_pdfs",
+        cancelled_rebuild,
+    )
+
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    job = runner.run_index_rebuild(["papers/library/paper.pdf"], cancel_event=threading.Event())
+
+    assert job.status == "cancelled"
+    assert job.error == {"code": "cancelled", "message": "Index rebuild was cancelled."}
 
 
 def test_job_store_list_cancel_and_retry(tmp_path: Path):
@@ -135,6 +210,16 @@ def test_job_store_list_cancel_and_retry(tmp_path: Path):
     assert store.cancel("missing") is None
 
 
+def test_job_store_cancel_appends_transition_log(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    queued = LocalJobRunner(store)._enqueue("image_generation", {"prompt": "x"}, "req-cancel")
+
+    cancelled = store.cancel(queued.job_id)
+
+    assert cancelled.status == "cancelled"
+    assert [entry["status"] for entry in cancelled.logs] == ["queued", "cancelled"]
+
+
 def test_runner_schedules_retry_with_backoff_metadata(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     runner = LocalJobRunner(store)
@@ -154,6 +239,115 @@ def test_runner_schedules_retry_with_backoff_metadata(tmp_path: Path):
     assert scheduled.request_id == "req-backoff"
     assert scheduled.not_before is not None
     assert parse_utc(scheduled.not_before) > parse_utc(scheduled.created_at)
+    assert scheduled.logs[-1]["status"] == "queued"
+
+
+def test_runner_schedules_retry_with_queue_deadline(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    failed = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "raise SystemExit(2)"},
+        )
+    )
+
+    scheduled = runner.schedule_retry(failed.job_id, delay_s=30, queue_timeout_s=60)
+
+    assert scheduled is not None
+    assert scheduled.deadline_at is not None
+    assert parse_utc(scheduled.deadline_at) > parse_utc(scheduled.created_at)
+
+
+def test_job_store_claims_due_job_with_worker_lease(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    scheduled = runner._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('later')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-scheduled",
+        not_before=future_utc(60),
+    )
+    due = runner._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('now')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-due",
+    )
+
+    claimed = store.claim_next_due_job(worker_id="worker-a", lease_seconds=30)
+
+    assert claimed is not None
+    assert claimed.job_id == due.job_id
+    assert claimed.status == "queued"
+    assert claimed.worker_id == "worker-a"
+    assert claimed.leased_at is not None
+    assert claimed.lease_expires_at is not None
+    assert parse_utc(claimed.lease_expires_at) > parse_utc(claimed.leased_at)
+    assert store.claim_next_due_job(worker_id="worker-b", lease_seconds=30) is None
+    assert store.get(scheduled.job_id).worker_id is None
+    with sqlite3.connect(store.db_path) as conn:
+        row = conn.execute(
+            "SELECT worker_id, leased_at, lease_expires_at FROM jobs WHERE job_id = ?",
+            (due.job_id,),
+        ).fetchone()
+    assert row[0] == "worker-a"
+    assert row[1] is not None
+    assert row[2] is not None
+
+
+def test_job_store_reclaims_expired_worker_lease(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    due = runner._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('reclaim')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-reclaim",
+    )
+    claimed = store.claim_job(due.job_id, worker_id="worker-a", lease_seconds=30)
+    claimed.lease_expires_at = "2000-01-01T00:00:00+00:00"
+    store.append(claimed)
+
+    reclaimed = store.claim_job(due.job_id, worker_id="worker-b", lease_seconds=30)
+
+    assert reclaimed is not None
+    assert reclaimed.worker_id == "worker-b"
+    assert parse_utc(reclaimed.lease_expires_at) > parse_utc(reclaimed.leased_at)
+
+
+def test_job_store_releases_worker_lease(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    due = LocalJobRunner(store)._enqueue(
+        "image_generation",
+        {"prompt": "release me"},
+        "req-release",
+    )
+    claimed = store.claim_job(due.job_id, worker_id="worker-a", lease_seconds=30)
+
+    released = store.release_job_lease(claimed.job_id, worker_id="worker-a")
+
+    assert released.worker_id is None
+    assert released.leased_at is None
+    assert released.lease_expires_at is None
+    assert store.claim_job(due.job_id, worker_id="worker-b", lease_seconds=30).worker_id == "worker-b"
 
 
 def test_async_manager_runs_zero_delay_scheduled_retry(tmp_path: Path):
@@ -203,6 +397,32 @@ def test_async_manager_recovers_queued_job_after_restart(tmp_path: Path):
     assert store.queue_health()["queued"] == 0
 
 
+def test_async_manager_marks_expired_queued_job_failed(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store, recover_existing=False)
+    record = manager.runner._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('should-not-run')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-expired",
+        deadline_at="2000-01-01T00:00:00+00:00",
+    )
+
+    assert store.queue_health()["expired"] == 1
+    manager._enqueue(record)
+    manager._queue.join()
+    expired = store.get(record.job_id)
+
+    assert expired.status == "failed"
+    assert expired.result is None
+    assert expired.error["code"] == "job_deadline_exceeded"
+
+
 def test_job_store_mirrors_current_state_to_sqlite(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     runner = LocalJobRunner(store)
@@ -246,7 +466,7 @@ def test_job_store_migrates_existing_jsonl_to_sqlite(tmp_path: Path):
 
 def test_async_manager_runs_queued_python_job(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
-    manager = AsyncJobManager(store)
+    manager = AsyncJobManager(store, worker_id="worker-test")
 
     queued = manager.enqueue_local_python(
         CodeExecutionRequest(
@@ -258,7 +478,118 @@ def test_async_manager_runs_queued_python_job(tmp_path: Path):
     finished = wait_for_status(store, queued.job_id, {"succeeded"})
 
     assert queued.status == "queued"
+    assert finished.worker_id == "worker-test"
+    assert finished.leased_at is not None
+    assert finished.lease_expires_at is not None
     assert finished.result["stdout"] == "async-ok\n"
+
+
+def test_durable_worker_runs_due_python_job_without_async_manager(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    queued = LocalJobRunner(store)._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('durable-worker-ok')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-durable-worker",
+    )
+    worker = LocalDurableJobWorker(store, worker_id="durable-test", lease_seconds=30)
+
+    finished = worker.run_once()
+
+    assert finished.job_id == queued.job_id
+    assert finished.status == "succeeded"
+    assert finished.worker_id == "durable-test"
+    assert finished.result["stdout"] == "durable-worker-ok\n"
+    assert [entry["status"] for entry in finished.logs] == ["queued", "running", "succeeded"]
+
+
+def test_durable_worker_skips_scheduled_jobs_until_due(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    LocalJobRunner(store)._enqueue(
+        "image_generation",
+        {"prompt": "not yet"},
+        "req-not-yet",
+        not_before=future_utc(60),
+    )
+
+    result = LocalDurableJobWorker(store, worker_id="durable-test").run_once()
+
+    assert result is None
+    assert store.queue_health()["scheduled"] == 1
+    assert store.queue_health()["leased_queued"] == 0
+
+
+def test_durable_worker_marks_expired_queued_job_failed(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    queued = LocalJobRunner(store)._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('should-not-run')"},
+            "timeout_s": 5,
+            "memory_mb": 512,
+        },
+        "req-durable-expired",
+        deadline_at="2000-01-01T00:00:00+00:00",
+    )
+
+    failed = LocalDurableJobWorker(store, worker_id="durable-test").run_once()
+
+    assert failed.job_id == queued.job_id
+    assert failed.status == "failed"
+    assert failed.worker_id == "durable-test"
+    assert failed.result is None
+    assert failed.error["code"] == "job_deadline_exceeded"
+
+
+def test_durable_worker_cancels_running_python_job_from_store_state(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    queued = LocalJobRunner(store)._enqueue(
+        "code_execution",
+        {
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {
+                "main.py": (
+                    "import time\n"
+                    "time.sleep(5)\n"
+                    "print('too-late')\n"
+                )
+            },
+            "timeout_s": 10,
+            "memory_mb": 512,
+        },
+        "req-durable-cancel",
+    )
+    worker = LocalDurableJobWorker(
+        store,
+        worker_id="durable-cancel-test",
+        cancel_poll_interval_s=0.05,
+    )
+    result_holder: dict[str, object] = {}
+
+    thread = threading.Thread(
+        target=lambda: result_holder.setdefault("job", worker.run_once()),
+        daemon=True,
+    )
+    thread.start()
+    wait_for_status(store, queued.job_id, {"running"})
+
+    store.cancel(queued.job_id)
+    thread.join(timeout=3)
+
+    assert not thread.is_alive()
+    cancelled = store.get(queued.job_id)
+    assert cancelled.status == "cancelled"
+    assert cancelled.worker_id == "durable-cancel-test"
+    assert cancelled.error["code"] == "cancelled"
+    assert "cancelled" in cancelled.result["stderr"].lower()
 
 
 def test_async_manager_cancels_running_python_job(tmp_path: Path):
@@ -280,6 +611,38 @@ def test_async_manager_cancels_running_python_job(tmp_path: Path):
         )
     )
     wait_for_status(store, queued.job_id, {"running"})
+    manager.cancel(queued.job_id)
+    cancelled = wait_for_status(store, queued.job_id, {"cancelled"})
+
+    assert cancelled.error["code"] == "cancelled"
+
+
+def test_async_manager_cancels_running_index_rebuild(tmp_path: Path, monkeypatch):
+    paper = tmp_path / "papers" / "library" / "paper.pdf"
+    paper.parent.mkdir(parents=True)
+    paper.write_bytes(b"%PDF-1.4")
+
+    def cancellable_rebuild(_paths, *, cancel_event):
+        assert cancel_event is not None
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            if cancel_event.is_set():
+                raise IngestionCancelled("Index rebuild was cancelled.")
+            time.sleep(0.02)
+        raise AssertionError("cancel_event was not set")
+
+    monkeypatch.setattr("src.jobs.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("src.jobs.ingestion.discover_pdfs", lambda: [paper])
+    monkeypatch.setattr(
+        "src.jobs.ingestion.rebuild_vector_store_from_pdfs",
+        cancellable_rebuild,
+    )
+
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(store)
+    queued = manager.enqueue_index_rebuild(["papers/library/paper.pdf"])
+    wait_for_status(store, queued.job_id, {"running"})
+
     manager.cancel(queued.job_id)
     cancelled = wait_for_status(store, queued.job_id, {"cancelled"})
 

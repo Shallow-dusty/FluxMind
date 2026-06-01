@@ -1,0 +1,20 @@
+[Unit]
+Description=FluxMind Local Durable Job Worker
+After=network-online.target fluxmind-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fluxmind
+Group=fluxmind
+WorkingDirectory=/opt/fluxmind
+EnvironmentFile=/opt/fluxmind/.env
+ExecStart=/opt/fluxmind/venv/bin/python /opt/fluxmind/scripts/run_job_worker.py --forever --worker-id fluxmind-worker-1 --poll-interval-s 2 --lease-seconds 3600
+Restart=on-failure
+RestartSec=5
+CPUQuota=150%
+MemoryMax=1400M
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
