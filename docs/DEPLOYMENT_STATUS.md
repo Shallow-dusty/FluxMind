@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 01:55 CST
+Last live check: 2026-06-02 02:11 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,10 +9,10 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local working tree based on `55d16a8` with
-uncommitted no-key platform changes. `/opt/fluxmind` is not a git checkout, so
-the live deployment should be treated as a synchronized source tree rather than
-a deployed commit hash.
+Last synced source baseline: local checkout through `587e248` plus the prior
+no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
+deployment should be treated as a synchronized source tree rather than a
+deployed commit hash.
 
 ```
 Host          Trace-Twin
@@ -94,11 +94,15 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 01:55 CST after syncing the local source
-tree based on `55d16a8` plus uncommitted no-key platform changes to
-`/opt/fluxmind`, restarting `fluxmind-api.service` and `fluxmind-ui.service`,
-installing/enabling `fluxmind-worker.service`,
-and verifying that the service still exposes the existing FAISS index, chunk
+Live checks refreshed on 2026-06-02 02:11 CST after syncing the aggregate RAG
+regression-gate refresh to `/opt/fluxmind`. This refresh touched eval/docs
+files only, so no service restart was required; `fluxmind-api.service`,
+`fluxmind-ui.service`, `fluxmind-worker.service`, `cloudflared-fluxmind-smy`,
+and `docker.service` stayed active. Remote health, offline eval, and no-LLM
+retrieval eval passed after the sync. The broader 2026-06-02 01:55 CST source
+sync restarted `fluxmind-api.service` and `fluxmind-ui.service`,
+installed/enabled `fluxmind-worker.service`, and verified that the service still
+exposes the existing FAISS index, chunk
 metadata, authenticated generated-answer citation inspection route, admin corpus
 index freshness state, corpus lifecycle status, no-secret query usage estimates,
 Markdown query report export, no-secret Markdown admin status report, local
@@ -296,9 +300,10 @@ chunk source listing     present in /opt/fluxmind/src/metadata.py; chunk source 
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
 source/page eval check   present in /opt/fluxmind/src/evaluation.py; expected refs are verified against actual PDFs
 live RAG eval gate       present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --live-url
-live retrieval eval gate present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --retrieval-url; remote retrieval eval returned live_retrieval=3/3 context_coverage=1.00
-eval JSON report         present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --json-report; remote report summary offline=3/3 provider=4/4 recorded=3/3 live_retrieval=3/3
-recorded eval gate       present in /opt/fluxmind/eval/rag_baseline.json; recorded answers scored at coverage=1.00
+live retrieval eval gate present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --retrieval-url; remote retrieval eval returned live_retrieval=5/5 context_coverage=1.00
+aggregate eval gates     present in /opt/fluxmind/src/evaluation.py and eval/rag_baseline.json; remote gate summary passed minimum_case_count=5, required_answer_modes=5, minimum_expected_source_ref_count=7, provider_fixture_count=4, recorded_answer_count=5, recorded_pass_rate=1.00, average_recorded_coverage=1.00, and live_retrieval_pass_rate=1.00
+eval JSON report         present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --json-report; remote report summary offline=5/5 provider=4/4 recorded=5/5 live_retrieval=5/5
+recorded eval gate       present in /opt/fluxmind/eval/rag_baseline.json; recorded answers scored at coverage=1.00 across all 5 answer modes
 hybrid retrieval         present in /opt/fluxmind/src/chain.py; query uses hybrid_retrieve
 local BM25 reranker      present in /opt/fluxmind/src/chain.py; hybrid_retrieve uses bm25_relevance_scores
 optional local reranker  present in /opt/fluxmind/src/chain.py; learned_rerank_documents uses local RERANKER_MODEL path only, and remote admin status returned reranker_model_configured=false reranker_model_available=false
@@ -326,8 +331,8 @@ job SQLite state         /opt/fluxmind/jobs/jobs.sqlite3 exists; 17 current rows
 scheduled retry smoke    queued retry executed; parent_job_id/not_before present
 job transition logs      present in /opt/fluxmind/src/jobs.py and /opt/fluxmind/api.py; authenticated mock image smoke returned logs=[running,succeeded] with artifact_count=1
 job retry/cancel UI      present in /opt/fluxmind/app.py with local q/status/kind filters; authenticated job filter smoke created job=f219605a4f28 filtered_count=1 missing_filter_count=0
-offline RAG eval         passed in /opt/fluxmind
-live retrieval eval      passed in /opt/fluxmind against local API; 3/3 cases context_coverage=1.00 without model generation
+offline RAG eval         passed in /opt/fluxmind; 5/5 cases, 4/4 provider fixtures, 5/5 recorded answers, aggregate gates passed
+live retrieval eval      passed in /opt/fluxmind against local API; 5/5 cases context_coverage=1.00 without model generation
 live RAG eval            passed in /opt/fluxmind against local API; 3/3 cases context_coverage=1.00 and answer_coverage=1.00
 local cancellation tests  passed locally; remote venv has no pytest module, so server-side unit execution was not available
 corpus metadata route    present in /opt/fluxmind/api.py
