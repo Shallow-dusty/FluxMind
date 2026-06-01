@@ -305,11 +305,13 @@ panel exposes the same retention preview with local day/limit controls. `GET
 /admin/events` lists no-secret runtime events with local `kind`, `code`, and
 `q` filters, and the Streamlit admin panel exposes the same event inspection
 controls.
-`python scripts/runtime_manifest.py` prints a no-secret backup manifest for
+`python scripts/runtime_manifest.py`, `GET /admin/runtime-manifest`, and the
+Streamlit runtime status panel can export a no-secret backup manifest for
 runtime state that source deploys intentionally exclude, including file counts,
 byte totals, and SHA-256 hashes for known metadata/job/index files without
-exporting file contents or `.env` values. Use `--format markdown` for a
-handoff-friendly report before manual backup or storage migration work.
+exporting file contents or `.env` values. Use `--format markdown` or
+`GET /admin/runtime-manifest/report` for a handoff-friendly report before
+manual backup or storage migration work.
 Generated mock diagrams can use local SVG templates for generic engineering
 diagrams, sliding-mode observers, PMSM control loops, and paper-figure redrafts.
 Diagram and execution outputs include no-key metadata such as prompt, style,

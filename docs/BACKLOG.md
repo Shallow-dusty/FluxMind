@@ -172,6 +172,9 @@ durable multi-user database/object storage migration remains planned
   the local state trees that source deploys exclude, with file counts, byte
   totals, and SHA-256 hashes for known metadata/job/index files without
   exporting file contents or `.env` values.
+- `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
+  Streamlit runtime status panel expose the same no-secret backup manifest
+  without requiring SSH access to run the CLI by hand.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
@@ -421,6 +424,9 @@ are made
 - Admin status and the Streamlit runtime status panel display a no-secret local
   storage inventory with file counts and byte totals for metadata, jobs,
   artifacts, uploads, and FAISS index files.
+- `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
+  Streamlit runtime status panel expose a no-secret runtime backup manifest for
+  the state trees that source deploys exclude.
 - `GET /admin/status/report` and the Streamlit status panel can export the same
   no-secret status snapshot as a Markdown operations report.
 - `GET /admin/retention` returns a no-delete preview of upload/artifact files
