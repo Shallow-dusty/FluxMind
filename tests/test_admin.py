@@ -7,6 +7,7 @@ from src.admin import (
     corpus_status_from_state,
     format_admin_status_report,
     format_corpus_profile_status_report,
+    storage_readiness_status,
 )
 from src.jobs import JobRecord, LocalJobStore
 from src.metadata import ChunkMetadataStore, PaperRecord
@@ -59,8 +60,10 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     artifacts_dir = root / "artifacts"
     metadata_dir = root / "metadata"
     index_dir = root / "faiss_index"
+    uploads_dir = root / "papers" / "uploads"
     artifact = artifacts_dir / "plot.png"
     artifact.parent.mkdir(parents=True)
+    uploads_dir.mkdir(parents=True)
     artifact.write_bytes(b"plot")
     metadata_dir.mkdir()
     index_dir.mkdir()
@@ -86,6 +89,7 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr("src.admin.JOBS_DB_FILE", jobs_dir / "jobs.sqlite3")
     monkeypatch.setattr("src.admin.ARTIFACTS_DIR", artifacts_dir)
     monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", artifacts_dir)
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", uploads_dir)
     monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
     monkeypatch.setattr("src.admin.FAISS_INDEX_DIR", index_dir)
     monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
@@ -236,6 +240,13 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["config"]["docker_execution"]["configured"] is False
     assert status["config"]["docker_execution"]["available"] is False
     assert status["config"]["docker_execution"]["reason"] == "not_configured"
+    assert status["config"]["storage_readiness"]["metadata"]["backend"] == "local"
+    assert status["config"]["storage_readiness"]["metadata"]["available"] is True
+    assert status["config"]["storage_readiness"]["metadata"]["database_url_configured"] is False
+    assert status["config"]["storage_readiness"]["object_storage"]["backend"] == "local"
+    assert status["config"]["storage_readiness"]["object_storage"]["available"] is True
+    assert status["config"]["storage_readiness"]["object_storage"]["bucket_configured"] is False
+    assert status["config"]["storage_readiness"]["external_storage_configured"] is False
     assert all("path" in item for item in status["runtime_dirs"])
 
     report = format_admin_status_report(status)
@@ -249,8 +260,88 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "Reranker model configured: false" in report
     assert "Code execution backend: local" in report
     assert "Docker execution available: false" in report
+    assert "Metadata storage backend: local" in report
+    assert "Object storage backend: local" in report
     assert "req-usage" in report
+    assert "postgres://" not in report
     assert "api_key" not in report.lower()
+
+
+def test_storage_readiness_status_reports_external_config_without_secrets(tmp_path, monkeypatch):
+    root = tmp_path
+    metadata_dir = root / "metadata"
+    jobs_dir = root / "jobs"
+    artifacts_dir = root / "artifacts"
+    uploads_dir = root / "papers" / "uploads"
+    for path in (metadata_dir, jobs_dir, artifacts_dir, uploads_dir):
+        path.mkdir(parents=True)
+
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
+    monkeypatch.setattr("src.admin.JOBS_DIR", jobs_dir)
+    monkeypatch.setattr("src.admin.ARTIFACTS_DIR", artifacts_dir)
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", uploads_dir)
+
+    status = storage_readiness_status(
+        metadata_backend="postgres",
+        object_backend="s3-compatible",
+        database_url="postgres://user:secret@example/db",
+        object_bucket="private-bucket",
+        object_endpoint="https://objects.example.test",
+        object_region="auto",
+    )
+
+    assert status["metadata"] == {
+        "backend": "postgres",
+        "configured": True,
+        "available": True,
+        "reason": "configured_not_connected",
+        "database_url_configured": True,
+    }
+    assert status["object_storage"] == {
+        "backend": "s3-compatible",
+        "configured": True,
+        "available": True,
+        "reason": "configured_not_connected",
+        "bucket_configured": True,
+        "endpoint_configured": True,
+        "region_configured": True,
+    }
+    assert status["external_storage_configured"] is True
+    assert status["external_storage_available"] is True
+    assert "secret" not in str(status)
+    assert "private-bucket" not in str(status)
+    assert "objects.example.test" not in str(status)
+
+
+def test_storage_readiness_status_rejects_incomplete_external_config(tmp_path, monkeypatch):
+    root = tmp_path
+    (root / "metadata").mkdir()
+    (root / "jobs").mkdir()
+    (root / "artifacts").mkdir()
+    (root / "papers" / "uploads").mkdir(parents=True)
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.admin.METADATA_DIR", root / "metadata")
+    monkeypatch.setattr("src.admin.JOBS_DIR", root / "jobs")
+    monkeypatch.setattr("src.admin.ARTIFACTS_DIR", root / "artifacts")
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", root / "papers" / "uploads")
+
+    status = storage_readiness_status(
+        metadata_backend="postgres",
+        object_backend="s3",
+        database_url="",
+        object_bucket="bucket",
+        object_endpoint="",
+        object_region="",
+    )
+
+    assert status["metadata"]["configured"] is False
+    assert status["metadata"]["available"] is False
+    assert status["metadata"]["reason"] == "database_url_missing"
+    assert status["object_storage"]["configured"] is False
+    assert status["object_storage"]["available"] is False
+    assert status["object_storage"]["reason"] == "bucket_or_endpoint_missing"
+    assert status["external_storage_available"] is False
 
 
 def test_collect_retention_preview_lists_old_uploads_and_artifacts(tmp_path, monkeypatch):

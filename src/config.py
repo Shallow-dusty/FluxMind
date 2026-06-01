@@ -23,6 +23,16 @@ RERANKER_MODEL = os.getenv("RERANKER_MODEL", "")
 CODE_EXECUTION_BACKEND = os.getenv("CODE_EXECUTION_BACKEND", "local").strip().lower()
 DOCKER_EXECUTION_IMAGE = os.getenv("DOCKER_EXECUTION_IMAGE", "python:3.12-slim")
 
+# Storage backend readiness. Local JSON/SQLite/filesystem storage remains the
+# active no-key backend; external database/object storage requires explicit
+# configuration and is only reported as readiness here.
+METADATA_STORAGE_BACKEND = os.getenv("METADATA_STORAGE_BACKEND", "local").strip().lower()
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+OBJECT_STORAGE_BACKEND = os.getenv("OBJECT_STORAGE_BACKEND", "local").strip().lower()
+OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "")
+OBJECT_STORAGE_ENDPOINT = os.getenv("OBJECT_STORAGE_ENDPOINT", "")
+OBJECT_STORAGE_REGION = os.getenv("OBJECT_STORAGE_REGION", "")
+
 # Paths
 PAPERS_DIR = PROJECT_ROOT / "papers"
 PAPERS_LIBRARY_DIR = PAPERS_DIR / "library"

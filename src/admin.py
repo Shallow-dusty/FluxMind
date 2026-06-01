@@ -13,6 +13,7 @@ from typing import Any
 from src.config import (
     ARTIFACTS_DIR,
     CODE_EXECUTION_BACKEND,
+    DATABASE_URL,
     DOCKER_EXECUTION_IMAGE,
     EMBEDDING_MODEL,
     FAISS_INDEX_DIR,
@@ -22,6 +23,11 @@ from src.config import (
     LLM_BASE_URL,
     LLM_MODEL,
     METADATA_DIR,
+    METADATA_STORAGE_BACKEND,
+    OBJECT_STORAGE_BACKEND,
+    OBJECT_STORAGE_BUCKET,
+    OBJECT_STORAGE_ENDPOINT,
+    OBJECT_STORAGE_REGION,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
     RERANKER_MODEL,
@@ -81,6 +87,125 @@ def _local_model_path_exists(value: str) -> bool:
     if not path.is_absolute():
         path = PROJECT_ROOT / path
     return path.exists()
+
+
+def _runtime_path_readiness(name: str, path: Path) -> dict[str, Any]:
+    exists = path.exists()
+    writable_target = path if exists else path.parent
+    writable = os.access(writable_target, os.W_OK) if writable_target.exists() else False
+    return {
+        "name": name,
+        "path": _relative_runtime_path(path),
+        "exists": exists,
+        "writable": writable,
+    }
+
+
+def storage_readiness_status(
+    *,
+    metadata_backend: str,
+    object_backend: str,
+    database_url: str,
+    object_bucket: str,
+    object_endpoint: str,
+    object_region: str,
+) -> dict[str, Any]:
+    """Return no-secret readiness for future durable DB/object storage."""
+    metadata_backend = (metadata_backend or "local").strip().lower()
+    object_backend = (object_backend or "local").strip().lower()
+    local_metadata_paths = [
+        _runtime_path_readiness("metadata", METADATA_DIR),
+        _runtime_path_readiness("jobs", JOBS_DIR),
+    ]
+    local_object_paths = [
+        _runtime_path_readiness("artifacts", ARTIFACTS_DIR),
+        _runtime_path_readiness("uploads", PAPERS_UPLOADS_DIR),
+    ]
+
+    metadata_local_available = all(item["writable"] for item in local_metadata_paths)
+    object_local_available = all(item["writable"] for item in local_object_paths)
+    database_configured = bool(database_url.strip())
+    object_configured = object_backend != "local"
+    bucket_configured = bool(object_bucket.strip())
+    endpoint_configured = bool(object_endpoint.strip())
+    region_configured = bool(object_region.strip())
+
+    if metadata_backend == "local":
+        metadata_status = {
+            "backend": "local",
+            "configured": False,
+            "available": metadata_local_available,
+            "reason": "local_runtime_paths_ready"
+            if metadata_local_available
+            else "local_runtime_paths_not_writable",
+            "database_url_configured": False,
+        }
+    elif metadata_backend in {"postgres", "postgresql"}:
+        metadata_status = {
+            "backend": metadata_backend,
+            "configured": database_configured,
+            "available": database_configured,
+            "reason": "configured_not_connected"
+            if database_configured
+            else "database_url_missing",
+            "database_url_configured": database_configured,
+        }
+    else:
+        metadata_status = {
+            "backend": metadata_backend,
+            "configured": True,
+            "available": False,
+            "reason": "unsupported_metadata_backend",
+            "database_url_configured": database_configured,
+        }
+
+    if object_backend == "local":
+        object_status = {
+            "backend": "local",
+            "configured": False,
+            "available": object_local_available,
+            "reason": "local_runtime_paths_ready"
+            if object_local_available
+            else "local_runtime_paths_not_writable",
+            "bucket_configured": False,
+            "endpoint_configured": False,
+            "region_configured": False,
+        }
+    elif object_backend in {"s3", "s3-compatible", "r2"}:
+        configured = bucket_configured and endpoint_configured
+        object_status = {
+            "backend": object_backend,
+            "configured": configured,
+            "available": configured,
+            "reason": "configured_not_connected"
+            if configured
+            else "bucket_or_endpoint_missing",
+            "bucket_configured": bucket_configured,
+            "endpoint_configured": endpoint_configured,
+            "region_configured": region_configured,
+        }
+    else:
+        object_status = {
+            "backend": object_backend,
+            "configured": object_configured,
+            "available": False,
+            "reason": "unsupported_object_storage_backend",
+            "bucket_configured": bucket_configured,
+            "endpoint_configured": endpoint_configured,
+            "region_configured": region_configured,
+        }
+
+    return {
+        "metadata": metadata_status,
+        "object_storage": object_status,
+        "local_metadata_paths": local_metadata_paths,
+        "local_object_paths": local_object_paths,
+        "external_storage_configured": metadata_status["configured"]
+        or object_status["configured"],
+        "external_storage_available": metadata_status["available"]
+        and object_status["available"]
+        and (metadata_status["configured"] or object_status["configured"]),
+    }
 
 
 def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
@@ -209,6 +334,12 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Reranker model available: {_format_bool(config.get('reranker_model_available', False))}",
             f"- LLM base URL configured: {_format_bool(config.get('llm_base_url_configured', False))}",
             f"- External providers enabled: {_format_bool(config.get('external_providers_enabled', False))}",
+            f"- Metadata storage backend: {config.get('storage_readiness', {}).get('metadata', {}).get('backend', '')}",
+            f"- Metadata storage available: {_format_bool(config.get('storage_readiness', {}).get('metadata', {}).get('available', False))}",
+            f"- Metadata storage reason: {config.get('storage_readiness', {}).get('metadata', {}).get('reason', '')}",
+            f"- Object storage backend: {config.get('storage_readiness', {}).get('object_storage', {}).get('backend', '')}",
+            f"- Object storage available: {_format_bool(config.get('storage_readiness', {}).get('object_storage', {}).get('available', False))}",
+            f"- Object storage reason: {config.get('storage_readiness', {}).get('object_storage', {}).get('reason', '')}",
             f"- Code execution backend: {config.get('code_execution_backend', '')}",
             f"- Docker execution configured: {_format_bool(config.get('docker_execution', {}).get('configured', False))}",
             f"- Docker execution available: {_format_bool(config.get('docker_execution', {}).get('available', False))}",
@@ -673,6 +804,14 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "reranker_model_configured": bool(RERANKER_MODEL),
             "reranker_model_available": _local_model_path_exists(RERANKER_MODEL),
             "code_execution_backend": CODE_EXECUTION_BACKEND,
+            "storage_readiness": storage_readiness_status(
+                metadata_backend=METADATA_STORAGE_BACKEND,
+                object_backend=OBJECT_STORAGE_BACKEND,
+                database_url=DATABASE_URL,
+                object_bucket=OBJECT_STORAGE_BUCKET,
+                object_endpoint=OBJECT_STORAGE_ENDPOINT,
+                object_region=OBJECT_STORAGE_REGION,
+            ),
             "docker_execution": docker_execution_status(
                 configured_backend=CODE_EXECUTION_BACKEND,
                 image=DOCKER_EXECUTION_IMAGE,

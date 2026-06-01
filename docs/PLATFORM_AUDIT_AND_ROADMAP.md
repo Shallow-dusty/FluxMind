@@ -78,9 +78,11 @@ storage state. Corpus/profile JSON writes now use atomic replace to avoid
 transient empty reads during concurrent metadata refreshes. `PUT
 /corpus/active` persists active/deactivated paper selection
 without direct runtime-file edits; an index rebuild is still required to make
-FAISS exactly match a changed selection. Admin status now reports index freshness by
-comparing active paper source paths with chunk metadata source paths, so stale
-or missing index state is visible through the API. This is still a local
+FAISS exactly match a changed selection. Admin status now reports index freshness
+by comparing active paper source paths with chunk metadata source paths, so stale
+or missing index state is visible through the API. The same admin status reports
+future metadata database/object-storage readiness without SSH or exposing
+external storage credentials. This is still a local
 baseline, not the final multi-user database. Reusable local corpus profiles now
 persist named active-paper selections under `metadata/corpus_profiles.json`, with
 API routes to list, upsert, inspect status, and activate them. Profile status
@@ -463,8 +465,9 @@ Current progress: the first no-key admin foundation exists through
 `GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
 corpus, artifact, recent `/query` provider-failure events, estimated no-secret
 query usage, provider token usage when returned by the upstream response,
-runtime-directory, public model, and disabled-provider/product switch state
-without exposing API keys or requiring real identity/billing systems. `GET
+runtime-directory, durable storage readiness, public model, and
+disabled-provider/product switch state without exposing API keys, storage
+credentials, or requiring real identity/billing systems. `GET
 /admin/status/report` and the Streamlit status panel can export
 that same no-secret snapshot as a Markdown operations report for handoff or
 offline review. `POST /query/report` exports an answer, citation validation, and

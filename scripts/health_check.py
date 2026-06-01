@@ -231,6 +231,7 @@ def main() -> int:
     check("query_usage" in admin_source and "estimated_total_tokens" in admin_source, "admin query usage estimates installed", failures)
     check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
     check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
+    check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
     check("corpus_index_status" in admin_source, "admin corpus index freshness installed", failures)
@@ -431,6 +432,8 @@ def main() -> int:
             "grep -q 'query_usage' /opt/fluxmind/src/admin.py; "
             "grep -q 'provider_total_tokens' /opt/fluxmind/src/admin.py; "
             "grep -q 'docker_execution' /opt/fluxmind/src/admin.py; "
+            "grep -q 'storage_readiness_status' /opt/fluxmind/src/admin.py; "
+            "grep -q 'external_storage_configured' /opt/fluxmind/src/admin.py; "
             "grep -q 'reranker_model_configured' /opt/fluxmind/src/admin.py; "
             "grep -q 'reranker_model_available' /opt/fluxmind/src/admin.py; "
             "grep -q 'corpus_index_status' /opt/fluxmind/src/admin.py; "
@@ -492,6 +495,12 @@ def main() -> int:
             "if 'configured' not in docker_execution or 'available' not in docker_execution:\n"
             "    raise SystemExit('admin status missing docker execution readiness')\n"
             "print(f'docker_execution_readiness=configured={docker_execution.get(\"configured\")} available={docker_execution.get(\"available\")} reason={docker_execution.get(\"reason\")}')\n"
+            "storage_readiness = admin_status.get('config', {}).get('storage_readiness', {})\n"
+            "metadata_storage = storage_readiness.get('metadata', {})\n"
+            "object_storage = storage_readiness.get('object_storage', {})\n"
+            "if 'available' not in metadata_storage or 'available' not in object_storage:\n"
+            "    raise SystemExit('admin status missing storage readiness')\n"
+            "print(f'storage_readiness=metadata_backend={metadata_storage.get(\"backend\")} metadata_available={metadata_storage.get(\"available\")} object_backend={object_storage.get(\"backend\")} object_available={object_storage.get(\"available\")} external_configured={storage_readiness.get(\"external_storage_configured\")}')\n"
             "sample_chunks = api_get('/corpus/chunks?limit=1').get('chunks', [])\n"
             "if sample_chunks:\n"
             "    sample = sample_chunks[0]\n"

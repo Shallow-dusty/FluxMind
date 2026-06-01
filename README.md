@@ -262,7 +262,11 @@ used by `POST /jobs/async/index/rebuild`.
 retrieved context refs as a Markdown research report for local export.
 `GET /admin/status` exposes no-secret runtime counts for jobs, corpus papers,
 queue health, artifacts, runtime directories, and disabled
-external-provider/productization switches. Successful `/query` and
+external-provider/productization switches. It also reports no-secret durable
+storage readiness for future metadata database and object-storage backends:
+local JSON/SQLite/filesystem storage remains active, while external database
+URLs, buckets, and endpoints are surfaced only as configured booleans and are
+not connected or exposed. Successful `/query` and
 `/query/inspect` calls append no-secret estimated usage events with character
 counts and rough token estimates. When the provider response exposes token
 usage, FluxMind also stores no-secret provider prompt/completion/total token

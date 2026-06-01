@@ -248,7 +248,11 @@ status also reports local index freshness by comparing the active paper source
 set with the distinct source paths represented in chunk metadata. Corpus status
 folds index rebuild jobs and freshness into `queued`, `parsing`, `indexed`,
 `failed`, `stale`, or `empty`, making stale FAISS/chunk state visible without SSH
-or manual SQLite inspection.
+or manual SQLite inspection. The same admin status includes no-secret durable
+storage readiness for future metadata database and object-storage backends.
+Local JSON/SQLite/filesystem storage remains active; external database URLs,
+buckets, and endpoints are represented only by configured/available booleans and
+reason codes, without opening a connection or exposing secret values.
 `PUT /corpus/active` validates project-relative source paths against the
 selectable corpus, persists the active/deactivated selection to
 `faiss_index/active_papers.json`, refreshes local metadata, and returns
@@ -303,9 +307,9 @@ local development and production checks. It reports job counts by status/kind,
 durable queue health, latest failed local jobs, corpus paper counts, artifact
 counts/bytes, recent `/query` provider failures, estimated no-secret query
 usage, provider token usage when the upstream response exposes it, runtime
-directory existence/writability/bytes, public model names, code-execution
-backend readiness, Docker sandbox accessibility, and explicit disabled switches
-for external providers plus identity/quotas/billing. The
+directory existence/writability/bytes, public model names, durable storage
+readiness, code-execution backend readiness, Docker sandbox accessibility, and
+explicit disabled switches for external providers plus identity/quotas/billing. The
 Streamlit sidebar renders the same status so common operational questions do not
 require SSH or raw filesystem inspection. `GET /admin/status/report` renders the
 same snapshot as a Markdown operations report, and the Streamlit runtime panel

@@ -124,8 +124,8 @@ bibliographic paper enrichment, uploaded-PDF metadata extraction with
 first-page author/keyword fallback, SQLite current-state paper/chunk metadata
 mirrors, checksum-based uploaded-PDF deduplication, active/deactivated
 selection workflow, corpus lifecycle status, local paper metadata filtering, and
-admin index freshness checks implemented; durable multi-user database/object
-storage remains planned
+admin index freshness plus durable storage readiness checks implemented; durable
+multi-user database/object storage migration remains planned
 
 - `src/metadata.py` stores local paper metadata in git-ignored
   `metadata/corpus.json`.
@@ -154,6 +154,10 @@ storage remains planned
 - `GET /admin/status` reports corpus JSON/SQLite storage state without SSH.
 - `GET /admin/status` reports whether the current FAISS/chunk metadata source
   set is fresh, stale, missing, or empty relative to the active corpus.
+- `GET /admin/status` reports no-secret metadata database and object-storage
+  readiness for future production storage backends. Local JSON/SQLite/filesystem
+  storage remains active; external database URLs, buckets, and endpoints are
+  reported only as configured booleans and are not connected or exposed.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
@@ -192,6 +196,8 @@ Acceptance:
 - Named local corpus selection status can be exported without reading raw
   profile JSON or activating the selection.
 - Storage state can be listed without reading raw filesystem layout manually.
+- Future database/object-storage readiness can be inspected without committing
+  credentials, opening external connections, or migrating runtime data.
 - Paper metadata can be searched or filtered locally without fetching and
   scanning the full corpus list by hand.
 
