@@ -27,12 +27,16 @@ Status: in progress
   as 502/503/504/429 before reporting endpoint failure.
 - `scripts/health_check.py --ssh-host ...` includes recent journal error lines
   for the UI/API services.
+- `scripts/deploy_sync.py` wraps the production source sync with a dry-run
+  default and required excludes for secrets, virtual environments, models, and
+  mutable runtime state before allowing `rsync --delete`.
 
 Acceptance:
 
 - Local tests pass.
 - Public UI/API return 200.
 - Remote systemd services, ports, model config, and disk checks pass.
+- Production source sync is reproducible without copying over runtime state.
 - Browser translation guard remains covered by tests.
 
 ## WP1: RAG Quality Baseline

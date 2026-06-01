@@ -109,6 +109,7 @@ def main() -> int:
         "src/execution_templates.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
+        "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
         "docs/DEPLOYMENT_STATUS.md",
@@ -297,6 +298,9 @@ def main() -> int:
     check("--retrieval-url" in evaluate_rag_source and "evaluate_live_retrieval_config" in evaluate_rag_source, "live retrieval eval CLI installed", failures)
     check("regression gate" in evaluate_rag_source and "evaluate_regression_gates" in evaluate_rag_source, "RAG aggregate regression gate CLI installed", failures)
     check("--json-report" in evaluate_rag_source and "build_evaluation_report" in evaluate_rag_source, "RAG eval JSON report CLI installed", failures)
+    deploy_sync_source = (PROJECT_ROOT / "scripts" / "deploy_sync.py").read_text(encoding="utf-8")
+    check("--dry-run" in deploy_sync_source and "--apply" in deploy_sync_source, "safe deploy sync dry-run/apply guard installed", failures)
+    check("REQUIRED_RUNTIME_EXCLUDES" in deploy_sync_source and "models/" in deploy_sync_source and "venv/" in deploy_sync_source, "safe deploy sync runtime excludes installed", failures)
     if (PROJECT_ROOT / "artifacts").exists():
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
     else:
@@ -459,6 +463,11 @@ def main() -> int:
             "grep -q -- '--retrieval-url' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q 'regression gate' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q -- '--json-report' /opt/fluxmind/scripts/evaluate_rag.py; "
+            "grep -q 'REQUIRED_RUNTIME_EXCLUDES' /opt/fluxmind/scripts/deploy_sync.py; "
+            "grep -q -- '--dry-run' /opt/fluxmind/scripts/deploy_sync.py; "
+            "grep -q -- '--apply' /opt/fluxmind/scripts/deploy_sync.py; "
+            "grep -q 'models/' /opt/fluxmind/scripts/deploy_sync.py; "
+            "grep -q 'venv/' /opt/fluxmind/scripts/deploy_sync.py; "
             "grep -q 'format_artifact_references' /opt/fluxmind/src/artifacts.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS artifacts' /opt/fluxmind/src/artifacts.py; "
             "grep -q 'integrity_status' /opt/fluxmind/src/artifacts.py; "

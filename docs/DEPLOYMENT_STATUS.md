@@ -473,23 +473,9 @@ The tunnel token is stored only on the server in
 Use live state before making deployment decisions:
 
 ```bash
-rsync -az --delete \
-  --exclude '.git/' \
-  --exclude '.venv/' \
-  --exclude 'venv/' \
-  --exclude '__pycache__/' \
-  --exclude '.pytest_cache/' \
-  --exclude '.mypy_cache/' \
-  --exclude '.ruff_cache/' \
-  --exclude '.env' \
-  --exclude '.cache/' \
-  --exclude 'models/' \
-  --exclude 'metadata/' \
-  --exclude 'jobs/' \
-  --exclude 'artifacts/' \
-  --exclude 'papers/' \
-  --exclude 'faiss_index/' \
-  ./ root@100.100.233.26:/opt/fluxmind/
+python scripts/deploy_sync.py
+
+python scripts/deploy_sync.py --apply --restart
 
 python scripts/health_check.py \
   --url https://smy.hyper-dusty.cloud/ \

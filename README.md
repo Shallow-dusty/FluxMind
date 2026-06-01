@@ -114,6 +114,18 @@ python scripts/health_check.py --ssh-host root@100.100.233.26
 python scripts/update_local_references.py
 ```
 
+### Deploy Sync
+
+Use the guarded sync script instead of invoking `rsync --delete` directly. It
+is a dry run unless `--apply` is passed, and it always excludes server runtime
+state such as `.env`, `venv/`, `models/`, metadata, jobs, artifacts, uploaded
+papers, and the FAISS index.
+
+```bash
+python scripts/deploy_sync.py
+python scripts/deploy_sync.py --apply --restart
+```
+
 ### Docker
 
 ```bash
