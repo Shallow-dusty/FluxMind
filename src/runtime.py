@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 import logging
+import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from src.config import RUNTIME_EVENTS_FILE
 
 
 logger = logging.getLogger("fluxmind")
@@ -13,6 +19,14 @@ logger = logging.getLogger("fluxmind")
 def new_request_id() -> str:
     """Return a short stable-enough request ID for logs and responses."""
     return uuid.uuid4().hex[:12]
+
+
+def estimate_text_tokens(text: str) -> int:
+    """Return a rough no-secret token estimate when provider usage is unavailable."""
+    normalized = " ".join(text.split())
+    if not normalized:
+        return 0
+    return max(1, (len(normalized) + 3) // 4)
 
 
 @dataclass(frozen=True)
@@ -43,6 +57,92 @@ class ProviderError(FluxMindError):
         status_code: int = 502,
     ):
         super().__init__(code, message, status_code=status_code)
+
+
+@dataclass(frozen=True)
+class RuntimeEvent:
+    """No-secret runtime event for admin/status history."""
+
+    event_id: str
+    kind: str
+    code: str
+    message: str
+    created_at: str
+    request_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def append_runtime_event(
+    *,
+    kind: str,
+    code: str,
+    message: str,
+    request_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+    path: Path | None = None,
+) -> RuntimeEvent:
+    """Append a no-secret runtime event to the local JSONL history."""
+    event = RuntimeEvent(
+        event_id=new_request_id(),
+        kind=kind,
+        code=code,
+        message=message[:500],
+        created_at=utc_now(),
+        request_id=request_id,
+        metadata=metadata or {},
+    )
+    target = path or RUNTIME_EVENTS_FILE
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(asdict(event), ensure_ascii=False) + "\n")
+    return event
+
+
+def list_runtime_events(
+    *,
+    kind: str | None = None,
+    code: str | None = None,
+    q: str | None = None,
+    limit: int = 50,
+    path: Path | None = None,
+) -> list[RuntimeEvent]:
+    """Read latest no-secret runtime events from the local JSONL history."""
+    target = path or RUNTIME_EVENTS_FILE
+    if not target.exists():
+        return []
+    kind = kind.strip() if kind else None
+    code = code.strip() if code else None
+    query = (q or "").strip().casefold()
+    events: list[RuntimeEvent] = []
+    with target.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            if kind and item.get("kind") != kind:
+                continue
+            if code and item.get("code") != code:
+                continue
+            if query:
+                searchable = " ".join(
+                    str(value or "")
+                    for value in (
+                        item.get("event_id"),
+                        item.get("kind"),
+                        item.get("code"),
+                        item.get("message"),
+                        item.get("request_id"),
+                        json.dumps(item.get("metadata") or {}, ensure_ascii=False, sort_keys=True),
+                    )
+                ).casefold()
+                if query not in searchable:
+                    continue
+            events.append(RuntimeEvent(**item))
+    return events[-limit:][::-1]
 
 
 def normalize_exception(exc: Exception) -> UserFacingError:

@@ -15,6 +15,13 @@ LLM_MODEL = os.getenv("LLM_MODEL", "DeepSeek-V3.2")
 
 # Embedding
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "")
+
+# Local execution backend. `local` keeps the current child-process provider.
+# `docker` is a no-key future sandbox backend and remains unavailable unless the
+# runtime user can access Docker safely.
+CODE_EXECUTION_BACKEND = os.getenv("CODE_EXECUTION_BACKEND", "local").strip().lower()
+DOCKER_EXECUTION_IMAGE = os.getenv("DOCKER_EXECUTION_IMAGE", "python:3.12-slim")
 
 # Paths
 PAPERS_DIR = PROJECT_ROOT / "papers"
@@ -29,6 +36,10 @@ JOBS_FILE = JOBS_DIR / "jobs.jsonl"
 JOBS_DB_FILE = JOBS_DIR / "jobs.sqlite3"
 METADATA_DIR = PROJECT_ROOT / "metadata"
 CORPUS_METADATA_FILE = METADATA_DIR / "corpus.json"
+CORPUS_PROFILES_FILE = METADATA_DIR / "corpus_profiles.json"
+CORPUS_METADATA_DB_FILE = METADATA_DIR / "corpus.sqlite3"
+CHUNK_METADATA_DB_FILE = METADATA_DIR / "chunks.sqlite3"
+RUNTIME_EVENTS_FILE = METADATA_DIR / "runtime_events.jsonl"
 
 # RAG parameters
 CHUNK_SIZE = 1000

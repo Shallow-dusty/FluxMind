@@ -61,6 +61,7 @@ class CodeExecutionResult:
     stdout: str
     stderr: str
     artifacts: list[GeneratedArtifact] = field(default_factory=list)
+    runtime_metadata: dict[str, str] = field(default_factory=dict)
 
     @property
     def success(self) -> bool:
