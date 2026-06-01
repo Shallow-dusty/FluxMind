@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:36 CST
+Last live check: 2026-06-02 02:38 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `be45512` plus the prior
+Last synced source baseline: local checkout through `56af650` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,7 +94,11 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:36 CST after syncing worker lease health
+Live checks refreshed on 2026-06-02 02:38 CST after syncing the health-check
+warmup retry fix to `/opt/fluxmind` without restarting services. The refreshed
+remote health checker passed with public UI/API 200 and remote runtime checks
+green against the already-running API/UI/worker services. Live checks refreshed
+on 2026-06-02 02:36 CST after syncing worker lease health
 visibility to `/opt/fluxmind`, restarting `fluxmind-api.service`,
 `fluxmind-ui.service`, and `fluxmind-worker.service`, and confirming the
 Cloudflare tunnel stayed active. The first immediate API probe hit the known
