@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:45 CST
+Last live check: 2026-06-02 02:50 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `a3e0a75` plus the prior
+Last synced source baseline: local checkout through `588e519` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,7 +94,15 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:45 CST after syncing local SVG diagram
+Live checks refreshed on 2026-06-02 02:50 CST after syncing local
+control-engineering execution templates to `/opt/fluxmind`, restarting
+`fluxmind-api.service`, `fluxmind-ui.service`, and `fluxmind-worker.service`,
+and confirming the Cloudflare tunnel stayed active. Remote health passed with
+public UI/API 200, remote source grep found `PYTHON_EXECUTION_TEMPLATES`,
+`OCTAVE_EXECUTION_TEMPLATES`, `smc_reaching_law`, and `pmsm_current_decay`, and
+authenticated `/jobs/code/python-local` ran the SMC reaching-law template with
+`status=succeeded`, producing `smc_reaching_law.csv` as a text artifact and
+`smc_reaching_law.svg` as a plot artifact. Live checks refreshed on 2026-06-02 02:45 CST after syncing local SVG diagram
 templates to `/opt/fluxmind`, restarting `fluxmind-api.service`,
 `fluxmind-ui.service`, and `fluxmind-worker.service`, and confirming the
 Cloudflare tunnel stayed active. Remote health passed with public UI/API 200,
@@ -305,6 +313,7 @@ deployed no-key providers present in /opt/fluxmind/src/providers.py
 local Octave provider    present in /opt/fluxmind/src/providers.py; gnu-octave-local metadata installed
 execution metadata       present in /opt/fluxmind/src/providers.py; provider runtime limits/reporting installed
 execution env metadata   present in /opt/fluxmind/src/providers.py; remote Python smoke returned provider_runtime=python-local, python_version=3.12.3, filesystem_isolation=temporary_workdir, network_policy_enforced=false
+local execution templates present in /opt/fluxmind/src/execution_templates.py and /opt/fluxmind/app.py; authenticated smoke ran job=9e3f473b22f1 status=succeeded titles=[smc_reaching_law.csv, smc_reaching_law.svg] kinds=[text, plot]
 execution CPU limits     present in /opt/fluxmind/src/providers.py; remote busy-loop smoke returned cpu_limit_enforced=true
 execution path containment present in /opt/fluxmind/src/providers.py; remote smoke rejected ../ escape with exit_code=2
 execution input limits   present in /opt/fluxmind/src/providers.py; remote smoke rejected >256KiB input with exit_code=2
