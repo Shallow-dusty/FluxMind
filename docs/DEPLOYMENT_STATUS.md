@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:50 CST
+Last live check: 2026-06-02 03:22 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `588e519` plus the prior
+Last synced source baseline: local checkout through `12b812a` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -93,6 +93,21 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-02 03:22 CST after syncing local storage
+inventory admin/UI changes and health-check anchors to `/opt/fluxmind`,
+restarting `fluxmind-api.service`, `fluxmind-ui.service`, and
+`fluxmind-worker.service`, and confirming the Cloudflare tunnel stayed active.
+During the refresh, an initial `rsync --delete` command omitted `venv/`,
+`models/`, and `.cache/` from excludes; the deployment was repaired by
+rebuilding `/opt/fluxmind/venv` with `torch==2.5.1+cpu`, restoring
+`/opt/fluxmind/models/all-MiniLM-L6-v2` from the local Hugging Face snapshot
+cache, and switching `/etc/apt/sources.list` from the unreachable
+`mirrors.cloud.aliyuncs.com` endpoint to `mirrors.aliyun.com`. Remote health
+then passed with public UI/API 200 and SSH runtime checks OK. Authenticated
+`/admin/status` reported `storage_inventory mode=local total_files=19
+total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index]`,
+`content_scanned=false`, and `external_storage_configured=false`.
 
 Live checks refreshed on 2026-06-02 02:50 CST after syncing local
 control-engineering execution templates to `/opt/fluxmind`, restarting
@@ -340,6 +355,7 @@ deployed admin layer     present in /opt/fluxmind/src/admin.py
 admin status report      present in /opt/fluxmind/src/admin.py and /opt/fluxmind/api.py; authenticated smoke returned text/markdown
 admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/src/chain.py, /opt/fluxmind/src/costs.py, and /opt/fluxmind/api.py; query events keep estimated token counts and can include provider prompt/completion/total token counts when the upstream response exposes them; optional QUERY_COST_* rates estimate local USD cost without external billing; remote smoke returned estimated_cost_usd=0 cost_source=not_configured pricing_configured=false external_billing=false
 admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; authenticated admin smoke returned metadata_backend=local metadata_available=true object_backend=local object_available=true external_storage_configured=false
+admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
 paper enrichment fields  present in /opt/fluxmind/src/metadata.py; DOI/arXiv/venue/topic_tags columns migrated into metadata/corpus.sqlite3
@@ -376,6 +392,7 @@ admin retention preview  present in /opt/fluxmind/api.py, /opt/fluxmind/src/admi
 admin query usage panel  present in /opt/fluxmind/app.py; status_query_usage rendered in Streamlit source
 admin cost pricing panel present in /opt/fluxmind/app.py; status_cost_pricing rendered in Streamlit source
 admin storage panel      present in /opt/fluxmind/app.py; status_storage and storage_readiness rendered in Streamlit source
+admin inventory panel    present in /opt/fluxmind/app.py; status_storage_inventory rendered in Streamlit source
 admin events route       present in /opt/fluxmind/api.py and /opt/fluxmind/app.py; runtime event filters available by kind/code/q; authenticated event filter smoke created event=070664f3ced8 filtered_count=1 missing_filter_count=0
 admin index freshness    present in /opt/fluxmind/src/admin.py; authenticated local API returned corpus.index.status=fresh
 provider failure history present in /opt/fluxmind/src/runtime.py; /query failures append no-secret runtime events
@@ -456,6 +473,24 @@ The tunnel token is stored only on the server in
 Use live state before making deployment decisions:
 
 ```bash
+rsync -az --delete \
+  --exclude '.git/' \
+  --exclude '.venv/' \
+  --exclude 'venv/' \
+  --exclude '__pycache__/' \
+  --exclude '.pytest_cache/' \
+  --exclude '.mypy_cache/' \
+  --exclude '.ruff_cache/' \
+  --exclude '.env' \
+  --exclude '.cache/' \
+  --exclude 'models/' \
+  --exclude 'metadata/' \
+  --exclude 'jobs/' \
+  --exclude 'artifacts/' \
+  --exclude 'papers/' \
+  --exclude 'faiss_index/' \
+  ./ root@100.100.233.26:/opt/fluxmind/
+
 python scripts/health_check.py \
   --url https://smy.hyper-dusty.cloud/ \
   --url https://api-smy.hyper-dusty.cloud/health
