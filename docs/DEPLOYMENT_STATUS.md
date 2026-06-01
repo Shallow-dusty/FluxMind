@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:38 CST
+Last live check: 2026-06-02 02:45 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `56af650` plus the prior
+Last synced source baseline: local checkout through `a3e0a75` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,7 +94,15 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:38 CST after syncing the health-check
+Live checks refreshed on 2026-06-02 02:45 CST after syncing local SVG diagram
+templates to `/opt/fluxmind`, restarting `fluxmind-api.service`,
+`fluxmind-ui.service`, and `fluxmind-worker.service`, and confirming the
+Cloudflare tunnel stayed active. Remote health passed with public UI/API 200,
+remote source grep found `mock_image_template`, `sliding-mode-observer`, and
+`paper-figure-redraft`, and authenticated `/jobs/image/mock` generated a
+`sliding-mode-observer` SVG artifact with `diagram_template=sliding-mode-observer`,
+`mime=image/svg+xml`, and SVG text containing `Sliding-Mode Observer`. Live
+checks refreshed on 2026-06-02 02:38 CST after syncing the health-check
 warmup retry fix to `/opt/fluxmind` without restarting services. The refreshed
 remote health checker passed with public UI/API 200 and remote runtime checks
 green against the already-running API/UI/worker services. Live checks refreshed
@@ -345,10 +353,11 @@ retrieval diagnostics present in /opt/fluxmind/src/chain.py; retrieve_with_metad
 numbered citation guard  present in /opt/fluxmind/src/chain.py; prompt lists valid context-ref range per answer
 citation neutralizer     present in /opt/fluxmind/src/chain.py; out-of-range bracket refs are neutralized before validation
 artifact references      present in /opt/fluxmind/src/chain.py; RAG prompt includes Generated Artifact References
-artifact formatter       present in /opt/fluxmind/src/artifacts.py; stable artifact IDs can be cited
+artifact formatter       present in /opt/fluxmind/src/artifacts.py; stable artifact IDs can be cited and include diagram template metadata
 artifact checksum metadata present in /opt/fluxmind/src/providers.py; remote smoke generated checksum_sha256 and byte_count=2
 artifact integrity status present in /opt/fluxmind/src/artifacts.py and /opt/fluxmind/src/admin.py; authenticated admin smoke returned checked=1, ok=1, unchecked=1, checksum_mismatch=0
 mock image metadata      present in /opt/fluxmind/src/providers.py; local-mock-svg-v1 metadata installed
+local diagram templates  present in /opt/fluxmind/src/providers.py and /opt/fluxmind/app.py; authenticated smoke generated job=a4ec9ff27da8 template=sliding-mode-observer svg_has_observer=True
 execution artifacts      local code job captured result.txt artifact
 artifact export route    present; authenticated local API listed result.txt
 artifact gallery         present in /opt/fluxmind/app.py; stable IDs, metadata, local filters, and downloads rendered; authenticated artifact filter smoke created job=d8abf4a5c36e artifact=dbf8747af5f926d3 filtered_count=1 missing_filter_count=0
