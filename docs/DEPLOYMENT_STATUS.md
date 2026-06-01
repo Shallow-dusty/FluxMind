@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:17 CST
+Last live check: 2026-06-02 02:21 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `5871d2e` plus the prior
+Last synced source baseline: local checkout through `591200d` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,10 +94,14 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:17 CST after syncing the durable storage
-readiness refresh to `/opt/fluxmind`, restarting `fluxmind-api.service` and
-`fluxmind-ui.service`, and confirming `fluxmind-worker.service` stayed active.
-Remote health passed with public UI/API 200. `/admin/status` now reports
+Live checks refreshed on 2026-06-02 02:21 CST after syncing the Streamlit
+storage-readiness dashboard refresh to `/opt/fluxmind`, restarting
+`fluxmind-ui.service`, and confirming `fluxmind-api.service` and
+`fluxmind-worker.service` stayed active. Remote health passed with public UI/API
+200, and remote source grep found `status_storage` plus `storage_readiness` in
+`/opt/fluxmind/app.py`. The 2026-06-02 02:17 CST refresh synced the durable
+storage readiness API/report state, restarted `fluxmind-api.service` and
+`fluxmind-ui.service`, and verified `/admin/status` reports
 `storage_readiness` with local metadata/object paths writable, metadata backend
 `local`, object backend `local`, both available, and
 `external_storage_configured=false`, without exposing external database URLs,
@@ -329,6 +333,7 @@ admin status panel       present in /opt/fluxmind/app.py with no-delete retentio
 admin status route       present; authenticated local API returned runtime state and provider_failures
 admin retention preview  present in /opt/fluxmind/api.py, /opt/fluxmind/src/admin.py, and /opt/fluxmind/app.py; authenticated smoke returned mode=preview delete_enabled=false limit=25 uploads=0 artifacts=0
 admin query usage panel  present in /opt/fluxmind/app.py; status_query_usage rendered in Streamlit source
+admin storage panel      present in /opt/fluxmind/app.py; status_storage and storage_readiness rendered in Streamlit source
 admin events route       present in /opt/fluxmind/api.py and /opt/fluxmind/app.py; runtime event filters available by kind/code/q; authenticated event filter smoke created event=070664f3ced8 filtered_count=1 missing_filter_count=0
 admin index freshness    present in /opt/fluxmind/src/admin.py; authenticated local API returned corpus.index.status=fresh
 provider failure history present in /opt/fluxmind/src/runtime.py; /query failures append no-secret runtime events
