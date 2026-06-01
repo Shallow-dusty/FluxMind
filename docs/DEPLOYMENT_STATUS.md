@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 03:28 CST
+Last live check: 2026-06-02 03:36 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `0bbc0b1` plus the prior
+Last synced source baseline: local checkout through `2dae4c7` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -93,6 +93,17 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-02 03:36 CST after deploying the no-secret
+runtime backup manifest with `python scripts/deploy_sync.py --apply` and no
+service restart. The guarded sync excluded `.env`, `.cache/`, `venv/`,
+`models/`, `metadata/`, `jobs/`, `artifacts/`, `papers/`, and `faiss_index/`;
+it synced only source/docs/test changes. Public UI/API health checks returned
+200, remote systemd services stayed active, remote health passed with
+`index_fresh=True`, and `/opt/fluxmind/scripts/runtime_manifest.py --format
+markdown` reported `content_exported=false`, `secrets_exported=false`,
+`env_file_present=true`, `env_file_content_exported=false`, `total_files=30`,
+and `total_bytes=93465106`.
 
 Live checks refreshed on 2026-06-02 03:28 CST after deploying
 `scripts/deploy_sync.py` itself with `python scripts/deploy_sync.py --apply
