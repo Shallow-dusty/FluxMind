@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:21 CST
+Last live check: 2026-06-02 02:32 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `591200d` plus the prior
+Last synced source baseline: local checkout through `2a599b6` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,7 +94,15 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:21 CST after syncing the Streamlit
+Live checks refreshed on 2026-06-02 02:32 CST after syncing optional no-secret
+query-cost pricing estimates to `/opt/fluxmind`, restarting
+`fluxmind-api.service` and `fluxmind-ui.service`, and confirming
+`fluxmind-worker.service` plus the Cloudflare tunnel stayed active. Remote
+health passed with public UI/API 200, remote source grep found
+`status_cost_pricing` and `summarize_query_cost`, and authenticated
+`/admin/status` reported `estimated_cost_usd=0`, `cost_source=not_configured`,
+`pricing.configured=false`, provider `mimo-v2.5-pro`, and
+`external_billing_enabled=false`. Live checks refreshed on 2026-06-02 02:21 CST after syncing the Streamlit
 storage-readiness dashboard refresh to `/opt/fluxmind`, restarting
 `fluxmind-ui.service`, and confirming `fluxmind-api.service` and
 `fluxmind-worker.service` stayed active. Remote health passed with public UI/API
@@ -298,7 +306,7 @@ admin queue health       present in /opt/fluxmind/src/admin.py; authenticated AP
 deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed admin layer     present in /opt/fluxmind/src/admin.py
 admin status report      present in /opt/fluxmind/src/admin.py and /opt/fluxmind/api.py; authenticated smoke returned text/markdown
-admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/src/chain.py, and /opt/fluxmind/api.py; query events keep estimated token counts and can include provider prompt/completion/total token counts when the upstream response exposes them; remote smoke returned provider_total_tokens=0 provider_usage_events=0 before any provider-usage-bearing live event
+admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/src/chain.py, /opt/fluxmind/src/costs.py, and /opt/fluxmind/api.py; query events keep estimated token counts and can include provider prompt/completion/total token counts when the upstream response exposes them; optional QUERY_COST_* rates estimate local USD cost without external billing; remote smoke returned estimated_cost_usd=0 cost_source=not_configured pricing_configured=false external_billing=false
 admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; authenticated admin smoke returned metadata_backend=local metadata_available=true object_backend=local object_available=true external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
@@ -333,6 +341,7 @@ admin status panel       present in /opt/fluxmind/app.py with no-delete retentio
 admin status route       present; authenticated local API returned runtime state and provider_failures
 admin retention preview  present in /opt/fluxmind/api.py, /opt/fluxmind/src/admin.py, and /opt/fluxmind/app.py; authenticated smoke returned mode=preview delete_enabled=false limit=25 uploads=0 artifacts=0
 admin query usage panel  present in /opt/fluxmind/app.py; status_query_usage rendered in Streamlit source
+admin cost pricing panel present in /opt/fluxmind/app.py; status_cost_pricing rendered in Streamlit source
 admin storage panel      present in /opt/fluxmind/app.py; status_storage and storage_readiness rendered in Streamlit source
 admin events route       present in /opt/fluxmind/api.py and /opt/fluxmind/app.py; runtime event filters available by kind/code/q; authenticated event filter smoke created event=070664f3ced8 filtered_count=1 missing_filter_count=0
 admin index freshness    present in /opt/fluxmind/src/admin.py; authenticated local API returned corpus.index.status=fresh
