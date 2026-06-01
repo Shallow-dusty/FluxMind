@@ -7,6 +7,7 @@ from src.admin import (
     corpus_status_from_state,
     format_admin_status_report,
     format_corpus_profile_status_report,
+    storage_inventory_status,
     storage_readiness_status,
 )
 from src.jobs import JobRecord, LocalJobStore
@@ -92,6 +93,11 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", uploads_dir)
     monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
     monkeypatch.setattr("src.admin.FAISS_INDEX_DIR", index_dir)
+    monkeypatch.setattr("src.admin.ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
+    monkeypatch.setattr("src.admin.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
+    monkeypatch.setattr("src.admin.CORPUS_PROFILES_FILE", metadata_dir / "corpus_profiles.json")
+    monkeypatch.setattr("src.admin.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
+    monkeypatch.setattr("src.admin.CHUNK_METADATA_DB_FILE", metadata_dir / "chunks.sqlite3")
     monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
     monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
     monkeypatch.setattr("src.metadata.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
@@ -213,6 +219,17 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["artifacts"]["integrity"]["checked"] == 1
     assert status["artifacts"]["integrity"]["ok"] == 1
     assert status["artifacts"]["integrity"]["checksum_mismatch"] == 0
+    assert status["storage"]["mode"] == "local"
+    assert status["storage"]["content_scanned"] is False
+    assert status["storage"]["total_files"] >= 4
+    assert status["storage"]["total_bytes"] >= 4
+    storage_groups = {group["name"]: group for group in status["storage"]["groups"]}
+    assert set(storage_groups) == {"metadata", "jobs", "artifacts", "uploads", "faiss_index"}
+    assert storage_groups["metadata"]["files"] >= 2
+    assert storage_groups["jobs"]["known_files"][0]["name"] == "jobs_jsonl"
+    assert storage_groups["jobs"]["known_files"][0]["exists"] is True
+    assert storage_groups["faiss_index"]["known_files"][0]["name"] == "index_faiss"
+    assert storage_groups["faiss_index"]["known_files"][0]["exists"] is True
     assert status["provider_failures"]["total_recent"] == 1
     assert status["provider_failures"]["by_code"] == {"provider_timeout": 1}
     assert status["provider_failures"]["latest"][0]["request_id"] == "req-provider"
@@ -278,6 +295,9 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "Docker execution available: false" in report
     assert "Metadata storage backend: local" in report
     assert "Object storage backend: local" in report
+    assert "## Storage Inventory" in report
+    assert "Content scanned: false" in report
+    assert "faiss_index" in report
     assert "req-usage" in report
     assert "postgres://" not in report
     assert "api_key" not in report.lower()
@@ -409,6 +429,54 @@ def test_storage_readiness_status_rejects_incomplete_external_config(tmp_path, m
     assert status["object_storage"]["available"] is False
     assert status["object_storage"]["reason"] == "bucket_or_endpoint_missing"
     assert status["external_storage_available"] is False
+
+
+def test_storage_inventory_status_reports_local_counts_without_content(tmp_path, monkeypatch):
+    root = tmp_path
+    metadata_dir = root / "metadata"
+    jobs_dir = root / "jobs"
+    artifacts_dir = root / "artifacts"
+    uploads_dir = root / "papers" / "uploads"
+    index_dir = root / "faiss_index"
+    for path in (metadata_dir, jobs_dir, artifacts_dir, uploads_dir, index_dir):
+        path.mkdir(parents=True)
+    (metadata_dir / "corpus.json").write_text('{"secret":"not returned"}', encoding="utf-8")
+    (jobs_dir / "jobs.jsonl").write_text("job\n", encoding="utf-8")
+    (artifacts_dir / "plot.svg").write_text("<svg />", encoding="utf-8")
+    (uploads_dir / "paper.pdf").write_bytes(b"pdf")
+    (index_dir / "index.faiss").write_bytes(b"index")
+
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.admin.METADATA_DIR", metadata_dir)
+    monkeypatch.setattr("src.admin.JOBS_DIR", jobs_dir)
+    monkeypatch.setattr("src.admin.ARTIFACTS_DIR", artifacts_dir)
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", uploads_dir)
+    monkeypatch.setattr("src.admin.FAISS_INDEX_DIR", index_dir)
+    monkeypatch.setattr("src.admin.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
+    monkeypatch.setattr("src.admin.CORPUS_PROFILES_FILE", metadata_dir / "corpus_profiles.json")
+    monkeypatch.setattr("src.admin.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
+    monkeypatch.setattr("src.admin.CHUNK_METADATA_DB_FILE", metadata_dir / "chunks.sqlite3")
+    monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
+    monkeypatch.setattr("src.admin.JOBS_FILE", jobs_dir / "jobs.jsonl")
+    monkeypatch.setattr("src.admin.JOBS_DB_FILE", jobs_dir / "jobs.sqlite3")
+    monkeypatch.setattr("src.admin.ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
+
+    status = storage_inventory_status()
+
+    assert status["mode"] == "local"
+    assert status["content_scanned"] is False
+    assert status["total_files"] == 5
+    assert "not returned" not in str(status)
+    groups = {group["name"]: group for group in status["groups"]}
+    assert groups["metadata"]["known_files"][0] == {
+        "name": "corpus_json",
+        "path": "metadata/corpus.json",
+        "exists": True,
+        "is_file": True,
+        "bytes": 25,
+    }
+    assert groups["uploads"]["files"] == 1
+    assert groups["faiss_index"]["bytes"] == 5
 
 
 def test_collect_retention_preview_lists_old_uploads_and_artifacts(tmp_path, monkeypatch):

@@ -11,8 +11,13 @@ import time
 from typing import Any
 
 from src.config import (
+    ACTIVE_PAPERS_FILE,
     ARTIFACTS_DIR,
     CODE_EXECUTION_BACKEND,
+    CHUNK_METADATA_DB_FILE,
+    CORPUS_METADATA_DB_FILE,
+    CORPUS_METADATA_FILE,
+    CORPUS_PROFILES_FILE,
     DATABASE_URL,
     DOCKER_EXECUTION_IMAGE,
     EMBEDDING_MODEL,
@@ -66,6 +71,7 @@ class AdminStatus:
     jobs: dict[str, Any]
     corpus: dict[str, Any]
     artifacts: dict[str, Any]
+    storage: dict[str, Any]
     provider_failures: dict[str, Any]
     query_usage: dict[str, Any]
     config: dict[str, Any]
@@ -109,6 +115,94 @@ def _runtime_path_readiness(name: str, path: Path) -> dict[str, Any]:
         "path": _relative_runtime_path(path),
         "exists": exists,
         "writable": writable,
+    }
+
+
+def _file_inventory(name: str, path: Path) -> dict[str, Any]:
+    exists = path.exists()
+    is_file = path.is_file()
+    return {
+        "name": name,
+        "path": _relative_runtime_path(path),
+        "exists": exists,
+        "is_file": is_file,
+        "bytes": path.stat().st_size if is_file else 0,
+    }
+
+
+def _directory_inventory(
+    name: str,
+    path: Path,
+    *,
+    known_files: dict[str, Path] | None = None,
+) -> dict[str, Any]:
+    total_files = 0
+    total_bytes = 0
+    if path.exists():
+        for item in path.rglob("*"):
+            if not item.is_file():
+                continue
+            total_files += 1
+            total_bytes += item.stat().st_size
+    return {
+        "name": name,
+        "path": _relative_runtime_path(path),
+        "exists": path.exists(),
+        "files": total_files,
+        "bytes": total_bytes,
+        "known_files": [
+            _file_inventory(file_name, file_path)
+            for file_name, file_path in (known_files or {}).items()
+        ],
+    }
+
+
+def storage_inventory_status() -> dict[str, Any]:
+    """Return no-secret local storage counts for admin dashboards."""
+    groups = [
+        _directory_inventory(
+            "metadata",
+            METADATA_DIR,
+            known_files={
+                "corpus_json": CORPUS_METADATA_FILE,
+                "corpus_profiles_json": CORPUS_PROFILES_FILE,
+                "corpus_sqlite": CORPUS_METADATA_DB_FILE,
+                "chunks_sqlite": CHUNK_METADATA_DB_FILE,
+                "runtime_events_jsonl": RUNTIME_EVENTS_FILE,
+            },
+        ),
+        _directory_inventory(
+            "jobs",
+            JOBS_DIR,
+            known_files={
+                "jobs_jsonl": JOBS_FILE,
+                "jobs_sqlite": JOBS_DB_FILE,
+            },
+        ),
+        _directory_inventory(
+            "artifacts",
+            ARTIFACTS_DIR,
+            known_files={
+                "artifacts_sqlite": ARTIFACTS_DIR / "artifacts.sqlite3",
+            },
+        ),
+        _directory_inventory("uploads", PAPERS_UPLOADS_DIR),
+        _directory_inventory(
+            "faiss_index",
+            FAISS_INDEX_DIR,
+            known_files={
+                "index_faiss": FAISS_INDEX_DIR / "index.faiss",
+                "index_pkl": FAISS_INDEX_DIR / "index.pkl",
+                "active_papers_json": ACTIVE_PAPERS_FILE,
+            },
+        ),
+    ]
+    return {
+        "mode": "local",
+        "content_scanned": False,
+        "total_files": sum(group["files"] for group in groups),
+        "total_bytes": sum(group["bytes"] for group in groups),
+        "groups": groups,
     }
 
 
@@ -225,6 +319,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     jobs = data.get("jobs", {})
     artifacts = data.get("artifacts", {})
     corpus = data.get("corpus", {})
+    storage = data.get("storage", {})
     provider_failures = data.get("provider_failures", {})
     query_usage = data.get("query_usage", {})
     worker_leases = jobs.get("worker_leases", {})
@@ -267,32 +362,51 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         f"- Storage: {_format_counts(artifacts.get('storage', {}))}",
         f"- Integrity: {_format_counts(artifacts.get('integrity', {}))}",
         "",
-        "## Provider Failures",
+        "## Storage Inventory",
         "",
-        f"- Recent total: {provider_failures.get('total_recent', 0)}",
-        f"- By code: {_format_counts(provider_failures.get('by_code', {}))}",
-        f"- Event log exists: {_format_bool(provider_failures.get('event_log_exists', False))}",
-        f"- Event log bytes: {provider_failures.get('event_log_bytes', 0)}",
+        f"- Mode: {storage.get('mode', 'local')}",
+        f"- Content scanned: {_format_bool(storage.get('content_scanned', False))}",
+        f"- Total files: {storage.get('total_files', 0)}",
+        f"- Total bytes: {storage.get('total_bytes', 0)}",
         "",
-        "## Query Usage",
-        "",
-        f"- Recent total: {query_usage.get('total_recent', 0)}",
-        f"- By endpoint: {_format_counts(query_usage.get('by_endpoint', {}))}",
-        f"- By answer mode: {_format_counts(query_usage.get('by_answer_mode', {}))}",
-        f"- Estimated prompt tokens: {query_usage.get('estimated_prompt_tokens', 0)}",
-        f"- Estimated answer tokens: {query_usage.get('estimated_answer_tokens', 0)}",
-        f"- Estimated total tokens: {query_usage.get('estimated_total_tokens', 0)}",
-        f"- Provider prompt tokens: {query_usage.get('provider_prompt_tokens', 0)}",
-        f"- Provider completion tokens: {query_usage.get('provider_completion_tokens', 0)}",
-        f"- Provider total tokens: {query_usage.get('provider_total_tokens', 0)}",
-        f"- Provider usage events: {query_usage.get('provider_usage_events', 0)}",
-        f"- Estimated cost USD: {query_usage.get('estimated_cost_usd', '0')}",
-        f"- Cost source: {query_usage.get('cost_source', 'not_configured')}",
-        f"- Pricing configured: {_format_bool(query_usage.get('pricing', {}).get('configured', False))}",
-        f"- Pricing provider: {query_usage.get('pricing', {}).get('provider', 'unspecified')}",
-        f"- Prompt USD per 1M tokens: {query_usage.get('pricing', {}).get('prompt_usd_per_1m', '0')}",
-        f"- Completion USD per 1M tokens: {query_usage.get('pricing', {}).get('completion_usd_per_1m', '0')}",
     ]
+    for group in storage.get("groups", []):
+        lines.append(
+            f"- {group.get('name', '')}: path={group.get('path', '')}, "
+            f"exists={_format_bool(group.get('exists', False))}, "
+            f"files={group.get('files', 0)}, bytes={group.get('bytes', 0)}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Provider Failures",
+            "",
+            f"- Recent total: {provider_failures.get('total_recent', 0)}",
+            f"- By code: {_format_counts(provider_failures.get('by_code', {}))}",
+            f"- Event log exists: {_format_bool(provider_failures.get('event_log_exists', False))}",
+            f"- Event log bytes: {provider_failures.get('event_log_bytes', 0)}",
+            "",
+            "## Query Usage",
+            "",
+            f"- Recent total: {query_usage.get('total_recent', 0)}",
+            f"- By endpoint: {_format_counts(query_usage.get('by_endpoint', {}))}",
+            f"- By answer mode: {_format_counts(query_usage.get('by_answer_mode', {}))}",
+            f"- Estimated prompt tokens: {query_usage.get('estimated_prompt_tokens', 0)}",
+            f"- Estimated answer tokens: {query_usage.get('estimated_answer_tokens', 0)}",
+            f"- Estimated total tokens: {query_usage.get('estimated_total_tokens', 0)}",
+            f"- Provider prompt tokens: {query_usage.get('provider_prompt_tokens', 0)}",
+            f"- Provider completion tokens: {query_usage.get('provider_completion_tokens', 0)}",
+            f"- Provider total tokens: {query_usage.get('provider_total_tokens', 0)}",
+            f"- Provider usage events: {query_usage.get('provider_usage_events', 0)}",
+            f"- Estimated cost USD: {query_usage.get('estimated_cost_usd', '0')}",
+            f"- Cost source: {query_usage.get('cost_source', 'not_configured')}",
+            f"- Pricing configured: {_format_bool(query_usage.get('pricing', {}).get('configured', False))}",
+            f"- Pricing provider: {query_usage.get('pricing', {}).get('provider', 'unspecified')}",
+            f"- Prompt USD per 1M tokens: {query_usage.get('pricing', {}).get('prompt_usd_per_1m', '0')}",
+            f"- Completion USD per 1M tokens: {query_usage.get('pricing', {}).get('completion_usd_per_1m', '0')}",
+        ]
+    )
 
     latest_failures = provider_failures.get("latest", [])
     if latest_failures:
@@ -800,6 +914,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "storage": artifact_registry.storage_status(),
             "integrity": artifact_registry.integrity_status(limit=job_limit),
         },
+        storage=storage_inventory_status(),
         provider_failures={
             "total_recent": len(provider_failure_events),
             "by_code": dict(sorted(provider_failure_counts.items())),

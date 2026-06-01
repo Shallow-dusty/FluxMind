@@ -127,7 +127,8 @@ first-page author/keyword fallback, SQLite current-state paper/chunk metadata
 mirrors, checksum-based uploaded-PDF deduplication, active/deactivated
 selection workflow, corpus lifecycle status, local paper metadata filtering, and
 admin index freshness plus durable storage readiness checks implemented; durable
-multi-user database/object storage migration remains planned
+local storage inventory implemented; durable multi-user database/object storage
+migration remains planned
 
 - `src/metadata.py` stores local paper metadata in git-ignored
   `metadata/corpus.json`.
@@ -160,6 +161,9 @@ multi-user database/object storage migration remains planned
   readiness for future production storage backends. Local JSON/SQLite/filesystem
   storage remains active; external database URLs, buckets, and endpoints are
   reported only as configured booleans and are not connected or exposed.
+- `GET /admin/status` reports local storage inventory for metadata, jobs,
+  artifacts, uploads, and FAISS index files as paths, file counts, byte totals,
+  and known-file existence flags without returning file contents.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
@@ -387,9 +391,9 @@ Acceptance:
 Status: local/admin status foundation, reusable local corpus profiles,
 no-secret Markdown status-report export,
 Markdown query-report export, provider-failure event history, estimated
-query-usage history, and local storage-readiness dashboard implemented; keep
-public identity, API-key lifecycle, quotas, and billing disabled until decisions
-are made
+query-usage history, local storage-readiness dashboard, and local storage
+inventory dashboard implemented; keep public identity, API-key lifecycle,
+quotas, and billing disabled until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, API keys, quotas, and share/export flows.
@@ -403,6 +407,9 @@ are made
 - The Streamlit runtime status panel displays durable storage readiness and
   local metadata/object storage paths from `/admin/status` without exposing
   external storage credentials.
+- Admin status and the Streamlit runtime status panel display a no-secret local
+  storage inventory with file counts and byte totals for metadata, jobs,
+  artifacts, uploads, and FAISS index files.
 - `GET /admin/status/report` and the Streamlit status panel can export the same
   no-secret status snapshot as a Markdown operations report.
 - `GET /admin/retention` returns a no-delete preview of upload/artifact files
@@ -426,8 +433,9 @@ are made
   `QUERY_COST_COMPLETION_USD_PER_1M`. When rates are configured, FluxMind
   estimates USD query cost from provider token counts when available and rough
   estimated tokens otherwise; external billing remains disabled.
-- Still planned: durable storage dashboards, billing attribution, and
-  user/workspace admin once identity exists.
+- Still planned: production durable storage dashboards beyond the local
+  inventory/readiness view, billing attribution, and user/workspace admin once
+  identity exists.
 
 Acceptance:
 
@@ -437,5 +445,7 @@ Acceptance:
   questions.
 - Durable storage readiness is visible in the UI without activating external
   storage accounts.
+- Local storage inventory is visible in the UI without reading file contents or
+  activating external storage accounts.
 - Local retention candidates can be previewed without deleting files or reading
   raw runtime directories by hand.

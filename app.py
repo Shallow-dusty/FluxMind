@@ -117,6 +117,7 @@ I18N = {
         "status_query_usage": "查询用量估算",
         "status_cost_pricing": "成本估算配置",
         "status_storage": "存储就绪状态",
+        "status_storage_inventory": "本地存储盘点",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
@@ -241,6 +242,7 @@ I18N = {
         "status_query_usage": "Query usage estimates",
         "status_cost_pricing": "Cost estimate pricing",
         "status_storage": "Storage readiness",
+        "status_storage_inventory": "Local storage inventory",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
@@ -539,6 +541,7 @@ def render_admin_status() -> None:
     status = collect_admin_status().to_dict()
     jobs = status["jobs"]
     artifacts = status["artifacts"]
+    storage = status["storage"]
     corpus = status["corpus"]
     provider_failures = status["provider_failures"]
     query_usage = status["query_usage"]
@@ -583,6 +586,8 @@ def render_admin_status() -> None:
             "external_storage_available": storage_readiness.get("external_storage_available", False),
         }
     )
+    st.caption(text["status_storage_inventory"])
+    st.json(storage)
     st.caption(text["status_storage_paths"])
     st.json(
         {

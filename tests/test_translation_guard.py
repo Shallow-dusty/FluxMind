@@ -61,6 +61,7 @@ def test_streamlit_admin_status_panel_is_installed():
     assert "worker_leases" in APP_SOURCE
     assert "status_cost_pricing" in APP_SOURCE
     assert "status_storage" in APP_SOURCE
+    assert "status_storage_inventory" in APP_SOURCE
     assert "status_storage_paths" in APP_SOURCE
     assert "storage_readiness" in APP_SOURCE
     assert "external_storage_configured" in APP_SOURCE
