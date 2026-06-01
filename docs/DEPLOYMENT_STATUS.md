@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 02:11 CST
+Last live check: 2026-06-02 02:17 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `587e248` plus the prior
+Last synced source baseline: local checkout through `5871d2e` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -94,15 +94,19 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live checks refreshed on 2026-06-02 02:11 CST after syncing the aggregate RAG
-regression-gate refresh to `/opt/fluxmind`. This refresh touched eval/docs
-files only, so no service restart was required; `fluxmind-api.service`,
-`fluxmind-ui.service`, `fluxmind-worker.service`, `cloudflared-fluxmind-smy`,
-and `docker.service` stayed active. Remote health, offline eval, and no-LLM
-retrieval eval passed after the sync. The broader 2026-06-02 01:55 CST source
-sync restarted `fluxmind-api.service` and `fluxmind-ui.service`,
-installed/enabled `fluxmind-worker.service`, and verified that the service still
-exposes the existing FAISS index, chunk
+Live checks refreshed on 2026-06-02 02:17 CST after syncing the durable storage
+readiness refresh to `/opt/fluxmind`, restarting `fluxmind-api.service` and
+`fluxmind-ui.service`, and confirming `fluxmind-worker.service` stayed active.
+Remote health passed with public UI/API 200. `/admin/status` now reports
+`storage_readiness` with local metadata/object paths writable, metadata backend
+`local`, object backend `local`, both available, and
+`external_storage_configured=false`, without exposing external database URLs,
+buckets, endpoints, or credentials. The 2026-06-02 02:11 CST refresh synced the
+aggregate RAG regression-gate files and verified remote offline eval plus
+no-LLM retrieval eval. The broader 2026-06-02 01:55 CST source sync restarted
+`fluxmind-api.service` and `fluxmind-ui.service`, installed/enabled
+`fluxmind-worker.service`, and verified that the service still exposes the
+existing FAISS index, chunk
 metadata, authenticated generated-answer citation inspection route, admin corpus
 index freshness state, corpus lifecycle status, no-secret query usage estimates,
 Markdown query report export, no-secret Markdown admin status report, local
@@ -291,6 +295,7 @@ deployed artifact layer  present in /opt/fluxmind/src/artifacts.py
 deployed admin layer     present in /opt/fluxmind/src/admin.py
 admin status report      present in /opt/fluxmind/src/admin.py and /opt/fluxmind/api.py; authenticated smoke returned text/markdown
 admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/src/chain.py, and /opt/fluxmind/api.py; query events keep estimated token counts and can include provider prompt/completion/total token counts when the upstream response exposes them; remote smoke returned provider_total_tokens=0 provider_usage_events=0 before any provider-usage-bearing live event
+admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; authenticated admin smoke returned metadata_backend=local metadata_available=true object_backend=local object_available=true external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
 paper enrichment fields  present in /opt/fluxmind/src/metadata.py; DOI/arXiv/venue/topic_tags columns migrated into metadata/corpus.sqlite3
