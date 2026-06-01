@@ -162,15 +162,18 @@ answers, recorded answers, required answer terms, and provider failure fixtures.
 configured pages can be parsed, that source snippets appear on those pages, that
 fixture and recorded answers only cite retrieved context refs, that recorded
 answers meet deterministic key-term coverage thresholds, and that provider
-errors normalize to stable user-facing codes. By default this avoids live
-provider calls. When `--retrieval-url` is supplied, the same script calls the
-deployed `/query/retrieve` endpoint and scores retrieval coverage plus
-source/page completeness without model generation. When `--live-url` is
-supplied, it calls `/query/inspect` and scores generated answers for citation
-validity, expected-source retrieval coverage, and key-term coverage without
-storing API tokens in the repository. `--json-report` writes the same
-offline/provider/recorded/live-retrieval/live-answer result summary as no-secret
-JSON for CI or deployment evidence.
+errors normalize to stable user-facing codes. It also evaluates aggregate
+`quality_gates` for eval-set breadth, answer-mode coverage, recorded-answer
+count/pass rate, average term coverage, and optional live pass-rate thresholds.
+By default this avoids live provider calls. When `--retrieval-url` is supplied,
+the same script calls the deployed `/query/retrieve` endpoint and scores
+retrieval coverage plus source/page completeness without model generation. When
+`--live-url` is supplied, it calls `/query/inspect` and scores generated answers
+for citation validity, expected-source retrieval coverage, key-term coverage,
+and configured live aggregate gates without storing API tokens in the
+repository. `--json-report` writes the same
+offline/provider/recorded/live-retrieval/live-answer/gate result summary as
+no-secret JSON for CI or deployment evidence.
 
 For retrieval-only checks, `src.chain.retrieve_with_metadata()` returns
 retrieved context refs, source/page completeness, and the citation guard without
@@ -180,8 +183,8 @@ generated answers, `src.chain.query_with_metadata()` returns the answer,
 retrieved context refs, and numbered citation validation. The authenticated
 `POST /query/inspect` API exposes that metadata without changing the
 compatibility-oriented `/query` response body. This lets operators verify whether
-generated citations map to retrieved chunks with source/page metadata before a
-broader live scoring harness exists. The prompt also tells the model the valid
+generated citations map to retrieved chunks with source/page metadata before any
+hosted evaluation service is introduced. The prompt also tells the model the valid
 numbered context-ref range for the current answer, reducing invented numbered
 citations that do not map to retrieved chunks. If the provider still emits
 out-of-range bracket numbers, FluxMind neutralizes them before validation so

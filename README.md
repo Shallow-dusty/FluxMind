@@ -305,8 +305,10 @@ terms, and provider-error fixtures. `python scripts/evaluate_rag.py` validates
 that expected source PDFs/pages contain their configured snippets, that fixture
 and recorded answers cite retrieved context refs such as `[1]`, that recorded
 answers meet deterministic key-term coverage thresholds, and that provider
-failures normalize to stable user-facing codes. The `/query` API and Streamlit
-UI accept answer modes:
+failures normalize to stable user-facing codes. The same command also evaluates
+aggregate `quality_gates` so the eval set fails if it loses required answer-mode
+coverage, minimum case/source-ref breadth, recorded-answer pass rate, or average
+term coverage. The `/query` API and Streamlit UI accept answer modes:
 `explanation`, `derivation`, `implementation`, `literature_review`, and
 `code_generation`. Retrieval uses FAISS vector search plus local BM25-lite
 keyword supplementation from the indexed docstore, deterministic BM25-lite
@@ -319,10 +321,11 @@ deployment checks before running generation.
 For deployed checks, add `--retrieval-url <api-base>` to score
 `/query/retrieve` responses without provider generation, or `--live-url
 <api-base>` to score `/query/inspect` responses for citation validity,
-expected-source retrieval coverage, and answer-term coverage. The API token is
-read from `FLUXMIND_API_TOKEN` by default; do not commit tokens. Add
-`--json-report <path>` to write a no-secret machine-readable summary for CI or
-deployment evidence.
+expected-source retrieval coverage, answer-term coverage, and configured live
+aggregate pass-rate thresholds. The API token is read from
+`FLUXMIND_API_TOKEN` by default; do not commit tokens. Add `--json-report
+<path>` to write a no-secret machine-readable summary for CI or deployment
+evidence.
 
 ## 📚 Building the Knowledge Base
 

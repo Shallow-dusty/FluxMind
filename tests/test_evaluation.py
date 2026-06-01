@@ -29,6 +29,7 @@ from src.evaluation import (
     evaluate_live_retrieval_config,
     evaluate_live_retrieval_payload,
     evaluate_recorded_answer,
+    evaluate_regression_gates,
     load_eval_config,
 )
 
@@ -329,24 +330,39 @@ def test_offline_eval_config_passes():
     config = load_eval_config(Path("eval/rag_baseline.json"))
 
     case_results, provider_results, recorded_results = evaluate_config(config)
+    gate_results = evaluate_regression_gates(
+        config,
+        case_results=case_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+    )
 
     assert case_results
     assert provider_results
     assert recorded_results
+    assert gate_results
     assert all(result.ok for result in case_results)
     assert all(result.ok for result in provider_results)
     assert all(result.ok for result in recorded_results)
+    assert all(result.ok for result in gate_results)
 
 
 def test_evaluation_report_summarizes_results_without_secrets():
     config = load_eval_config(Path("eval/rag_baseline.json"))
     case_results, provider_results, recorded_results = evaluate_config(config)
+    gate_results = evaluate_regression_gates(
+        config,
+        case_results=case_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+    )
 
     report = build_evaluation_report(
         config,
         case_results=case_results,
         provider_results=provider_results,
         recorded_results=recorded_results,
+        regression_gate_results=gate_results,
         eval_file=Path("eval/rag_baseline.json"),
     )
 
@@ -357,8 +373,85 @@ def test_evaluation_report_summarizes_results_without_secrets():
     assert report["summary"]["recorded_answers"]["failed"] == 0
     assert report["summary"]["live_retrieval"] == {"total": 0, "ok": 0, "failed": 0}
     assert report["summary"]["live_answers"] == {"total": 0, "ok": 0, "failed": 0}
+    assert report["summary"]["regression_gates"]["failed"] == 0
     assert report["results"]["offline_cases"][0]["case_id"]
+    assert report["results"]["regression_gates"][0]["gate_id"]
     assert "api_key" not in str(report).lower()
+
+
+def test_regression_gates_reject_narrow_eval_set():
+    config = {
+        "quality_gates": {
+            "minimum_case_count": 2,
+            "required_answer_modes": ["explanation", "derivation"],
+            "minimum_provider_fixture_count": 1,
+            "minimum_recorded_answer_count": 1,
+            "minimum_recorded_answer_pass_rate": 1.0,
+            "minimum_average_recorded_answer_term_coverage": 0.8,
+        },
+        "cases": [
+            {
+                "id": "only-explanation",
+                "answer_mode": "explanation",
+                "expected_refs": [],
+            }
+        ],
+    }
+
+    results = evaluate_regression_gates(
+        config,
+        case_results=[],
+        provider_results=[],
+        recorded_results=[],
+    )
+
+    failed_gate_ids = {result.gate_id for result in results if not result.ok}
+    assert "minimum_case_count" in failed_gate_ids
+    assert "required_answer_modes" in failed_gate_ids
+    assert "minimum_recorded_answer_count" in failed_gate_ids
+    assert "minimum_average_recorded_answer_term_coverage" in failed_gate_ids
+
+
+def test_regression_gates_score_live_results_when_supplied():
+    config = {
+        "quality_gates": {
+            "minimum_live_answer_pass_rate": 1.0,
+            "minimum_average_live_answer_term_coverage": 0.9,
+        },
+        "cases": [],
+    }
+    case = {
+        "id": "live-bad",
+        "expected_refs": [
+            {"source": "a.pdf", "source_path": "papers/library/a.pdf", "page": 1},
+        ],
+        "live_required_answer_terms": ["observer"],
+        "minimum_live_answer_term_coverage": 1.0,
+    }
+    live_result = evaluate_live_query_payload(
+        case,
+        {
+            "request_id": "req-live",
+            "result": {
+                "answer": "Ungrounded answer.",
+                "citation_validation": {"ok": False},
+                "context_refs": [],
+            },
+        },
+    )
+
+    results = evaluate_regression_gates(
+        config,
+        case_results=[],
+        provider_results=[],
+        recorded_results=[],
+        live_results=[live_result],
+    )
+
+    assert {result.gate_id for result in results if not result.ok} == {
+        "minimum_live_answer_pass_rate",
+        "minimum_average_live_answer_term_coverage",
+    }
 
 
 def test_recorded_answer_gate_rejects_missing_terms_and_citations():

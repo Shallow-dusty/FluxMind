@@ -40,8 +40,8 @@ scoring, optional live `/query/inspect` regression scoring, no-LLM
 `/query/retrieve` retrieval diagnostics, local hybrid retrieval, deterministic
 BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
-and optional JSON eval report export implemented; broader live regression
-thresholds and external/service reranking remain planned
+optional JSON eval report export, and aggregate eval-set regression gates
+implemented; external/service reranking remains planned
 
 - `eval/rag_baseline.json` contains a small control-engineering evaluation set.
 - Each case records expected source papers/pages, fixture snippets, recorded
@@ -85,13 +85,19 @@ thresholds and external/service reranking remain planned
 - `scripts/evaluate_rag.py --json-report ...` writes a no-secret
   machine-readable summary of offline/provider/recorded/live retrieval/live
   answer eval results for deployment records.
+- `eval/rag_baseline.json` includes aggregate `quality_gates` for minimum case
+  count, expected source-ref count, provider fixture count, recorded-answer
+  count/pass rate/average term coverage, answer-mode coverage, and optional
+  live answer/retrieval pass-rate thresholds.
+- The baseline now covers all answer modes: explanation, derivation,
+  implementation, literature review, and code generation.
 - The generation prompt now tells the model the valid numbered context-ref range
   for each answer so live answers are less likely to invent citations such as
   bibliography numbers.
 - Generated answers neutralize out-of-range bracket numbers before validation so
   source-paper bibliography refs cannot masquerade as FluxMind context refs.
-- Still planned: broader regression thresholds on real eval answers and any
-  external/service reranking that would require a hosted model or new account.
+- Still planned: external/service reranking that would require a hosted model or
+  new account.
 
 Acceptance:
 
@@ -105,6 +111,8 @@ Acceptance:
   provider.
 - Live model answers can be scored through the deployed inspect endpoint without
   committing provider tokens.
+- Eval breadth and aggregate answer-quality regressions fail through configured
+  quality gates, not only per-case checks.
 - Eval results can be exported as JSON for CI/deployment evidence without
   copying provider tokens.
 - Provider errors surface as structured user-facing messages.

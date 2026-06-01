@@ -93,6 +93,15 @@ class LiveRetrievalResult:
     message: str
 
 
+@dataclass(frozen=True)
+class RegressionGateResult:
+    """Result for one config-level RAG regression gate."""
+
+    gate_id: str
+    ok: bool
+    message: str
+
+
 def load_eval_config(path: Path) -> dict[str, Any]:
     """Load an offline evaluation JSON file."""
     return json.loads(path.read_text(encoding="utf-8"))
@@ -596,6 +605,184 @@ def evaluate_config(
     return cases, provider_fixtures, recorded_answers
 
 
+def _pass_rate(results: list[Any]) -> float:
+    if not results:
+        return 0.0
+    return sum(1 for result in results if result.ok) / len(results)
+
+
+def _average_coverage(results: list[Any], attribute: str) -> float:
+    if not results:
+        return 0.0
+    return sum(float(getattr(result, attribute)) for result in results) / len(results)
+
+
+def _gate_result(
+    gate_id: str,
+    *,
+    ok: bool,
+    actual: Any,
+    expected: Any,
+    missing: list[str] | None = None,
+) -> RegressionGateResult:
+    message = f"actual={actual} expected={expected}"
+    if missing is not None:
+        message = f"{message} missing={missing}"
+    return RegressionGateResult(
+        gate_id=gate_id,
+        ok=ok,
+        message=f"ok {message}" if ok else message,
+    )
+
+
+def evaluate_regression_gates(
+    config: dict[str, Any],
+    *,
+    case_results: list[EvaluationCaseResult],
+    provider_results: list[ProviderFixtureResult],
+    recorded_results: list[RecordedAnswerResult],
+    live_results: list[LiveAnswerResult] | None = None,
+    live_retrieval_results: list[LiveRetrievalResult] | None = None,
+) -> list[RegressionGateResult]:
+    """Evaluate config-level breadth and quality gates for the RAG baseline."""
+    gates = config.get("quality_gates", {})
+    if not gates:
+        return []
+
+    cases = config.get("cases", [])
+    results: list[RegressionGateResult] = []
+
+    if "minimum_case_count" in gates:
+        minimum = int(gates["minimum_case_count"])
+        actual = len(cases)
+        results.append(
+            _gate_result(
+                "minimum_case_count",
+                ok=actual >= minimum,
+                actual=actual,
+                expected=f">={minimum}",
+            )
+        )
+
+    required_modes = list(gates.get("required_answer_modes", []))
+    if required_modes:
+        actual_modes = sorted({case.get("answer_mode", "explanation") for case in cases})
+        missing_modes = sorted(set(required_modes) - set(actual_modes))
+        results.append(
+            _gate_result(
+                "required_answer_modes",
+                ok=not missing_modes,
+                actual=actual_modes,
+                expected=required_modes,
+                missing=missing_modes,
+            )
+        )
+
+    if "minimum_expected_source_ref_count" in gates:
+        minimum = int(gates["minimum_expected_source_ref_count"])
+        actual = sum(len(case.get("expected_refs", [])) for case in cases)
+        results.append(
+            _gate_result(
+                "minimum_expected_source_ref_count",
+                ok=actual >= minimum,
+                actual=actual,
+                expected=f">={minimum}",
+            )
+        )
+
+    if "minimum_provider_fixture_count" in gates:
+        minimum = int(gates["minimum_provider_fixture_count"])
+        actual = len(provider_results)
+        results.append(
+            _gate_result(
+                "minimum_provider_fixture_count",
+                ok=actual >= minimum,
+                actual=actual,
+                expected=f">={minimum}",
+            )
+        )
+
+    if "minimum_recorded_answer_count" in gates:
+        minimum = int(gates["minimum_recorded_answer_count"])
+        actual = len(recorded_results)
+        results.append(
+            _gate_result(
+                "minimum_recorded_answer_count",
+                ok=actual >= minimum,
+                actual=actual,
+                expected=f">={minimum}",
+            )
+        )
+
+    if "minimum_recorded_answer_pass_rate" in gates:
+        minimum = float(gates["minimum_recorded_answer_pass_rate"])
+        actual = _pass_rate(recorded_results)
+        results.append(
+            _gate_result(
+                "minimum_recorded_answer_pass_rate",
+                ok=actual >= minimum,
+                actual=f"{actual:.2f}",
+                expected=f">={minimum:.2f}",
+            )
+        )
+
+    if "minimum_average_recorded_answer_term_coverage" in gates:
+        minimum = float(gates["minimum_average_recorded_answer_term_coverage"])
+        actual = _average_coverage(recorded_results, "coverage")
+        results.append(
+            _gate_result(
+                "minimum_average_recorded_answer_term_coverage",
+                ok=actual >= minimum,
+                actual=f"{actual:.2f}",
+                expected=f">={minimum:.2f}",
+            )
+        )
+
+    if live_results is not None and "minimum_live_answer_pass_rate" in gates:
+        minimum = float(gates["minimum_live_answer_pass_rate"])
+        actual = _pass_rate(live_results)
+        results.append(
+            _gate_result(
+                "minimum_live_answer_pass_rate",
+                ok=actual >= minimum,
+                actual=f"{actual:.2f}",
+                expected=f">={minimum:.2f}",
+            )
+        )
+
+    if (
+        live_results is not None
+        and "minimum_average_live_answer_term_coverage" in gates
+    ):
+        minimum = float(gates["minimum_average_live_answer_term_coverage"])
+        actual = _average_coverage(live_results, "answer_term_coverage")
+        results.append(
+            _gate_result(
+                "minimum_average_live_answer_term_coverage",
+                ok=actual >= minimum,
+                actual=f"{actual:.2f}",
+                expected=f">={minimum:.2f}",
+            )
+        )
+
+    if (
+        live_retrieval_results is not None
+        and "minimum_live_retrieval_pass_rate" in gates
+    ):
+        minimum = float(gates["minimum_live_retrieval_pass_rate"])
+        actual = _pass_rate(live_retrieval_results)
+        results.append(
+            _gate_result(
+                "minimum_live_retrieval_pass_rate",
+                ok=actual >= minimum,
+                actual=f"{actual:.2f}",
+                expected=f">={minimum:.2f}",
+            )
+        )
+
+    return results
+
+
 def _result_summary(results: list[Any]) -> dict[str, int]:
     ok = sum(1 for result in results if result.ok)
     return {
@@ -613,11 +800,13 @@ def build_evaluation_report(
     recorded_results: list[RecordedAnswerResult],
     live_results: list[LiveAnswerResult] | None = None,
     live_retrieval_results: list[LiveRetrievalResult] | None = None,
+    regression_gate_results: list[RegressionGateResult] | None = None,
     eval_file: Path | None = None,
 ) -> dict[str, Any]:
     """Build a no-secret machine-readable evaluation report."""
     live_results = live_results or []
     live_retrieval_results = live_retrieval_results or []
+    regression_gate_results = regression_gate_results or []
     return {
         "schema_version": 1,
         "eval_file": str(eval_file) if eval_file else None,
@@ -629,6 +818,7 @@ def build_evaluation_report(
             "recorded_answers": _result_summary(recorded_results),
             "live_retrieval": _result_summary(live_retrieval_results),
             "live_answers": _result_summary(live_results),
+            "regression_gates": _result_summary(regression_gate_results),
         },
         "results": {
             "offline_cases": [asdict(result) for result in case_results],
@@ -636,5 +826,9 @@ def build_evaluation_report(
             "recorded_answers": [asdict(result) for result in recorded_results],
             "live_retrieval": [asdict(result) for result in live_retrieval_results],
             "live_answers": [asdict(result) for result in live_results],
+            "regression_gates": [
+                asdict(result)
+                for result in regression_gate_results
+            ],
         },
     }

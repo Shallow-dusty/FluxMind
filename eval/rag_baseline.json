@@ -5,6 +5,24 @@
     "minimum_expected_context_ref_coverage": 0.5,
     "timeout_s": 120
   },
+  "quality_gates": {
+    "minimum_case_count": 5,
+    "required_answer_modes": [
+      "explanation",
+      "derivation",
+      "implementation",
+      "literature_review",
+      "code_generation"
+    ],
+    "minimum_expected_source_ref_count": 7,
+    "minimum_provider_fixture_count": 4,
+    "minimum_recorded_answer_count": 5,
+    "minimum_recorded_answer_pass_rate": 1.0,
+    "minimum_average_recorded_answer_term_coverage": 0.9,
+    "minimum_live_answer_pass_rate": 1.0,
+    "minimum_average_live_answer_term_coverage": 0.75,
+    "minimum_live_retrieval_pass_rate": 1.0
+  },
   "cases": [
     {
       "id": "smc-chattering-explanation",
@@ -54,6 +72,44 @@
       "required_answer_terms": ["regression", "wide speed", "SOGIFO-X", "sensorless"],
       "minimum_answer_term_coverage": 0.75,
       "live_required_answer_terms": ["regression", "SOGIFO-X", "flux", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "smc-reaching-law-derivation",
+      "answer_mode": "derivation",
+      "question": "Derive the role of a reaching law when sliding-mode control must satisfy state and input constraints.",
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 1,
+          "snippet": "sliding mode controller was designed using the reaching law technique"
+        }
+      ],
+      "fixture_answer": "A derivation should start from the constrained reaching-law objective and cite the state and control-signal constraint context [1].",
+      "recorded_answer": "For a constrained SMC derivation, define the sliding hyperplane, then choose a reaching law that drives the representative point toward that hyperplane while respecting state constraints and control signal limitation [1]. The cited work frames this as finite-time convergence under perturbations, so the derivation should keep disturbance robustness and constraint satisfaction explicit.",
+      "required_answer_terms": ["reaching law", "sliding hyperplane", "state constraints", "control signal"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["reaching", "constraint", "sliding", "control"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "pmsm-smc-implementation-checklist",
+      "answer_mode": "implementation",
+      "question": "Give an implementation checklist for validating a PMSM sliding-mode controller before deployment.",
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 1,
+          "snippet": "Persistent research gaps are identified in hardware validation"
+        }
+      ],
+      "fixture_answer": "An implementation answer should turn the PMSM SMC review's hardware-validation and real-time tuning gaps into a deployment checklist [1].",
+      "recorded_answer": "A PMSM SMC implementation checklist should verify sensor and sampling assumptions, switching or higher-order SMC behavior, disturbance robustness, hardware validation, energy-efficiency measurement, and real-time tuning before deployment [1]. It should also record operating envelopes and failure cases so controller claims are not limited to simulation.",
+      "required_answer_terms": ["implementation", "hardware validation", "real-time tuning", "robustness"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["implementation", "hardware", "validation", "tuning"],
       "minimum_live_answer_term_coverage": 0.75
     },
     {

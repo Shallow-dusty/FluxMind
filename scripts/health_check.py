@@ -251,6 +251,12 @@ def main() -> int:
         failures,
     )
     check(
+        eval_config.get("quality_gates", {}).get("minimum_case_count", 0) >= 5
+        and len(eval_config.get("quality_gates", {}).get("required_answer_modes", [])) >= 5,
+        "RAG eval aggregate quality gates installed",
+        failures,
+    )
+    check(
         all(
             all(ref.get("source_path") and ref.get("snippet") for ref in case.get("expected_refs", []))
             for case in eval_config.get("cases", [])
@@ -262,10 +268,12 @@ def main() -> int:
     check("verify_source_reference" in evaluation_source, "source/page eval verification installed", failures)
     check("evaluate_live_config" in evaluation_source and "query_inspect_payload" in evaluation_source, "live RAG eval scoring installed", failures)
     check("evaluate_live_retrieval_config" in evaluation_source and "query_retrieve_payload" in evaluation_source, "live retrieval eval scoring installed", failures)
+    check("evaluate_regression_gates" in evaluation_source and "RegressionGateResult" in evaluation_source, "aggregate RAG regression gates installed", failures)
     check("build_evaluation_report" in evaluation_source and "schema_version" in evaluation_source, "RAG eval JSON report builder installed", failures)
     evaluate_rag_source = (PROJECT_ROOT / "scripts" / "evaluate_rag.py").read_text(encoding="utf-8")
     check("--live-url" in evaluate_rag_source and "evaluate_live_config" in evaluate_rag_source, "live RAG eval CLI installed", failures)
     check("--retrieval-url" in evaluate_rag_source and "evaluate_live_retrieval_config" in evaluate_rag_source, "live retrieval eval CLI installed", failures)
+    check("regression gate" in evaluate_rag_source and "evaluate_regression_gates" in evaluate_rag_source, "RAG aggregate regression gate CLI installed", failures)
     check("--json-report" in evaluate_rag_source and "build_evaluation_report" in evaluate_rag_source, "RAG eval JSON report CLI installed", failures)
     if (PROJECT_ROOT / "artifacts").exists():
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
@@ -409,9 +417,11 @@ def main() -> int:
             "grep -q 'Generated Artifact References' /opt/fluxmind/src/chain.py; "
             "grep -q 'evaluate_live_config' /opt/fluxmind/src/evaluation.py; "
             "grep -q 'evaluate_live_retrieval_config' /opt/fluxmind/src/evaluation.py; "
+            "grep -q 'evaluate_regression_gates' /opt/fluxmind/src/evaluation.py; "
             "grep -q 'build_evaluation_report' /opt/fluxmind/src/evaluation.py; "
             "grep -q -- '--live-url' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q -- '--retrieval-url' /opt/fluxmind/scripts/evaluate_rag.py; "
+            "grep -q 'regression gate' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q -- '--json-report' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q 'format_artifact_references' /opt/fluxmind/src/artifacts.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS artifacts' /opt/fluxmind/src/artifacts.py; "

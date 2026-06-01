@@ -17,6 +17,7 @@ from src.evaluation import (  # noqa: E402
     evaluate_config,
     evaluate_live_config,
     evaluate_live_retrieval_config,
+    evaluate_regression_gates,
     load_eval_config,
 )
 
@@ -66,6 +67,7 @@ def main() -> int:
     case_results, provider_results, recorded_results = evaluate_config(config)
     live_results = []
     live_retrieval_results = []
+    regression_gate_results = []
 
     failures: list[str] = []
     for result in case_results:
@@ -123,6 +125,20 @@ def main() -> int:
             if not result.ok:
                 failures.append(f"live retrieval {result.case_id}")
 
+    regression_gate_results = evaluate_regression_gates(
+        config,
+        case_results=case_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+        live_results=live_results if args.live_url else None,
+        live_retrieval_results=live_retrieval_results if args.retrieval_url else None,
+    )
+    for result in regression_gate_results:
+        status = "ok" if result.ok else "fail"
+        print(f"{status:4} regression gate {result.gate_id}: {result.message}")
+        if not result.ok:
+            failures.append(f"regression gate {result.gate_id}")
+
     if args.json_report:
         args.json_report.parent.mkdir(parents=True, exist_ok=True)
         report = build_evaluation_report(
@@ -132,6 +148,7 @@ def main() -> int:
             recorded_results=recorded_results,
             live_results=live_results,
             live_retrieval_results=live_retrieval_results,
+            regression_gate_results=regression_gate_results,
             eval_file=args.file,
         )
         args.json_report.write_text(

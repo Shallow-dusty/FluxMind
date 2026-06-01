@@ -336,8 +336,11 @@ Durable user/corpus/chunk/artifact/job metadata is still planned.
   those deployed retrieval diagnostics as part of the no-key quality gate. Local
   hybrid vector+BM25-lite keyword retrieval, deterministic BM25-lite reranking,
   and optional no-key local CrossEncoder reranking exist. The evaluator can
-  export no-secret JSON summaries for deployment evidence. Broader live
-  model-answer scoring remains planned.
+  export no-secret JSON summaries for deployment evidence, and aggregate
+  `quality_gates` now fail eval-set breadth, answer-mode coverage,
+  recorded-answer, and optional live pass-rate regressions. Hosted/service
+  model-answer scoring remains planned only if external evaluation
+  infrastructure is deliberately activated.
 - Continue broadening bibliographic enrichment where uploaded PDFs need stronger
   multi-line author/affiliation parsing or external resolver-backed metadata.
 - Add external/service reranking only if the local BM25-lite and optional local
