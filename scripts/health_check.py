@@ -12,6 +12,7 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -30,14 +31,19 @@ def check(condition: bool, label: str, failures: list[str]) -> None:
 def http_status(url: str, timeout: float, retries: int) -> int | None:
     request = urllib.request.Request(url, headers={"User-Agent": "FluxMindHealth/1.0"})
     last_status: int | None = None
-    for _ in range(max(1, retries)):
+    attempts = max(1, retries)
+    for attempt in range(attempts):
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 return response.status
         except urllib.error.HTTPError as exc:
-            return exc.code
+            last_status = exc.code
+            if exc.code not in {429, 502, 503, 504}:
+                return exc.code
         except OSError:
             last_status = None
+        if attempt + 1 < attempts:
+            time.sleep(min(1.0, timeout))
     return last_status
 
 

@@ -23,6 +23,8 @@ Status: in progress
   rebuilds, that remote chunk metadata rows exist when an active corpus is
   present, and that deployed `/corpus/chunks` filters can return a sampled
   chunk while rejecting an impossible query.
+- `scripts/health_check.py --url` retries transient HTTP warmup failures such
+  as 502/503/504/429 before reporting endpoint failure.
 - `scripts/health_check.py --ssh-host ...` includes recent journal error lines
   for the UI/API services.
 
