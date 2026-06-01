@@ -4,6 +4,9 @@
     "authors": "Abdullah Ajasa; Mubarak Badamasi Aremu; Ali Nasir",
     "year": 2025,
     "topic": "PMSM SMC review",
+    "arxiv_id": "2510.18420",
+    "venue": "arXiv",
+    "topic_tags": ["PMSM", "sliding mode control", "review", "taxonomy"],
     "source_url": "https://arxiv.org/abs/2510.18420",
     "pdf_url": "https://arxiv.org/pdf/2510.18420",
     "license": "arXiv open access"
@@ -13,6 +16,9 @@
     "authors": "Jongwon Choi",
     "year": 2021,
     "topic": "active flux observer",
+    "doi": "10.3390/en14196249",
+    "venue": "Energies",
+    "topic_tags": ["IPMSM", "active flux", "sensorless control", "observer"],
     "source_url": "https://www.mdpi.com/1996-1073/14/19/6249",
     "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06249/article_deploy/energies-14-06249.pdf",
     "license": "CC BY"
@@ -22,6 +28,9 @@
     "authors": "Rencheng Jin; Ji Chen; Peihao Hu; Jianzhang Li",
     "year": 2024,
     "topic": "flux observer",
+    "doi": "10.3390/s24030817",
+    "venue": "Sensors",
+    "topic_tags": ["PMSM", "flux observer", "SOGIFO-X", "sensorless control"],
     "source_url": "https://www.mdpi.com/1424-8220/24/3/817",
     "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-24-00817/article_deploy/sensors-24-00817.pdf",
     "license": "CC BY"
@@ -31,6 +40,9 @@
     "authors": "Piotr Lesniewski; Marek Jaskula",
     "year": 2023,
     "topic": "SMC reaching law",
+    "doi": "10.3390/en16145481",
+    "venue": "Energies",
+    "topic_tags": ["sliding mode control", "constraints", "nonlinear systems", "reaching law"],
     "source_url": "https://www.mdpi.com/1996-1073/16/14/5481",
     "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-05481/article_deploy/energies-16-05481.pdf",
     "license": "CC BY"
@@ -40,6 +52,9 @@
     "authors": "Jinfa Liang; Jun Wu; Yong Wang; Zhihong Zhong; Xinxin Bai",
     "year": 2024,
     "topic": "PMSM SMO",
+    "doi": "10.3390/eng5030091",
+    "venue": "Eng",
+    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control"],
     "source_url": "https://www.mdpi.com/2673-4117/5/3/91",
     "pdf_url": "https://res.mdpi.com/d_attachment/eng/eng-05-00091/article_deploy/eng-05-00091.pdf",
     "license": "CC BY"
@@ -49,6 +64,9 @@
     "authors": "Duc Giap Nguyen; Duc Thien Tran; Kyoung Kwan Ahn",
     "year": 2021,
     "topic": "chattering attenuation",
+    "doi": "10.3390/app11178158",
+    "venue": "Applied Sciences",
+    "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering attenuation"],
     "source_url": "https://www.mdpi.com/2076-3417/11/17/8158",
     "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-11-08158/article_deploy/applsci-11-08158.pdf",
     "license": "CC BY"
