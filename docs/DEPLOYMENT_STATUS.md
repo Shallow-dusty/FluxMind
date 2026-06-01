@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 03:22 CST
+Last live check: 2026-06-02 03:28 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,7 +9,7 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `12b812a` plus the prior
+Last synced source baseline: local checkout through `0bbc0b1` plus the prior
 no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
 deployment should be treated as a synchronized source tree rather than a
 deployed commit hash.
@@ -93,6 +93,17 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-02 03:28 CST after deploying
+`scripts/deploy_sync.py` itself with `python scripts/deploy_sync.py --apply
+--restart`. The guarded sync excluded `.env`, `.cache/`, `venv/`, `models/`,
+`metadata/`, `jobs/`, `artifacts/`, `papers/`, and `faiss_index/`; it synced
+only source/docs/test changes, restarted API/UI/worker, and left the Cloudflare
+tunnel active. Public UI/API health checks returned 200. The first SSH health
+check hit the normal API warmup binding window after restart; the rerun passed
+with API/UI listeners on `18502`/`18501`, active corpus count 6, FAISS index
+bytes 786477, chunk metadata rows 512, `index_fresh=True`, and safe deploy sync
+anchors present on the server.
 
 Live checks refreshed on 2026-06-02 03:22 CST after syncing local storage
 inventory admin/UI changes and health-check anchors to `/opt/fluxmind`,
@@ -363,6 +374,7 @@ atomic metadata writes   present in /opt/fluxmind/src/metadata.py; corpus/profil
 chunk SQLite mirror      present in /opt/fluxmind/src/metadata.py; indexed chunk metadata can mirror into metadata/chunks.sqlite3
 chunk source listing     present in /opt/fluxmind/src/metadata.py; chunk source paths can be compared with active corpus
 deployed eval layer      present in /opt/fluxmind/src/evaluation.py
+safe deploy sync         present in /opt/fluxmind/scripts/deploy_sync.py; local apply smoke synced only source/docs/test changes, excluded runtime state, restarted API/UI/worker, and follow-up remote health passed
 source/page eval check   present in /opt/fluxmind/src/evaluation.py; expected refs are verified against actual PDFs
 live RAG eval gate       present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --live-url
 live retrieval eval gate present in /opt/fluxmind/src/evaluation.py and scripts/evaluate_rag.py --retrieval-url; remote retrieval eval returned live_retrieval=5/5 context_coverage=1.00
