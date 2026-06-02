@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-03 00:23 CST
+Last live check: 2026-06-03 00:46 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,10 +9,10 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last synced source baseline: local checkout through `844ca87` plus the prior
-no-key platform source sync. `/opt/fluxmind` is not a git checkout, so the live
-deployment should be treated as a synchronized source tree rather than a
-deployed commit hash.
+Last pushed source baseline before this deployment record: `a51a060`
+(`docs: confirm no-key platform baseline`). `/opt/fluxmind` is not a git
+checkout, so the live deployment should be treated as a synchronized source tree
+rather than a deployed commit hash.
 
 ```
 Host          Trace-Twin
@@ -93,6 +93,24 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-03 00:46 CST after confirming the completed
+no-key/local platform baseline, pushing `main` to `origin/main`, and deploying
+with `python scripts/deploy_sync.py --apply --restart`. The guarded sync
+excluded `.env`, `.cache/`, `venv/`, `models/`, `metadata/`, `jobs/`,
+`artifacts/`, `papers/`, and `faiss_index/`; it synced source/docs/test changes
+and restarted API/UI/worker. Public HTTPS UI/API health returned 200. The first
+SSH health check hit the normal API startup warmup window after restart: systemd
+services were active and the UI port was listening, but `127.0.0.1:18502` was
+not yet bound. A follow-up SSH health check passed with UI/API/worker,
+Cloudflare tunnel, and Docker services active; listeners on `18501` and
+`18502`; local API health `{"status":"ok"}`; `LLM_MODEL=mimo-v2.5-pro`;
+embedding model `/opt/fluxmind/models/all-MiniLM-L6-v2`; `active_papers=6`;
+`faiss_index_bytes=786477`; `chunk_metadata_rows=512`;
+`chunk_metadata_sources=6`; `index_fresh=True`; local metadata/object storage
+available; Docker execution backend not configured; root disk 25G free. The
+remote journal still includes FAISS optional AVX512/AVX2 module fallback lines,
+but the API health, FAISS index, chunk metadata, and retrieval smoke all passed.
 
 Live read-only checks refreshed on 2026-06-03 00:23 CST during documentation
 cleanup. No deploy sync, restart, runtime mutation, or push was performed.

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-03 00:43 CST
+Snapshot time: 2026-06-03 00:46 CST
 
 This file records the current local repository state after confirming the
 completed no-key/local baseline. It is a repo snapshot, not a production
@@ -13,11 +13,11 @@ deployment source of truth. For live service state, use
 Branch        main
 Remote        origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking      origin/main
-HEAD          b9c063e docs(deploy): record runtime manifest API deployment
-origin/main   55d16a8
-Divergence    ahead 36, behind 0
-Baseline      clean for tracked/untracked source files before this docs pass
-Current diff  documentation-only completion/status cleanup, unstaged
+HEAD          a51a060 docs: confirm no-key platform baseline
+origin/main   a51a060
+Divergence    ahead 0, behind 0 before the deployment-record follow-up
+Baseline      pushed and deployed no-key/local baseline at a51a060
+Follow-up     deployment record committed separately after live verification
 Ignored only  .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -42,23 +42,10 @@ Deployment/docs      guarded deploy sync, health-check expansion, deployment
                      evidence updates
 ```
 
-Push and deploy are the next steps for this completion pass.
+Push and deployment completed for `a51a060`; the live verification evidence was
+then recorded in `docs/DEPLOYMENT_STATUS.md`.
 
-Pending documentation cleanup files:
-
-```text
-Modified   AGENTS.md
-Modified   CLAUDE.md
-Modified   README.md
-Modified   docs/ARCHITECTURE.md
-Modified   docs/BACKLOG.md
-Modified   docs/DEPLOYMENT_STATUS.md
-Modified   docs/PLATFORM_AUDIT_AND_ROADMAP.md
-Modified   docs/demo-script.md
-Modified   docs/handover.html
-Added      docs/README.md
-Added      docs/REPO_STATUS.md
-```
+The documentation cleanup and completion snapshot are included in `a51a060`.
 
 ## Current Documentation Set
 
