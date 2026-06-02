@@ -1,6 +1,9 @@
 # FluxMind Architecture
 
-Last updated: 2026-05-30
+Last updated: 2026-06-03
+
+For reading order and document ownership, see `docs/README.md`. Current git and
+verification state is tracked in `docs/REPO_STATUS.md`.
 
 ## Current Runtime
 

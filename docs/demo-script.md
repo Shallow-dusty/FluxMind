@@ -87,7 +87,7 @@
 
 ### Step 06 · （可选）展示开放 API（约 30 秒）
 
-🎯 **动作**：如果评审是技术背景，可以打开 `http://223.6.253.9:18502/docs`（FastAPI 自动生成的 Swagger 页面），让他看到 `/query` 和 `/health` 两个端点的 OpenAPI 描述。
+🎯 **动作**：如果评审是技术背景，可以打开 `https://api-smy.hyper-dusty.cloud/docs`（FastAPI 自动生成的 Swagger 页面），让他看到 `/query`、`/query/inspect`、`/query/retrieve`、`/health` 等端点的 OpenAPI 描述。
 
 💬 **话术**：
 > "除了 Web UI，系统还开放了 **FastAPI 端点**，符合 OpenAPI 3 规范，可以直接挂载为 **字节跳动 Coze 智能体的自定义工具插件**。这意味着 FluxMind 不只是一个独立应用，而是一个可被其他 Agent 调用的 **领域能力**。"

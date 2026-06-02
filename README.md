@@ -141,6 +141,8 @@ Current public URL: `https://smy.hyper-dusty.cloud/`.
 
 ## Project Documents
 
+- [`docs/README.md`](docs/README.md) — documentation index, reading order, and source-of-truth map
+- [`docs/REPO_STATUS.md`](docs/REPO_STATUS.md) — current git/worktree snapshot and verification record
 - [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) — live deployment snapshot and refresh commands
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current runtime boundaries and next architecture step
 - [`docs/PLATFORM_AUDIT_AND_ROADMAP.md`](docs/PLATFORM_AUDIT_AND_ROADMAP.md) — current audit, bug notes, and platform roadmap
@@ -212,6 +214,10 @@ service exposes both immediate local endpoints and queued local endpoints:
 - `POST /query/report`
 - `GET /admin/status`
 - `GET /admin/status/report`
+- `GET /admin/runtime-manifest`
+- `GET /admin/runtime-manifest/report`
+- `GET /admin/retention`
+- `GET /admin/events`
 
 `GET /jobs` supports local metadata filters with `q`, `status`, and `kind`, and
 the Streamlit recent-job panel exposes matching local controls.

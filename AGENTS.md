@@ -41,6 +41,10 @@ pip install -r requirements-dev.txt
 
 正式编号：`11.FluxMind`
 
+## Documentation
+
+先读 `docs/README.md`。当前 git/worktree 快照在 `docs/REPO_STATUS.md`；部署快照在 `docs/DEPLOYMENT_STATUS.md`，使用前必须重新跑 live check。
+
 ## Linear Project
 
 无（独立个人项目，暂不走 Linear）

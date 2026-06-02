@@ -1,6 +1,9 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-05-30
+Last updated: 2026-06-03
+
+For reading order and document ownership, see `docs/README.md`. Current git and
+verification state is tracked in `docs/REPO_STATUS.md`.
 
 Workspace index: `11.FluxMind`
 
@@ -495,13 +498,12 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Land the current numbering/docs/streaming fix.
-2. Expand tests and the local smoke command into a deploy gate.
+1. Decide whether to push the current 36 local commits from `main` to
+   `origin/main` or open a review branch/PR.
+2. Keep the local health/eval/deploy-smoke checks as the deploy gate.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-4. Extend `src/capabilities.py` into concrete no-key providers, fixtures, and
-   disabled provider switches.
-5. Extend the local restart-recovery/lease/worker-service bridge into a
+4. Extend the local restart-recovery/lease/worker-service bridge into a
    distributed worker/storage foundation, then add true running cancellation and
    richer timeout policy before enabling real external image generation or code
    execution providers.

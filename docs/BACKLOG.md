@@ -1,13 +1,40 @@
 # FluxMind Implementation Backlog
 
-Last updated: 2026-05-30
+Last updated: 2026-06-03
+
+For reading order and document ownership, see `docs/README.md`. Current git and
+verification state is tracked in `docs/REPO_STATUS.md`.
 
 This backlog turns the platform roadmap into concrete implementation packages.
 It is intentionally ordered by dependency, not by excitement.
 
+## Completion Snapshot
+
+Confirmed on: 2026-06-03
+
+The current completed scope is the no-key/local platform baseline:
+
+```text
+Work package          Confirmed state
+--------------------  -------------------------------------------------------
+WP0 production guard  complete for current deployed baseline; remains ongoing ops
+WP1 RAG quality       complete for offline/recorded/live-retrieval no-key gates
+WP2 corpus/storage    complete for local JSON/SQLite/filesystem baseline
+WP3 job system        complete for local durable worker bridge and lease model
+WP4 image/diagrams    complete for provider-neutral no-key SVG/artifact flow
+WP5 code execution    complete for local Python/Octave-compatible dev providers
+WP6 product shell     complete for local no-secret admin/reporting foundation
+```
+
+The incomplete scope is production platformization: real external providers,
+hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
+distributed worker/storage, and production database/object storage. Those remain
+planned, intentionally disabled, or decision-gated.
+
 ## WP0: Stabilize Current Production
 
-Status: in progress
+Status: complete for the current deployed no-key baseline; ongoing operational
+checks still apply before each deploy
 
 - Keep CI green: `python -m pytest` and `python scripts/health_check.py`.
 - Keep Trace-Twin health green with:
@@ -41,7 +68,7 @@ Acceptance:
 
 ## WP1: RAG Quality Baseline
 
-Status: offline baseline, source/page fixture verification, recorded-answer
+Status: complete for the current no-key RAG quality baseline: offline baseline, source/page fixture verification, recorded-answer
 scoring, optional live `/query/inspect` regression scoring, no-LLM
 `/query/retrieve` retrieval diagnostics, local hybrid retrieval, deterministic
 BM25-lite lexical reranking, optional local CrossEncoder reranking,
@@ -125,7 +152,7 @@ Acceptance:
 
 ## WP2: Corpus and Storage Layer
 
-Status: local JSON corpus metadata baseline, reusable local corpus profiles,
+Status: complete for the current no-key local corpus/storage baseline: local JSON corpus metadata baseline, reusable local corpus profiles,
 bibliographic paper enrichment, uploaded-PDF metadata extraction with
 first-page author/keyword fallback, SQLite current-state paper/chunk metadata
 mirrors, checksum-based uploaded-PDF deduplication, active/deactivated
@@ -222,7 +249,7 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: local JSONL history plus SQLite current-state index, in-process async
+Status: complete for the current no-key local job/worker baseline: local JSONL history plus SQLite current-state index, in-process async
 queue, scheduled retry/backoff, restart recovery for queued jobs, queue health,
 queue-level deadlines, durable worker lease metadata, enabled local durable
 worker service foundation, stable execution timeout diagnostics, running Python
@@ -298,7 +325,7 @@ Acceptance:
 
 ## WP4: Image and Diagram Generation
 
-Status: provider-neutral plumbing, no-key mock provider, local SVG engineering
+Status: complete for the current no-key diagram/artifact baseline: provider-neutral plumbing, no-key mock provider, local SVG engineering
 diagram templates, local artifact export, artifact metadata with SQLite
 current-state mirror, and RAG artifact references implemented; real
 image-provider activation remains disabled until a key/account is configured
@@ -343,7 +370,7 @@ Acceptance:
 
 ## WP5: Code Execution
 
-Status: local request/result plumbing, Python execution, Octave-compatible
+Status: complete for the current no-key local execution baseline: local request/result plumbing, Python execution, Octave-compatible
 execution interface, file/plot artifact capture, workdir path containment,
 input file size/count limits, no-secret execution environment/policy metadata,
 Unix child-process memory/CPU limit metadata/enforcement, and Docker sandbox
@@ -401,7 +428,7 @@ Acceptance:
 
 ## WP6: Product Shell
 
-Status: local/admin status foundation, reusable local corpus profiles,
+Status: complete for the current no-key product-shell foundation: local/admin status foundation, reusable local corpus profiles,
 no-secret Markdown status-report export,
 Markdown query-report export, provider-failure event history, estimated
 query-usage history, local storage-readiness dashboard, and local storage

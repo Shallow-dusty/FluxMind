@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-02 03:40 CST
+Last live check: 2026-06-03 00:23 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -93,6 +93,18 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live read-only checks refreshed on 2026-06-03 00:23 CST during documentation
+cleanup. No deploy sync, restart, runtime mutation, or push was performed.
+Local health and offline RAG eval passed with `.venv/bin/python`; HTTPS checks
+returned 200 for `https://smy.hyper-dusty.cloud/` and
+`https://api-smy.hyper-dusty.cloud/health`; SSH health passed with UI/API/worker,
+Cloudflare tunnel, and Docker services active. Remote runtime state reported
+`LLM_MODEL=mimo-v2.5-pro`, embedding model
+`/opt/fluxmind/models/all-MiniLM-L6-v2`, `active_papers=6`,
+`faiss_index_bytes=786477`, `chunk_metadata_rows=512`,
+`chunk_metadata_sources=6`, `index_fresh=True`, local metadata/object storage
+available, Docker execution backend not configured, and 25G free on `/`.
 
 Live checks refreshed on 2026-06-02 03:40 CST after deploying the
 `/admin/runtime-manifest`, `/admin/runtime-manifest/report`, and Streamlit

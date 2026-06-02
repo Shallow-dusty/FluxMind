@@ -25,13 +25,19 @@ app.py         # Streamlit 入口
 ## 运行
 
 ```bash
-conda activate fluxmind
+source .venv/bin/activate
 streamlit run app.py
 ```
+
+如果 `.venv` 不存在，也可以用 `conda activate fluxmind` 或按 `README.md` 创建独立环境。
 
 ## Workspace Index
 
 正式编号：`11.FluxMind`
+
+## Documentation
+
+先读 `docs/README.md`。当前 git/worktree 快照在 `docs/REPO_STATUS.md`；部署快照在 `docs/DEPLOYMENT_STATUS.md`，使用前必须重新跑 live check。
 
 ## Linear Project
 
