@@ -1,6 +1,6 @@
 # FluxMind Documentation Index
 
-Last updated: 2026-06-03
+Last updated: 2026-06-07
 
 This directory separates current status, architecture, planning, deployment
 evidence, and demo handoff material. Prefer updating the document that owns the
@@ -17,8 +17,10 @@ fact instead of repeating the same state in several places.
 4. `docs/BACKLOG.md` - implementation work packages and acceptance criteria.
 5. `docs/PLATFORM_AUDIT_AND_ROADMAP.md` - broader platform audit, product
    direction, and open decisions.
-6. `docs/demo-script.md` - short Chinese demo script and defense Q&A.
-7. `docs/handover.html` - single-file visual handover for presentations.
+6. `docs/FEATURE_AUDIT.md` - current feature inventory, route coverage, test
+   evidence, and known capability gaps.
+7. `docs/demo-script.md` - short Chinese demo script and defense Q&A.
+8. `docs/handover.html` - single-file visual handover for presentations.
 
 ## Source-Of-Truth Map
 
@@ -30,6 +32,7 @@ Live deployment state     docs/DEPLOYMENT_STATUS.md
 Runtime/module boundary   docs/ARCHITECTURE.md
 Work package status       docs/BACKLOG.md
 Product/platform roadmap  docs/PLATFORM_AUDIT_AND_ROADMAP.md
+Feature coverage audit    docs/FEATURE_AUDIT.md
 Demo speaking notes       docs/demo-script.md
 Visual delivery page      docs/handover.html
 Project bootstrap         README.md, AGENTS.md
