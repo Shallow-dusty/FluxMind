@@ -118,6 +118,7 @@ def main() -> int:
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
         "docs/PLATFORM_AUDIT_AND_ROADMAP.md",
+        "docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md",
         "docs/FEATURE_AUDIT.md",
         "papers/library/manifest.json",
     ]
@@ -142,6 +143,19 @@ def main() -> int:
     check(
         "Decide whether to push the current 36 local commits" not in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
+        failures,
+    )
+    market_research = (
+        PROJECT_ROOT / "docs" / "PRODUCTION_GAP_AND_MARKET_RESEARCH.md"
+    ).read_text(encoding="utf-8")
+    check(
+        "Production Gap Matrix" in market_research,
+        "market research records production gap matrix",
+        failures,
+    )
+    check(
+        "Community Demand Signals" in market_research,
+        "market research records community demand signals",
         failures,
     )
     feature_audit = (PROJECT_ROOT / "docs" / "FEATURE_AUDIT.md").read_text(encoding="utf-8")
