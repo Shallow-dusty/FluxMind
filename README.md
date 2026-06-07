@@ -146,6 +146,7 @@ Current public URL: `https://smy.hyper-dusty.cloud/`.
 - [`docs/DEPLOYMENT_STATUS.md`](docs/DEPLOYMENT_STATUS.md) — live deployment snapshot and refresh commands
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current runtime boundaries and next architecture step
 - [`docs/PLATFORM_AUDIT_AND_ROADMAP.md`](docs/PLATFORM_AUDIT_AND_ROADMAP.md) — current audit, bug notes, and platform roadmap
+- [`docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md`](docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md) — production gap, competitor scan, and community demand research
 - [`docs/BACKLOG.md`](docs/BACKLOG.md) — implementation work packages and acceptance criteria
 - [`docs/demo-script.md`](docs/demo-script.md) — five-minute demo script and defense Q&A
 - [`docs/handover.html`](docs/handover.html) — single-file delivery handover

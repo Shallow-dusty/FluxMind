@@ -17,10 +17,12 @@ fact instead of repeating the same state in several places.
 4. `docs/BACKLOG.md` - implementation work packages and acceptance criteria.
 5. `docs/PLATFORM_AUDIT_AND_ROADMAP.md` - broader platform audit, product
    direction, and open decisions.
-6. `docs/FEATURE_AUDIT.md` - current feature inventory, route coverage, test
+6. `docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md` - production readiness gap,
+   competitor scan, community demand signals, and staged roadmap.
+7. `docs/FEATURE_AUDIT.md` - current feature inventory, route coverage, test
    evidence, and known capability gaps.
-7. `docs/demo-script.md` - short Chinese demo script and defense Q&A.
-8. `docs/handover.html` - single-file visual handover for presentations.
+8. `docs/demo-script.md` - short Chinese demo script and defense Q&A.
+9. `docs/handover.html` - single-file visual handover for presentations.
 
 ## Source-Of-Truth Map
 
@@ -32,6 +34,7 @@ Live deployment state     docs/DEPLOYMENT_STATUS.md
 Runtime/module boundary   docs/ARCHITECTURE.md
 Work package status       docs/BACKLOG.md
 Product/platform roadmap  docs/PLATFORM_AUDIT_AND_ROADMAP.md
+Production/market gap     docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md
 Feature coverage audit    docs/FEATURE_AUDIT.md
 Demo speaking notes       docs/demo-script.md
 Visual delivery page      docs/handover.html
