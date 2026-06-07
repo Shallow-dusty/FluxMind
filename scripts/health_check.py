@@ -118,6 +118,7 @@ def main() -> int:
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
         "docs/PLATFORM_AUDIT_AND_ROADMAP.md",
+        "docs/FEATURE_AUDIT.md",
         "papers/library/manifest.json",
     ]
     for relative in required:
@@ -126,6 +127,28 @@ def main() -> int:
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
     check("11.FluxMind" in readme, "README records formal workspace index", failures)
     check("Previous temporary index `80` has been retired" in readme, "README records 80 retirement", failures)
+    repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
+    check(
+        "Last clean local/origin state  32fca21 docs: record no-key baseline deployment" in repo_status,
+        "repo status records deployment-record baseline",
+        failures,
+    )
+    check(
+        "HEAD          a51a060" not in repo_status and "origin/main   a51a060" not in repo_status,
+        "repo status does not contain stale pre-follow-up git table",
+        failures,
+    )
+    roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
+    check(
+        "Decide whether to push the current 36 local commits" not in roadmap,
+        "roadmap does not contain stale pre-push near-term plan",
+        failures,
+    )
+    feature_audit = (PROJECT_ROOT / "docs" / "FEATURE_AUDIT.md").read_text(encoding="utf-8")
+    check("API Route Coverage" in feature_audit, "feature audit route coverage installed", failures)
+    check("POST   /query/retrieve" in feature_audit, "feature audit records retrieval diagnostics route", failures)
+    check("GET    /admin/runtime-manifest" in feature_audit, "feature audit records runtime manifest route", failures)
+    check("Product platform layer        incomplete" in feature_audit, "feature audit records platform gap", failures)
 
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
