@@ -573,4 +573,3 @@ External control/domain sources:
 - TI E2E support forums: https://e2e.ti.com/
 - ST Community motor-control forum: https://community.st.com/
 - Reddit r/ControlTheory: https://www.reddit.com/r/ControlTheory/
-
