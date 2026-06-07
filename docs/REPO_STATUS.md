@@ -1,27 +1,28 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-03 00:46 CST
+Snapshot time: 2026-06-07 22:57 CST
 
-This file records the current local repository state after confirming the
-completed no-key/local baseline. It is a repo snapshot, not a production
-deployment source of truth. For live service state, use
-`docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
+This file records the last verified clean repository boundary for the completed
+no-key/local baseline, plus the repo hygiene expectations for the next working
+pass. It is a repo snapshot, not a production deployment source of truth. For
+live service state, use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh
+commands there.
 
 ## Git State
 
 ```text
-Branch        main
-Remote        origin git@github.com:Shallow-dusty/FluxMind.git
-Tracking      origin/main
-HEAD          a51a060 docs: confirm no-key platform baseline
-origin/main   a51a060
-Divergence    ahead 0, behind 0 before the deployment-record follow-up
-Baseline      pushed and deployed no-key/local baseline at a51a060
-Follow-up     deployment record committed separately after live verification
-Ignored only  .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
+Branch                         main
+Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
+Tracking                       origin/main
+Last clean local/origin state  32fca21 docs: record no-key baseline deployment
+Divergence at clean boundary   ahead 0, behind 0
+Deployed source baseline       a51a060 docs: confirm no-key platform baseline
+Deployment record follow-up    32fca21 after live verification and docs-only sync
+Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
-The 36 local commits cover the no-key platform work after `origin/main`:
+The no-key platform release work is now pushed to `origin/main`. Its main
+contents were:
 
 ```text
 Area                 Main contents
@@ -43,9 +44,10 @@ Deployment/docs      guarded deploy sync, health-check expansion, deployment
 ```
 
 Push and deployment completed for `a51a060`; the live verification evidence was
-then recorded in `docs/DEPLOYMENT_STATUS.md`.
+then recorded and pushed in `32fca21`.
 
-The documentation cleanup and completion snapshot are included in `a51a060`.
+The documentation cleanup and completion snapshot are included in `a51a060`; the
+deployment record follow-up is included in `32fca21`.
 
 ## Current Documentation Set
 
@@ -73,11 +75,13 @@ Commands run from `/home/shallow/04.AI-Prism/11.FluxMind` using `.venv`:
 Command                                                                 Result
 ----------------------------------------------------------------------  ------
 .venv/bin/python --version                                             Python 3.13.11
-.venv/bin/python scripts/health_check.py                               pass
-.venv/bin/python scripts/evaluate_rag.py                               pass
+.venv/bin/python -m pytest                                             pass, 200 tests
+.venv/bin/python scripts/health_check.py                               pass, including docs drift anchors
+.venv/bin/python scripts/evaluate_rag.py                               pass, 5 eval cases and 5 recorded answers
 .venv/bin/python scripts/health_check.py --url https://smy.hyper-...   pass, both URLs 200
 .venv/bin/python scripts/health_check.py --ssh-host root@100.100...    pass
-git diff --check origin/main..HEAD                                     pass
+git diff --check                                                       pass
+git status --short --branch                                            clean at last verified boundary
 ```
 
 Remote read-only check highlights:
@@ -101,7 +105,8 @@ Disk                /dev/vda3 40G total, 25G free, 35% used
 
 - Runtime state remains git-ignored: `papers/`, `faiss_index/`, `artifacts/`,
   `jobs/`, `metadata/`, `.env`, virtual environments, caches, and bytecode.
-- The local checkout is ready for a deliberate push or PR decision, but this
-  pass only organized and documented the state.
-- Deployment facts should not be inferred from the 36 local commits alone
-  because `/opt/fluxmind` is a synchronized source tree, not a git checkout.
+- New development should start from the `32fca21` clean baseline, then refresh
+  this file after any commit/release sequence that changes the verified repo
+  boundary.
+- Deployment facts should not be inferred from git state alone because
+  `/opt/fluxmind` is a synchronized source tree, not a git checkout.

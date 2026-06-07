@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-03
+Last updated: 2026-06-07
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -30,6 +30,49 @@ local mocks, fixtures, and explicit runtime flags. Production remains limited to
 RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
 token-protected FastAPI `/query` endpoint until those activation decisions are
 made.
+
+## Project Evaluation: 2026-06-07
+
+Current verified state: the no-key/local platform baseline is healthy and
+deployed, but the project is still a single-machine product foundation rather
+than a full multi-user SaaS platform. The strongest current capabilities are the
+paper-grounded RAG workflow, local corpus/profile management, no-secret admin
+status surfaces, durable local job records, local worker-service bridge, artifact
+metadata/export, retrieval diagnostics, and deterministic offline RAG regression
+gates.
+
+Current verification run:
+
+```text
+Gate                                      Result
+----------------------------------------  -------------------------------------
+.venv/bin/python -m pytest                pass, 200 tests, 2 known warnings
+.venv/bin/python scripts/evaluate_rag.py  pass, 5/5 eval cases, 5/5 recorded answers
+health_check.py local/docs anchors         pass, including repo/roadmap drift checks
+health_check.py HTTPS endpoints            pass, UI/API 200
+health_check.py SSH runtime                pass, services active, index_fresh=True
+```
+
+Current assessment:
+
+```text
+Dimension                 Assessment
+------------------------  -----------------------------------------------------
+Research demo readiness   strong: deployed UI/API, seed corpus, citation checks
+No-key local platform     strong: WP0-WP6 baseline implemented and tested
+Operational visibility    strong for local runtime; no-secret reports available
+RAG quality coverage      useful deterministic baseline, but not broad live QA
+Execution/artifacts       good contract baseline; not production sandboxed
+Storage/queue durability  local SQLite/JSONL bridge only; not distributed
+Product maturity          pre-platform: no accounts, quotas, billing, teams
+Frontend maturity         demo/personal workflow; Streamlit remains limiting
+```
+
+Priority implication: the next work should improve platform foundations before
+activating real paid providers. The most defensible next lane is production
+storage plus distributed job/worker state, because identity, quotas, billing,
+frontend replacement, and provider activation all depend on durable ownership and
+job/artifact boundaries.
 
 Current no-key feature work now includes local provider implementations:
 `MockImageGenerationProvider` writes deterministic SVG artifacts, and
@@ -498,15 +541,21 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Decide whether to push the current 36 local commits from `main` to
-   `origin/main` or open a review branch/PR.
-2. Keep the local health/eval/deploy-smoke checks as the deploy gate.
+1. Treat `32fca21` as the current pushed/deployed no-key baseline and keep
+   `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after any
+   future release or live-state verification pass.
+2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
+   them when a new status or drift class is found.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
 4. Extend the local restart-recovery/lease/worker-service bridge into a
    distributed worker/storage foundation, then add true running cancellation and
    richer timeout policy before enabling real external image generation or code
    execution providers.
+5. Choose the next platformization lane explicitly: frontend/API split,
+   production storage, isolated execution, or identity/quota/billing. Do not
+   activate real provider keys, hosted sandboxes, or MATLAB licensing until the
+   matching runtime boundary is implemented and tested.
 
 ## Open Decisions
 

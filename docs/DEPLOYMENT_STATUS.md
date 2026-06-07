@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-03 00:46 CST
+Last live check: 2026-06-07 22:57 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -93,6 +93,24 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live read-only checks refreshed on 2026-06-07 22:57 CST during status-drift
+cleanup. No deploy sync, service restart, runtime mutation, or push was
+performed. `.venv/bin/python scripts/health_check.py --url
+https://smy.hyper-dusty.cloud/ --url https://api-smy.hyper-dusty.cloud/health`
+passed with both HTTPS endpoints returning 200. `.venv/bin/python
+scripts/health_check.py --ssh-host root@100.100.233.26` passed with UI/API/worker,
+Cloudflare tunnel, and Docker services active; listeners on `18501` and `18502`;
+local API health `{"status":"ok"}`; `LLM_MODEL=mimo-v2.5-pro`;
+embedding model `/opt/fluxmind/models/all-MiniLM-L6-v2`; `active_papers=6`;
+`faiss_index_bytes=786477`; `chunk_metadata_rows=512`;
+`chunk_metadata_sources=6`; `index_fresh=True`; Docker execution backend still
+`configured=False available=False reason=not_configured`; local metadata/object
+storage available; API-level chunk, retrieval, and corpus-profile report smokes
+passing; root disk 24G free. Direct raw API health returned 200. A first direct
+raw UI probe timed out from the local machine, but an immediate retry returned
+200 and server-local origin checks returned 200 for both UI and API, so this was
+treated as transient public-IP reachability noise rather than a service failure.
 
 Live checks refreshed on 2026-06-03 00:46 CST after confirming the completed
 no-key/local platform baseline, pushing `main` to `origin/main`, and deploying
