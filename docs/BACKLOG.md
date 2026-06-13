@@ -1,6 +1,6 @@
 # FluxMind Implementation Backlog
 
-Last updated: 2026-06-03
+Last updated: 2026-06-08
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -73,16 +73,46 @@ scoring, optional live `/query/inspect` regression scoring, no-LLM
 `/query/retrieve` retrieval diagnostics, local hybrid retrieval, deterministic
 BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
-optional JSON eval report export, and aggregate eval-set regression gates
-implemented; external/service reranking remains planned
+metadata-only retrieval trace events/admin summaries/metrics and local
+retrieval-quality advisory alerts,
+retrieval-only source/page cases, four local Python code-output artifact cases
+(two of them job-backed) across the `smc_reaching_law` and `pmsm_current_step`
+templates, six seeded PDF equation/table/figure structure extraction acceptance
+cases, optional JSON eval report export, and aggregate eval-set regression gates
+implemented. The baseline now has a 20-case domain-trust intermediate gate with
+20 recorded answers plus 30 retrieval-only cases for 50 total no-LLM retrieval
+questions. It gates 64 expected source/page refs, topic-tag coverage,
+ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
+equation fidelity, code generation, forum-style debugging, failure modes, and
+paper-to-code reports; external/service reranking plus richer PDF layout
+extraction and broader Octave *execution* eval (blocked on an Octave binary in
+CI/runtime) remain planned.
 
-- `eval/rag_baseline.json` contains a small control-engineering evaluation set.
-- Each case records expected source papers/pages, fixture snippets, recorded
-  answers, required answer terms, and minimum answer-term coverage.
+- `eval/rag_baseline.json` contains a 20-case control-engineering answer
+  evaluation set plus 30 retrieval-only source/page cases, with a small domain
+  ontology for SMC, PMSM/FOC, observer/estimation, and implementation-trust
+  groups.
+- Answer cases record expected source papers/pages, fixture snippets, recorded
+  answers, required answer terms, minimum answer-term coverage, topic tags, and
+  eval lanes.
 - `src.chain.validate_numbered_citations()` validates answer citations like
   `[1]` against retrieved document refs.
 - `scripts/evaluate_rag.py` runs the offline baseline without network calls and
   fails recorded answers that miss required refs or key-term coverage thresholds.
+- `retrieval_only_cases` verify source/page snippets without requiring fixture
+  or recorded answers, so no-LLM retrieval coverage can grow independently from
+  answer-quality fixtures.
+- `code_output_cases` run local no-key execution fixtures in a temporary
+  artifact store and verify stdout terms, plot/text artifacts, checksums/byte
+  metadata, runtime metadata, provider/direct mode, local job-backed mode, and
+  reusable execution-template coverage without writing project runtime artifacts.
+- `pdf_structure_cases` verify that representative seeded PDF pages expose
+  equation, table, and figure markers through no-key PyMuPDF extraction, so
+  paper-to-code workflows can fail locally when source layout anchors disappear.
+  The extractor also recognizes algorithm captions, anchored by the synthetic-PDF
+  unit test `test_extract_pdf_structure_markers_finds_layout_markers`; a real-PDF
+  algorithm-caption case in `pdf_structure_cases` remains blocked because none of
+  the six curated library papers contain a numbered `Algorithm N` block.
 - Offline expected refs now verify that the referenced PDF exists, the page is
   parseable, and the configured snippet appears on that page.
 - Provider failure fixtures cover timeout, 429/rate-limit, empty output, and
@@ -116,12 +146,15 @@ implemented; external/service reranking remains planned
   answer-term coverage, while reading the API token from an environment variable
   instead of the repository.
 - `scripts/evaluate_rag.py --json-report ...` writes a no-secret
-  machine-readable summary of offline/provider/recorded/live retrieval/live
-  answer eval results for deployment records.
+  machine-readable summary of offline/retrieval-only/code-output/provider/
+  recorded/live retrieval/live answer eval results for deployment records.
 - `eval/rag_baseline.json` includes aggregate `quality_gates` for minimum case
-  count, expected source-ref count, provider fixture count, recorded-answer
-  count/pass rate/average term coverage, answer-mode coverage, and optional
-  live answer/retrieval pass-rate thresholds.
+  count, retrieval-only case count, total retrieval-question count, expected
+  source-ref count, provider fixture count, recorded-answer count/pass
+  rate/average term coverage, code-output case count/language/template/pass
+  rate/execution-mode coverage, PDF structure case count/kind/pass-rate,
+  answer-mode coverage, topic-tag coverage, ontology-group coverage, eval-lane
+  coverage, and optional live answer/retrieval pass-rate thresholds.
 - The baseline now covers all answer modes: explanation, derivation,
   implementation, literature review, and code generation.
 - The generation prompt now tells the model the valid numbered context-ref range
@@ -130,7 +163,10 @@ implemented; external/service reranking remains planned
 - Generated answers neutralize out-of-range bracket numbers before validation so
   source-paper bibliography refs cannot masquerade as FluxMind context refs.
 - Still planned: external/service reranking that would require a hosted model or
-  new account.
+  new account; broader Octave *execution* eval (an Octave code-output case would
+  fail in CI until an `octave` binary is installed); a real-PDF algorithm-caption
+  acceptance case (needs a curated paper containing a numbered `Algorithm N`
+  block).
 
 Acceptance:
 
@@ -142,6 +178,12 @@ Acceptance:
   context without reading logs or raw prompts.
 - Retrieval source/page quality can be inspected without calling a model
   provider.
+- Retrieval-only source/page regressions fail independently from recorded-answer
+  quality fixtures.
+- Code-output regressions fail when local execution misses expected stdout,
+  runtime metadata, or generated plot/text artifacts.
+- PDF structure regressions fail when representative source pages no longer
+  expose required equation/table/figure anchors.
 - Live model answers can be scored through the deployed inspect endpoint without
   committing provider tokens.
 - Eval breadth and aggregate answer-quality regressions fail through configured
@@ -158,7 +200,8 @@ first-page author/keyword fallback, SQLite current-state paper/chunk metadata
 mirrors, checksum-based uploaded-PDF deduplication, active/deactivated
 selection workflow, corpus lifecycle status, local paper metadata filtering, and
 admin index freshness plus durable storage readiness checks implemented; durable
-local storage inventory and no-secret runtime backup manifest implemented;
+local storage inventory, local storage-schema inventory, no-secret runtime backup
+manifest, and dry-run restore verifier implemented;
 durable multi-user database/object storage migration remains planned
 
 - `src/metadata.py` stores local paper metadata in git-ignored
@@ -175,6 +218,10 @@ durable multi-user database/object storage migration remains planned
 - Uploaded/unmanifested PDFs get best-effort no-key metadata extraction from
   embedded PDF metadata and first-page title, author, DOI/arXiv, year, and
   keyword/index-term text, while curated manifest values still take precedence.
+- Uploaded PDFs pass a local pre-write scan before persistence. The scan checks
+  PDF magic and PyMuPDF parseability, rejects encrypted PDFs by default, blocks
+  common active-content markers, applies a configurable page cap, and records
+  only metadata-only `upload_scan` runtime events with reason codes and counts.
 - Uploaded PDFs are deduplicated by SHA-256 against the selectable local corpus
   before writing a new local file or adding duplicate chunks to FAISS.
 - `GET /corpus/papers` lists the current local paper metadata without requiring
@@ -182,6 +229,10 @@ durable multi-user database/object storage migration remains planned
   source kind, and indexed status.
 - `GET /corpus/chunks` lists local indexed chunk metadata with optional
   `source_path`, `page`, and `q` filters.
+- `GET /corpus/structure` lists no-key PDF layout markers from selectable
+  PDFs with optional source, kind, page, text-query, and limit filters.
+- `GET /corpus/structure/report` exports the same filtered PDF layout markers
+  as a Markdown handoff report with kind/source summaries.
 - `GET /corpus/status` exposes corpus lifecycle state as `queued`, `parsing`,
   `indexed`, `failed`, `stale`, or `empty` from index rebuild jobs, paper status,
   and index freshness.
@@ -195,6 +246,14 @@ durable multi-user database/object storage migration remains planned
 - `GET /admin/status` reports local storage inventory for metadata, jobs,
   artifacts, uploads, and FAISS index files as paths, file counts, byte totals,
   and known-file existence flags without returning file contents.
+- `GET /admin/status` reports local storage-schema readiness for corpus/chunk
+  metadata, jobs, artifacts, and runtime events by checking schema version,
+  JSON/JSONL shape, and SQLite table/column presence without returning row
+  contents, prompts, answers, filenames, owner IDs, request IDs, source paths, or
+  runtime file contents.
+- `scripts/storage_schema.py` runs the same no-secret schema readiness check from
+  the CLI with JSON/Markdown output, `--target-root`, and a nonzero exit code
+  when drift is detected.
 - `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
   the local state trees that source deploys exclude, with file counts, byte
   totals, and SHA-256 hashes for known metadata/job/index files without
@@ -202,6 +261,14 @@ durable multi-user database/object storage migration remains planned
 - `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
   Streamlit runtime status panel expose the same no-secret backup manifest
   without requiring SSH access to run the CLI by hand.
+- Restore dry-run verification is available through
+  `scripts/runtime_manifest.py --restore-check`, authenticated
+  `POST /admin/runtime-manifest/restore-check`, and authenticated
+  `POST /admin/runtime-manifest/restore-check/report`, plus the Streamlit
+  runtime status panel upload/report controls. These surfaces verify a saved
+  manifest against a target runtime root without copying, overwriting, deleting,
+  or restoring files. They report manifest contract errors, missing or
+  mismatched groups, known files, byte counts, and SHA-256 hashes.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
@@ -215,6 +282,9 @@ durable multi-user database/object storage migration remains planned
 - `POST /corpus/profiles/{profile_id}/rebuild` activates a saved profile and
   queues the selected-PDF FAISS rebuild through the local async job manager.
 - Upload and selected-PDF index rebuild flows update paper metadata.
+- Upload scan outcomes are visible in admin status/report and Streamlit runtime
+  status without exposing filenames, uploaded bytes, checksums, or request
+  bodies.
 - Decide storage path: local volume first or object storage plus relational DB.
 - Still planned: durable metadata for chunks, corpora, jobs, artifacts, users,
   ownership, and retention in a production database; object storage; richer
@@ -226,6 +296,8 @@ Acceptance:
 - A paper can be indexed and traced to source path/checksum/chunk count.
 - Duplicate uploads reuse an existing selectable/indexed PDF instead of creating
   a second local file or duplicate vector chunks.
+- Failed upload scans are blocked before local file write and leave only
+  no-secret reason-code metadata for operators.
 - Indexed chunks can be traced to source path, page, sequence, hash, and preview.
 - Corpus lifecycle status can be inspected without inferring from job and index
   records by hand.
@@ -249,18 +321,33 @@ Acceptance:
 
 ## WP3: Job System
 
-Status: complete for the current no-key local job/worker baseline: local JSONL history plus SQLite current-state index, in-process async
-queue, scheduled retry/backoff, restart recovery for queued jobs, queue health,
-queue-level deadlines, durable worker lease metadata, enabled local durable
-worker service foundation, stable execution timeout diagnostics, running Python
-cancellation for in-process and explicit durable local workers, and cancellable
-index-rebuild checkpoints plus admin worker-lease visibility implemented;
-distributed multi-worker queue and full running cancellation for every future
-worker type remain planned
+Status: complete for the current no-key local job/worker baseline: local JSONL
+history plus SQLite current-state and idempotency-claim indexes, in-process
+async queue, scheduled retry/backoff, restart recovery for queued jobs, queue
+health, queue-level deadlines, bounded automatic retry and dead-letter state,
+durable worker lease metadata, enabled local durable worker service foundation,
+stable execution timeout diagnostics, running Python cancellation for in-process
+and explicit durable local workers, and cancellable index-rebuild checkpoints
+plus admin worker-lease visibility implemented; distributed multi-worker queue
+and full running cancellation for every future worker type remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
 - Job writes are mirrored into `jobs/jobs.sqlite3` for current-state lookups and
   migration toward durable worker storage.
+- Immediate and async job creation requests accept optional `idempotency_key`.
+  Duplicate submissions with the same job kind and key return the existing
+  persisted job through the durable SQLite `job_idempotency` claim table; missing
+  keys continue to create new jobs.
+- Async job creation requests accept `max_attempts` and `retry_backoff_s`.
+  Failed attempts requeue the same durable job until the attempt cap is reached,
+  then persist `dead_lettered` plus `dead_lettered_at`. The default is one
+  attempt, preserving previous single-run behavior.
+- Query and job-creation requests accept optional local `owner_id` and
+  `owner_label` metadata. Omitted values normalize to `local-user` /
+  `Local user`.
+- Durable job records persist `owner_id`, `owner_label`, and
+  `ownership_source`, mirror those fields into SQLite, and include them in
+  transition logs. Retry and scheduled retry inherit the original job owner.
 - `POST /jobs/image/mock` creates a mock image-generation job.
 - `POST /jobs/code/python-local` creates a development-only Python execution
   job.
@@ -269,12 +356,19 @@ worker type remain planned
 - `POST /jobs/async/image/mock`, `POST /jobs/async/code/python-local`,
   `POST /jobs/async/code/octave-local`, and `POST /jobs/async/index/rebuild`
   enqueue those local jobs through an in-process background worker.
-- `GET /jobs` lists latest jobs with local `q`, `status`, and `kind` filters.
+- `GET /jobs` lists latest jobs with local `q`, `status`, `kind`, and
+  `owner_id` filters.
 - `GET /jobs/{job_id}` returns persisted job status.
+- Job responses include the normalized `idempotency_key` when one was supplied.
+- Job responses include normalized owner metadata for local inspection. The
+  fields are metadata only, not authentication, tenant isolation, quotas, or
+  billing.
 - `POST /jobs/{job_id}/retry` retries failed/cancelled local jobs with a new
   job ID.
 - `POST /jobs/{job_id}/retry-scheduled` queues failed/cancelled local jobs for
   delayed retry with `parent_job_id` and `not_before` metadata.
+- Manual retry and scheduled retry can also start a fresh retry from
+  `dead_lettered` jobs.
 - Async job and scheduled-retry requests can set `queue_timeout_s`; expired
   queued jobs persist `job_deadline_exceeded` before execution.
 - `AsyncJobManager.recover_queued_jobs()` rehydrates queued/scheduled jobs from
@@ -295,6 +389,10 @@ worker type remain planned
   queued timestamps.
 - `GET /admin/status` exposes `worker_leases` with no-secret worker IDs,
   active/expired lease counts, and latest leased job summaries.
+- Admin status/report expose metadata-only local job-health advisory alerts for
+  recent failed jobs, dead-lettered jobs, expired queued deadlines, and expired
+  worker leases, controlled by `JOB_ALERT_FAILED_MIN_EVENTS` and
+  `JOB_ALERT_EXPIRED_MIN_EVENTS`.
 - `POST /jobs/{job_id}/cancel` records cancellation for queued/running job
   states. Running local Python jobs observe cancellation; index rebuild jobs
   check cancellation during PDF loading, splitting, and before committing rebuilt
@@ -306,7 +404,7 @@ worker type remain planned
 - Local execution timeouts persist as `execution_timeout` instead of generic
   execution failures.
 - Job records preserve no-secret transition logs for queued, running, terminal,
-  and cancelled states.
+  cancelled, automatic retry, and dead-letter states.
 - Still planned: distributed database-backed worker beyond the local SQLite
   recovery/lease/service bridge and cancellation for future external workers.
 
@@ -318,6 +416,8 @@ Acceptance:
 - API and Streamlit can show running/succeeded/failed states through job status.
 - Queued local job endpoints return without blocking request handlers.
 - Queued delayed retries can recover after API service restart.
+- Bounded automatic retry can requeue failed attempts and dead-letter exhausted
+  jobs without creating duplicate job IDs.
 - Remaining: production-grade long-running work still needs a distributed
   worker/storage backend beyond the local SQLite worker service, plus
   cancellation propagation for future non-local providers.
@@ -337,8 +437,11 @@ image-provider activation remains disabled until a key/account is configured
   scaffolds without external image providers.
 - `GET /artifacts` lists generated local artifacts from persisted jobs.
 - `GET /artifacts/{artifact_id}` exports local file artifacts by stable ID.
-- `GET /artifacts` supports local `q`, `kind`, and `job_kind` filters for
-  artifact metadata inspection.
+- `GET /artifacts` supports local `q`, `kind`, `job_kind`, and `owner_id`
+  filters for artifact metadata inspection.
+- Artifact records inherit owner metadata from their source job so generated
+  diagrams, plots, and files remain attributable in local no-key status
+  surfaces.
 - Artifact metadata is mirrored into `artifacts/artifacts.sqlite3` as a local
   current-state index for inspection and future durable storage migration.
 - `GET /admin/status` reports local artifact integrity counts by checking
@@ -373,11 +476,14 @@ Acceptance:
 Status: complete for the current no-key local execution baseline: local request/result plumbing, Python execution, Octave-compatible
 execution interface, file/plot artifact capture, workdir path containment,
 input file size/count limits, no-secret execution environment/policy metadata,
-Unix child-process memory/CPU limit metadata/enforcement, and Docker sandbox
-readiness reporting plus Streamlit control-engineering execution templates
-implemented; real hosted execution, enabled Docker sandbox execution, and MATLAB
-activation remain disabled until infrastructure and license/account decisions
-are made
+bounded stdout/stderr output capture, bounded generated-artifact export, Unix
+child-process memory/CPU limit metadata/enforcement, opt-in Docker
+container execution, Docker readiness reporting, request-level execution policy
+preflight, no-secret code-execution outcome events/admin summaries, and
+local code-execution advisory alerts, and Streamlit control-engineering
+execution templates implemented; real hosted
+execution and MATLAB activation remain disabled until infrastructure and
+license/account decisions are made
 
 - `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
   contract for development-only Python snippets.
@@ -396,25 +502,66 @@ are made
   current network-policy enforcement state.
 - Local execution results persist timeout, CPU-time, and memory metadata, and
   Unix child processes receive address-space and CPU-time limits where supported.
-- `CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE` define a future no-key
-  Docker sandbox backend; admin status reports whether that backend is
-  configured and whether Docker is accessible by the runtime user without
-  running a container.
+- Local and Docker execution cap captured stdout/stderr with
+  `CODE_EXECUTION_MAX_STDOUT_BYTES` and `CODE_EXECUTION_MAX_STDERR_BYTES`;
+  results persist observed byte counts plus `stdout_truncated`,
+  `stderr_truncated`, and `output_truncated` metadata.
+- Local and Docker execution bound generated-artifact collection with
+  `CODE_EXECUTION_MAX_ARTIFACTS`, `CODE_EXECUTION_MAX_ARTIFACT_BYTES`,
+  `CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES`, and
+  `CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES`; results persist scanned/exported/
+  skipped counts, exported bytes, and `artifact_collection_truncated` metadata.
+- `CODE_EXECUTION_BACKEND=docker` routes Python and Octave-compatible code jobs
+  through `DockerExecutionProvider` instead of the child-process development
+  providers.
+- The Docker backend runs `docker run --rm` with network disabled, a
+  bind-mounted per-run workdir, read-only root filesystem, memory, CPU, and PID
+  limits, dropped capabilities, and `no-new-privileges`.
+- `DOCKER_EXECUTION_IMAGE` selects the container image; Python uses `python
+  <entrypoint>`, while Octave/MATLAB-compatible requests use `octave --quiet
+  --no-gui <entrypoint>` and therefore require an image that contains Octave.
+- Admin status reports whether the Docker backend is configured and whether
+  Docker is accessible by the runtime user without running user code.
+- `CODE_EXECUTION_POLICY=local-safe-v1` runs before local or Docker execution.
+  It rejects disallowed Python imports, shell/package-manager command patterns,
+  absolute-path literals in common file constructors, and Octave/MATLAB-compatible
+  shell, network, or package-install calls.
+- `CODE_EXECUTION_ALLOWED_IMPORTS` configures the Python import allowlist. Policy
+  decisions persist no-secret metadata such as profile, checked-file count, and
+  violation count on execution results.
+- Policy failures return the stable `execution_policy_violation` job error code
+  without starting the local child process, looking up Octave, or launching a
+  Docker container.
+- Each code-execution attempt appends a no-secret `code_execution` runtime event
+  with job id, owner metadata, language, backend, status/error code, duration,
+  artifact count, exit code, output/artifact limit metadata, and policy
+  metadata. Source files, stdout, and stderr are not copied into the event.
+- Admin status/report summarize recent code-execution events by code, status,
+  backend, policy violations, output truncations, artifact collection
+  truncations, exported artifact bytes, failure rate, duration, and advisory
+  alert codes.
+- Configurable local alert thresholds cover minimum recent event count, failure
+  rate, and max duration, while policy/output/artifact truncation alerts are
+  surfaced whenever those recent signals appear.
 - Timed-out local executions return a stable `execution_timeout` job error code.
 - `POST /jobs/code/octave-local` and `POST /jobs/async/code/octave-local`
   expose immediate and queued no-key Octave-compatible job flows.
 - Streamlit includes a local Octave-compatible job panel.
 - Streamlit includes editable no-key Python and Octave-compatible templates for
-  SMC reaching-law and PMSM current-response examples that produce local
-  artifacts through the existing providers.
+  control-engineering examples that produce local artifacts through the existing
+  providers. Python templates: `smc_reaching_law` and `pmsm_current_step`; Octave
+  templates: `pmsm_current_decay` and `smc_sign_switching`.
 - Job records persist execution artifacts alongside the execution result.
-- Still planned: actually run code in an isolated service/container with
-  filesystem and network policy plus stronger production-grade resource limits.
+- Still planned: hosted/distributed execution beyond the local Docker backend,
+  production metrics/tracing/alerts beyond the local advisory baseline, deeper
+  malware/abuse controls, and true MATLAB activation if that product path is
+  chosen.
 
 Acceptance:
 
-- Current development provider runs code in a child Python process and temporary
-  workdir with path-containment checks, but it is not a production sandbox.
+- Current child-process development provider runs code in a child Python process
+  and temporary workdir with path-containment checks, but it is not a production
+  sandbox.
 - Octave-compatible requests have stable API/UI/job behavior without enabling
   real MATLAB licensing.
 - Local control-engineering examples can be launched without writing a blank
@@ -423,6 +570,11 @@ Acceptance:
   metadata.
 - Docker/container execution readiness can be inspected without granting Docker
   access or running user code.
+- When `CODE_EXECUTION_BACKEND=docker` and Docker is available, code jobs run
+  inside a container and persist Docker runtime metadata plus generated
+  artifacts through the same job/artifact contract.
+- Unsafe Python/Octave requests are rejected by policy before execution and are
+  persisted with an explicit policy-violation error code.
 - A failed local execution returns structured diagnostics without breaking the
   app.
 
@@ -431,8 +583,12 @@ Acceptance:
 Status: complete for the current no-key product-shell foundation: local/admin status foundation, reusable local corpus profiles,
 no-secret Markdown status-report export,
 Markdown query-report export, provider-failure event history, estimated
-query-usage history, local storage-readiness dashboard, and local storage
-inventory dashboard plus no-secret runtime backup manifest implemented; keep
+query-usage history, metadata-only API access audit summaries,
+local API rate-limit status, local job/provider/query/retrieval/code advisory alerts,
+metadata-only retrieval trace summaries, no-secret local metrics export,
+local storage-readiness dashboard, and local storage
+inventory dashboard plus no-secret runtime backup manifest and restore dry-run
+verifier implemented; keep
 public identity, API-key lifecycle, quotas, and billing disabled until decisions
 are made
 
@@ -441,9 +597,9 @@ are made
 - Local corpus profiles let multiple named paper selections coexist without
   introducing accounts, permissions, or a public share model.
 - `GET /admin/status` exposes no-secret local runtime status for job counts,
-  failed jobs, corpus counts, artifact counts/bytes, runtime directory
-  existence/writability/bytes, public model names, and disabled external
-  provider/productization switches.
+  failed jobs, job/artifact owner summaries, corpus counts, artifact
+  counts/bytes, runtime directory existence/writability/bytes, public model
+  names, and disabled external provider/productization switches.
 - Streamlit includes a local runtime status panel for common operational checks.
 - The Streamlit runtime status panel displays durable storage readiness and
   local metadata/object storage paths from `/admin/status` without exposing
@@ -451,26 +607,90 @@ are made
 - Admin status and the Streamlit runtime status panel display a no-secret local
   storage inventory with file counts and byte totals for metadata, jobs,
   artifacts, uploads, and FAISS index files.
+- Admin status/report, metrics, and the Streamlit status panel display a
+  no-secret local storage-schema inventory for JSON, JSONL, and SQLite runtime
+  stores. It reports schema readiness for migration planning without returning
+  stored content or identifiers.
+- `scripts/storage_schema.py` gives the same storage-schema check a CLI preflight
+  path for local or target-root use.
+- Admin status/report, metrics, and the Streamlit status panel display a
+  no-secret `platform_readiness` summary for production storage migration and
+  distributed worker acceptance. It reports only booleans, counts, and blocker
+  codes; the current local runtime shows schema/inventory and local worker
+  bridge readiness while keeping production activation blocked on external
+  metadata database, object storage, and distributed job-store configuration.
 - `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
   Streamlit runtime status panel expose a no-secret runtime backup manifest for
   the state trees that source deploys exclude.
+- `POST /admin/runtime-manifest/restore-check` and its Markdown report route
+  check a supplied no-secret manifest against local runtime state without
+  restoring, copying, or deleting files. The Streamlit status panel exposes the
+  same check for an uploaded manifest JSON.
 - `GET /admin/status/report` and the Streamlit status panel can export the same
   no-secret status snapshot as a Markdown operations report.
-- `GET /admin/retention` returns a no-delete preview of upload/artifact files
+- `GET /admin/metrics` and the Streamlit status panel export the same local
+  admin summaries as Prometheus/OpenMetrics-style text. The metrics are
+  metadata-only local-window gauges and avoid owner IDs, request IDs, paths,
+  prompts, answers, uploaded content, filenames, and artifact contents.
+- Successful `/query`, `/query/inspect`, `/query/report`, and
+  `/query/retrieve` calls emit metadata-only `retrieval_trace` runtime events
+  with endpoint, answer mode, context count, source/page completeness counts,
+  citation status when available, duration, and whether an LLM provider was
+  called. Admin status/report, Streamlit, and the metrics export summarize the
+  events without prompts, answers, retrieved text, source paths, owner IDs, or
+  request IDs.
+- Retrieval trace summaries also include local advisory alerts for empty
+  retrievals, missing source/page metadata, and citation validation failures,
+  controlled by `RETRIEVAL_TRACE_ALERT_MIN_EVENTS`,
+  `RETRIEVAL_TRACE_ALERT_EMPTY_RATE`,
+  `RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE`, and
+  `RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE`.
+- `GET /admin/retention` returns the default preview of upload/artifact files
   matching local age-based retention thresholds.
-- The Streamlit status panel exposes the same no-delete retention preview with
-  local upload/artifact day thresholds and a candidate limit.
+- `POST /admin/retention/delete` deletes the same bounded local candidate set
+  only when `RETENTION_DELETE_ENABLED` is explicitly true; disabled mode returns
+  a guarded no-delete result. Deletion excludes artifact SQLite metadata files
+  and emits only aggregate `retention_delete` runtime-event counts.
+- The Streamlit status panel exposes the same retention preview with local
+  upload/artifact day thresholds and a candidate limit, and only shows the
+  delete action when the same config flag is enabled.
 - `GET /admin/events` lists no-secret runtime events with local `kind`, `code`,
   and `q` filters; the Streamlit status panel exposes the same event viewer.
+  Code-execution outcomes are emitted as `code_execution` events and summarized
+  in admin status/report.
+- FastAPI middleware emits metadata-only `api_access` runtime events controlled
+  by `API_ACCESS_AUDIT_ENABLED`. These classify token status as
+  `not_configured`, `valid`, `missing`, or `invalid` and record method, path,
+  status code, duration, credential type, and request ID when present. They do
+  not copy token values, headers, request bodies, prompts, answers, client IPs,
+  or uploaded/runtime file contents. Admin status/report and the Streamlit
+  status panel summarize recent API access by token status, HTTP status code,
+  and method.
+- `API_RATE_LIMIT_ENABLED` can enable a local in-memory API rate-limit guard
+  using `API_RATE_LIMIT_MAX_REQUESTS` over `API_RATE_LIMIT_WINDOW_S`. Over-limit
+  requests return HTTP 429 before route handling and emit only metadata-only
+  `api_access` rate-limit fields plus `X-RateLimit-*` response headers. Admin
+  status/report and the Streamlit status panel summarize recent rate-limited
+  access counts and the configured local threshold. This is not identity-backed
+  quotas, billing, or distributed rate limiting.
 - `POST /query/report` exports an answer, citation validation, and retrieved
-  context refs as a Markdown research report.
+  context refs as a Markdown research report. For implementation and
+  code-generation reports it adds a paper-to-code handoff with source refs,
+  assumption/parameter guardrails, fenced code blocks, cited artifact IDs, and
+  validation checklist fields.
 - `/query` provider failures are appended to a no-secret local JSONL event log
-  under `metadata/` and summarized by `GET /admin/status`.
+  under `metadata/` and summarized by `GET /admin/status`. Admin status/report
+  now also expose metadata-only local provider-failure advisory alerts
+  controlled by `PROVIDER_FAILURE_ALERT_MIN_EVENTS` and
+  `PROVIDER_FAILURE_ALERT_RATE`.
 - Successful `/query`, `/query/inspect`, and `/query/report` calls append
-  no-secret estimated usage events with character counts and rough token
-  estimates. When provider responses include token usage, the same local events
-  also store provider prompt/completion/total token counts and admin status
-  aggregates them separately from estimates.
+  no-secret estimated usage events with duration, character counts, and rough
+  token estimates. When provider responses include token usage, the same local
+  events also store provider prompt/completion/total token counts and admin
+  status aggregates them separately from estimates. Admin status/report
+  summarize recent average and max query duration plus metadata-only local query
+  latency advisory alerts controlled by `QUERY_ALERT_MIN_EVENTS` and
+  `QUERY_ALERT_DURATION_MS`.
 - Admin status and the Streamlit status panel expose optional no-secret
   provider/model pricing configuration through `QUERY_COST_PROVIDER`,
   `QUERY_COST_PROMPT_USD_PER_1M`, and
@@ -478,8 +698,10 @@ are made
   estimates USD query cost from provider token counts when available and rough
   estimated tokens otherwise; external billing remains disabled.
 - Still planned: production durable storage dashboards beyond the local
-  inventory/readiness view, billing attribution, and user/workspace admin once
-  identity exists.
+  inventory/readiness/platform-readiness view, real production storage and
+  distributed worker migration tests after backend choice, identity-backed
+  deletion/audit controls, billing attribution, production scrape/alert routing
+  beyond the local metrics text, and user/workspace admin once identity exists.
 
 Acceptance:
 
@@ -487,9 +709,20 @@ Acceptance:
 - User-facing workflows are not tied to local server filesystem assumptions.
 - Operational state is inspectable without SSH for common local runtime
   questions.
+- No-secret local metrics can be exported without scraping logs or exposing
+  prompts, answers, request IDs, owner IDs, tokens, paths, or runtime contents.
+- Retrieval trace summaries can be inspected without reading retrieved chunks,
+  source filenames, prompts, answers, owner IDs, or request IDs.
 - Durable storage readiness is visible in the UI without activating external
   storage accounts.
 - Local storage inventory is visible in the UI without reading file contents or
   activating external storage accounts.
+- Local storage-schema readiness is visible in API/report/metrics/UI surfaces
+  without reading stored content or exposing identifiers.
+- Production storage and distributed-worker blockers are visible in
+  API/report/metrics/UI surfaces without connecting to external services or
+  exposing runtime contents.
 - Local retention candidates can be previewed without deleting files or reading
   raw runtime directories by hand.
+- Local retention candidates can be deleted only through the explicit guarded
+  switch and authenticated API/UI path, with aggregate no-secret event evidence.

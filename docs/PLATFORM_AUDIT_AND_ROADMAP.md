@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-07
+Last updated: 2026-06-08
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -31,7 +31,7 @@ RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
 token-protected FastAPI `/query` endpoint until those activation decisions are
 made.
 
-## Project Evaluation: 2026-06-07
+## Project Evaluation: 2026-06-08
 
 Current verified state: the no-key/local platform baseline is healthy and
 deployed, but the project is still a single-machine product foundation rather
@@ -39,18 +39,23 @@ than a full multi-user SaaS platform. The strongest current capabilities are the
 paper-grounded RAG workflow, local corpus/profile management, no-secret admin
 status surfaces, durable local job records, local worker-service bridge, artifact
 metadata/export, retrieval diagnostics, and deterministic offline RAG regression
-gates.
+gates, plus the opt-in no-key Docker execution backend.
 
 Current verification run:
 
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 200 tests, 2 known warnings
-.venv/bin/python scripts/evaluate_rag.py  pass, 5/5 eval cases, 5/5 recorded answers
-health_check.py local/docs anchors         pass, including repo/roadmap drift checks
-health_check.py HTTPS endpoints            pass, UI/API 200
-health_check.py SSH runtime                pass, services active, index_fresh=True
+.venv/bin/python -m pytest                pass, 282 tests, 2 known warnings
+.venv/bin/python scripts/evaluate_rag.py  pass, 20 answer cases, 30 retrieval-only
+                                             cases, 4 code-output cases,
+                                             6 PDF structure cases,
+                                             20 recorded answers
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
+storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
+runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+health_check.py HTTPS endpoints            00:45 snapshot, UI/API 200
+health_check.py SSH runtime                00:45 snapshot, services active, index_fresh=True
 ```
 
 Current assessment:
@@ -93,9 +98,23 @@ Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
-evaluator now checks that expected PDF sources/pages contain their configured
-snippets, and checks recorded answers for citation validity plus deterministic
-key-term coverage thresholds. Retrieval now uses a local hybrid path: FAISS
+baseline now has 20 domain-trust answer cases, 20 recorded answers, and 30
+retrieval-only cases for 50 total no-LLM retrieval questions, plus four local
+Python code-output cases (two job-backed) and six seeded PDF
+equation/table/figure structure cases. The baseline gates 64 expected source/page refs, 59 topic tags,
+ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
+fidelity, code generation, forum-style debugging, failure modes, and
+paper-to-code reports, code-output case/language/template/execution-mode/pass
+rate coverage, and PDF structure kind/pass-rate coverage. The evaluator checks
+that expected PDF sources/pages contain their configured snippets, checks
+retrieval-only source/page anchors without answer fixtures, checks recorded
+answers for citation validity plus deterministic key-term coverage thresholds,
+verifies that local Python code-output fixtures produce expected stdout plus
+plot/text artifacts, including the reusable `smc_reaching_law` execution
+template and one job-backed local execution path, and verifies that
+representative PDF pages still expose equation/table/figure markers for
+paper-to-code work.
+Retrieval now uses a local hybrid path: FAISS
 vector hits plus BM25-lite keyword matches from the indexed docstore, with
 dedupe, deterministic BM25-lite lexical reranking, optional no-key local
 CrossEncoder reranking when `RERANKER_MODEL` points to an existing local model
@@ -128,7 +147,18 @@ FAISS exactly match a changed selection. Admin status now reports index freshnes
 by comparing active paper source paths with chunk metadata source paths, so stale
 or missing index state is visible through the API. The same admin status reports
 future metadata database/object-storage readiness without SSH or exposing
-external storage credentials. This is still a local
+external storage credentials. The same local admin surfaces now expose
+storage-schema readiness for JSON, JSONL, and SQLite stores without returning row
+contents, prompts, answers, filenames, owner IDs, request IDs, source paths, or
+runtime file contents, and `scripts/storage_schema.py` exposes the same check as
+a CLI preflight with JSON/Markdown output. Admin status/report, Streamlit, and
+metrics now also expose a no-secret `platform_readiness` summary for production
+storage migration and distributed worker acceptance: local schema/inventory and
+the local worker bridge are clean, while external metadata database, object
+storage, and distributed job-store targets remain explicit blockers. The
+no-secret runtime manifest can also be checked
+against a target runtime root through the CLI or authenticated API without
+copying, deleting, or restoring files. This is still a local
 baseline, not the final multi-user database. Reusable local corpus profiles now
 persist named active-paper selections under `metadata/corpus_profiles.json`, with
 API routes to list, upsert, inspect status, and activate them. Profile status
@@ -208,7 +238,11 @@ Reference context:
   (`src/config.py`), embeddings (`src/embeddings.py`).
 - Local embeddings reduce runtime dependency on remote embedding APIs.
 - The API token boundary is simple and appropriate for the current public
-  endpoint.
+  endpoint; metadata-only API access audit events now make token-status outcomes
+  inspectable without storing credentials or request bodies, the local
+  rate-limit guard can return HTTP 429 before route handling when configured,
+  and `/admin/metrics` can export the same no-secret admin summaries as local
+  scrapeable metrics text.
 - Deployment isolation is explicit: independent systemd services and ports,
   no Docker restart, no Trace-Twin bot-stack coupling.
 - Seed paper selection gives the user control over the active corpus instead
@@ -222,11 +256,16 @@ Reference context:
 - FAISS local storage is acceptable for one machine but not enough for
   multi-user corpus management, metadata search, or horizontal scaling.
 - `/query` is synchronous and can block on retrieval plus LLM latency.
-- Uploaded PDFs are stored locally without per-user ownership, quotas, or
-  malware scanning. Local checksum deduplication now avoids writing duplicate
-  upload files or duplicate vector chunks for already indexed PDFs, and admin
-  retention preview shows age-based upload/artifact cleanup candidates without
-  deleting files.
+- Uploaded PDFs are stored locally without per-user ownership or quotas. A local
+  pre-write upload scan now validates PDF magic and parseability, blocks
+  encrypted PDFs and common active-content markers by default, and records
+  metadata-only reason-code events; this is still not a production antivirus,
+  sandbox-scanning, or identity-backed abuse-control service. Local checksum
+  deduplication avoids writing duplicate upload files or duplicate vector chunks
+  for already indexed PDFs, and admin retention preview shows age-based
+  upload/artifact cleanup candidates. A guarded local retention-delete route can
+  remove those candidates only when explicitly enabled, but production
+  identity-backed deletion/audit controls remain planned.
 - The pytest suite, GitHub Actions CI gate, local/remote health checker, and
   offline RAG fixture evaluator now exist. They still do not cover live
   retrieval-quality scoring or model-answer citation correctness.
@@ -234,11 +273,17 @@ Reference context:
   normalization, DOI/arXiv metadata enrichment, reranking, or citation verifier.
 - LLM/provider errors are normalized for the UI and API, but provider-specific
   retry policy and richer error taxonomy are still basic.
-- Request IDs are logged for UI/API requests, but latency, retrieval hits,
-  token usage, and provider failures are not persisted.
-- No execution sandbox. Any future Python/MATLAB compiler feature must not run
-  arbitrary code in the main web/API process. The current local Python provider
-  is a development contract exercise only.
+- Request IDs are logged for UI/API requests, and successful query duration,
+  token usage, and provider failures are now persisted as no-secret runtime
+  events; API access token-status outcomes are also summarized locally, while
+  local API rate-limit outcomes are visible through the same admin surfaces.
+  Retrieval-hit traces now have a metadata-only local event/summary baseline,
+  and the metrics export is still a local baseline rather than a production
+  scrape, tracing, or alert-routing stack.
+- No production execution sandbox is enabled by default. The local Python/Octave
+  child-process providers remain development contract exercises, while the
+  opt-in Docker backend and request-level policy preflight prove the no-key
+  container/policy path before any hosted or public execution surface is enabled.
 
 ## Target Product Direction
 
@@ -321,14 +366,26 @@ provider switches first. Only real external activation is deferred.
   scoring for standard SMC/flux questions.
 
 Current progress: a local JSONL job history, SQLite current-state job index,
-immediate no-key job endpoints, in-process async no-key job endpoints, and local
-scheduled retry/backoff exist for mock image generation, development-only Python
+durable SQLite idempotency claims, immediate no-key job endpoints, in-process
+async no-key job endpoints, and local scheduled retry/backoff exist for mock
+image generation, development-only Python execution, Octave-compatible
 execution, and selected-PDF index rebuilds.
 List/status/retry/scheduled-retry/cancel endpoints exist. The Streamlit sidebar
 can trigger queued no-key jobs, display filtered latest job state, cancel
 queued/running jobs, and retry failed/cancelled jobs immediately or after a local
 backoff delay. `GET /jobs` and the sidebar recent-job panel support local `q`,
-`status`, and `kind` filters for job inspection without raw JSONL/SQLite reads.
+`status`, `kind`, and `owner_id` filters for job inspection without raw
+JSONL/SQLite reads.
+Immediate and async job submissions can include `idempotency_key`; duplicate
+submissions for the same job kind and key return the existing persisted job, and
+missing keys still create fresh jobs.
+Query and job submissions can also include optional local `owner_id` and
+`owner_label` metadata. These fields default to `local-user` / `Local user` and
+persist through durable jobs, job logs, query runtime events, artifacts, and
+admin summaries, but they are not identity, quota, tenancy, or billing controls.
+Async submissions can set `max_attempts` and `retry_backoff_s`; failed attempts
+are requeued as the same durable job until exhausted, then marked
+`dead_lettered` with no-secret transition logs.
 Queued/scheduled jobs are rehydrated from SQLite/JSONL on API startup, async
 jobs and scheduled retries can set `queue_timeout_s`, and expired queued jobs
 fail before execution with `job_deadline_exceeded`. Admin status exposes queue
@@ -346,8 +403,9 @@ local providers and forwards `cancelled` state through the existing
 `cancel_event` path, so local Python/Octave child processes can terminate
 outside the API process. Job records now include no-secret transition logs for
 queued, running, terminal, and cancelled states. This proves the
-UI/API/status/artifact shape and a local restart-recovery/lease/worker-service bridge,
-but it is not yet a distributed multi-worker queue or database-backed worker.
+UI/API/status/artifact shape and a local restart-recovery/lease/retry/
+dead-letter/worker-service bridge, but it is not yet a distributed multi-worker
+queue or database-backed worker.
 Local execution timeouts now persist as `execution_timeout` so UI/API/admin
 surfaces can distinguish timeout failures from ordinary non-zero exits.
 API startup now warms only an already-present FAISS index and does not
@@ -432,8 +490,9 @@ scaffolds. Artifact metadata is mirrored into local SQLite as a current-state
 index, and admin status reports artifact integrity counts for
 ok/missing/unchecked/mismatched local files. The Streamlit artifact gallery
 exposes stable artifact IDs, metadata, local filters, and downloads, and
-`GET /artifacts` supports local `q`, `kind`, and `job_kind` filters for
-generated diagrams, plots, and files. RAG prompts can include recent generated
+`GET /artifacts` supports local `q`, `kind`, `job_kind`, and `owner_id` filters
+for generated diagrams, plots, and files. Artifact records inherit owner
+metadata from their source jobs. RAG prompts can include recent generated
 diagrams, plots, and files as
 `[Artifact:<id>]` references.
 
@@ -446,9 +505,10 @@ Reference: https://platform.openai.com/docs/guides/image-generation
 
 ### Phase 4: Code Execution
 
-Status: local Python and Octave-compatible execution interfaces exist. Real
-hosted execution remains disabled until infrastructure is configured. Real
-MATLAB support additionally requires license/account decisions.
+Status: local Python, Octave-compatible, and opt-in Docker execution interfaces
+exist. Real hosted execution remains disabled until infrastructure is
+configured. Real MATLAB support additionally requires license/account
+decisions.
 
 Current progress: the local Python provider and the local GNU Octave-compatible
 provider capture stdout, stderr, exit code, generated files, and generated image
@@ -461,14 +521,39 @@ isolation, and the current lack of network-policy enforcement. Unix child
 processes receive address-space and CPU-time limits where supported. Input files
 and entrypoints are constrained to the per-run workdir, and symlink or
 out-of-workdir outputs are not exported as artifacts. File count, per-file bytes,
-and total input bytes are capped before materialization. They remain development
-providers, not isolated production sandboxes. The Streamlit job panel now offers
-editable local Python and Octave-compatible control-engineering templates, so
-SMC/PMSM example jobs can produce artifacts without requiring a blank script.
-`CODE_EXECUTION_BACKEND` and `DOCKER_EXECUTION_IMAGE` now expose a no-key Docker
-sandbox readiness surface through admin status, so operators can see whether a
-future container backend is configured and whether Docker is accessible to the
-runtime user without granting access silently or running a container.
+and total input bytes are capped before materialization. Generated-artifact
+export is also bounded by configurable artifact count, per-artifact bytes, total
+artifact bytes, and candidate scan limits, with exported/skipped/truncated
+metadata on execution results. The child-process providers remain development
+providers. `CODE_EXECUTION_BACKEND=docker` now
+switches code jobs to `DockerExecutionProvider`, which runs `docker run --rm`
+with network disabled, a bind-mounted per-run workdir, read-only root
+filesystem, memory, CPU, and PID limits, dropped capabilities, and
+`no-new-privileges`. The Streamlit job panel offers editable local Python and
+Octave-compatible control-engineering templates, so SMC/PMSM example jobs can
+produce artifacts without requiring a blank script. `DOCKER_EXECUTION_IMAGE`
+selects the container image, and admin status reports whether the Docker backend
+is configured and accessible to the runtime user without running user code.
+`CODE_EXECUTION_POLICY=local-safe-v1` now applies a request-level preflight
+before any child process, Octave lookup, or Docker container starts. It uses
+Python AST checks plus Octave text checks to reject disallowed imports,
+shell/package-manager commands, absolute-path literals in common file
+constructors, and Octave shell/network/package-install calls. Policy failures
+persist as `execution_policy_violation` job errors with no-secret policy
+metadata. Each code execution attempt also emits a no-secret `code_execution`
+runtime event with job id, owner metadata, language, backend, status/error code,
+duration, artifact count, exit code, policy metadata, and output/artifact limit
+metadata; submitted source, stdout, and stderr are not copied into the event.
+Admin status/report summarize recent execution outcomes by code, status,
+backend, policy violations, output/artifact truncations, exported artifact
+bytes, failure rate, duration, and advisory alert codes. Local and Docker
+execution now capture stdout/stderr through bounded readers controlled by
+`CODE_EXECUTION_MAX_STDOUT_BYTES` and `CODE_EXECUTION_MAX_STDERR_BYTES`, with
+observed byte counts and truncation flags persisted in execution metadata.
+Generated-artifact export is bounded by configurable count, per-artifact byte,
+total-byte, and candidate-scan limits. Local advisory alerts cover high failure
+rate, slow duration, policy violations, stdout/stderr truncation, and artifact
+collection truncation.
 
 Artifact progress: generated local artifacts can be listed and downloaded
 through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
@@ -476,13 +561,11 @@ and execution outputs an export path before real provider storage is configured.
 The Streamlit sidebar also includes a local artifact gallery for recent job
 outputs.
 
-Do not run user code in the Streamlit/API process. Add an execution provider:
-
-```python
-class CodeExecutionProvider:
-    def run(self, language, files, entrypoint, *, timeout_s, memory_mb) -> ExecutionResult:
-        ...
-```
+Remaining work is no longer "add an execution provider" or "add first package
+policy"; it is hardening the chosen execution backend for production operations:
+production metrics/tracing/alerts beyond the local advisory baseline, broader
+abuse controls, distributed execution if needed, and a clear MATLAB-vs-Octave
+product decision.
 
 Recommended path:
 
@@ -491,7 +574,8 @@ Recommended path:
 - Add real MATLAB only if licensing, server resources, and isolation are
   deliberately solved.
 - Capture stdout, stderr, exit code, generated files, and plots as artifacts.
-- Enforce quotas, network policy, and per-session workspaces.
+- Enforce quotas, network policy, package/filesystem controls, and per-session
+  workspaces.
 
 Cloudflare Sandbox SDK is relevant for hosted isolated execution because it
 provides container-backed sandbox instances, command execution, files, and
@@ -517,24 +601,48 @@ operational decisions are made.
 Current progress: the first no-key admin foundation exists through
 `GET /admin/status` and a Streamlit sidebar status panel. It reports local job,
 corpus, artifact, recent `/query` provider-failure events, estimated no-secret
-query usage, provider token usage when returned by the upstream response,
-optional configured query-cost estimates, runtime-directory, durable storage
-readiness, public model, and
-disabled-provider/product switch state without exposing API keys, storage
+query usage with duration summaries, provider token usage when returned by the
+upstream response, optional configured query-cost estimates, runtime-directory,
+durable storage readiness, public model, job/artifact owner summaries,
+metadata-only API access audit summaries, local API rate-limit status,
+metadata-only retrieval trace summaries, no-secret storage-schema readiness,
+no-secret platform-readiness blockers, no-secret metrics text export, and
+disabled-provider/product switch state
+without exposing API keys, storage
 credentials, or requiring real identity/billing systems. The Streamlit status
 panel now renders the same storage readiness, local metadata/object storage
-paths, and no-secret pricing status directly for dashboard use. `GET
-/admin/status/report` and the Streamlit status panel can export
+paths, platform-readiness status, API access audit/rate-limit status, metrics download, and no-secret
+pricing status directly for dashboard use. The runtime
+manifest and restore-check API/CLI/UI provide no-secret backup and dry-run
+verification evidence for local runtime state. `GET /admin/status/report` and
+the Streamlit status panel can export
 that same no-secret snapshot as a Markdown operations report for handoff or
-offline review. `POST /query/report` exports an answer, citation validation, and
-retrieved context refs as a Markdown research report. `GET
-/corpus/profiles/{profile_id}/report` exports one saved local corpus profile's
-read-only status as a Markdown handoff report. `GET /admin/retention`
-previews upload/artifact files matching age-based retention thresholds without
-deleting them, and the Streamlit admin panel exposes the same preview with local
-day/limit controls. `GET /admin/events` lists no-secret runtime events with
+offline review. Successful `/query`, `/query/inspect`, `/query/report`, and
+`/query/retrieve` calls emit metadata-only `retrieval_trace` events with
+endpoint, answer mode, context count, source/page completeness counts, citation
+status when available, duration, and whether an LLM provider was called; admin
+status/report, Streamlit, and metrics summarize them without prompts, answers,
+retrieved text, source paths, owner IDs, or request IDs. The same local status
+surfaces derive metadata-only advisory alerts for empty retrievals, missing
+source/page metadata, and citation validation failures; this remains local
+observability, not production alert routing. `POST /query/report`
+exports an answer, citation validation, and
+retrieved context refs as a Markdown research report; implementation and
+code-generation reports now include a paper-to-code handoff with source refs,
+assumption/parameter guardrails, fenced code blocks, cited artifact IDs, and
+validation checklist fields. The `GET /corpus/profiles/{profile_id}/report`
+route exports one saved local corpus profile's read-only status as a Markdown
+handoff report. `GET /corpus/structure/report` exports filtered
+equation/table/figure layout anchors as a Markdown handoff report with
+kind/source summaries. `GET /admin/retention`
+previews upload/artifact files matching age-based retention thresholds.
+`POST /admin/retention/delete` can delete the same bounded candidate set only
+when explicitly enabled, and the Streamlit admin panel exposes the delete action
+only under that config flag. `GET /admin/events` lists no-secret runtime events with
 local `kind`, `code`, and `q` filters, and the Streamlit admin panel exposes the
-same event viewer. Estimated query usage remains the fallback when provider
+same event viewer, including provider-failure, query-usage, retrieval-trace,
+code-execution, and API-access audit event kinds. Estimated query usage remains
+the fallback when provider
 usage data is absent; provider-specific pricing is available as local
 configuration only, while billing attribution and user cost dashboards remain
 blocked on product decisions.
@@ -548,10 +656,13 @@ blocked on product decisions.
    them when a new status or drift class is found.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-4. Extend the local restart-recovery/lease/worker-service bridge into a
-   distributed worker/storage foundation, then add true running cancellation and
-   richer timeout policy before enabling real external image generation or code
-   execution providers.
+4. Use the local `platform_readiness` blockers to choose and test the production
+   metadata database, object storage, and distributed job-store backend, then
+   extend the local restart-recovery/lease/worker-service bridge into a
+   distributed worker/storage foundation and extend the local metrics export
+   into production scrape/tracing/alert routing plus deeper abuse controls
+   before enabling real
+   external image generation or hosted code execution providers.
 5. Choose the next platformization lane explicitly: frontend/API split,
    production storage, isolated execution, or identity/quota/billing. Do not
    activate real provider keys, hosted sandboxes, or MATLAB licensing until the
@@ -563,7 +674,8 @@ blocked on product decisions.
   demo shell and begin a frontend/API split.
 - Choose storage: local volume first, or object storage plus relational
   metadata now.
-- Choose execution backend: local Docker service, Cloudflare Sandbox, or a
-  dedicated VM with container isolation.
+- Decide whether the implemented local Docker backend is sufficient for the next
+  release, or whether production use needs Cloudflare Sandbox or a dedicated VM
+  with stronger container isolation.
 - Decide whether "MATLAB compiler" means true MATLAB, Octave-compatible code,
   or Python equivalents for control systems.

@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-07 22:57 CST
+Last live check: 2026-06-08 00:45 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -93,6 +93,21 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live read-only checks refreshed on 2026-06-08 00:45 CST during production-gap
+research and roadmap verification. No deploy sync, service restart, runtime
+mutation, or push was performed. `.venv/bin/python scripts/health_check.py --url
+https://smy.hyper-dusty.cloud/ --url https://api-smy.hyper-dusty.cloud/health`
+passed with both HTTPS endpoints returning 200. `.venv/bin/python
+scripts/health_check.py --ssh-host root@100.100.233.26` passed with UI/API/worker,
+Cloudflare tunnel, and Docker services active; listeners on `18501` and `18502`;
+local API health `{"status":"ok"}`; `LLM_MODEL=mimo-v2.5-pro`;
+embedding model `/opt/fluxmind/models/all-MiniLM-L6-v2`; `active_papers=6`;
+`faiss_index_bytes=786477`; `chunk_metadata_rows=512`;
+`chunk_metadata_sources=6`; `index_fresh=True`; Docker execution backend still
+`configured=False available=False reason=not_configured`; local metadata/object
+storage available; API-level chunk-filter, retrieval, and corpus-profile report
+smokes passing; root disk 24G free.
 
 Live read-only checks refreshed on 2026-06-07 22:57 CST during status-drift
 cleanup. No deploy sync, service restart, runtime mutation, or push was

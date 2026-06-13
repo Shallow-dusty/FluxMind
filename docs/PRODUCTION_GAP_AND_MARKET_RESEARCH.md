@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-07 23:36 CST
+Last updated: 2026-06-08 06:26 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -12,7 +12,8 @@ It separates four evidence layers:
 Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
-Current live state    health_check.py HTTPS and SSH checks run on 2026-06-07
+Current live state    health_check.py HTTPS and SSH checks run on 2026-06-08
+                      00:45 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -27,26 +28,35 @@ Current local git state at this research pass:
 
 ```text
 Branch          main
-Remote status   main...origin/main [ahead 3]
-HEAD            a41a9d7 test: guard FluxMind status and feature drift
-Worktree        no uncommitted files reported by git status --short --branch
+Remote status   main...origin/main [ahead 7]
+HEAD            f840c8e docs: trim production research formatting
+Worktree        in-progress eval/code-output/API/runtime-restore/job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/execution-observability/output-limits/artifact-limits/execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema-CLI/docs changes; not a clean release boundary
+Diff hygiene    git diff --check passed on 2026-06-08 08:48 CST
 ```
 
-Current live verification from this pass:
+Current local verification from this pass plus the latest deployment snapshot:
 
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-HTTPS UI                                  https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                pass on root@100.100.233.26
+pytest                                    278 passed, 2 known warnings
+offline RAG eval                          20 answer cases, 30 retrieval-only
+                                          cases, 3 code-output cases,
+                                          6 PDF structure cases,
+                                          20 recorded answers
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
+storage_schema.py                         pass, ok=true, 7 stores, 0 problems
+runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+HTTPS UI                                  00:45 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          00:45 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                00:45 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
 Remote active corpus                       active_papers=6
-Remote chunk metadata                      chunk_metadata_rows=512, sources=6
+Remote chunk metadata                     chunk_metadata_rows=512, sources=6
 Remote index freshness                     index_fresh=True
-Remote execution sandbox                   Docker execution not configured
+Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
 
 Interpretation: FluxMind is a healthy deployed no-key/local baseline and a good
@@ -104,11 +114,20 @@ Priority                Highest. A domain product wins through domain content,
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
-                        state visibility and no-secret manifest.
+                        state visibility, no-secret manifest, and dry-run
+                        restore verification through CLI/API/UI. Local
+                        storage-schema readiness checks cover JSON, JSONL, and
+                        SQLite stores without exposing contents and now have a
+                        CLI preflight. Admin/report/metrics/UI surfaces now
+                        expose production storage and distributed-worker
+                        readiness blockers without connecting to external
+                        services. Jobs and generated artifacts now carry local
+                        owner metadata.
 
 Gap to production       Relational metadata store, object storage, vector DB or
-                        managed vector index, ownership metadata, migrations,
-                        backups, restore drills, retention policies.
+                        managed vector index, identity-backed ownership,
+                        migrations, backups, full restore drills, retention
+                        policies.
 
 Priority                High. Identity, quotas, billing, and durable workers all
                         depend on this boundary.
@@ -118,11 +137,14 @@ Priority                High. Identity, quotas, billing, and durable workers all
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Jobs/workers            Local durable worker service, SQLite/JSONL state,
-                        retries, leases, cancellation metadata.
+                        idempotency, bounded retries, dead-letter status,
+                        leases, cancellation metadata, local owner metadata,
+                        and no-secret readiness blockers for distributed
+                        worker acceptance.
 
 Gap to production       Distributed queue, concurrent workers, per-tenant quotas,
-                        durable cancellation, idempotency, autoscaling,
-                        dead-letter handling, SLO/error budgets.
+                        durable cancellation, distributed idempotency,
+                        autoscaling, SLO/error budgets.
 
 Priority                High after storage. RAG indexing, execution, and artifact
                         generation all need real job control.
@@ -131,12 +153,20 @@ Priority                High after storage. RAG indexing, execution, and artifac
 ```text
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
-Execution               Local Python/Octave-compatible providers prove the API
-                        and artifact contract. Docker execution is explicitly
-                        not configured on live deployment.
+Execution               Local Python/Octave-compatible providers, request-level
+                        execution policy, and the opt-in Docker backend prove
+                        the API and artifact contract. No-secret code-execution
+                        events/admin summaries expose backend/status/policy
+                        outcomes without copying source. Captured stdout/stderr
+                        and generated-artifact export are byte/count-bounded
+                        with truncation metadata. Admin status/report now expose
+                        local advisory alerts for execution failure rate,
+                        slow duration, policy violations, and output/artifact
+                        truncation. Docker execution is explicitly not configured
+                        on live deployment.
 
-Gap to production       Isolated sandbox, network/filesystem policy, CPU/memory
-                        enforcement, package policy, malware/abuse controls,
+Gap to production       Live sandbox enablement, deeper malware/abuse controls,
+                        production metrics/traces/alerts for execution,
                         MATLAB/Simulink license path or explicit Octave-only
                         positioning.
 
@@ -148,7 +178,8 @@ Priority                High if "paper to simulation" is a core feature. Do not
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Product shell           Streamlit UI, FastAPI token boundary, public deployed
-                        UI/API, admin/status/report panels.
+                        UI/API, admin/status/report panels with local owner
+                        summaries.
 
 Gap to production       User accounts, workspaces, RBAC, API-key lifecycle,
                         quotas, billing, share/export flows, real frontend,
@@ -161,11 +192,18 @@ Priority                Medium-high. Build after storage/job ownership is clear.
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Observability           No-secret admin status, runtime events, provider failure
-                        history, query usage estimates, health checks.
+                        history, query usage/duration estimates, local
+                        job-health, query-latency, provider-failure, and
+                        code-execution advisory alerts, metadata-only API
+                        access audit summaries, local API rate-limit status,
+                        metadata-only retrieval trace summaries/alerts,
+                        no-secret local metrics text export, health checks.
 
-Gap to production       Traces across retrieval/LLM/jobs, latency SLOs, alerting,
-                        cost attribution per workspace, prompt/version tracking,
-                        eval dashboards, incident runbooks.
+Gap to production       Production traces across retrieval/LLM/jobs, latency
+                        SLOs, alerting, cost attribution per workspace,
+                        prompt/version tracking, eval dashboards, incident
+                        runbooks, and production metrics scrape/retention/alert
+                        routing beyond the local export.
 
 Priority                Medium-high. Needed before paid providers and public use.
 ```
@@ -174,36 +212,41 @@ Priority                Medium-high. Needed before paid providers and public use
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Security/compliance     Simple API token, runtime excludes, no-secret manifests,
+                        metadata-only API access audit events, configurable
+                        local API rate-limit guard, local metadata-only upload
+                        scan guard, guarded local retention-delete switch,
                         public UI intentionally open in current deployment.
 
-Gap to production       Authentication, upload scanning, rate limits, abuse
-                        protection, secret management, audit logs, data deletion,
-                        backups/restore, terms/privacy if public.
+Gap to production       Authentication, production antivirus/sandbox upload
+                        scanning, distributed or identity-backed rate limits,
+                        abuse protection, secret management, identity-backed
+                        audit logs and data deletion, backups/restore,
+                        terms/privacy if public.
 
 Priority                High before exposing private corpora or execution.
 ```
 
 ## Competitor Map
 
-GitHub API snapshot collected on 2026-06-07. Counts are directional, not a
+GitHub API snapshot collected on 2026-06-08. Counts are directional, not a
 quality ranking.
 
 ```text
 Project                         Stars   Forks  Open issues  License       Pushed
 ------------------------------  ------  -----  -----------  ------------  --------------------
-langgenius/dify                 144263  22704  741          NOASSERTION   2026-06-07T14:30:37Z
-open-webui/open-webui           140470  20165  331          NOASSERTION   2026-06-06T00:47:52Z
-langflow-ai/langflow            149346  9207   930          MIT           2026-06-07T01:04:29Z
-infiniflow/ragflow              82091   9463   3309         Apache-2.0    2026-06-05T13:59:26Z
-Mintplex-Labs/anything-llm      61194   6645   327          MIT           2026-06-06T20:10:04Z
-FlowiseAI/Flowise               53396   24498  894          NOASSERTION   2026-06-05T03:41:08Z
-run-llama/llama_index           49973   7525   435          MIT           2026-06-04T16:59:44Z
-deepset-ai/haystack             25474   2831   119          Apache-2.0    2026-06-05T14:24:07Z
-Future-House/paper-qa           8647    878    135          Apache-2.0    2026-06-05T22:33:21Z
+langgenius/dify                 144271  22703  739          NOASSERTION   2026-06-07T14:30:37Z
+open-webui/open-webui           140476  20166  331          NOASSERTION   2026-06-06T00:47:52Z
+langflow-ai/langflow            149351  9207   930          MIT           2026-06-07T01:04:29Z
+infiniflow/ragflow              82097   9464   3310         Apache-2.0    2026-06-05T13:59:26Z
+Mintplex-Labs/anything-llm      61201   6645   327          MIT           2026-06-06T20:10:04Z
+FlowiseAI/Flowise               53399   24498  894          NOASSERTION   2026-06-05T03:41:08Z
+run-llama/llama_index           49975   7525   435          MIT           2026-06-04T16:59:44Z
+deepset-ai/haystack             25476   2831   120          Apache-2.0    2026-06-05T14:24:07Z
+Future-House/paper-qa           8648    878    135          Apache-2.0    2026-06-05T22:33:21Z
 simplefoc/Arduino-FOC           2859    708    74           MIT           2026-05-29T09:33:10Z
 python-control/python-control   2031    457    105          BSD-3-Clause  2026-04-15T15:22:51Z
 do-mpc/do-mpc                   1403    218    93           LGPL-3.0      2025-10-31T09:44:17Z
-OpenModelica/OpenModelica       1321    377    2231         NOASSERTION   2026-06-07T11:57:57Z
+OpenModelica/OpenModelica       1321    377    2232         NOASSERTION   2026-06-07T11:57:57Z
 JuliaControl/ControlSystems.jl  578     91     42           NOASSERTION   2026-05-18T10:11:45Z
 ```
 
@@ -329,6 +372,32 @@ Demand synthesis:
 5. Trust depends on traceability: source paper, page, equation, parameter, code
    snippet, generated plot, and execution log should be connected.
 
+Product requirements implied by the forum/community search:
+
+```text
+Need observed                               FluxMind feature implication
+------------------------------------------  ----------------------------------
+Paper concept to runnable implementation    Add paper-to-code reports with
+                                            assumptions, equations, code,
+                                            outputs, plots, and source refs.
+
+Motor-control debugging depends on context  Add intake templates for motor
+                                            parameters, units, sampling/PWM,
+                                            sensor mode, gains, and logs.
+
+Observer/FOC questions are failure-prone     Add failure-mode cards for low
+                                            speed, parameter mismatch,
+                                            chattering, saturation, and noise.
+
+MATLAB/Simulink remains common              Keep Octave/Python runnable paths
+                                            no-key, but write MATLAB/Simulink
+                                            export notes before licensing work.
+
+PDF layout matters in engineering papers     Prioritize equations, tables,
+                                            figures, algorithm blocks, and
+                                            source/page/equation provenance.
+```
+
 ## Content Roadmap
 
 The fastest way to make FluxMind feel valuable is a focused content/eval build,
@@ -418,10 +487,30 @@ Order  Lane                                      Why first
 - Add topic tags and a control-engineering ontology: SMC, FOC, PMSM, SMO,
   observers, flux estimation, chattering, discretization, parameter tuning.
 - Create 50 retrieval-only eval questions and 20 recorded-answer eval cases.
-- Add equation/table extraction acceptance tests for representative PDFs.
+- Add equation/table/figure extraction acceptance tests for representative PDFs.
 - Add code-output evals where Python/Octave examples must run and produce plots.
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
+
+Current progress on 2026-06-08: the no-key baseline has advanced from 5 to 20
+offline/recorded answer cases and 30 retrieval-only cases, for 50 total no-LLM
+retrieval questions. The baseline gates 64 source/page refs and 59 topic tags
+across retrieval, answer quality, equation fidelity, code generation,
+forum-style debugging, failure modes, and paper-to-code reports, and includes
+three local Python code-output gates that verify expected stdout plus plot/text
+artifacts in a temporary artifact store, including reusable execution-template
+coverage plus one local job-backed execution path. The evaluator also has six
+seeded PDF structure gates for equation/table/figure markers on representative
+source pages, and `GET /corpus/structure/report` exports filtered structure
+anchors as a Markdown handoff report. `POST /query/report` now adds a local
+paper-to-code handoff for implementation and code-generation reports, including
+source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
+IDs, and validation checklist fields. The 20 recorded-answer target, 50
+retrieval-question target, first equation/table/figure extraction acceptance
+cases, first paper-to-code export shape, and first local Python code-output
+gates are now met; the next content-scale milestone is corpus growth from 6 active papers
+toward the 30-50 curated-paper target plus richer PDF layout extraction, broader
+Octave, and additional job-attached code-output evals.
 
 Success criterion: a skeptical control student or engineer can ask paper-backed
 implementation questions and receive traceable, executable outputs.
@@ -433,22 +522,35 @@ implementation questions and receive traceable, executable outputs.
   boundary with explicit backup/restore.
 - Migrate corpus, chunks, jobs, artifacts, query events, and eval reports behind
   versioned schemas.
-- Add migration tests, backup/restore drill, retention policy, and restore docs.
-- Add API-level ownership fields even if there is still only one local user.
-- Add idempotent job submission and durable dead-letter/retry policy.
+- Extend the current no-secret manifest and dry-run verifier into migration
+  tests, backup/restore drills, retention policy, and restore docs.
+- Use the current `platform_readiness` blocker summary as the local acceptance
+  gate for the storage/queue backend choice; it already confirms clean local
+  schema/inventory and local worker-bridge contracts while flagging missing
+  external metadata database, object storage, and distributed job-store targets.
+- Promote the current local API ownership metadata into versioned production
+  schemas once storage/backend ownership is selected.
+- Extend local idempotent job submission plus bounded dead-letter/retry policy
+  into the future distributed worker queue.
 
 Success criterion: runtime state can be backed up, restored, migrated, and
 owned without reading local JSON/SQLite files by hand.
 
 ### 60-90 Days: Execution and Observability
 
-- Pick a sandbox path: Docker with hard limits, gVisor/Firecracker-style runtime,
+- Decide whether the implemented local Docker backend is sufficient for the next
+  release or whether production use needs gVisor/Firecracker-style runtime,
   Cloudflare Sandbox, or another hosted sandbox. Keep a clear "not configured"
-  state until real isolation is verified.
-- Enforce filesystem, network, package, CPU, memory, timeout, and artifact
-  policies for code execution.
-- Add traces for retrieval, reranking, answer generation, jobs, artifacts, and
-  provider failures.
+  live state until real isolation is verified.
+- Extend the local policy and output-limit layer into live sandbox evidence,
+  richer package/filesystem controls, and abuse-oriented tests for code
+  execution.
+- Extend the local retrieval trace and advisory alert baselines into broader
+  production traces, metrics, and alerting for reranking, answer generation,
+  jobs, artifacts, code execution, and provider failures.
+- Promote the local no-secret `/admin/metrics` export into a real metrics
+  pipeline only after scrape target, retention, alert routing, and access
+  controls are decided.
 - Add prompt/version/eval dashboards and per-workspace cost attribution.
 - Decide MATLAB path: Octave-compatible only, MATLAB export only, or licensed
   MATLAB backend with isolated execution.
@@ -542,6 +644,7 @@ Repo-local evidence:
 
 External competitor and technical sources:
 
+- GitHub API snapshot: https://api.github.com/repos/{owner}/{repo}
 - Dify: https://github.com/langgenius/dify and https://docs.dify.ai/
 - RAGFlow: https://github.com/infiniflow/ragflow and https://ragflow.io/docs/
 - AnythingLLM: https://github.com/Mintplex-Labs/anything-llm and https://docs.anythingllm.com/
@@ -573,3 +676,10 @@ External control/domain sources:
 - TI E2E support forums: https://e2e.ti.com/
 - ST Community motor-control forum: https://community.st.com/
 - Reddit r/ControlTheory: https://www.reddit.com/r/ControlTheory/
+
+Sampled community search themes on 2026-06-08: MathWorks
+`sliding mode control Simulink`, `PMSM FOC Simulink`, and MathWorks Motor
+Control Blockset examples; TI E2E and ST Community `PMSM FOC sensorless flux
+observer`; SimpleFOC `current loop`, `motor parameters`, and unstable FOC
+tuning; Reddit r/ControlTheory `MATLAB`, `Simulink`, `Python`, papers, and
+implementation questions.
