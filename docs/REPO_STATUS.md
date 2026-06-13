@@ -13,9 +13,9 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   f840c8e docs: trim production research formatting
-Current remote status          main...origin/main [ahead 7]
-Current worktree               uncommitted local retrieval/code-output/PDF-structure/report/runtime-restore/job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/execution-observability/output-limits/artifact-limits/execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema-CLI/API/UI/docs changes
+Current HEAD                   898d671 docs: sync project docs to current platform + eval state (plus this status follow-up)
+Current remote status          main...origin/main up to date (pushed 2026-06-13)
+Current worktree               clean; the prior uncommitted no-key platform + eval-breadth + docs slice is now committed (898d671) and pushed to origin/main
 Last clean local/origin state  32fca21 docs: record no-key baseline deployment
 Divergence at clean boundary   ahead 0, behind 0
 Deployed source baseline       a51a060 docs: confirm no-key platform baseline
@@ -51,8 +51,9 @@ then recorded and pushed in `32fca21`.
 The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
-The current in-progress local work has not been pushed, deployed, or restarted.
-It expands the deterministic RAG baseline from answer-only checks into a
+This formerly in-progress local work is now committed and pushed to
+`origin/main` (HEAD `898d671`), but it has not been deployed or restarted; the
+Trace-Twin deployed baseline remains `32fca21`. It expands the deterministic RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
@@ -338,13 +339,14 @@ Disk                /dev/vda3 40G total, 25G free, 35% used
 
 - Runtime state remains git-ignored: `papers/`, `faiss_index/`, `artifacts/`,
   `jobs/`, `metadata/`, `.env`, virtual environments, caches, and bytecode.
-- Current retrieval-eval/code-output/PDF-structure/report/runtime-restore/
+- The retrieval-eval/code-output/PDF-structure/report/runtime-restore/
   job-idempotency/retry-dead-letter/ownership/Docker-execution/
   execution-policy/execution-observability/output-limits/artifact-limits/
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
-  metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work is
-  local and verified, but not a clean release boundary until it is committed,
-  pushed, and, if needed, deployed.
+  metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
+  the eval-breadth slice is verified, committed, and pushed to `origin/main`
+  (`898d671`). It is not yet deployed; deployment to Trace-Twin (currently at
+  `32fca21`) remains a separate, explicit step.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.
