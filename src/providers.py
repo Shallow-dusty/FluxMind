@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.capabilities import (
@@ -28,11 +29,91 @@ from src.capabilities import (
     ImageGenerationProvider,
     ImageGenerationRequest,
 )
-from src.config import ARTIFACTS_DIR
+from src.config import (
+    ARTIFACTS_DIR,
+    CODE_EXECUTION_ALLOWED_IMPORTS,
+    CODE_EXECUTION_MAX_ARTIFACT_BYTES,
+    CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES,
+    CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES,
+    CODE_EXECUTION_MAX_ARTIFACTS,
+    CODE_EXECUTION_MAX_STDERR_BYTES,
+    CODE_EXECUTION_MAX_STDOUT_BYTES,
+    CODE_EXECUTION_POLICY,
+    DOCKER_EXECUTION_IMAGE,
+)
+from src.execution_policy import (
+    POLICY_VIOLATION_EXIT_CODE,
+    ExecutionPolicyResult,
+    evaluate_execution_policy,
+)
 
 MAX_EXECUTION_FILES = 32
 MAX_EXECUTION_FILE_BYTES = 256 * 1024
 MAX_EXECUTION_TOTAL_BYTES = 1024 * 1024
+
+
+@dataclass(frozen=True)
+class CapturedProcessOutput:
+    stdout: str
+    stderr: str
+    returncode: int
+    stdout_bytes: int
+    stderr_bytes: int
+    stdout_truncated: bool
+    stderr_truncated: bool
+    timed_out: bool = False
+    cancelled: bool = False
+
+
+@dataclass(frozen=True)
+class ExecutionArtifactCollection:
+    artifacts: list[GeneratedArtifact]
+    metadata: dict[str, str]
+
+
+@dataclass
+class WorkdirFileScanState:
+    scanned_entries: int = 0
+    scanned_files: int = 0
+    unreadable_dirs: int = 0
+    truncated: bool = False
+
+
+class BoundedStreamReader:
+    """Read a subprocess stream to completion while keeping only bounded bytes."""
+
+    def __init__(self, stream, *, limit_bytes: int):
+        self.stream = stream
+        self.limit_bytes = max(limit_bytes, 0)
+        self.total_bytes = 0
+        self._chunks: list[bytes] = []
+        self._thread = threading.Thread(target=self._read, daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def join(self) -> None:
+        self._thread.join(timeout=2)
+
+    @property
+    def truncated(self) -> bool:
+        return self.total_bytes > self.limit_bytes
+
+    def text(self) -> str:
+        return b"".join(self._chunks).decode("utf-8", errors="replace")
+
+    def _read(self) -> None:
+        while True:
+            chunk = self.stream.read(4096)
+            if not chunk:
+                return
+            if isinstance(chunk, str):
+                chunk = chunk.encode("utf-8", errors="replace")
+            self.total_bytes += len(chunk)
+            kept_bytes = sum(len(item) for item in self._chunks)
+            remaining = self.limit_bytes - kept_bytes
+            if remaining > 0:
+                self._chunks.append(chunk[:remaining])
 
 
 def docker_execution_status(
@@ -92,6 +173,8 @@ def execution_runtime_metadata(
     provider_runtime: str,
     runtime_available: bool = True,
     runtime_details: dict[str, str] | None = None,
+    filesystem_isolation: str = "temporary_workdir",
+    network_policy_enforced: bool = False,
 ) -> dict[str, str]:
     """Return no-secret execution environment metadata for persisted results."""
     input_total_bytes = sum(len(content.encode("utf-8")) for content in request.files.values())
@@ -102,8 +185,8 @@ def execution_runtime_metadata(
         "input_total_bytes": str(input_total_bytes),
         "provider_runtime": provider_runtime,
         "runtime_available": "true" if runtime_available else "false",
-        "filesystem_isolation": "temporary_workdir",
-        "network_policy_enforced": "false",
+        "filesystem_isolation": filesystem_isolation,
+        "network_policy_enforced": "true" if network_policy_enforced else "false",
         "timeout_s": str(request.timeout_s),
         "cpu_time_s": str(max(1, int(request.timeout_s))),
         "memory_mb": str(request.memory_mb),
@@ -112,10 +195,61 @@ def execution_runtime_metadata(
         "max_files": str(MAX_EXECUTION_FILES),
         "max_file_bytes": str(MAX_EXECUTION_FILE_BYTES),
         "max_total_file_bytes": str(MAX_EXECUTION_TOTAL_BYTES),
+        "max_stdout_bytes": str(CODE_EXECUTION_MAX_STDOUT_BYTES),
+        "max_stderr_bytes": str(CODE_EXECUTION_MAX_STDERR_BYTES),
+        "max_artifacts": str(max(CODE_EXECUTION_MAX_ARTIFACTS, 0)),
+        "max_artifact_bytes": str(max(CODE_EXECUTION_MAX_ARTIFACT_BYTES, 0)),
+        "max_artifact_total_bytes": str(max(CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES, 0)),
+        "max_artifact_candidates": str(max(CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES, 0)),
     }
     if runtime_details:
         metadata.update(runtime_details)
     return metadata
+
+
+def apply_output_capture_metadata(
+    metadata: dict[str, str],
+    output: CapturedProcessOutput,
+) -> dict[str, str]:
+    return {
+        **metadata,
+        "stdout_bytes": str(output.stdout_bytes),
+        "stderr_bytes": str(output.stderr_bytes),
+        "stdout_truncated": "true" if output.stdout_truncated else "false",
+        "stderr_truncated": "true" if output.stderr_truncated else "false",
+        "output_truncated": "true" if output.stdout_truncated or output.stderr_truncated else "false",
+    }
+
+
+def apply_policy_metadata(
+    metadata: dict[str, str],
+    policy: ExecutionPolicyResult,
+) -> dict[str, str]:
+    return {**metadata, **policy.metadata()}
+
+
+def evaluate_request_policy(request: CodeExecutionRequest) -> ExecutionPolicyResult:
+    return evaluate_execution_policy(
+        request,
+        profile=CODE_EXECUTION_POLICY,
+        allowed_python_imports=CODE_EXECUTION_ALLOWED_IMPORTS,
+    )
+
+
+def execution_policy_failure_result(
+    request: CodeExecutionRequest,
+    *,
+    runtime_metadata: dict[str, str],
+    policy: ExecutionPolicyResult,
+) -> CodeExecutionResult | None:
+    if policy.allowed:
+        return None
+    return CodeExecutionResult(
+        exit_code=POLICY_VIOLATION_EXIT_CODE,
+        stdout="",
+        stderr=f"Execution policy violation: {policy.message()}",
+        runtime_metadata=runtime_metadata,
+    )
 
 
 def python_runtime_details() -> dict[str, str]:
@@ -178,6 +312,44 @@ def octave_execution_metadata(
     )
 
 
+def docker_execution_metadata(
+    request: CodeExecutionRequest,
+    *,
+    image: str,
+    docker_path: str | None,
+    runtime_available: bool,
+    container_name: str,
+    container_command: list[str],
+    container_user: str,
+    docker_returncode: int | None = None,
+) -> dict[str, str]:
+    details = {
+        "docker_image": image,
+        "docker_executable": Path(docker_path).name if docker_path else "docker",
+        "docker_network": "none",
+        "docker_read_only_rootfs": "true",
+        "docker_pids_limit": "64",
+        "docker_cpus": "1",
+        "docker_container_name": container_name,
+        "container_workdir": "/work",
+        "container_command": " ".join(container_command),
+    }
+    if container_user:
+        details["container_user"] = container_user
+    if docker_returncode is not None:
+        details["docker_returncode"] = str(docker_returncode)
+    return execution_runtime_metadata(
+        request,
+        memory_limit_enforced=True,
+        cpu_limit_enforced=True,
+        provider_runtime=f"docker-{request.language}",
+        runtime_available=runtime_available,
+        runtime_details=details,
+        filesystem_isolation="docker_container_bind_mount",
+        network_policy_enforced=True,
+    )
+
+
 def execution_limit_preexec(memory_mb: int, timeout_s: int):
     """Return a Unix preexec hook for child process resource limits."""
     if os.name != "posix":
@@ -204,6 +376,136 @@ def execution_limit_preexec(memory_mb: int, timeout_s: int):
     return apply_execution_limits, memory_limit_enforced, cpu_limit_enforced
 
 
+def terminate_process(proc: subprocess.Popen) -> None:
+    try:
+        proc.terminate()
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
+def truncate_output_text(value: str, limit_bytes: int) -> tuple[str, int, bool]:
+    raw = value.encode("utf-8", errors="replace")
+    if len(raw) <= max(limit_bytes, 0):
+        return value, len(raw), False
+    return raw[: max(limit_bytes, 0)].decode("utf-8", errors="replace"), len(raw), True
+
+
+def capture_process_output(
+    proc: subprocess.Popen,
+    *,
+    timeout_s: int,
+    cancel_event: threading.Event | None = None,
+    on_cancel=None,
+    on_timeout=None,
+) -> CapturedProcessOutput:
+    """Capture subprocess output with bounded stdout/stderr memory."""
+    stdout_stream = getattr(proc, "stdout", None)
+    stderr_stream = getattr(proc, "stderr", None)
+    if stdout_stream is None or stderr_stream is None:
+        return capture_process_output_fallback(
+            proc,
+            timeout_s=timeout_s,
+            cancel_event=cancel_event,
+            on_cancel=on_cancel,
+            on_timeout=on_timeout,
+        )
+
+    stdout_reader = BoundedStreamReader(
+        stdout_stream,
+        limit_bytes=CODE_EXECUTION_MAX_STDOUT_BYTES,
+    )
+    stderr_reader = BoundedStreamReader(
+        stderr_stream,
+        limit_bytes=CODE_EXECUTION_MAX_STDERR_BYTES,
+    )
+    stdout_reader.start()
+    stderr_reader.start()
+
+    started = time.monotonic()
+    timed_out = False
+    cancelled = False
+    while proc.poll() is None:
+        if cancel_event and cancel_event.is_set():
+            cancelled = True
+            if on_cancel:
+                on_cancel()
+            terminate_process(proc)
+            break
+        if time.monotonic() - started > timeout_s:
+            timed_out = True
+            if on_timeout:
+                on_timeout()
+            terminate_process(proc)
+            break
+        time.sleep(0.05)
+
+    stdout_reader.join()
+    stderr_reader.join()
+    return CapturedProcessOutput(
+        stdout=stdout_reader.text(),
+        stderr=stderr_reader.text(),
+        returncode=proc.returncode if proc.returncode is not None else -1,
+        stdout_bytes=stdout_reader.total_bytes,
+        stderr_bytes=stderr_reader.total_bytes,
+        stdout_truncated=stdout_reader.truncated,
+        stderr_truncated=stderr_reader.truncated,
+        timed_out=timed_out,
+        cancelled=cancelled,
+    )
+
+
+def capture_process_output_fallback(
+    proc,
+    *,
+    timeout_s: int,
+    cancel_event: threading.Event | None = None,
+    on_cancel=None,
+    on_timeout=None,
+) -> CapturedProcessOutput:
+    """Fallback for tests/fakes that do not expose stdout/stderr streams."""
+    started = time.monotonic()
+    timed_out = False
+    cancelled = False
+    while proc.poll() is None:
+        if cancel_event and cancel_event.is_set():
+            cancelled = True
+            if on_cancel:
+                on_cancel()
+            terminate_process(proc)
+            break
+        if time.monotonic() - started > timeout_s:
+            timed_out = True
+            if on_timeout:
+                on_timeout()
+            terminate_process(proc)
+            break
+        time.sleep(0.05)
+    stdout, stderr = proc.communicate()
+    stdout_text = stdout.decode("utf-8", errors="replace") if isinstance(stdout, bytes) else (stdout or "")
+    stderr_text = stderr.decode("utf-8", errors="replace") if isinstance(stderr, bytes) else (stderr or "")
+    stdout_text, stdout_bytes, stdout_truncated = truncate_output_text(
+        stdout_text,
+        CODE_EXECUTION_MAX_STDOUT_BYTES,
+    )
+    stderr_text, stderr_bytes, stderr_truncated = truncate_output_text(
+        stderr_text,
+        CODE_EXECUTION_MAX_STDERR_BYTES,
+    )
+    return CapturedProcessOutput(
+        stdout=stdout_text,
+        stderr=stderr_text,
+        returncode=proc.returncode if proc.returncode is not None else -1,
+        stdout_bytes=stdout_bytes,
+        stderr_bytes=stderr_bytes,
+        stdout_truncated=stdout_truncated,
+        stderr_truncated=stderr_truncated,
+        timed_out=timed_out,
+        cancelled=cancelled,
+    )
+
+
 def _resolve_workdir_path(workdir: Path, name: str) -> Path:
     """Resolve a user-provided relative path without allowing workdir escape."""
     if not name or Path(name).is_absolute():
@@ -228,6 +530,167 @@ def _is_collectable_output(path: Path, workdir: Path, input_files: set[Path]) ->
     except ValueError:
         return False
     return True
+
+
+def _execution_artifact_digest(request: CodeExecutionRequest) -> str:
+    return hashlib.sha256(
+        f"{request.language}\n{request.entrypoint}\n{sorted(request.files)}".encode()
+    ).hexdigest()[:12]
+
+
+def _iter_workdir_files(
+    workdir: Path,
+    *,
+    max_entries: int,
+    scan_state: WorkdirFileScanState,
+):
+    """Yield workdir file paths while bounding traversal of generated output."""
+    pending = [workdir]
+    while pending:
+        directory = pending.pop()
+        entries: list[os.DirEntry] = []
+        try:
+            with os.scandir(directory) as iterator:
+                for entry in iterator:
+                    if scan_state.scanned_entries >= max_entries:
+                        scan_state.truncated = True
+                        break
+                    scan_state.scanned_entries += 1
+                    entries.append(entry)
+        except OSError:
+            scan_state.unreadable_dirs += 1
+            continue
+
+        child_dirs: list[Path] = []
+        for entry in sorted(entries, key=lambda item: item.name):
+            path = Path(entry.path)
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    child_dirs.append(path)
+                elif entry.is_file(follow_symlinks=False):
+                    scan_state.scanned_files += 1
+                    yield path
+            except OSError:
+                continue
+        pending.extend(reversed(child_dirs))
+
+
+def _collect_execution_artifacts(
+    *,
+    store: LocalArtifactStore,
+    workdir: Path,
+    input_files: set[Path],
+    request: CodeExecutionRequest,
+    artifact_prefix: str,
+    metadata: dict[str, str],
+    max_artifacts: int | None = None,
+    max_artifact_bytes: int | None = None,
+    max_artifact_total_bytes: int | None = None,
+    max_artifact_candidates: int | None = None,
+) -> ExecutionArtifactCollection:
+    artifacts: list[GeneratedArtifact] = []
+    digest = _execution_artifact_digest(request)
+    exported_bytes = 0
+    scan_state = WorkdirFileScanState()
+    candidate_count = 0
+    skipped_too_large = 0
+    skipped_count_limit = 0
+    skipped_total_bytes_limit = 0
+    skipped_unreadable = 0
+    max_artifacts = max(CODE_EXECUTION_MAX_ARTIFACTS if max_artifacts is None else max_artifacts, 0)
+    max_artifact_bytes = max(
+        CODE_EXECUTION_MAX_ARTIFACT_BYTES if max_artifact_bytes is None else max_artifact_bytes,
+        0,
+    )
+    max_artifact_total_bytes = max(
+        CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES
+        if max_artifact_total_bytes is None
+        else max_artifact_total_bytes,
+        0,
+    )
+    max_artifact_candidates = max(
+        CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES
+        if max_artifact_candidates is None
+        else max_artifact_candidates,
+        0,
+    )
+
+    for path in _iter_workdir_files(
+        workdir,
+        max_entries=max_artifact_candidates,
+        scan_state=scan_state,
+    ):
+        if not _is_collectable_output(path, workdir, input_files):
+            continue
+        try:
+            byte_count = path.stat().st_size
+        except OSError:
+            skipped_unreadable += 1
+            continue
+        candidate_count += 1
+        if byte_count > max_artifact_bytes:
+            skipped_too_large += 1
+            continue
+        if len(artifacts) >= max_artifacts:
+            skipped_count_limit += 1
+            continue
+        if exported_bytes + byte_count > max_artifact_total_bytes:
+            skipped_total_bytes_limit += 1
+            continue
+        mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        relative = path.relative_to(workdir).as_posix()
+        safe_relative = relative.replace("/", "-")
+        artifact = store.copy_file(
+            f"{artifact_prefix}/{digest}/{safe_relative}",
+            path,
+            mime_type,
+        )
+        kind = "plot" if mime_type.startswith("image/") else artifact.kind
+        artifacts.append(
+            GeneratedArtifact(
+                kind=kind,
+                uri=artifact.uri,
+                mime_type=artifact.mime_type,
+                title=relative,
+                metadata={
+                    **artifact.metadata,
+                    "source": relative,
+                    "language": request.language,
+                    "entrypoint": request.entrypoint,
+                    **metadata,
+                },
+            )
+        )
+        exported_bytes += byte_count
+
+    skipped_count = (
+        skipped_too_large
+        + skipped_count_limit
+        + skipped_total_bytes_limit
+        + skipped_unreadable
+    )
+    skipped_count += scan_state.unreadable_dirs
+    collection_truncated = bool(scan_state.truncated or skipped_count)
+    collection_metadata = {
+        "max_artifacts": str(max_artifacts),
+        "max_artifact_bytes": str(max_artifact_bytes),
+        "max_artifact_total_bytes": str(max_artifact_total_bytes),
+        "max_artifact_candidates": str(max_artifact_candidates),
+        "artifact_scanned_entries": str(scan_state.scanned_entries),
+        "artifact_scanned_files": str(scan_state.scanned_files),
+        "artifact_candidate_count": str(candidate_count),
+        "artifact_exported_count": str(len(artifacts)),
+        "artifact_exported_bytes": str(exported_bytes),
+        "artifact_skipped_count": str(skipped_count),
+        "artifact_skipped_too_large_count": str(skipped_too_large),
+        "artifact_skipped_count_limit": str(skipped_count_limit),
+        "artifact_skipped_total_bytes_limit": str(skipped_total_bytes_limit),
+        "artifact_skipped_unreadable_count": str(skipped_unreadable),
+        "artifact_skipped_unreadable_dirs": str(scan_state.unreadable_dirs),
+        "artifact_scan_truncated": "true" if scan_state.truncated else "false",
+        "artifact_collection_truncated": "true" if collection_truncated else "false",
+    }
+    return ExecutionArtifactCollection(artifacts=artifacts, metadata=collection_metadata)
 
 
 def _materialize_execution_files(
@@ -440,8 +903,6 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
     still requires a dedicated isolated service with explicit resource limits.
     """
 
-    max_artifact_bytes = 2 * 1024 * 1024
-
     def __init__(self, store: LocalArtifactStore | None = None):
         self.store = store or LocalArtifactStore()
 
@@ -463,16 +924,29 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                 ),
             )
 
+        policy = evaluate_request_policy(request)
+        initial_metadata = apply_policy_metadata(
+            python_execution_metadata(
+                request,
+                memory_limit_enforced=False,
+                cpu_limit_enforced=False,
+            ),
+            policy,
+        )
+        policy_failure = execution_policy_failure_result(
+            request,
+            runtime_metadata=initial_metadata,
+            policy=policy,
+        )
+        if policy_failure is not None:
+            return policy_failure
+
         with tempfile.TemporaryDirectory(prefix="fluxmind-exec-") as tmp:
             workdir = Path(tmp)
             entrypoint, input_files, failure = _materialize_execution_files(
                 workdir,
                 request,
-                runtime_metadata=python_execution_metadata(
-                    request,
-                    memory_limit_enforced=False,
-                    cpu_limit_enforced=False,
-                ),
+                runtime_metadata=initial_metadata,
             )
             if failure is not None:
                 return failure
@@ -481,11 +955,7 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
                     exit_code=2,
                     stdout="",
                     stderr=f"Entrypoint not found: {request.entrypoint}",
-                    runtime_metadata=python_execution_metadata(
-                        request,
-                        memory_limit_enforced=False,
-                        cpu_limit_enforced=False,
-                    ),
+                    runtime_metadata=initial_metadata,
                 )
 
             preexec_fn, memory_limit_enforced, cpu_limit_enforced = execution_limit_preexec(
@@ -495,60 +965,47 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
             proc = subprocess.Popen(
                 [sys.executable, str(entrypoint)],
                 cwd=workdir,
-                text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 preexec_fn=preexec_fn,
             )
-            started = time.monotonic()
-            while proc.poll() is None:
-                if cancel_event and cancel_event.is_set():
-                    proc.terminate()
-                    try:
-                        stdout, stderr = proc.communicate(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        stdout, stderr = proc.communicate()
-                    return CodeExecutionResult(
-                        exit_code=130,
-                        stdout=stdout or "",
-                        stderr=(stderr or "") + "Execution cancelled.",
-                        runtime_metadata=python_execution_metadata(
-                            request,
-                            memory_limit_enforced=memory_limit_enforced,
-                            cpu_limit_enforced=cpu_limit_enforced,
-                        ),
-                    )
-                if time.monotonic() - started > request.timeout_s:
-                    proc.terminate()
-                    try:
-                        stdout, stderr = proc.communicate(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        stdout, stderr = proc.communicate()
-                    return CodeExecutionResult(
-                        exit_code=124,
-                        stdout=stdout or "",
-                        stderr=(stderr or "") + f"Execution timed out after {request.timeout_s}s",
-                        runtime_metadata=python_execution_metadata(
-                            request,
-                            memory_limit_enforced=memory_limit_enforced,
-                            cpu_limit_enforced=cpu_limit_enforced,
-                        ),
-                    )
-                time.sleep(0.05)
-
-            stdout, stderr = proc.communicate()
-            return CodeExecutionResult(
-                exit_code=proc.returncode,
-                stdout=stdout,
-                stderr=stderr,
-                artifacts=self._collect_artifacts(workdir, input_files, request),
-                runtime_metadata=python_execution_metadata(
-                    request,
-                    memory_limit_enforced=memory_limit_enforced,
-                    cpu_limit_enforced=cpu_limit_enforced,
+            captured = capture_process_output(
+                proc,
+                timeout_s=request.timeout_s,
+                cancel_event=cancel_event,
+            )
+            metadata = apply_output_capture_metadata(
+                apply_policy_metadata(
+                    python_execution_metadata(
+                        request,
+                        memory_limit_enforced=memory_limit_enforced,
+                        cpu_limit_enforced=cpu_limit_enforced,
+                    ),
+                    policy,
                 ),
+                captured,
+            )
+            if captured.cancelled:
+                return CodeExecutionResult(
+                    exit_code=130,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + "Execution cancelled.",
+                    runtime_metadata=metadata,
+                )
+            if captured.timed_out:
+                return CodeExecutionResult(
+                    exit_code=124,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + f"Execution timed out after {request.timeout_s}s",
+                    runtime_metadata=metadata,
+                )
+            artifact_collection = self._collect_artifacts(workdir, input_files, request)
+            return CodeExecutionResult(
+                exit_code=captured.returncode,
+                stdout=captured.stdout,
+                stderr=captured.stderr,
+                artifacts=artifact_collection.artifacts,
+                runtime_metadata={**metadata, **artifact_collection.metadata},
             )
 
     def _collect_artifacts(
@@ -556,41 +1013,15 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
         workdir: Path,
         input_files: set[Path],
         request: CodeExecutionRequest,
-    ) -> list[GeneratedArtifact]:
-        artifacts: list[GeneratedArtifact] = []
-        digest = hashlib.sha256(
-            f"{request.language}\n{request.entrypoint}\n{sorted(request.files)}".encode()
-        ).hexdigest()[:12]
-        for path in sorted(item for item in workdir.rglob("*") if item.is_file()):
-            if not _is_collectable_output(path, workdir, input_files):
-                continue
-            if path.stat().st_size > self.max_artifact_bytes:
-                continue
-            mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-            relative = path.relative_to(workdir).as_posix()
-            safe_relative = relative.replace("/", "-")
-            artifact = self.store.copy_file(
-                f"code-runs/{digest}/{safe_relative}",
-                path,
-                mime_type,
-            )
-            kind = "plot" if mime_type.startswith("image/") else artifact.kind
-            artifacts.append(
-                GeneratedArtifact(
-                    kind=kind,
-                    uri=artifact.uri,
-                    mime_type=artifact.mime_type,
-                    title=relative,
-                    metadata={
-                        **artifact.metadata,
-                        "source": relative,
-                        "language": request.language,
-                        "entrypoint": request.entrypoint,
-                        "cost_estimate_usd": "0",
-                    },
-                )
-            )
-        return artifacts
+    ) -> ExecutionArtifactCollection:
+        return _collect_execution_artifacts(
+            store=self.store,
+            workdir=workdir,
+            input_files=input_files,
+            request=request,
+            artifact_prefix="code-runs",
+            metadata={"cost_estimate_usd": "0"},
+        )
 
 
 class LocalOctaveExecutionProvider(CodeExecutionProvider):
@@ -600,8 +1031,6 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
     hosted sandbox; it only provides the no-key execution contract and artifact
     capture surface.
     """
-
-    max_artifact_bytes = 2 * 1024 * 1024
 
     def __init__(
         self,
@@ -632,6 +1061,25 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
                 ),
             )
 
+        policy = evaluate_request_policy(request)
+        missing_runtime_metadata = apply_policy_metadata(
+            octave_execution_metadata(
+                request,
+                memory_limit_enforced=False,
+                cpu_limit_enforced=False,
+                executable=self.executable,
+                resolved_executable=None,
+            ),
+            policy,
+        )
+        policy_failure = execution_policy_failure_result(
+            request,
+            runtime_metadata=missing_runtime_metadata,
+            policy=policy,
+        )
+        if policy_failure is not None:
+            return policy_failure
+
         octave_bin = shutil.which(self.executable)
         if octave_bin is None:
             return CodeExecutionResult(
@@ -641,27 +1089,25 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
                     "GNU Octave executable not found. Install octave or attach "
                     "a hosted execution provider."
                 ),
-                runtime_metadata=octave_execution_metadata(
-                    request,
-                    memory_limit_enforced=False,
-                    cpu_limit_enforced=False,
-                    executable=self.executable,
-                    resolved_executable=None,
-                ),
+                runtime_metadata=missing_runtime_metadata,
             )
 
         with tempfile.TemporaryDirectory(prefix="fluxmind-octave-") as tmp:
             workdir = Path(tmp)
-            entrypoint, input_files, failure = _materialize_execution_files(
-                workdir,
-                request,
-                runtime_metadata=octave_execution_metadata(
+            initial_metadata = apply_policy_metadata(
+                octave_execution_metadata(
                     request,
                     memory_limit_enforced=False,
                     cpu_limit_enforced=False,
                     executable=self.executable,
                     resolved_executable=octave_bin,
                 ),
+                policy,
+            )
+            entrypoint, input_files, failure = _materialize_execution_files(
+                workdir,
+                request,
+                runtime_metadata=initial_metadata,
             )
             if failure is not None:
                 return failure
@@ -670,13 +1116,7 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
                     exit_code=2,
                     stdout="",
                     stderr=f"Entrypoint not found: {request.entrypoint}",
-                    runtime_metadata=octave_execution_metadata(
-                        request,
-                        memory_limit_enforced=False,
-                        cpu_limit_enforced=False,
-                        executable=self.executable,
-                        resolved_executable=octave_bin,
-                    ),
+                    runtime_metadata=initial_metadata,
                 )
 
             preexec_fn, memory_limit_enforced, cpu_limit_enforced = execution_limit_preexec(
@@ -686,66 +1126,49 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
             proc = subprocess.Popen(
                 [octave_bin, "--quiet", "--no-gui", str(entrypoint)],
                 cwd=workdir,
-                text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 preexec_fn=preexec_fn,
             )
-            started = time.monotonic()
-            while proc.poll() is None:
-                if cancel_event and cancel_event.is_set():
-                    proc.terminate()
-                    try:
-                        stdout, stderr = proc.communicate(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        stdout, stderr = proc.communicate()
-                    return CodeExecutionResult(
-                        exit_code=130,
-                        stdout=stdout or "",
-                        stderr=(stderr or "") + "Execution cancelled.",
-                        runtime_metadata=octave_execution_metadata(
-                            request,
-                            memory_limit_enforced=memory_limit_enforced,
-                            cpu_limit_enforced=cpu_limit_enforced,
-                            executable=self.executable,
-                            resolved_executable=octave_bin,
-                        ),
-                    )
-                if time.monotonic() - started > request.timeout_s:
-                    proc.terminate()
-                    try:
-                        stdout, stderr = proc.communicate(timeout=2)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                        stdout, stderr = proc.communicate()
-                    return CodeExecutionResult(
-                        exit_code=124,
-                        stdout=stdout or "",
-                        stderr=(stderr or "") + f"Execution timed out after {request.timeout_s}s",
-                        runtime_metadata=octave_execution_metadata(
-                            request,
-                            memory_limit_enforced=memory_limit_enforced,
-                            cpu_limit_enforced=cpu_limit_enforced,
-                            executable=self.executable,
-                            resolved_executable=octave_bin,
-                        ),
-                    )
-                time.sleep(0.05)
-
-            stdout, stderr = proc.communicate()
-            return CodeExecutionResult(
-                exit_code=proc.returncode,
-                stdout=stdout,
-                stderr=stderr,
-                artifacts=self._collect_artifacts(workdir, input_files, request),
-                runtime_metadata=octave_execution_metadata(
-                    request,
-                    memory_limit_enforced=memory_limit_enforced,
-                    cpu_limit_enforced=cpu_limit_enforced,
-                    executable=self.executable,
-                    resolved_executable=octave_bin,
+            captured = capture_process_output(
+                proc,
+                timeout_s=request.timeout_s,
+                cancel_event=cancel_event,
+            )
+            metadata = apply_output_capture_metadata(
+                apply_policy_metadata(
+                    octave_execution_metadata(
+                        request,
+                        memory_limit_enforced=memory_limit_enforced,
+                        cpu_limit_enforced=cpu_limit_enforced,
+                        executable=self.executable,
+                        resolved_executable=octave_bin,
+                    ),
+                    policy,
                 ),
+                captured,
+            )
+            if captured.cancelled:
+                return CodeExecutionResult(
+                    exit_code=130,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + "Execution cancelled.",
+                    runtime_metadata=metadata,
+                )
+            if captured.timed_out:
+                return CodeExecutionResult(
+                    exit_code=124,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + f"Execution timed out after {request.timeout_s}s",
+                    runtime_metadata=metadata,
+                )
+            artifact_collection = self._collect_artifacts(workdir, input_files, request)
+            return CodeExecutionResult(
+                exit_code=captured.returncode,
+                stdout=captured.stdout,
+                stderr=captured.stderr,
+                artifacts=artifact_collection.artifacts,
+                runtime_metadata={**metadata, **artifact_collection.metadata},
             )
 
     def _collect_artifacts(
@@ -753,39 +1176,240 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
         workdir: Path,
         input_files: set[Path],
         request: CodeExecutionRequest,
-    ) -> list[GeneratedArtifact]:
-        artifacts: list[GeneratedArtifact] = []
-        digest = hashlib.sha256(
-            f"{request.language}\n{request.entrypoint}\n{sorted(request.files)}".encode()
-        ).hexdigest()[:12]
-        for path in sorted(item for item in workdir.rglob("*") if item.is_file()):
-            if not _is_collectable_output(path, workdir, input_files):
-                continue
-            if path.stat().st_size > self.max_artifact_bytes:
-                continue
-            mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-            relative = path.relative_to(workdir).as_posix()
-            safe_relative = relative.replace("/", "-")
-            artifact = self.store.copy_file(
-                f"octave-runs/{digest}/{safe_relative}",
-                path,
-                mime_type,
+    ) -> ExecutionArtifactCollection:
+        return _collect_execution_artifacts(
+            store=self.store,
+            workdir=workdir,
+            input_files=input_files,
+            request=request,
+            artifact_prefix="octave-runs",
+            metadata={"runtime": "gnu-octave-local", "cost_estimate_usd": "0"},
+        )
+
+
+class DockerExecutionProvider(CodeExecutionProvider):
+    """Run Python/Octave-compatible snippets inside a local Docker container."""
+
+    def __init__(
+        self,
+        store: LocalArtifactStore | None = None,
+        *,
+        image: str = DOCKER_EXECUTION_IMAGE,
+    ):
+        self.store = store or LocalArtifactStore()
+        self.image = image
+
+    def run(
+        self,
+        request: CodeExecutionRequest,
+        *,
+        cancel_event: threading.Event | None = None,
+    ) -> CodeExecutionResult:
+        container_command = self._container_command(request)
+        container_name = f"fluxmind-exec-{hashlib.sha256(str(time.time_ns()).encode()).hexdigest()[:16]}"
+        docker_path = shutil.which("docker")
+        container_user = self._container_user()
+        policy = evaluate_request_policy(request)
+        base_metadata = apply_policy_metadata(
+            docker_execution_metadata(
+                request,
+                image=self.image,
+                docker_path=docker_path,
+                runtime_available=docker_path is not None,
+                container_name=container_name,
+                container_command=container_command,
+                container_user=container_user,
+            ),
+            policy,
+        )
+        policy_failure = execution_policy_failure_result(
+            request,
+            runtime_metadata=base_metadata,
+            policy=policy,
+        )
+        if policy_failure is not None:
+            return policy_failure
+        if docker_path is None:
+            return CodeExecutionResult(
+                exit_code=127,
+                stdout="",
+                stderr="Docker executable not found. Configure Docker before using CODE_EXECUTION_BACKEND=docker.",
+                runtime_metadata=base_metadata,
             )
-            kind = "plot" if mime_type.startswith("image/") else artifact.kind
-            artifacts.append(
-                GeneratedArtifact(
-                    kind=kind,
-                    uri=artifact.uri,
-                    mime_type=artifact.mime_type,
-                    title=relative,
-                    metadata={
-                        **artifact.metadata,
-                        "source": relative,
-                        "language": request.language,
-                        "entrypoint": request.entrypoint,
-                        "runtime": "gnu-octave-local",
-                        "cost_estimate_usd": "0",
-                    },
+        if container_command == []:
+            return CodeExecutionResult(
+                exit_code=2,
+                stdout="",
+                stderr=f"Unsupported Docker execution language: {request.language}",
+                runtime_metadata=base_metadata,
+            )
+
+        with tempfile.TemporaryDirectory(prefix="fluxmind-docker-") as tmp:
+            workdir = Path(tmp)
+            entrypoint, input_files, failure = _materialize_execution_files(
+                workdir,
+                request,
+                runtime_metadata=base_metadata,
+            )
+            if failure is not None:
+                return failure
+            if not entrypoint.exists():
+                return CodeExecutionResult(
+                    exit_code=2,
+                    stdout="",
+                    stderr=f"Entrypoint not found: {request.entrypoint}",
+                    runtime_metadata=base_metadata,
                 )
+
+            command = self._docker_command(
+                docker_path=docker_path,
+                workdir=workdir,
+                container_name=container_name,
+                container_user=container_user,
+                container_command=container_command,
+                memory_mb=request.memory_mb,
             )
-        return artifacts
+            try:
+                proc = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except OSError as exc:
+                metadata = dict(base_metadata)
+                metadata["runtime_available"] = "false"
+                metadata["docker_error"] = exc.__class__.__name__
+                return CodeExecutionResult(
+                    exit_code=127,
+                    stdout="",
+                    stderr=f"Docker execution backend unavailable: {exc}",
+                    runtime_metadata=metadata,
+                )
+
+            captured = capture_process_output(
+                proc,
+                timeout_s=request.timeout_s,
+                cancel_event=cancel_event,
+                on_cancel=lambda: self._force_remove_container(docker_path, container_name),
+                on_timeout=lambda: self._force_remove_container(docker_path, container_name),
+            )
+            if captured.cancelled:
+                return CodeExecutionResult(
+                    exit_code=130,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + "Execution cancelled.",
+                    runtime_metadata=apply_output_capture_metadata(base_metadata, captured),
+                )
+            if captured.timed_out:
+                return CodeExecutionResult(
+                    exit_code=124,
+                    stdout=captured.stdout,
+                    stderr=captured.stderr + f"Execution timed out after {request.timeout_s}s",
+                    runtime_metadata=apply_output_capture_metadata(base_metadata, captured),
+                )
+            metadata = docker_execution_metadata(
+                request,
+                image=self.image,
+                docker_path=docker_path,
+                runtime_available=captured.returncode not in {125, 126, 127},
+                container_name=container_name,
+                container_command=container_command,
+                container_user=container_user,
+                docker_returncode=captured.returncode,
+            )
+            metadata = apply_policy_metadata(metadata, policy)
+            metadata = apply_output_capture_metadata(metadata, captured)
+            exit_code = 127 if captured.returncode in {125, 126} else captured.returncode
+            artifact_collection = self._collect_artifacts(workdir, input_files, request)
+            return CodeExecutionResult(
+                exit_code=exit_code,
+                stdout=captured.stdout,
+                stderr=captured.stderr,
+                artifacts=artifact_collection.artifacts,
+                runtime_metadata={**metadata, **artifact_collection.metadata},
+            )
+
+    @staticmethod
+    def _container_user() -> str:
+        if hasattr(os, "getuid") and hasattr(os, "getgid"):
+            return f"{os.getuid()}:{os.getgid()}"
+        return ""
+
+    @staticmethod
+    def _container_command(request: CodeExecutionRequest) -> list[str]:
+        if request.language == "python":
+            return ["python", request.entrypoint]
+        if request.language in {"octave", "matlab"}:
+            return ["octave", "--quiet", "--no-gui", request.entrypoint]
+        return []
+
+    def _docker_command(
+        self,
+        *,
+        docker_path: str,
+        workdir: Path,
+        container_name: str,
+        container_user: str,
+        container_command: list[str],
+        memory_mb: int,
+    ) -> list[str]:
+        command = [
+            docker_path,
+            "run",
+            "--rm",
+            "--name",
+            container_name,
+            "--network",
+            "none",
+            "--memory",
+            f"{max(memory_mb, 64)}m",
+            "--cpus",
+            "1",
+            "--pids-limit",
+            "64",
+            "--security-opt",
+            "no-new-privileges",
+            "--cap-drop",
+            "ALL",
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,nosuid,nodev,size=64m",
+            "-v",
+            f"{workdir.resolve()}:/work:rw",
+            "-w",
+            "/work",
+            "--env",
+            "PYTHONUNBUFFERED=1",
+        ]
+        if container_user:
+            command.extend(["--user", container_user])
+        command.extend([self.image, *container_command])
+        return command
+
+    @staticmethod
+    def _force_remove_container(docker_path: str, container_name: str) -> None:
+        subprocess.run(
+            [docker_path, "rm", "-f", container_name],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def _collect_artifacts(
+        self,
+        workdir: Path,
+        input_files: set[Path],
+        request: CodeExecutionRequest,
+    ) -> ExecutionArtifactCollection:
+        return _collect_execution_artifacts(
+            store=self.store,
+            workdir=workdir,
+            input_files=input_files,
+            request=request,
+            artifact_prefix="docker-runs",
+            metadata={
+                "runtime": f"docker-{request.language}",
+                "docker_image": self.image,
+                "cost_estimate_usd": "0",
+            },
+        )

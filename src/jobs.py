@@ -19,18 +19,24 @@ from src.capabilities import (
     GeneratedArtifact,
     ImageGenerationRequest,
 )
-from src.config import JOBS_FILE, PROJECT_ROOT
+from src.config import CODE_EXECUTION_BACKEND, DOCKER_EXECUTION_IMAGE, JOBS_FILE, PROJECT_ROOT
 from src import ingestion
 from src.providers import (
+    DockerExecutionProvider,
+    LocalArtifactStore,
     LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
 )
-from src.runtime import new_request_id, normalize_exception
+from src.runtime import append_runtime_event, new_request_id, normalize_exception
 
 
 JobKind = Literal["image_generation", "code_execution", "index_rebuild"]
-JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
+JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "dead_lettered"]
+MAX_IDEMPOTENCY_KEY_LENGTH = 128
+MAX_OWNER_FIELD_LENGTH = 128
+DEFAULT_OWNER_ID = "local-user"
+DEFAULT_OWNER_LABEL = "Local user"
 
 
 def utc_now() -> str:
@@ -47,6 +53,64 @@ def future_utc(seconds: int) -> str:
 
 def has_deadline_expired(record: "JobRecord") -> bool:
     return bool(record.deadline_at and parse_utc(record.deadline_at) <= datetime.now(timezone.utc))
+
+
+def normalize_idempotency_key(value: str | None) -> str | None:
+    """Normalize a user-provided idempotency key for durable local job lookup."""
+    if value is None:
+        return None
+    key = value.strip()
+    if not key:
+        return None
+    if len(key) > MAX_IDEMPOTENCY_KEY_LENGTH:
+        raise ValueError(
+            f"idempotency_key must be {MAX_IDEMPOTENCY_KEY_LENGTH} characters or fewer"
+        )
+    return key
+
+
+def normalize_ownership(
+    *,
+    owner_id: str | None = None,
+    owner_label: str | None = None,
+    ownership_source: str | None = None,
+) -> dict[str, str]:
+    """Normalize local no-key ownership metadata without treating it as auth."""
+    clean_owner_id = (owner_id or "").strip() or DEFAULT_OWNER_ID
+    clean_owner_label = (owner_label or "").strip()
+    if len(clean_owner_id) > MAX_OWNER_FIELD_LENGTH:
+        raise ValueError(f"owner_id must be {MAX_OWNER_FIELD_LENGTH} characters or fewer")
+    if len(clean_owner_label) > MAX_OWNER_FIELD_LENGTH:
+        raise ValueError(f"owner_label must be {MAX_OWNER_FIELD_LENGTH} characters or fewer")
+    if not clean_owner_label:
+        clean_owner_label = DEFAULT_OWNER_LABEL if clean_owner_id == DEFAULT_OWNER_ID else clean_owner_id
+    clean_source = (ownership_source or "").strip()
+    if clean_source not in {"default", "request", "inherited"}:
+        clean_source = (
+            "request"
+            if (owner_id and owner_id.strip()) or (owner_label and owner_label.strip())
+            else "default"
+        )
+    return {
+        "owner_id": clean_owner_id,
+        "owner_label": clean_owner_label,
+        "ownership_source": clean_source,
+    }
+
+
+def ownership_from_record(record: "JobRecord") -> dict[str, str]:
+    return normalize_ownership(
+        owner_id=record.owner_id,
+        owner_label=record.owner_label,
+        ownership_source=record.ownership_source,
+    )
+
+
+def apply_job_ownership(record: "JobRecord") -> None:
+    ownership = ownership_from_record(record)
+    record.owner_id = ownership["owner_id"]
+    record.owner_label = ownership["owner_label"]
+    record.ownership_source = ownership["ownership_source"]
 
 
 @dataclass
@@ -70,6 +134,13 @@ class JobRecord:
     worker_id: str | None = None
     leased_at: str | None = None
     lease_expires_at: str | None = None
+    idempotency_key: str | None = None
+    max_attempts: int = 1
+    retry_backoff_s: int = 0
+    dead_lettered_at: str | None = None
+    owner_id: str = DEFAULT_OWNER_ID
+    owner_label: str = DEFAULT_OWNER_LABEL
+    ownership_source: str = "default"
     logs: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -98,17 +169,76 @@ class LocalJobStore:
         self.db_path = db_path or self.path.with_suffix(".sqlite3")
 
     def append(self, record: JobRecord) -> None:
+        apply_job_ownership(record)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
         self._upsert_sqlite(record)
 
+    def append_new(self, record: JobRecord) -> tuple[JobRecord, bool]:
+        """Persist a new job, returning an existing idempotent match when claimed."""
+        apply_job_ownership(record)
+        clean_key = normalize_idempotency_key(record.idempotency_key)
+        record.idempotency_key = clean_key
+        if clean_key is None:
+            self.append(record)
+            return record, True
+
+        self._ensure_sqlite()
+        existing: JobRecord | None = None
+        created = False
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            self._create_jobs_table(conn)
+            self._ensure_jobs_columns(conn)
+            self._create_idempotency_table(conn)
+            claim = conn.execute(
+                """
+                SELECT job_id
+                FROM job_idempotency
+                WHERE kind = ? AND idempotency_key = ?
+                LIMIT 1
+                """,
+                (record.kind, clean_key),
+            ).fetchone()
+            if claim is not None:
+                row = conn.execute(
+                    "SELECT payload FROM jobs WHERE job_id = ?",
+                    (claim["job_id"],),
+                ).fetchone()
+                if row is not None:
+                    existing = JobRecord(**json.loads(row["payload"]))
+                else:
+                    conn.execute(
+                        "DELETE FROM job_idempotency WHERE kind = ? AND idempotency_key = ?",
+                        (record.kind, clean_key),
+                    )
+            if existing is None:
+                conn.execute(
+                    """
+                    INSERT INTO job_idempotency (kind, idempotency_key, job_id, created_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (record.kind, clean_key, record.job_id, record.created_at),
+                )
+                self._upsert_sqlite_conn(conn, record)
+                created = True
+
+        if created:
+            self._append_jsonl(record)
+            return record, True
+        return existing, False
+
     def get(self, job_id: str) -> JobRecord | None:
         self._ensure_sqlite()
         record = self._get_sqlite(job_id)
         if record is not None:
+            apply_job_ownership(record)
             return record
-        return self._get_jsonl(job_id)
+        record = self._get_jsonl(job_id)
+        if record is not None:
+            apply_job_ownership(record)
+        return record
 
     def _get_jsonl(self, job_id: str) -> JobRecord | None:
         latest: dict[str, Any] | None = None
@@ -121,7 +251,11 @@ class LocalJobStore:
                 item = json.loads(line)
                 if item.get("job_id") == job_id:
                     latest = item
-        return JobRecord(**latest) if latest else None
+        if not latest:
+            return None
+        record = JobRecord(**latest)
+        apply_job_ownership(record)
+        return record
 
     def list_latest(
         self,
@@ -129,6 +263,7 @@ class LocalJobStore:
         limit: int = 50,
         status: str | None = None,
         kind: str | None = None,
+        owner_id: str | None = None,
         q: str | None = None,
     ) -> list[JobRecord]:
         self._ensure_sqlite()
@@ -144,9 +279,43 @@ class LocalJobStore:
                     (max(limit, 1000),),
                 ).fetchall()
             records = [JobRecord(**json.loads(row["payload"])) for row in rows]
-            return self._filter_records(records, status=status, kind=kind, q=q)[:limit]
+            return self._filter_records(records, status=status, kind=kind, owner_id=owner_id, q=q)[:limit]
         records = self._list_latest_jsonl(limit=max(limit, 1000))
-        return self._filter_records(records, status=status, kind=kind, q=q)[:limit]
+        return self._filter_records(records, status=status, kind=kind, owner_id=owner_id, q=q)[:limit]
+
+    def find_by_idempotency_key(self, *, kind: JobKind, key: str | None) -> JobRecord | None:
+        """Return the durable job claimed for a kind/idempotency key pair."""
+        clean_key = normalize_idempotency_key(key)
+        if clean_key is None:
+            return None
+        self._ensure_sqlite()
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT jobs.payload
+                FROM job_idempotency
+                JOIN jobs ON jobs.job_id = job_idempotency.job_id
+                WHERE job_idempotency.kind = ? AND job_idempotency.idempotency_key = ?
+                LIMIT 1
+                """,
+                (kind, clean_key),
+            ).fetchone()
+            if row is None:
+                row = conn.execute(
+                    """
+                    SELECT payload
+                    FROM jobs
+                    WHERE kind = ? AND idempotency_key = ?
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (kind, clean_key),
+                ).fetchone()
+        if row is None:
+            return None
+        record = JobRecord(**json.loads(row["payload"]))
+        apply_job_ownership(record)
+        return record
 
     @staticmethod
     def _filter_records(
@@ -154,16 +323,21 @@ class LocalJobStore:
         *,
         status: str | None = None,
         kind: str | None = None,
+        owner_id: str | None = None,
         q: str | None = None,
     ) -> list[JobRecord]:
         status = status.strip() if status else None
         kind = kind.strip() if kind else None
+        owner_id = owner_id.strip() if owner_id else None
         query = (q or "").strip().casefold()
         filtered: list[JobRecord] = []
         for record in records:
+            apply_job_ownership(record)
             if status and record.status != status:
                 continue
             if kind and record.kind != kind:
+                continue
+            if owner_id and record.owner_id != owner_id:
                 continue
             if query:
                 searchable = " ".join(
@@ -174,6 +348,10 @@ class LocalJobStore:
                         record.status,
                         record.request_id,
                         record.parent_job_id,
+                        record.owner_id,
+                        record.owner_label,
+                        record.ownership_source,
+                        record.idempotency_key,
                         json.dumps(record.request or {}, ensure_ascii=False, sort_keys=True),
                         json.dumps(record.result or {}, ensure_ascii=False, sort_keys=True),
                         json.dumps(record.error or {}, ensure_ascii=False, sort_keys=True),
@@ -197,6 +375,8 @@ class LocalJobStore:
                 item = json.loads(line)
                 latest[item["job_id"]] = item
         records = [JobRecord(**item) for item in latest.values()]
+        for record in records:
+            apply_job_ownership(record)
         records.sort(key=lambda record: record.updated_at, reverse=True)
         return records[:limit]
 
@@ -204,7 +384,7 @@ class LocalJobStore:
         record = self.get(job_id)
         if record is None:
             return None
-        if record.status in {"succeeded", "failed", "cancelled"}:
+        if record.status in {"succeeded", "failed", "cancelled", "dead_lettered"}:
             return record
         record.status = "cancelled"
         record.updated_at = utc_now()
@@ -452,11 +632,14 @@ class LocalJobStore:
         with self._connect() as conn:
             self._create_jobs_table(conn)
             self._ensure_jobs_columns(conn)
+            self._create_idempotency_table(conn)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_updated_at ON jobs(updated_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_kind ON jobs(kind)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_not_before ON jobs(not_before)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_lease_expires_at ON jobs(lease_expires_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_idempotency_key ON jobs(kind, idempotency_key)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_owner_id ON jobs(owner_id)")
         if self.path.exists():
             for record in self._list_latest_jsonl(limit=10000):
                 self._upsert_sqlite(record)
@@ -465,41 +648,78 @@ class LocalJobStore:
         with self._connect() as conn:
             self._create_jobs_table(conn)
             self._ensure_jobs_columns(conn)
-            conn.execute(
-                """
-                INSERT INTO jobs (
+            self._create_idempotency_table(conn)
+            self._upsert_sqlite_conn(conn, record)
+
+    @staticmethod
+    def _upsert_sqlite_conn(conn: sqlite3.Connection, record: JobRecord) -> None:
+        apply_job_ownership(record)
+        conn.execute(
+            """
+            INSERT INTO jobs (
                     job_id, kind, status, created_at, updated_at, request_id,
                     attempts, not_before, deadline_at, worker_id, leased_at,
-                    lease_expires_at, payload
+                    lease_expires_at, idempotency_key, max_attempts,
+                    retry_backoff_s, dead_lettered_at, owner_id, owner_label,
+                    ownership_source, payload
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(job_id) DO UPDATE SET
                     kind=excluded.kind,
                     status=excluded.status,
-                    updated_at=excluded.updated_at,
-                    request_id=excluded.request_id,
-                    attempts=excluded.attempts,
-                    not_before=excluded.not_before,
-                    deadline_at=excluded.deadline_at,
-                    worker_id=excluded.worker_id,
+                updated_at=excluded.updated_at,
+                request_id=excluded.request_id,
+                attempts=excluded.attempts,
+                not_before=excluded.not_before,
+                deadline_at=excluded.deadline_at,
+                worker_id=excluded.worker_id,
                     leased_at=excluded.leased_at,
                     lease_expires_at=excluded.lease_expires_at,
+                    idempotency_key=excluded.idempotency_key,
+                    max_attempts=excluded.max_attempts,
+                    retry_backoff_s=excluded.retry_backoff_s,
+                    dead_lettered_at=excluded.dead_lettered_at,
+                    owner_id=excluded.owner_id,
+                    owner_label=excluded.owner_label,
+                    ownership_source=excluded.ownership_source,
                     payload=excluded.payload
                 """,
                 (
-                    record.job_id,
-                    record.kind,
-                    record.status,
-                    record.created_at,
-                    record.updated_at,
-                    record.request_id,
-                    record.attempts,
-                    record.not_before,
-                    record.deadline_at,
-                    record.worker_id,
+                record.job_id,
+                record.kind,
+                record.status,
+                record.created_at,
+                record.updated_at,
+                record.request_id,
+                record.attempts,
+                record.not_before,
+                record.deadline_at,
+                record.worker_id,
                     record.leased_at,
                     record.lease_expires_at,
+                    record.idempotency_key,
+                    record.max_attempts,
+                    record.retry_backoff_s,
+                    record.dead_lettered_at,
+                    record.owner_id,
+                    record.owner_label,
+                    record.ownership_source,
                     json.dumps(asdict(record), ensure_ascii=False),
+                ),
+            )
+        if record.idempotency_key:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO job_idempotency (
+                    kind, idempotency_key, job_id, created_at
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    record.kind,
+                    record.idempotency_key,
+                    record.job_id,
+                    record.created_at,
                 ),
             )
 
@@ -520,6 +740,13 @@ class LocalJobStore:
                 worker_id TEXT,
                 leased_at TEXT,
                 lease_expires_at TEXT,
+                idempotency_key TEXT,
+                max_attempts INTEGER NOT NULL DEFAULT 1,
+                retry_backoff_s INTEGER NOT NULL DEFAULT 0,
+                dead_lettered_at TEXT,
+                owner_id TEXT NOT NULL DEFAULT 'local-user',
+                owner_label TEXT NOT NULL DEFAULT 'Local user',
+                ownership_source TEXT NOT NULL DEFAULT 'default',
                 payload TEXT NOT NULL
             )
             """
@@ -534,11 +761,33 @@ class LocalJobStore:
             "worker_id": "TEXT",
             "leased_at": "TEXT",
             "lease_expires_at": "TEXT",
+            "idempotency_key": "TEXT",
+            "max_attempts": "INTEGER NOT NULL DEFAULT 1",
+            "retry_backoff_s": "INTEGER NOT NULL DEFAULT 0",
+            "dead_lettered_at": "TEXT",
+            "owner_id": "TEXT NOT NULL DEFAULT 'local-user'",
+            "owner_label": "TEXT NOT NULL DEFAULT 'Local user'",
+            "ownership_source": "TEXT NOT NULL DEFAULT 'default'",
         }.items():
             if column not in columns:
                 conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {definition}")
 
+    @staticmethod
+    def _create_idempotency_table(conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS job_idempotency (
+                kind TEXT NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                job_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (kind, idempotency_key)
+            )
+            """
+        )
+
     def _append_jsonl(self, record: JobRecord) -> None:
+        apply_job_ownership(record)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
@@ -550,17 +799,155 @@ class LocalJobStore:
             row = conn.execute("SELECT payload FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
         if row is None:
             return None
-        return JobRecord(**json.loads(row["payload"]))
+        record = JobRecord(**json.loads(row["payload"]))
+        apply_job_ownership(record)
+        return record
 
 
 class LocalJobRunner:
     """Run no-key providers and persist job transitions."""
 
-    def __init__(self, store: LocalJobStore | None = None):
+    def __init__(
+        self,
+        store: LocalJobStore | None = None,
+        *,
+        artifact_root: Path | None = None,
+        record_runtime_events: bool = True,
+    ):
         self.store = store or LocalJobStore()
+        self.artifact_root = artifact_root
+        self.record_runtime_events = record_runtime_events
 
-    def _start(self, kind: JobKind, request: dict[str, Any], request_id: str | None) -> JobRecord:
+    def _artifact_store(self) -> LocalArtifactStore:
+        return LocalArtifactStore(self.artifact_root) if self.artifact_root else LocalArtifactStore()
+
+    def _code_execution_provider(self, language: str):
+        store = self._artifact_store()
+        if CODE_EXECUTION_BACKEND == "docker":
+            return DockerExecutionProvider(store, image=DOCKER_EXECUTION_IMAGE)
+        if language == "octave":
+            return LocalOctaveExecutionProvider(store)
+        return LocalPythonExecutionProvider(store)
+
+    @staticmethod
+    def _code_execution_event_code(
+        *,
+        status: JobStatus,
+        error: dict[str, Any] | None,
+    ) -> str:
+        if error and error.get("code"):
+            return str(error["code"])
+        if status == "succeeded":
+            return "execution_succeeded"
+        if status == "cancelled":
+            return "cancelled"
+        return "execution_failed"
+
+    def _record_code_execution_event(
+        self,
+        record: JobRecord,
+        request: CodeExecutionRequest,
+        *,
+        status: JobStatus,
+        result: CodeExecutionResult | None,
+        error: dict[str, Any] | None,
+        duration_ms: int,
+    ) -> None:
+        """Append a no-secret execution outcome event without affecting the job."""
+        if not self.record_runtime_events:
+            return
+        runtime_metadata = result.runtime_metadata if result else {}
+        metadata: dict[str, Any] = {
+            "job_id": record.job_id,
+            "status": status,
+            "language": request.language,
+            "backend": CODE_EXECUTION_BACKEND,
+            "attempt": record.attempts,
+            "max_attempts": record.max_attempts,
+            "duration_ms": max(duration_ms, 0),
+            "artifact_count": len(result.artifacts) if result else 0,
+            "owner_id": record.owner_id,
+            "owner_label": record.owner_label,
+            "ownership_source": record.ownership_source,
+        }
+        if result is not None:
+            metadata["exit_code"] = result.exit_code
+        if error and error.get("code"):
+            metadata["error_code"] = error["code"]
+        for key in (
+            "provider_runtime",
+            "runtime_available",
+            "network_policy_enforced",
+            "filesystem_isolation",
+            "timeout_s",
+            "memory_mb",
+            "memory_limit_enforced",
+            "cpu_limit_enforced",
+            "execution_policy",
+            "execution_policy_enforced",
+            "execution_policy_checked_files",
+            "execution_policy_violations",
+            "policy_violation",
+            "max_stdout_bytes",
+            "max_stderr_bytes",
+            "max_artifacts",
+            "max_artifact_bytes",
+            "max_artifact_total_bytes",
+            "max_artifact_candidates",
+            "stdout_bytes",
+            "stderr_bytes",
+            "stdout_truncated",
+            "stderr_truncated",
+            "output_truncated",
+            "artifact_scanned_entries",
+            "artifact_scanned_files",
+            "artifact_candidate_count",
+            "artifact_exported_count",
+            "artifact_exported_bytes",
+            "artifact_skipped_count",
+            "artifact_skipped_too_large_count",
+            "artifact_skipped_count_limit",
+            "artifact_skipped_total_bytes_limit",
+            "artifact_skipped_unreadable_count",
+            "artifact_skipped_unreadable_dirs",
+            "artifact_scan_truncated",
+            "artifact_collection_truncated",
+            "docker_image",
+            "docker_returncode",
+        ):
+            if key in runtime_metadata:
+                metadata[key] = runtime_metadata[key]
+
+        code = self._code_execution_event_code(status=status, error=error)
+        try:
+            append_runtime_event(
+                kind="code_execution",
+                code=code,
+                message=f"Code execution job {status}.",
+                request_id=record.request_id,
+                metadata=metadata,
+            )
+        except OSError:
+            append_job_log(
+                record,
+                "runtime_event_warning",
+                "Code execution runtime event could not be written.",
+                error_code="runtime_event_log_failed",
+            )
+
+    def _start_with_create_result(
+        self,
+        kind: JobKind,
+        request: dict[str, Any],
+        request_id: str | None,
+        *,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
+    ) -> tuple[JobRecord, bool]:
         now = utc_now()
+        owner = normalize_ownership(**(ownership or {}))
         record = JobRecord(
             job_id=new_request_id(),
             kind=kind,
@@ -570,12 +957,39 @@ class LocalJobRunner:
             request=request,
             attempts=1,
             request_id=request_id,
+            idempotency_key=normalize_idempotency_key(idempotency_key),
+            max_attempts=max(max_attempts, 1),
+            retry_backoff_s=max(retry_backoff_s, 0),
+            owner_id=owner["owner_id"],
+            owner_label=owner["owner_label"],
+            ownership_source=owner["ownership_source"],
         )
-        append_job_log(record, "running", f"{kind} job started.")
-        self.store.append(record)
+        append_job_log(record, "running", f"{kind} job started.", **owner)
+        return self.store.append_new(record)
+
+    def _start(
+        self,
+        kind: JobKind,
+        request: dict[str, Any],
+        request_id: str | None,
+        *,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
+    ) -> JobRecord:
+        record, _created = self._start_with_create_result(
+            kind,
+            request,
+            request_id,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
+        )
         return record
 
-    def _enqueue(
+    def _enqueue_with_create_result(
         self,
         kind: JobKind,
         request: dict[str, Any],
@@ -584,8 +998,14 @@ class LocalJobRunner:
         parent_job_id: str | None = None,
         not_before: str | None = None,
         deadline_at: str | None = None,
-    ) -> JobRecord:
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
+    ) -> tuple[JobRecord, bool]:
         now = utc_now()
+        clean_idempotency_key = normalize_idempotency_key(idempotency_key)
+        owner = normalize_ownership(**(ownership or {}))
         record = JobRecord(
             job_id=new_request_id(),
             kind=kind,
@@ -598,16 +1018,50 @@ class LocalJobRunner:
             parent_job_id=parent_job_id,
             not_before=not_before,
             deadline_at=deadline_at,
+            idempotency_key=clean_idempotency_key,
+            max_attempts=max(max_attempts, 1),
+            retry_backoff_s=max(retry_backoff_s, 0),
+            owner_id=owner["owner_id"],
+            owner_label=owner["owner_label"],
+            ownership_source=owner["ownership_source"],
         )
-        append_job_log(record, "queued", f"{kind} job queued.")
-        self.store.append(record)
+        append_job_log(record, "queued", f"{kind} job queued.", **owner)
+        return self.store.append_new(record)
+
+    def _enqueue(
+        self,
+        kind: JobKind,
+        request: dict[str, Any],
+        request_id: str | None,
+        *,
+        parent_job_id: str | None = None,
+        not_before: str | None = None,
+        deadline_at: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
+    ) -> JobRecord:
+        record, _created = self._enqueue_with_create_result(
+            kind,
+            request,
+            request_id,
+            parent_job_id=parent_job_id,
+            not_before=not_before,
+            deadline_at=deadline_at,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
+        )
         return record
 
     def _mark_running(self, record: JobRecord) -> JobRecord:
+        apply_job_ownership(record)
         record.status = "running"
         record.updated_at = utc_now()
         record.attempts += 1
-        append_job_log(record, "running", f"{record.kind} job started.")
+        append_job_log(record, "running", f"{record.kind} job started.", **ownership_from_record(record))
         self.store.append(record)
         return record
 
@@ -620,6 +1074,7 @@ class LocalJobRunner:
         artifacts: list[GeneratedArtifact] | None = None,
         error: dict[str, Any] | None = None,
     ) -> JobRecord:
+        apply_job_ownership(record)
         record.status = status
         record.updated_at = utc_now()
         record.result = result
@@ -631,18 +1086,68 @@ class LocalJobRunner:
         if error:
             metadata["error_code"] = error.get("code")
         append_job_log(record, status, f"{record.kind} job {status}.", **metadata)
+        if status == "failed" and self._should_auto_retry(record, error=error):
+            record.status = "queued"
+            record.not_before = future_utc(record.retry_backoff_s)
+            record.worker_id = None
+            record.leased_at = None
+            record.lease_expires_at = None
+            record.updated_at = utc_now()
+            append_job_log(
+                record,
+                "queued",
+                f"{record.kind} job scheduled for automatic retry.",
+                attempt=record.attempts,
+                max_attempts=record.max_attempts,
+                retry_backoff_s=record.retry_backoff_s,
+            )
+        elif status == "failed" and record.max_attempts > 1 and record.attempts >= record.max_attempts:
+            record.status = "dead_lettered"
+            record.dead_lettered_at = utc_now()
+            record.updated_at = record.dead_lettered_at
+            append_job_log(
+                record,
+                "dead_lettered",
+                f"{record.kind} job moved to dead letter after retry policy was exhausted.",
+                attempts=record.attempts,
+                max_attempts=record.max_attempts,
+                error_code=error.get("code") if error else None,
+            )
         self.store.append(record)
         return record
+
+    @staticmethod
+    def _should_auto_retry(record: JobRecord, *, error: dict[str, Any] | None = None) -> bool:
+        if record.max_attempts <= 1:
+            return False
+        if record.attempts >= record.max_attempts:
+            return False
+        if error and error.get("code") == "job_deadline_exceeded":
+            return False
+        return True
 
     def run_mock_image(
         self,
         request: ImageGenerationRequest,
         *,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
         record: JobRecord | None = None,
         cancel_event: threading.Event | None = None,
     ) -> JobRecord:
-        record = self._mark_running(record) if record else self._start("image_generation", asdict(request), request_id)
+        if record:
+            record = self._mark_running(record)
+        else:
+            record, created = self._start_with_create_result(
+                "image_generation",
+                asdict(request),
+                request_id,
+                idempotency_key=idempotency_key,
+                ownership=ownership,
+            )
+            if not created:
+                return record
         try:
             if cancel_event and cancel_event.is_set():
                 return self._finish(
@@ -650,7 +1155,7 @@ class LocalJobRunner:
                     status="cancelled",
                     error={"code": "cancelled", "message": "Job was cancelled."},
                 )
-            artifact = MockImageGenerationProvider().generate(request)
+            artifact = MockImageGenerationProvider(self._artifact_store()).generate(request)
         except Exception as exc:
             error = normalize_exception(exc)
             return self._finish(record, status="failed", error=asdict(error))
@@ -661,14 +1166,39 @@ class LocalJobRunner:
         request: CodeExecutionRequest,
         *,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
         record: JobRecord | None = None,
         cancel_event: threading.Event | None = None,
     ) -> JobRecord:
-        record = self._mark_running(record) if record else self._start("code_execution", asdict(request), request_id)
+        if record:
+            record = self._mark_running(record)
+        else:
+            record, created = self._start_with_create_result(
+                "code_execution",
+                asdict(request),
+                request_id,
+                idempotency_key=idempotency_key,
+                ownership=ownership,
+            )
+            if not created:
+                return record
         try:
-            result = LocalPythonExecutionProvider().run(request, cancel_event=cancel_event)
+            started = time.monotonic()
+            result = self._code_execution_provider("python").run(
+                request,
+                cancel_event=cancel_event,
+            )
         except Exception as exc:
             error = normalize_exception(exc)
+            self._record_code_execution_event(
+                record,
+                request,
+                status="failed",
+                result=None,
+                error=asdict(error),
+                duration_ms=int((time.monotonic() - started) * 1000),
+            )
             return self._finish(record, status="failed", error=asdict(error))
 
         if cancel_event and cancel_event.is_set():
@@ -678,6 +1208,8 @@ class LocalJobRunner:
             status = "succeeded" if result.success else "failed"
             if result.success:
                 error = None
+            elif result.runtime_metadata.get("policy_violation") == "true":
+                error = {"code": "execution_policy_violation", "message": result.stderr}
             elif result.exit_code == 127:
                 error = {"code": "runtime_unavailable", "message": result.stderr}
             elif result.exit_code == 124:
@@ -685,6 +1217,14 @@ class LocalJobRunner:
             else:
                 error = {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
+        self._record_code_execution_event(
+            record,
+            request,
+            status=status,
+            result=result,
+            error=error,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
         return self._finish(
             record,
             status=status,
@@ -698,14 +1238,39 @@ class LocalJobRunner:
         request: CodeExecutionRequest,
         *,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
         record: JobRecord | None = None,
         cancel_event: threading.Event | None = None,
     ) -> JobRecord:
-        record = self._mark_running(record) if record else self._start("code_execution", asdict(request), request_id)
+        if record:
+            record = self._mark_running(record)
+        else:
+            record, created = self._start_with_create_result(
+                "code_execution",
+                asdict(request),
+                request_id,
+                idempotency_key=idempotency_key,
+                ownership=ownership,
+            )
+            if not created:
+                return record
         try:
-            result = LocalOctaveExecutionProvider().run(request, cancel_event=cancel_event)
+            started = time.monotonic()
+            result = self._code_execution_provider("octave").run(
+                request,
+                cancel_event=cancel_event,
+            )
         except Exception as exc:
             error = normalize_exception(exc)
+            self._record_code_execution_event(
+                record,
+                request,
+                status="failed",
+                result=None,
+                error=asdict(error),
+                duration_ms=int((time.monotonic() - started) * 1000),
+            )
             return self._finish(record, status="failed", error=asdict(error))
 
         if cancel_event and cancel_event.is_set():
@@ -715,6 +1280,8 @@ class LocalJobRunner:
             status = "succeeded" if result.success else "failed"
             if result.success:
                 error = None
+            elif result.runtime_metadata.get("policy_violation") == "true":
+                error = {"code": "execution_policy_violation", "message": result.stderr}
             elif result.exit_code == 127:
                 error = {"code": "runtime_unavailable", "message": result.stderr}
             elif result.exit_code == 124:
@@ -722,6 +1289,14 @@ class LocalJobRunner:
             else:
                 error = {"code": "execution_failed", "message": result.stderr}
         payload = asdict(result)
+        self._record_code_execution_event(
+            record,
+            request,
+            status=status,
+            result=result,
+            error=error,
+            duration_ms=int((time.monotonic() - started) * 1000),
+        )
         return self._finish(
             record,
             status=status,
@@ -735,6 +1310,8 @@ class LocalJobRunner:
         request: CodeExecutionRequest,
         *,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
         record: JobRecord | None = None,
         cancel_event: threading.Event | None = None,
     ) -> JobRecord:
@@ -742,12 +1319,16 @@ class LocalJobRunner:
             return self.run_local_octave(
                 request,
                 request_id=request_id,
+                idempotency_key=idempotency_key,
+                ownership=ownership,
                 record=record,
                 cancel_event=cancel_event,
             )
         return self.run_local_python(
             request,
             request_id=request_id,
+            idempotency_key=idempotency_key,
+            ownership=ownership,
             record=record,
             cancel_event=cancel_event,
         )
@@ -757,11 +1338,24 @@ class LocalJobRunner:
         source_paths: list[str],
         *,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
         record: JobRecord | None = None,
         cancel_event: threading.Event | None = None,
     ) -> JobRecord:
         request = {"source_paths": source_paths}
-        record = self._mark_running(record) if record else self._start("index_rebuild", request, request_id)
+        if record:
+            record = self._mark_running(record)
+        else:
+            record, created = self._start_with_create_result(
+                "index_rebuild",
+                request,
+                request_id,
+                idempotency_key=idempotency_key,
+                ownership=ownership,
+            )
+            if not created:
+                return record
         try:
             if cancel_event and cancel_event.is_set():
                 return self._finish(
@@ -795,14 +1389,26 @@ class LocalJobRunner:
         job = self.store.get(job_id)
         if job is None:
             return None
-        if job.status not in {"failed", "cancelled"}:
+        if job.status not in {"failed", "cancelled", "dead_lettered"}:
             return job
         if job.kind == "image_generation":
-            return self.run_mock_image(ImageGenerationRequest(**job.request), request_id=request_id)
+            return self.run_mock_image(
+                ImageGenerationRequest(**job.request),
+                request_id=request_id,
+                ownership={**ownership_from_record(job), "ownership_source": "inherited"},
+            )
         if job.kind == "code_execution":
-            return self.run_local_code(CodeExecutionRequest(**job.request), request_id=request_id)
+            return self.run_local_code(
+                CodeExecutionRequest(**job.request),
+                request_id=request_id,
+                ownership={**ownership_from_record(job), "ownership_source": "inherited"},
+            )
         if job.kind == "index_rebuild":
-            return self.run_index_rebuild(job.request.get("source_paths", []), request_id=request_id)
+            return self.run_index_rebuild(
+                job.request.get("source_paths", []),
+                request_id=request_id,
+                ownership={**ownership_from_record(job), "ownership_source": "inherited"},
+            )
         return job
 
     def schedule_retry(
@@ -816,7 +1422,7 @@ class LocalJobRunner:
         job = self.store.get(job_id)
         if job is None:
             return None
-        if job.status not in {"failed", "cancelled"}:
+        if job.status not in {"failed", "cancelled", "dead_lettered"}:
             return job
         return self._enqueue(
             job.kind,
@@ -825,6 +1431,7 @@ class LocalJobRunner:
             parent_job_id=job.job_id,
             not_before=future_utc(delay_s),
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            ownership={**ownership_from_record(job), "ownership_source": "inherited"},
         )
 
     @staticmethod
@@ -852,9 +1459,10 @@ class AsyncJobManager:
         recover_existing: bool = True,
         worker_id: str | None = None,
         lease_seconds: int = 3600,
+        artifact_root: Path | None = None,
     ):
         self.store = store or LocalJobStore()
-        self.runner = LocalJobRunner(self.store)
+        self.runner = LocalJobRunner(self.store, artifact_root=artifact_root)
         self.worker_id = worker_id or f"in-process-{new_request_id()}"
         self.lease_seconds = lease_seconds
         self._queue: queue.Queue[str] = queue.Queue()
@@ -881,14 +1489,29 @@ class AsyncJobManager:
         *,
         queue_timeout_s: int | None = None,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue(
+        existing = self.store.find_by_idempotency_key(
+            kind="image_generation",
+            key=idempotency_key,
+        )
+        if existing is not None:
+            return existing
+        record, created = self.runner._enqueue_with_create_result(
             "image_generation",
             asdict(request),
             request_id,
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
         )
-        self._enqueue(record)
+        if created:
+            self._enqueue(record)
         return record
 
     def enqueue_local_python(
@@ -897,14 +1520,29 @@ class AsyncJobManager:
         *,
         queue_timeout_s: int | None = None,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue(
+        existing = self.store.find_by_idempotency_key(
+            kind="code_execution",
+            key=idempotency_key,
+        )
+        if existing is not None:
+            return existing
+        record, created = self.runner._enqueue_with_create_result(
             "code_execution",
             asdict(request),
             request_id,
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
         )
-        self._enqueue(record)
+        if created:
+            self._enqueue(record)
         return record
 
     def enqueue_local_octave(
@@ -913,14 +1551,29 @@ class AsyncJobManager:
         *,
         queue_timeout_s: int | None = None,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue(
+        existing = self.store.find_by_idempotency_key(
+            kind="code_execution",
+            key=idempotency_key,
+        )
+        if existing is not None:
+            return existing
+        record, created = self.runner._enqueue_with_create_result(
             "code_execution",
             asdict(request),
             request_id,
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
         )
-        self._enqueue(record)
+        if created:
+            self._enqueue(record)
         return record
 
     def enqueue_index_rebuild(
@@ -929,14 +1582,29 @@ class AsyncJobManager:
         *,
         queue_timeout_s: int | None = None,
         request_id: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
     ) -> JobRecord:
-        record = self.runner._enqueue(
+        existing = self.store.find_by_idempotency_key(
+            kind="index_rebuild",
+            key=idempotency_key,
+        )
+        if existing is not None:
+            return existing
+        record, created = self.runner._enqueue_with_create_result(
             "index_rebuild",
             {"source_paths": source_paths},
             request_id,
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
         )
-        self._enqueue(record)
+        if created:
+            self._enqueue(record)
         return record
 
     def schedule_retry(
@@ -1016,7 +1684,7 @@ class AsyncJobManager:
             self.store.cancel(job_id)
             return
         if has_deadline_expired(record):
-            self.runner._finish(
+            result = self.runner._finish(
                 record,
                 status="failed",
                 error={
@@ -1024,28 +1692,36 @@ class AsyncJobManager:
                     "message": "Job deadline passed before execution.",
                 },
             )
+            self._requeue_if_needed(result)
             return
         if record.kind == "image_generation":
-            self.runner.run_mock_image(
+            result = self.runner.run_mock_image(
                 ImageGenerationRequest(**record.request),
                 request_id=record.request_id,
                 record=record,
                 cancel_event=event,
             )
         elif record.kind == "code_execution":
-            self.runner.run_local_code(
+            result = self.runner.run_local_code(
                 CodeExecutionRequest(**record.request),
                 request_id=record.request_id,
                 record=record,
                 cancel_event=event,
             )
         elif record.kind == "index_rebuild":
-            self.runner.run_index_rebuild(
+            result = self.runner.run_index_rebuild(
                 record.request.get("source_paths", []),
                 request_id=record.request_id,
                 record=record,
                 cancel_event=event,
             )
+        else:
+            result = None
+        self._requeue_if_needed(result)
+
+    def _requeue_if_needed(self, record: JobRecord | None) -> None:
+        if record is not None and record.status == "queued":
+            self._enqueue(record)
 
 
 class LocalDurableJobWorker:
@@ -1058,9 +1734,10 @@ class LocalDurableJobWorker:
         worker_id: str | None = None,
         lease_seconds: int = 3600,
         cancel_poll_interval_s: float = 0.25,
+        artifact_root: Path | None = None,
     ):
         self.store = store or LocalJobStore()
-        self.runner = LocalJobRunner(self.store)
+        self.runner = LocalJobRunner(self.store, artifact_root=artifact_root)
         self.worker_id = worker_id or f"durable-{new_request_id()}"
         self.lease_seconds = lease_seconds
         self.cancel_poll_interval_s = cancel_poll_interval_s

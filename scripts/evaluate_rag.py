@@ -43,12 +43,12 @@ def main() -> int:
     parser.add_argument(
         "--api-key",
         default="",
-        help="API key for --live-url. Prefer --api-key-env for normal use.",
+        help="API key for --live-url or --retrieval-url. Prefer --api-key-env for normal use.",
     )
     parser.add_argument(
         "--api-key-env",
         default="FLUXMIND_API_TOKEN",
-        help="Environment variable that contains the API key for --live-url",
+        help="Environment variable that contains the API key for --live-url or --retrieval-url",
     )
     parser.add_argument(
         "--live-timeout",
@@ -64,7 +64,14 @@ def main() -> int:
     args = parser.parse_args()
 
     config = load_eval_config(args.file)
-    case_results, provider_results, recorded_results = evaluate_config(config)
+    (
+        case_results,
+        retrieval_only_results,
+        code_output_results,
+        pdf_structure_results,
+        provider_results,
+        recorded_results,
+    ) = evaluate_config(config)
     live_results = []
     live_retrieval_results = []
     regression_gate_results = []
@@ -75,6 +82,24 @@ def main() -> int:
         print(f"{status:4} eval case {result.case_id}: {result.message}")
         if not result.ok:
             failures.append(f"eval case {result.case_id}")
+
+    for result in retrieval_only_results:
+        status = "ok" if result.ok else "fail"
+        print(f"{status:4} retrieval-only case {result.case_id}: {result.message}")
+        if not result.ok:
+            failures.append(f"retrieval-only case {result.case_id}")
+
+    for result in code_output_results:
+        status = "ok" if result.ok else "fail"
+        print(f"{status:4} code-output case {result.case_id}: {result.message}")
+        if not result.ok:
+            failures.append(f"code-output case {result.case_id}")
+
+    for result in pdf_structure_results:
+        status = "ok" if result.ok else "fail"
+        print(f"{status:4} PDF structure case {result.case_id}: {result.message}")
+        if not result.ok:
+            failures.append(f"PDF structure case {result.case_id}")
 
     for result in provider_results:
         status = "ok" if result.ok else "fail"
@@ -128,6 +153,9 @@ def main() -> int:
     regression_gate_results = evaluate_regression_gates(
         config,
         case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
         provider_results=provider_results,
         recorded_results=recorded_results,
         live_results=live_results if args.live_url else None,
@@ -144,6 +172,9 @@ def main() -> int:
         report = build_evaluation_report(
             config,
             case_results=case_results,
+            retrieval_only_results=retrieval_only_results,
+            code_output_results=code_output_results,
+            pdf_structure_results=pdf_structure_results,
             provider_results=provider_results,
             recorded_results=recorded_results,
             live_results=live_results,

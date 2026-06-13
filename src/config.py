@@ -13,15 +13,37 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.example.com/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "DeepSeek-V3.2")
 
+
+def _env_flag(name: str, default: str) -> bool:
+    return os.getenv(name, default).strip().lower() not in {"0", "false", "no", "off"}
+
 # Embedding
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "")
 
 # Local execution backend. `local` keeps the current child-process provider.
-# `docker` is a no-key future sandbox backend and remains unavailable unless the
-# runtime user can access Docker safely.
+# `docker` enables the no-key container backend when the runtime user can access
+# Docker safely.
 CODE_EXECUTION_BACKEND = os.getenv("CODE_EXECUTION_BACKEND", "local").strip().lower()
 DOCKER_EXECUTION_IMAGE = os.getenv("DOCKER_EXECUTION_IMAGE", "python:3.12-slim")
+CODE_EXECUTION_POLICY = os.getenv("CODE_EXECUTION_POLICY", "local-safe-v1").strip().lower()
+CODE_EXECUTION_ALLOWED_IMPORTS = os.getenv(
+    "CODE_EXECUTION_ALLOWED_IMPORTS",
+    "collections,csv,dataclasses,decimal,fractions,itertools,json,math,matplotlib,numpy,pathlib,random,statistics,time,typing",
+).strip()
+CODE_EXECUTION_MAX_STDOUT_BYTES = int(os.getenv("CODE_EXECUTION_MAX_STDOUT_BYTES", "65536"))
+CODE_EXECUTION_MAX_STDERR_BYTES = int(os.getenv("CODE_EXECUTION_MAX_STDERR_BYTES", "65536"))
+CODE_EXECUTION_MAX_ARTIFACTS = int(os.getenv("CODE_EXECUTION_MAX_ARTIFACTS", "16"))
+CODE_EXECUTION_MAX_ARTIFACT_BYTES = int(os.getenv("CODE_EXECUTION_MAX_ARTIFACT_BYTES", str(2 * 1024 * 1024)))
+CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES = int(
+    os.getenv("CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES", str(8 * 1024 * 1024))
+)
+CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES = int(
+    os.getenv("CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES", "256")
+)
+CODE_EXECUTION_ALERT_MIN_EVENTS = int(os.getenv("CODE_EXECUTION_ALERT_MIN_EVENTS", "5"))
+CODE_EXECUTION_ALERT_FAILURE_RATE = float(os.getenv("CODE_EXECUTION_ALERT_FAILURE_RATE", "0.5"))
+CODE_EXECUTION_ALERT_DURATION_MS = int(os.getenv("CODE_EXECUTION_ALERT_DURATION_MS", "30000"))
 
 # Storage backend readiness. Local JSON/SQLite/filesystem storage remains the
 # active no-key backend; external database/object storage requires explicit
@@ -38,6 +60,29 @@ OBJECT_STORAGE_REGION = os.getenv("OBJECT_STORAGE_REGION", "")
 QUERY_COST_PROVIDER = os.getenv("QUERY_COST_PROVIDER", "").strip()
 QUERY_COST_PROMPT_USD_PER_1M = os.getenv("QUERY_COST_PROMPT_USD_PER_1M", "0").strip()
 QUERY_COST_COMPLETION_USD_PER_1M = os.getenv("QUERY_COST_COMPLETION_USD_PER_1M", "0").strip()
+QUERY_ALERT_MIN_EVENTS = int(os.getenv("QUERY_ALERT_MIN_EVENTS", "5"))
+QUERY_ALERT_DURATION_MS = int(os.getenv("QUERY_ALERT_DURATION_MS", "15000"))
+RETRIEVAL_TRACE_ALERT_MIN_EVENTS = int(os.getenv("RETRIEVAL_TRACE_ALERT_MIN_EVENTS", "5"))
+RETRIEVAL_TRACE_ALERT_EMPTY_RATE = float(os.getenv("RETRIEVAL_TRACE_ALERT_EMPTY_RATE", "0.25"))
+RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE = float(
+    os.getenv("RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE", "0.25")
+)
+RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE = float(
+    os.getenv("RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE", "0.25")
+)
+PROVIDER_FAILURE_ALERT_MIN_EVENTS = int(os.getenv("PROVIDER_FAILURE_ALERT_MIN_EVENTS", "3"))
+PROVIDER_FAILURE_ALERT_RATE = float(os.getenv("PROVIDER_FAILURE_ALERT_RATE", "0.25"))
+JOB_ALERT_FAILED_MIN_EVENTS = int(os.getenv("JOB_ALERT_FAILED_MIN_EVENTS", "3"))
+JOB_ALERT_EXPIRED_MIN_EVENTS = int(os.getenv("JOB_ALERT_EXPIRED_MIN_EVENTS", "1"))
+API_ACCESS_AUDIT_ENABLED = _env_flag("API_ACCESS_AUDIT_ENABLED", "true")
+API_RATE_LIMIT_ENABLED = _env_flag("API_RATE_LIMIT_ENABLED", "false")
+API_RATE_LIMIT_MAX_REQUESTS = int(os.getenv("API_RATE_LIMIT_MAX_REQUESTS", "300"))
+API_RATE_LIMIT_WINDOW_S = int(os.getenv("API_RATE_LIMIT_WINDOW_S", "60"))
+UPLOAD_SCAN_ENABLED = _env_flag("UPLOAD_SCAN_ENABLED", "true")
+UPLOAD_SCAN_REJECT_ENCRYPTED = _env_flag("UPLOAD_SCAN_REJECT_ENCRYPTED", "true")
+UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT = _env_flag("UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT", "true")
+UPLOAD_SCAN_MAX_PAGES = int(os.getenv("UPLOAD_SCAN_MAX_PAGES", "500"))
+RETENTION_DELETE_ENABLED = _env_flag("RETENTION_DELETE_ENABLED", "false")
 
 # Paths
 PAPERS_DIR = PROJECT_ROOT / "papers"

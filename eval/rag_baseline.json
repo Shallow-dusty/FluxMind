@@ -1,12 +1,54 @@
 {
   "version": 1,
-  "description": "FluxMind RAG baseline. Offline fixture and recorded answers validate citation shape and key-term coverage without calling an LLM; optional live scoring uses /query/inspect when an API URL/token is provided.",
+  "description": "FluxMind RAG baseline. Offline answer, retrieval-only, and code-output cases validate source/page refs, citation shape, topic/lane coverage, key-term coverage, and local execution artifact capture without calling an LLM; optional live scoring uses /query/retrieve and /query/inspect when an API URL/token is provided.",
   "live_eval": {
     "minimum_expected_context_ref_coverage": 0.5,
     "timeout_s": 120
   },
+  "domain_ontology": {
+    "topic_groups": {
+      "sliding_mode_control": [
+        "sliding mode control",
+        "terminal sliding mode control",
+        "reaching law",
+        "chattering",
+        "constraints",
+        "state-space model",
+        "mismatched disturbances"
+      ],
+      "pmsm_motor_control": [
+        "PMSM",
+        "FOC",
+        "current loop",
+        "sampling",
+        "hardware validation",
+        "low-speed observability",
+        "parameter mismatch"
+      ],
+      "observer_estimation": [
+        "sliding mode observer",
+        "flux observer",
+        "sensorless control",
+        "SOGIFO-X",
+        "active flux",
+        "zero speed",
+        "MRAS",
+        "EKF"
+      ],
+      "implementation_trust": [
+        "paper-to-code",
+        "code generation",
+        "plot validation",
+        "forum-style",
+        "failure_mode",
+        "equation extraction",
+        "debug intake",
+        "MATLAB export"
+      ]
+    }
+  },
   "quality_gates": {
-    "minimum_case_count": 5,
+    "minimum_case_count": 20,
     "required_answer_modes": [
       "explanation",
       "derivation",
@@ -14,19 +56,283 @@
       "literature_review",
       "code_generation"
     ],
-    "minimum_expected_source_ref_count": 7,
+    "minimum_topic_tag_count": 50,
+    "required_topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "sliding mode observer",
+      "flux observer",
+      "sensorless control",
+      "chattering",
+      "reaching law",
+      "constraints",
+      "FOC",
+      "sampling",
+      "hardware validation",
+      "paper-to-code",
+      "low-speed observability",
+      "parameter mismatch",
+      "zero speed",
+      "state-space model",
+      "mismatched disturbances",
+      "equation extraction",
+      "MATLAB export"
+    ],
+    "minimum_eval_lane_count": 7,
+    "required_eval_lanes": [
+      "retrieval",
+      "answer_quality",
+      "equation_fidelity",
+      "code_generation",
+      "forum_style",
+      "failure_mode",
+      "paper_to_code"
+    ],
+    "required_topic_groups": [
+      "sliding_mode_control",
+      "pmsm_motor_control",
+      "observer_estimation",
+      "implementation_trust"
+    ],
+    "minimum_expected_source_ref_count": 64,
+    "minimum_retrieval_only_case_count": 30,
+    "minimum_retrieval_eval_question_count": 50,
+    "minimum_retrieval_only_pass_rate": 1.0,
+    "minimum_code_output_case_count": 4,
+    "required_code_output_languages": [
+      "python"
+    ],
+    "required_code_output_template_ids": [
+      "smc_reaching_law",
+      "pmsm_current_step"
+    ],
+    "required_code_output_execution_modes": [
+      "provider",
+      "local_job"
+    ],
+    "minimum_code_output_pass_rate": 1.0,
+    "minimum_pdf_structure_case_count": 6,
+    "required_pdf_structure_kinds": [
+      "equation",
+      "table",
+      "figure"
+    ],
+    "minimum_pdf_structure_pass_rate": 1.0,
     "minimum_provider_fixture_count": 4,
-    "minimum_recorded_answer_count": 5,
+    "minimum_recorded_answer_count": 20,
     "minimum_recorded_answer_pass_rate": 1.0,
     "minimum_average_recorded_answer_term_coverage": 0.9,
     "minimum_live_answer_pass_rate": 1.0,
     "minimum_average_live_answer_term_coverage": 0.75,
     "minimum_live_retrieval_pass_rate": 1.0
   },
+  "code_output_cases": [
+    {
+      "id": "python-smc-plot-artifact",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nPath('summary.txt').write_text('sliding mode code-output eval plot validation', encoding='utf-8')\nPath('plot.png').write_bytes(b'\\x89PNG\\r\\n\\x1a\\n')\nprint('fluxmind-code-output-ok plot.png summary.txt')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-code-output-ok",
+        "plot.png",
+        "summary.txt"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "plot.png",
+          "kind": "plot",
+          "mime_type": "image/png",
+          "minimum_byte_count": 8
+        },
+        {
+          "title": "summary.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 10,
+          "contains": "sliding mode code-output eval"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "python-smc-reaching-law-template",
+      "language": "python",
+      "template_id": "smc_reaching_law",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "required_stdout_terms": [
+        "wrote smc_reaching_law.csv and smc_reaching_law.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "smc_reaching_law.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 100,
+          "contains": "time_s,sliding_surface"
+        },
+        {
+          "title": "smc_reaching_law.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 100,
+          "contains": "SMC reaching-law response"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "python-job-backed-code-output",
+      "language": "python",
+      "execution_mode": "local_job",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nPath('job-summary.txt').write_text('job-backed code-output eval for sliding mode workflow', encoding='utf-8')\nPath('job-plot.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>job-backed SMC plot</text></svg>', encoding='utf-8')\nprint('fluxmind-job-code-output job-summary.txt job-plot.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-job-code-output",
+        "job-summary.txt",
+        "job-plot.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "job-summary.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 20,
+          "contains": "job-backed code-output eval"
+        },
+        {
+          "title": "job-plot.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 50,
+          "contains": "job-backed SMC plot"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_job_status": "succeeded",
+      "expected_job_metadata": {
+        "kind": "code_execution",
+        "attempts": "1"
+      },
+      "expected_job_log_statuses": [
+        "running",
+        "succeeded"
+      ]
+    },
+    {
+      "id": "python-pmsm-current-step-template",
+      "language": "python",
+      "template_id": "pmsm_current_step",
+      "execution_mode": "local_job",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "required_stdout_terms": [
+        "wrote pmsm_current_step.csv and pmsm_current_step.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "pmsm_current_step.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 100,
+          "contains": "time_s,iq_ref,iq,error"
+        },
+        {
+          "title": "pmsm_current_step.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 100,
+          "contains": "PMSM q-axis current step response"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_job_status": "succeeded",
+      "expected_job_metadata": {
+        "kind": "code_execution",
+        "attempts": "1"
+      },
+      "expected_job_log_statuses": [
+        "running",
+        "succeeded"
+      ]
+    }
+  ],
+  "pdf_structure_cases": [
+    {
+      "id": "structure-review-table-caption",
+      "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+      "page": 3,
+      "kind": "table",
+      "contains": "Table 1"
+    },
+    {
+      "id": "structure-tsmc-comparison-table",
+      "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+      "page": 3,
+      "kind": "table",
+      "contains": "Comparison of the proposed controller"
+    },
+    {
+      "id": "structure-smc-state-equation",
+      "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+      "page": 3,
+      "kind": "equation",
+      "contains": "x(t) = f(x(t))"
+    },
+    {
+      "id": "structure-pmsm-voltage-equation",
+      "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+      "page": 2,
+      "kind": "equation",
+      "contains": "ud = Rsid"
+    },
+    {
+      "id": "structure-review-control-figure",
+      "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "Block diagram of a typical PMSM control system"
+    },
+    {
+      "id": "structure-smo-pll-figure",
+      "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+      "page": 8,
+      "kind": "figure",
+      "contains": "Block diagram of SMO based on PLL"
+    }
+  ],
   "cases": [
     {
       "id": "smc-chattering-explanation",
       "answer_mode": "explanation",
+      "topic_tags": ["PMSM", "sliding mode control", "chattering", "disturbance observer"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
       "question": "How do sliding-mode controllers reduce chattering in motor drives?",
       "expected_refs": [
         {
@@ -52,6 +358,8 @@
     {
       "id": "flux-observer-literature-review",
       "answer_mode": "literature_review",
+      "topic_tags": ["PMSM", "flux observer", "sensorless control", "SOGIFO-X", "regression"],
+      "eval_lanes": ["retrieval", "answer_quality"],
       "question": "Compare regression and SOGIFO-X flux observers for PMSM sensorless control.",
       "expected_refs": [
         {
@@ -77,6 +385,8 @@
     {
       "id": "smc-reaching-law-derivation",
       "answer_mode": "derivation",
+      "topic_tags": ["sliding mode control", "reaching law", "constraints", "nonlinear systems"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
       "question": "Derive the role of a reaching law when sliding-mode control must satisfy state and input constraints.",
       "expected_refs": [
         {
@@ -96,6 +406,8 @@
     {
       "id": "pmsm-smc-implementation-checklist",
       "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "sliding mode control", "hardware validation", "real-time tuning"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
       "question": "Give an implementation checklist for validating a PMSM sliding-mode controller before deployment.",
       "expected_refs": [
         {
@@ -115,6 +427,8 @@
     {
       "id": "smo-code-generation",
       "answer_mode": "code_generation",
+      "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "code generation"],
+      "eval_lanes": ["retrieval", "answer_quality", "code_generation"],
       "question": "Generate MATLAB-style pseudocode for a PMSM sliding-mode observer.",
       "expected_refs": [
         {
@@ -130,6 +444,815 @@
       "minimum_answer_term_coverage": 0.75,
       "live_required_answer_terms": ["MATLAB", "observer", "switching", "voltage"],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "sogifo-x-filtering-assumption-check",
+      "answer_mode": "literature_review",
+      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "sensorless control", "filtering"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "question": "What assumptions should be checked before using a SOGIFO-X flux observer for PMSM sensorless control?",
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "SOGIFO-X Flux Observer Algorithm"
+        }
+      ],
+      "fixture_answer": "A SOGIFO-X observer answer should cite the optimized sensorless PMSM observer context before listing filtering assumptions [1].",
+      "recorded_answer": "Before using a SOGIFO-X flux observer, check that the PMSM sensorless-control problem matches the observer and optimized filtering context in the source paper [1]. The implementation notes should record the assumed sampling behavior, flux-observer inputs, filtering role, and sensorless operating region.",
+      "required_answer_terms": ["SOGIFO-X", "filtering", "observer", "sensorless"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["SOGIFO-X", "filter", "observer", "sensorless"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "pmsm-current-loop-sampling-forum-check",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "FOC", "sampling", "current loop", "forum-style"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "question": "A motor-control user says their PMSM current loop is unstable after adding SMC. What sampling and FOC checks should FluxMind ask for first?",
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 1,
+          "snippet": "Sliding-Mode Control Strategies for PMSM speed control"
+        },
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
+        }
+      ],
+      "fixture_answer": "The answer should turn PMSM SMC context [1] and sensorless observer context [2] into a first-pass FOC and sampling checklist.",
+      "recorded_answer": "For a forum-style unstable PMSM current-loop report, first ask for FOC sampling time, PWM/update timing, current sensor scaling, motor parameters, operating speed, and whether the SMC or observer is being evaluated in sensorless mode. The checklist should stay tied to PMSM SMC context [1] and sensorless observer assumptions [2].",
+      "required_answer_terms": ["FOC", "sampling", "current", "sensorless"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["sampling", "current", "PMSM", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "terminal-smc-gain-tuning-failure-mode",
+      "answer_mode": "explanation",
+      "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering", "gain tuning"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "question": "Explain why increasing terminal SMC switching gain can reduce tracking error but worsen chattering.",
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 1,
+          "snippet": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control"
+        }
+      ],
+      "fixture_answer": "The answer should explain the gain/chattering tradeoff using the chattering-attenuated terminal SMC and disturbance-observer context [1].",
+      "recorded_answer": "Increasing terminal SMC switching gain can improve robustness against disturbance and reduce tracking error, but excessive gain injects high-frequency switching that appears as chattering. A chattering-attenuated terminal SMC design uses disturbance-observer compensation to reduce that tradeoff rather than only raising gain [1].",
+      "required_answer_terms": ["gain", "chattering", "disturbance", "terminal SMC"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["gain", "chattering", "disturbance", "terminal"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "constraint-aware-smc-implementation-guardrail",
+      "answer_mode": "implementation",
+      "topic_tags": ["sliding mode control", "constraints", "reaching law", "saturation"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "question": "What implementation guardrails should be added when a reaching-law SMC design has state and actuator constraints?",
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 1,
+          "snippet": "sliding mode controller was designed using the reaching law technique"
+        }
+      ],
+      "fixture_answer": "The implementation checklist should cite the constrained reaching-law setup and control-signal limitation context [1].",
+      "recorded_answer": "For constrained reaching-law SMC, add guardrails for state constraints, actuator or control signal saturation, representative-point convergence, disturbance bounds, and logging when constraints are active. The cited constrained SMC work explicitly frames the reaching-law design around state and control-signal limitations [1].",
+      "required_answer_terms": ["state constraints", "control signal", "reaching law", "saturation"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["constraint", "control", "reaching", "saturation"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "active-flux-vs-sogifo-debug-path",
+      "answer_mode": "literature_review",
+      "topic_tags": ["PMSM", "active flux", "SOGIFO-X", "flux observer", "sensorless control"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "question": "If a PMSM sensorless estimate drifts at low speed, how should a user compare active-flux regression and SOGIFO-X observer paths?",
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 1,
+          "snippet": "Regression Model-Based Flux Observer for IPMSM Sensorless Control"
+        },
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "SOGIFO-X Flux Observer Algorithm"
+        }
+      ],
+      "fixture_answer": "The answer should compare active-flux regression observer context [1] with SOGIFO-X observer context [2].",
+      "recorded_answer": "For low-speed PMSM sensorless drift, compare whether the issue is better framed as an active-flux regression observer problem with wide-speed motivation [1] or as a SOGIFO-X filtering and observer-structure problem [2]. The debug path should ask for speed range, voltage/current sensing, parameter mismatch, and flux estimate bias.",
+      "required_answer_terms": ["active-flux", "SOGIFO-X", "low-speed", "sensorless"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["flux", "SOGIFO-X", "speed", "sensorless"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "smo-code-output-validation-plan",
+      "answer_mode": "code_generation",
+      "topic_tags": ["PMSM", "sliding mode observer", "code generation", "plot validation"],
+      "eval_lanes": ["retrieval", "answer_quality", "code_generation"],
+      "question": "Generate a validation plan for Python or Octave code that simulates a PMSM sliding-mode observer and produces plots.",
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
+        }
+      ],
+      "fixture_answer": "The code-validation plan should cite the PMSM SMO context before asking for simulated currents, estimated flux, and plot artifacts [1].",
+      "recorded_answer": "A Python or Octave SMO validation plan should define measured-current inputs, voltage inputs, motor parameters, observer gains, estimated flux or back-EMF outputs, and plots for current, estimation error, and switching signal. The runnable code should cite the PMSM sliding-mode observer context before claiming sensorless validity [1].",
+      "required_answer_terms": ["Python", "Octave", "plots", "observer"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["code", "plot", "observer", "PMSM"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "paper-to-code-assumption-report",
+      "answer_mode": "derivation",
+      "topic_tags": ["paper-to-code", "PMSM", "sliding mode control", "constraints", "sliding mode observer"],
+      "eval_lanes": ["retrieval", "answer_quality", "paper_to_code", "equation_fidelity", "code_generation"],
+      "question": "What should a paper-to-code report preserve when translating a PMSM sliding-mode control paper into a runnable simulation?",
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 1,
+          "snippet": "Persistent research gaps are identified in hardware validation"
+        },
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 1,
+          "snippet": "state and control signal constraints"
+        },
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
+        }
+      ],
+      "fixture_answer": "A paper-to-code report should preserve PMSM SMC validation gaps [1], state/control constraints [2], and observer assumptions [3].",
+      "recorded_answer": "A paper-to-code report should preserve source/page citations, equations, assumptions, motor parameters, state and control constraints, observer inputs, code scaffold, generated plots, and the gap between simulation and hardware validation. The report should tie PMSM SMC validation concerns [1], constrained SMC assumptions [2], and PMSM SMO assumptions [3] into one traceable artifact.",
+      "required_answer_terms": ["paper-to-code", "equations", "constraints", "plots"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["paper", "code", "constraints", "plots"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "ipmsm-zero-speed-observability-failure-mode",
+      "answer_mode": "explanation",
+      "topic_tags": ["IPMSM", "active flux", "zero speed", "low-speed observability", "signal injection"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "question": "Why is zero-speed observability a failure mode for IPMSM sensorless control, and what mitigation paths should be checked?",
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 1,
+          "snippet": "observability of the permanent-magnet synchronous motor is lost at zero speed"
+        },
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 2,
+          "snippet": "signal injection method at low speed and a model-based method in the high speed region"
+        }
+      ],
+      "fixture_answer": "The answer should cite the zero-speed observability warning [1] and the low-speed signal-injection versus high-speed model-based mitigation path [2].",
+      "recorded_answer": "Zero-speed IPMSM sensorless control is fragile because PMSM observability can be lost at zero speed [1]. A practical mitigation report should check whether the case needs low-speed signal injection, a model-based high-speed observer, or a smooth transition between those regions [2].",
+      "required_answer_terms": ["zero speed", "observability", "signal injection", "model-based"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["zero", "observability", "signal", "model"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "sogifo-x-integrator-bias-debug-card",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "DC bias", "debug intake"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "question": "What debug intake should FluxMind collect when a SOGIFO-X flux observer shows rotor-position drift?",
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "integral component of flux observers is prone to amplifying sampling errors and DC bias"
+        },
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 3,
+          "snippet": "Conventional rotor flux observers in PMSM primarily analyze the interactions among stator current"
+        }
+      ],
+      "fixture_answer": "A debug card should cite sampling-error/DC-bias risk [1] and the stator-current/voltage interaction context for conventional rotor flux observers [2].",
+      "recorded_answer": "For SOGIFO-X rotor-position drift, collect sampling rate, current/voltage sensing offsets, DC bias symptoms, integrator or filter settings, and whether stator current and voltage interactions match the flux-observer assumptions. The source specifically warns that flux-observer integration can amplify sampling errors and DC bias [1], and frames conventional observers around stator-current interactions [2].",
+      "required_answer_terms": ["sampling", "DC bias", "stator current", "debug"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["sampling", "bias", "current", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "pmsm-smo-alpha-beta-model-extraction",
+      "answer_mode": "derivation",
+      "topic_tags": ["PMSM", "sliding mode observer", "equation extraction", "alpha-beta model", "state-space model"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "question": "What model variables should be extracted before translating a PMSM SMO paper into code?",
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 3,
+          "snippet": "design of the SMO algorithm is generally based on the mathematical model in the two-phase stationary coordinate system"
+        }
+      ],
+      "fixture_answer": "A derivation should cite the two-phase stationary-coordinate SMO model before extracting voltages, currents, rotor angle, inductances, resistance, and flux terms [1].",
+      "recorded_answer": "Before translating a PMSM SMO paper into code, extract the two-phase stationary-coordinate model, alpha-beta voltages and currents, stator resistance, inductance terms, rotor angle, speed, flux linkage, and the differential operator. The SMO source grounds the algorithm in that stationary-coordinate mathematical model [1].",
+      "required_answer_terms": ["alpha-beta", "voltages", "currents", "flux"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["model", "voltage", "current", "flux"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "constraint-smc-state-space-equation-card",
+      "answer_mode": "derivation",
+      "topic_tags": ["sliding mode control", "constraints", "state-space model", "mismatched disturbances"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "question": "What state-space facts must be preserved when deriving a constrained nonlinear SMC design?",
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 3,
+          "snippet": "the system dynamic can be described in the state space"
+        },
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 2,
+          "snippet": "disturbances do not satisfy the matching conditions"
+        }
+      ],
+      "fixture_answer": "The derivation should preserve the state-space system form [1] and the possibility of disturbances that do not satisfy matching conditions [2].",
+      "recorded_answer": "A constrained nonlinear SMC derivation should preserve the state vector, nonlinear functions, control input, disturbance bounds, sliding hyperplane, and which constraints apply over the regulation process. It should also flag whether disturbances are mismatched, because the source notes cases where disturbances do not satisfy matching conditions [2] after setting up the state-space dynamics [1].",
+      "required_answer_terms": ["state-space", "state vector", "disturbance", "matching"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["state", "disturbance", "constraint", "matching"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "mismatched-disturbance-dob-selection",
+      "answer_mode": "literature_review",
+      "topic_tags": ["terminal sliding mode control", "disturbance observer", "mismatched disturbances", "PMSM"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "question": "When should a disturbance-observer SMC path be considered for mismatched disturbances?",
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 2,
+          "snippet": "mismatched disturbances, which act in a different channel than the control input"
+        }
+      ],
+      "fixture_answer": "The answer should cite the mismatched-disturbance definition before recommending disturbance-observer-based SMC [1].",
+      "recorded_answer": "A disturbance-observer SMC path should be considered when disturbances do not enter through the same channel as the control input, especially when robustness claims would otherwise assume matched disturbances. The cited work defines mismatched disturbances as acting in a different channel than the control input [1].",
+      "required_answer_terms": ["disturbance-observer", "mismatched", "control input", "robustness"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["disturbance", "mismatched", "input", "robust"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "pmsm-smc-literature-taxonomy-table",
+      "answer_mode": "literature_review",
+      "topic_tags": ["PMSM", "sliding mode control", "taxonomy", "research gaps", "hardware validation"],
+      "eval_lanes": ["retrieval", "answer_quality", "paper_to_code"],
+      "question": "What should a PMSM SMC literature table include before selecting a controller family?",
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 3,
+          "snippet": "comparative summary table is presented to highlight the trade-offs"
+        },
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 3,
+          "snippet": "research gaps and outline future research directions"
+        }
+      ],
+      "fixture_answer": "A PMSM SMC literature table should cite the review's comparative table and research-gap framing before recommending controller families [1][2].",
+      "recorded_answer": "A PMSM SMC literature table should list controller family, plant assumptions, disturbance model, chattering mitigation, validation type, hardware status, sampling requirements, strengths, limitations, and open research gaps. The review explicitly motivates comparative trade-off tables [1] and research-gap summaries [2].",
+      "required_answer_terms": ["comparative", "trade-off", "hardware", "research gaps"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["table", "trade", "gap", "hardware"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "sensorless-method-selection-checklist",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "sensorless control", "active flux", "MRAS", "EKF", "parameter mismatch"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "question": "How should FluxMind help a user choose among active-flux, MRAS, EKF, and SOGIFO-style sensorless methods?",
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 2,
+          "snippet": "signal injection method at low speed and a model-based method in the high speed region"
+        },
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 2,
+          "snippet": "Rotor position estimation methods based on a model reference adaptive system"
+        },
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "enhancing flux estimation accuracy is critical"
+        }
+      ],
+      "fixture_answer": "The checklist should compare speed region and signal injection [1], MRAS/EKF/active-flux categories [2], and flux-estimation accuracy pressure [3].",
+      "recorded_answer": "FluxMind should ask for speed range, whether low-speed signal injection is acceptable, parameter accuracy, sensing noise, desired observer category, and evidence for flux-estimation drift. The checklist can compare low-speed signal-injection versus model-based regions [1], MRAS and related rotor-position categories [2], and the need to improve flux-estimation accuracy [3].",
+      "required_answer_terms": ["speed range", "signal injection", "MRAS", "flux-estimation"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["speed", "signal", "MRAS", "flux"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "control-report-matlab-export-notes",
+      "answer_mode": "code_generation",
+      "topic_tags": ["paper-to-code", "MATLAB export", "equation extraction", "state-space model", "plot validation"],
+      "eval_lanes": ["retrieval", "answer_quality", "code_generation", "paper_to_code"],
+      "question": "What MATLAB/Octave export notes should accompany a generated control simulation report?",
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 3,
+          "snippet": "stator voltages, respectively"
+        },
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 3,
+          "snippet": "where x(t) is a n"
+        },
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 3,
+          "snippet": "The IPMSM is modeled in the stationary"
+        }
+      ],
+      "fixture_answer": "The export notes should preserve PMSM voltage/current notation [1], state-space variable definitions [2], and stationary-frame IPMSM model assumptions [3].",
+      "recorded_answer": "A MATLAB or Octave export note should list notation mappings, state-space variables, PMSM voltage/current frames, parameter units, sample time, solver choice, generated plots, and unsupported assumptions. The report should preserve PMSM voltage notation [1], state variable definitions [2], and stationary-frame IPMSM model assumptions [3].",
+      "required_answer_terms": ["MATLAB", "Octave", "state-space", "plots"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["MATLAB", "Octave", "state", "plot"],
+      "minimum_live_answer_term_coverage": 0.75
+    }
+  ],
+  "retrieval_only_cases": [
+    {
+      "id": "retrieval-pmsm-review-motivation",
+      "question": "Retrieve the PMSM SMC review motivation around high-performance drive systems.",
+      "topic_tags": ["PMSM", "sliding mode control", "retrieval-only", "review"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 1,
+          "snippet": "Permanent Magnet Synchronous Motors (PMSMs) are widely employed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-pmsm-nonlinearity-load-disturbance",
+      "question": "Retrieve the PMSM SMC review statement about nonlinearities, load disturbances, and parameter uncertainty.",
+      "topic_tags": ["PMSM", "load disturbances", "parameter uncertainty", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 1,
+          "snippet": "nonlinearities, load disturbances, and parameter uncertain"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-pmsm-position-sensor-cost",
+      "question": "Retrieve why PMSM rotor-position sensing introduces practical cost and reliability issues.",
+      "topic_tags": ["PMSM", "sensorless control", "position sensors", "retrieval-only"],
+      "eval_lanes": ["retrieval", "forum_style"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 2,
+          "snippet": "position or speed sensors"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-pmsm-torque-current-regulation",
+      "question": "Retrieve the PMSM review context that ties torque regulation to stator current control.",
+      "topic_tags": ["PMSM", "current loop", "torque regulation", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 2,
+          "snippet": "torque regulation in PMSMs"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-smc-comparative-table",
+      "question": "Retrieve the review evidence for comparative SMC trade-off tables.",
+      "topic_tags": ["PMSM", "taxonomy", "trade-off table", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 3,
+          "snippet": "comparative summary table is presented"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-smc-research-gap-directions",
+      "question": "Retrieve the review statement about research gaps and future directions.",
+      "topic_tags": ["PMSM", "research gaps", "hardware validation", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 3,
+          "snippet": "research gaps and outline future research directions"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-regression-flux-observer-title",
+      "question": "Retrieve the regression flux observer source for IPMSM sensorless control.",
+      "topic_tags": ["IPMSM", "flux observer", "regression", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 1,
+          "snippet": "Regression Model-Based Flux Observer for IPMSM Sensorless Control"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-zero-speed-observability",
+      "question": "Retrieve the zero-speed observability warning for PMSM sensorless control.",
+      "topic_tags": ["IPMSM", "zero speed", "low-speed observability", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 1,
+          "snippet": "observability of the permanent-magnet synchronous motor is lost at zero speed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-low-speed-signal-injection",
+      "question": "Retrieve the low-speed signal-injection versus high-speed model-based method context.",
+      "topic_tags": ["IPMSM", "signal injection", "model-based observer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "forum_style"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 2,
+          "snippet": "signal injection method at low speed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-speed-dependent-changeover",
+      "question": "Retrieve the source mentioning speed-dependent hysteresis changeover.",
+      "topic_tags": ["IPMSM", "speed-dependent hysteresis", "chattering", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 2,
+          "snippet": "speed-dependent hysteresis changeover"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ipmsm-dynamic-model-section",
+      "question": "Retrieve the IPMSM dynamic model section anchor.",
+      "topic_tags": ["IPMSM", "state-space model", "equation extraction", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 3,
+          "snippet": "Dynamic Model of a IPMSM"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ipmsm-stationary-frame",
+      "question": "Retrieve the stationary-frame IPMSM modeling statement.",
+      "topic_tags": ["IPMSM", "stationary frame", "equation extraction", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 3,
+          "snippet": "The IPMSM is modeled in the stationary"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sogifo-flux-observer-recognition",
+      "question": "Retrieve the SOGIFO-X paper's claim that flux observer algorithms are recognized in PMSM sensorless control.",
+      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "flux observer algorithm is widely recognized"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sogifo-sampling-dc-bias",
+      "question": "Retrieve the SOGIFO-X source passage on sampling errors and DC bias.",
+      "topic_tags": ["PMSM", "SOGIFO-X", "DC bias", "sampling", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "sampling errors and DC bias"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-flux-estimation-accuracy-critical",
+      "question": "Retrieve the statement that flux-estimation accuracy is critical for sensorless control.",
+      "topic_tags": ["PMSM", "flux observer", "sensorless control", "retrieval-only"],
+      "eval_lanes": ["retrieval", "answer_quality"],
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "enhancing flux estimation accuracy is critical"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-enhanced-sogifo-x",
+      "question": "Retrieve the SOGIFO-X section that introduces the enhanced observer variant.",
+      "topic_tags": ["PMSM", "SOGIFO-X", "observer_estimation", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 3,
+          "snippet": "introduces the enhanced SOGIFO-X"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-vector-control-block-diagram",
+      "question": "Retrieve the closed-loop vector-control block diagram reference.",
+      "topic_tags": ["PMSM", "FOC", "block diagram", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 3,
+          "snippet": "Closed-loop vector control block diagram"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-pmsm-smo-title",
+      "question": "Retrieve the PMSM sliding-mode observer source.",
+      "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-active-flux-category",
+      "question": "Retrieve the active-flux category in PMSM rotor-position estimation.",
+      "topic_tags": ["PMSM", "active flux", "sensorless control", "retrieval-only"],
+      "eval_lanes": ["retrieval", "literature_review"],
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 2,
+          "snippet": "active flux"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-extended-kalman-filter-category",
+      "question": "Retrieve the EKF category from the PMSM sensorless control discussion.",
+      "topic_tags": ["PMSM", "EKF", "sensorless control", "retrieval-only"],
+      "eval_lanes": ["retrieval", "literature_review"],
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 2,
+          "snippet": "extended Kalman filter"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-three-phase-pmsm-model",
+      "question": "Retrieve the three-phase PMSM control-system model setup.",
+      "topic_tags": ["PMSM", "sliding mode observer", "equation extraction", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 3,
+          "snippet": "For three-phase PMSM control system"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-extended-back-emf",
+      "question": "Retrieve where the PMSM SMO paper introduces extended back EMF.",
+      "topic_tags": ["PMSM", "extended back EMF", "sliding mode observer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 3,
+          "snippet": "extended back EMF is introduced"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-state-constraints-linear-combinations",
+      "question": "Retrieve the constrained SMC state-constraint formulation.",
+      "topic_tags": ["sliding mode control", "constraints", "state-space model", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 1,
+          "snippet": "state constraints in the form of linear combinations"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-control-signal-constraints",
+      "question": "Retrieve the constrained SMC paper's control-signal constraint context.",
+      "topic_tags": ["sliding mode control", "constraints", "control signal", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 1,
+          "snippet": "control signal constraints"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-reaching-law-approach",
+      "question": "Retrieve the reaching-law setup for constrained SMC.",
+      "topic_tags": ["sliding mode control", "reaching law", "constraints", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 2,
+          "snippet": "law approach. Instead of"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sliding-hyperplane-selection",
+      "question": "Retrieve the sliding-hyperplane selection statement from constrained SMC.",
+      "topic_tags": ["sliding mode control", "sliding hyperplane", "state-space model", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "lesniewski-2023-smc-constraints.pdf",
+          "source_path": "papers/library/lesniewski-2023-smc-constraints.pdf",
+          "page": 3,
+          "snippet": "sliding hyperplane is selected"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-chattering-attenuated-tsmc-title",
+      "question": "Retrieve the disturbance-observer chattering-attenuated TSMC source.",
+      "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 1,
+          "snippet": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-mismatched-disturbance-channel",
+      "question": "Retrieve the mismatched-disturbance channel definition.",
+      "topic_tags": ["terminal sliding mode control", "mismatched disturbances", "disturbance observer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 2,
+          "snippet": "mismatched disturbances, which act in a different channel"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-integral-smc-comparison",
+      "question": "Retrieve the integral SMC comparison context for mismatched disturbances.",
+      "topic_tags": ["sliding mode control", "integral SMC", "mismatched disturbances", "retrieval-only"],
+      "eval_lanes": ["retrieval", "literature_review"],
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 2,
+          "snippet": "integral SMC"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-comparative-simulation-studies",
+      "question": "Retrieve the comparative simulation-studies evidence for the disturbance-observer TSMC paper.",
+      "topic_tags": ["terminal sliding mode control", "simulation validation", "plot validation", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
+          "page": 3,
+          "snippet": "comparative simulation studies"
+        }
+      ]
     }
   ],
   "provider_failure_fixtures": [

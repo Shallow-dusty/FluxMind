@@ -49,12 +49,14 @@ def test_streamlit_artifact_gallery_is_installed():
 def test_streamlit_admin_status_panel_is_installed():
     assert "collect_admin_status" in APP_SOURCE
     assert "collect_retention_preview" in APP_SOURCE
+    assert "apply_retention_delete" in APP_SOURCE
     assert "list_runtime_events" in APP_SOURCE
     assert "render_admin_status()" in APP_SOURCE
     assert "render_retention_preview()" in APP_SOURCE
     assert "render_runtime_events()" in APP_SOURCE
     assert "admin_status" in APP_SOURCE
     assert "retention_preview" in APP_SOURCE
+    assert "retention_delete" in APP_SOURCE
     assert "runtime_events" in APP_SOURCE
     assert "event_kind_filter" in APP_SOURCE
     assert "delete_enabled" in APP_SOURCE
@@ -64,9 +66,21 @@ def test_streamlit_admin_status_panel_is_installed():
     assert "status_storage_inventory" in APP_SOURCE
     assert "status_runtime_manifest" in APP_SOURCE
     assert "download_runtime_manifest" in APP_SOURCE
+    assert "collect_runtime_restore_check" in APP_SOURCE
+    assert "format_runtime_restore_check_markdown" in APP_SOURCE
+    assert "runtime_restore_manifest_upload" in APP_SOURCE
+    assert "download_runtime_restore_check" in APP_SOURCE
     assert "status_storage_paths" in APP_SOURCE
     assert "storage_readiness" in APP_SOURCE
     assert "external_storage_configured" in APP_SOURCE
+    assert "status_api_access" in APP_SOURCE
+    assert "api_access" in APP_SOURCE
+    assert "rate_limited_recent" in APP_SOURCE
+    assert "status_upload_scan" in APP_SOURCE
+    assert "upload_scans" in APP_SOURCE
+    assert '"upload_scan"' in APP_SOURCE
+    assert "format_admin_metrics" in APP_SOURCE
+    assert "download_admin_metrics" in APP_SOURCE
 
 
 def test_streamlit_corpus_profile_report_download_is_installed():

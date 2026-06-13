@@ -13,6 +13,11 @@ from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore
 
 
+@pytest.fixture(autouse=True)
+def no_runtime_event_disk_writes(monkeypatch):
+    monkeypatch.setattr("src.jobs.append_runtime_event", lambda **_kwargs: None)
+
+
 def test_artifact_registry_lists_job_artifacts(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
     monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", tmp_path / "artifacts")
@@ -32,6 +37,26 @@ def test_artifact_registry_lists_job_artifacts(tmp_path: Path, monkeypatch):
     assert artifacts[0].metadata["cost_estimate_usd"] == "0"
     assert local_artifact_path(artifacts[0].uri).exists()
     assert LocalArtifactRegistry(store).storage_status()["sqlite_rows"] == 1
+
+
+def test_artifact_registry_carries_job_ownership(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", tmp_path / "artifacts")
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    LocalJobRunner(store).run_mock_image(
+        ImageGenerationRequest(prompt="Owned SMC diagram"),
+        ownership={"owner_id": "lab-art", "owner_label": "Artifact Lab"},
+    )
+
+    registry = LocalArtifactRegistry(store)
+    artifacts = registry.list_artifacts(owner_id="lab-art")
+
+    assert len(artifacts) == 1
+    assert artifacts[0].owner_id == "lab-art"
+    assert artifacts[0].owner_label == "Artifact Lab"
+    assert artifacts[0].ownership_source == "request"
+    assert registry.list_artifacts(q="Artifact Lab")[0].owner_id == "lab-art"
+    assert registry.list_artifacts(owner_id="missing") == []
 
 
 def test_artifact_registry_filters_local_metadata(tmp_path: Path, monkeypatch):

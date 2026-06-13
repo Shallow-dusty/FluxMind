@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from src.config import ARTIFACTS_DIR
-from src.jobs import LocalJobStore
+from src.jobs import DEFAULT_OWNER_ID, DEFAULT_OWNER_LABEL, LocalJobStore, ownership_from_record
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,9 @@ class ArtifactRecord:
     mime_type: str
     title: str | None = None
     metadata: dict | None = None
+    owner_id: str = DEFAULT_OWNER_ID
+    owner_label: str = DEFAULT_OWNER_LABEL
+    ownership_source: str = "default"
 
 
 def artifact_id_for_uri(uri: str) -> str:
@@ -60,11 +63,12 @@ class LocalArtifactRegistry:
         limit: int = 100,
         kind: str | None = None,
         job_kind: str | None = None,
+        owner_id: str | None = None,
         q: str | None = None,
     ) -> list[ArtifactRecord]:
         records = self._records_from_jobs(limit=max(limit, 1000))
         self._sync_sqlite(records)
-        return self._filter_records(records, kind=kind, job_kind=job_kind, q=q)[:limit]
+        return self._filter_records(records, kind=kind, job_kind=job_kind, owner_id=owner_id, q=q)[:limit]
 
     @staticmethod
     def _filter_records(
@@ -72,16 +76,20 @@ class LocalArtifactRegistry:
         *,
         kind: str | None = None,
         job_kind: str | None = None,
+        owner_id: str | None = None,
         q: str | None = None,
     ) -> list[ArtifactRecord]:
         kind = kind.strip() if kind else None
         job_kind = job_kind.strip() if job_kind else None
+        owner_id = owner_id.strip() if owner_id else None
         query = (q or "").strip().casefold()
         filtered: list[ArtifactRecord] = []
         for record in records:
             if kind and record.kind != kind:
                 continue
             if job_kind and record.job_kind != job_kind:
+                continue
+            if owner_id and record.owner_id != owner_id:
                 continue
             if query:
                 searchable = " ".join(
@@ -91,6 +99,9 @@ class LocalArtifactRegistry:
                         record.job_id,
                         record.job_kind,
                         record.kind,
+                        record.owner_id,
+                        record.owner_label,
+                        record.ownership_source,
                         record.uri,
                         record.mime_type,
                         record.title,
@@ -105,6 +116,7 @@ class LocalArtifactRegistry:
     def _records_from_jobs(self, *, limit: int = 100) -> list[ArtifactRecord]:
         records: list[ArtifactRecord] = []
         for job in self.job_store.list_latest(limit=limit):
+            ownership = ownership_from_record(job)
             for artifact in job.artifacts:
                 uri = artifact.get("uri", "")
                 if not uri:
@@ -119,6 +131,9 @@ class LocalArtifactRegistry:
                         mime_type=artifact.get("mime_type", "application/octet-stream"),
                         title=artifact.get("title"),
                         metadata=artifact.get("metadata") or {},
+                        owner_id=ownership["owner_id"],
+                        owner_label=ownership["owner_label"],
+                        ownership_source=ownership["ownership_source"],
                     )
                 )
         return records[:limit]
@@ -216,12 +231,24 @@ class LocalArtifactRegistry:
                     mime_type TEXT NOT NULL,
                     title TEXT,
                     metadata TEXT NOT NULL,
+                    owner_id TEXT NOT NULL DEFAULT 'local-user',
+                    owner_label TEXT NOT NULL DEFAULT 'Local user',
+                    ownership_source TEXT NOT NULL DEFAULT 'default',
                     payload TEXT NOT NULL
                 )
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_job_id ON artifacts(job_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_kind ON artifacts(kind)")
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()}
+            for column, definition in {
+                "owner_id": "TEXT NOT NULL DEFAULT 'local-user'",
+                "owner_label": "TEXT NOT NULL DEFAULT 'Local user'",
+                "ownership_source": "TEXT NOT NULL DEFAULT 'default'",
+            }.items():
+                if column not in columns:
+                    conn.execute(f"ALTER TABLE artifacts ADD COLUMN {column} {definition}")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_owner_id ON artifacts(owner_id)")
 
     def _sync_sqlite(self, records: list[ArtifactRecord]) -> None:
         if not records and not self.db_path.exists():
@@ -235,9 +262,10 @@ class LocalArtifactRegistry:
                     """
                     INSERT INTO artifacts (
                         artifact_id, job_id, job_kind, kind, uri, mime_type,
-                        title, metadata, payload
+                        title, metadata, owner_id, owner_label, ownership_source,
+                        payload
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(artifact_id) DO UPDATE SET
                         job_id=excluded.job_id,
                         job_kind=excluded.job_kind,
@@ -246,6 +274,9 @@ class LocalArtifactRegistry:
                         mime_type=excluded.mime_type,
                         title=excluded.title,
                         metadata=excluded.metadata,
+                        owner_id=excluded.owner_id,
+                        owner_label=excluded.owner_label,
+                        ownership_source=excluded.ownership_source,
                         payload=excluded.payload
                     """,
                     (
@@ -257,6 +288,9 @@ class LocalArtifactRegistry:
                         record.mime_type,
                         record.title,
                         json.dumps(record.metadata or {}, ensure_ascii=False),
+                        record.owner_id,
+                        record.owner_label,
+                        record.ownership_source,
                         json.dumps(asdict(record), ensure_ascii=False),
                     ),
                 )
@@ -279,7 +313,11 @@ class LocalArtifactRegistry:
             ).fetchone()
         if row is None:
             return None
-        return ArtifactRecord(**json.loads(row["payload"]))
+        payload = json.loads(row["payload"])
+        payload.setdefault("owner_id", DEFAULT_OWNER_ID)
+        payload.setdefault("owner_label", DEFAULT_OWNER_LABEL)
+        payload.setdefault("ownership_source", "default")
+        return ArtifactRecord(**payload)
 
 
 def format_artifact_references(
@@ -302,6 +340,7 @@ def format_artifact_references(
             f"kind={artifact.kind}",
             f"mime={artifact.mime_type}",
             f"job={artifact.job_id}",
+            f"owner={artifact.owner_id}",
         ]
         if artifact.title:
             details.append(f"title={artifact.title}")

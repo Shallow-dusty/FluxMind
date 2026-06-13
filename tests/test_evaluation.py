@@ -24,11 +24,14 @@ from src.evaluation import (
     build_evaluation_report,
     evaluate_config,
     evaluate_case,
+    evaluate_code_output_case,
     evaluate_live_config,
     evaluate_live_query_payload,
     evaluate_live_retrieval_config,
     evaluate_live_retrieval_payload,
+    evaluate_pdf_structure_case,
     evaluate_recorded_answer,
+    evaluate_retrieval_only_case,
     evaluate_regression_gates,
     load_eval_config,
 )
@@ -329,10 +332,20 @@ def test_tokenize_query_supports_cjk_terms():
 def test_offline_eval_config_passes():
     config = load_eval_config(Path("eval/rag_baseline.json"))
 
-    case_results, provider_results, recorded_results = evaluate_config(config)
+    (
+        case_results,
+        retrieval_only_results,
+        code_output_results,
+        pdf_structure_results,
+        provider_results,
+        recorded_results,
+    ) = evaluate_config(config)
     gate_results = evaluate_regression_gates(
         config,
         case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
         provider_results=provider_results,
         recorded_results=recorded_results,
     )
@@ -340,19 +353,33 @@ def test_offline_eval_config_passes():
     assert case_results
     assert provider_results
     assert recorded_results
+    assert code_output_results
+    assert pdf_structure_results
     assert gate_results
     assert all(result.ok for result in case_results)
     assert all(result.ok for result in provider_results)
     assert all(result.ok for result in recorded_results)
+    assert all(result.ok for result in code_output_results)
+    assert all(result.ok for result in pdf_structure_results)
     assert all(result.ok for result in gate_results)
 
 
 def test_evaluation_report_summarizes_results_without_secrets():
     config = load_eval_config(Path("eval/rag_baseline.json"))
-    case_results, provider_results, recorded_results = evaluate_config(config)
+    (
+        case_results,
+        retrieval_only_results,
+        code_output_results,
+        pdf_structure_results,
+        provider_results,
+        recorded_results,
+    ) = evaluate_config(config)
     gate_results = evaluate_regression_gates(
         config,
         case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
         provider_results=provider_results,
         recorded_results=recorded_results,
     )
@@ -360,6 +387,9 @@ def test_evaluation_report_summarizes_results_without_secrets():
     report = build_evaluation_report(
         config,
         case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
         provider_results=provider_results,
         recorded_results=recorded_results,
         regression_gate_results=gate_results,
@@ -369,14 +399,384 @@ def test_evaluation_report_summarizes_results_without_secrets():
     assert report["schema_version"] == 1
     assert report["eval_file"] == "eval/rag_baseline.json"
     assert report["summary"]["offline_cases"]["failed"] == 0
+    assert report["summary"]["retrieval_only_cases"]["failed"] == 0
+    assert report["summary"]["code_output_cases"]["failed"] == 0
+    assert report["summary"]["pdf_structure_cases"]["failed"] == 0
     assert report["summary"]["provider_fixtures"]["failed"] == 0
     assert report["summary"]["recorded_answers"]["failed"] == 0
     assert report["summary"]["live_retrieval"] == {"total": 0, "ok": 0, "failed": 0}
     assert report["summary"]["live_answers"] == {"total": 0, "ok": 0, "failed": 0}
     assert report["summary"]["regression_gates"]["failed"] == 0
+    assert "PMSM" in report["coverage"]["topic_tags"]
+    assert "answer_quality" in report["coverage"]["eval_lanes"]
+    assert "pmsm_motor_control" in report["coverage"]["topic_groups"]
     assert report["results"]["offline_cases"][0]["case_id"]
+    assert report["results"]["pdf_structure_cases"][0]["case_id"]
     assert report["results"]["regression_gates"][0]["gate_id"]
     assert "api_key" not in str(report).lower()
+
+
+def test_default_rag_baseline_reaches_twenty_case_domain_gate():
+    config = load_eval_config(Path(__file__).resolve().parents[1] / "eval/rag_baseline.json")
+    (
+        case_results,
+        retrieval_only_results,
+        code_output_results,
+        pdf_structure_results,
+        provider_results,
+        recorded_results,
+    ) = evaluate_config(config)
+    gate_results = evaluate_regression_gates(
+        config,
+        case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+    )
+    report = build_evaluation_report(
+        config,
+        case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+        regression_gate_results=gate_results,
+    )
+
+    assert report["case_count"] >= 20
+    assert report["retrieval_only_case_count"] >= 30
+    assert report["retrieval_eval_question_count"] >= 50
+    assert report["code_output_case_count"] >= 3
+    assert report["pdf_structure_case_count"] >= 6
+    assert len(report["coverage"]["topic_tags"]) >= 50
+    assert "zero speed" in report["coverage"]["topic_tags"]
+    assert "MATLAB export" in report["coverage"]["topic_tags"]
+    assert report["summary"]["offline_cases"]["failed"] == 0
+    assert report["summary"]["retrieval_only_cases"]["ok"] >= 30
+    assert report["summary"]["code_output_cases"]["ok"] >= 3
+    assert report["summary"]["pdf_structure_cases"]["ok"] >= 6
+    assert report["summary"]["recorded_answers"]["ok"] >= 20
+    assert report["summary"]["regression_gates"]["failed"] == 0
+    assert all(
+        case.get("topic_tags") and case.get("eval_lanes") and case.get("expected_refs")
+        for case in config["cases"] + config["retrieval_only_cases"]
+    )
+
+
+def test_retrieval_only_cases_are_reported_and_gated(tmp_path):
+    paper = tmp_path / "paper.pdf"
+    from fitz import open as open_pdf
+
+    doc = open_pdf()
+    page = doc.new_page()
+    page.insert_text((72, 72), "PMSM retrieval-only source text")
+    doc.save(paper)
+    doc.close()
+
+    config = {
+        "quality_gates": {
+            "minimum_case_count": 1,
+            "minimum_retrieval_only_case_count": 1,
+            "minimum_retrieval_eval_question_count": 2,
+            "minimum_retrieval_only_pass_rate": 1.0,
+            "minimum_expected_source_ref_count": 2,
+        },
+        "cases": [
+            {
+                "id": "answer-case",
+                "question": "What is the answer case?",
+                "fixture_answer": "Use source [1].",
+                "expected_refs": [
+                    {
+                        "source": "paper.pdf",
+                        "source_path": "paper.pdf",
+                        "page": 1,
+                        "snippet": "PMSM retrieval-only source text",
+                    }
+                ],
+            }
+        ],
+        "retrieval_only_cases": [
+            {
+                "id": "retrieval-case",
+                "question": "Find the retrieval-only source.",
+                "expected_refs": [
+                    {
+                        "source": "paper.pdf",
+                        "source_path": "paper.pdf",
+                        "page": 1,
+                        "snippet": "PMSM retrieval-only source text",
+                    }
+                ],
+            }
+        ],
+    }
+
+    retrieval_result = evaluate_retrieval_only_case(
+        config["retrieval_only_cases"][0],
+        project_root=tmp_path,
+    )
+    (
+        case_results,
+        retrieval_only_results,
+        code_output_results,
+        pdf_structure_results,
+        provider_results,
+        recorded_results,
+    ) = evaluate_config(config, project_root=tmp_path)
+    gate_results = evaluate_regression_gates(
+        config,
+        case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+    )
+    report = build_evaluation_report(
+        config,
+        case_results=case_results,
+        retrieval_only_results=retrieval_only_results,
+        code_output_results=code_output_results,
+        pdf_structure_results=pdf_structure_results,
+        provider_results=provider_results,
+        recorded_results=recorded_results,
+        regression_gate_results=gate_results,
+    )
+
+    assert retrieval_result.ok
+    assert report["retrieval_only_case_count"] == 1
+    assert report["retrieval_eval_question_count"] == 2
+    assert report["summary"]["retrieval_only_cases"] == {"total": 1, "ok": 1, "failed": 0}
+    assert {result.gate_id for result in gate_results} >= {
+        "minimum_retrieval_only_case_count",
+        "minimum_retrieval_eval_question_count",
+        "minimum_retrieval_only_pass_rate",
+    }
+    assert all(result.ok for result in gate_results)
+
+
+def test_retrieval_only_case_rejects_missing_expected_refs():
+    result = evaluate_retrieval_only_case(
+        {
+            "id": "missing-refs",
+            "question": "Which source supports this?",
+            "expected_refs": [],
+        }
+    )
+
+    assert not result.ok
+    assert result.message == "expected_refs_missing"
+
+
+def test_pdf_structure_case_verifies_equation_marker(tmp_path):
+    import fitz
+
+    paper = tmp_path / "papers" / "library" / "structure.pdf"
+    paper.parent.mkdir(parents=True)
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text(
+        (72, 72),
+        "Voltage equation\nud = Rsid + Ld did/dt\nTable 1. Parameter summary",
+    )
+    document.save(paper)
+    document.close()
+
+    result = evaluate_pdf_structure_case(
+        {
+            "id": "structure-equation",
+            "source_path": "papers/library/structure.pdf",
+            "page": 1,
+            "kind": "equation",
+            "contains": "ud = Rsid",
+        },
+        project_root=tmp_path,
+    )
+
+    assert result.ok
+    assert result.kind == "equation"
+    assert result.marker_count >= 1
+    assert "ud = Rsid" in result.matched_text
+
+
+def test_code_output_case_runs_python_and_verifies_artifacts():
+    result = evaluate_code_output_case(
+        {
+            "id": "code-output-ok",
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "Path('plot.png').write_bytes(b'\\x89PNG\\r\\n\\x1a\\n')\n"
+                    "Path('summary.txt').write_text('sliding mode code-output eval', encoding='utf-8')\n"
+                    "print('fluxmind-code-output-ok plot.png summary.txt')\n"
+                )
+            },
+            "required_stdout_terms": ["fluxmind-code-output-ok", "plot.png"],
+            "expected_artifacts": [
+                {
+                    "title": "plot.png",
+                    "kind": "plot",
+                    "mime_type": "image/png",
+                    "minimum_byte_count": 8,
+                },
+                {
+                    "title": "summary.txt",
+                    "kind": "text",
+                    "mime_type": "text/plain",
+                    "contains": "sliding mode code-output eval",
+                },
+            ],
+            "expected_runtime_metadata": {
+                "provider_runtime": "python-local",
+                "filesystem_isolation": "temporary_workdir",
+            },
+        }
+    )
+
+    assert result.ok
+    assert result.language == "python"
+    assert result.exit_code == 0
+    assert [artifact.title for artifact in result.artifact_results] == ["plot.png", "summary.txt"]
+    assert all(artifact.ok for artifact in result.artifact_results)
+
+
+def test_code_output_case_runs_python_template_and_verifies_plot_artifact():
+    result = evaluate_code_output_case(
+        {
+            "id": "code-output-template",
+            "language": "python",
+            "template_id": "smc_reaching_law",
+            "entrypoint": "main.py",
+            "required_stdout_terms": ["wrote smc_reaching_law.csv and smc_reaching_law.svg"],
+            "expected_artifacts": [
+                {
+                    "title": "smc_reaching_law.csv",
+                    "kind": "text",
+                    "mime_type": "text/csv",
+                    "contains": "time_s,sliding_surface",
+                },
+                {
+                    "title": "smc_reaching_law.svg",
+                    "kind": "plot",
+                    "mime_type": "image/svg+xml",
+                    "contains": "SMC reaching-law response",
+                },
+            ],
+            "expected_runtime_metadata": {
+                "provider_runtime": "python-local",
+                "filesystem_isolation": "temporary_workdir",
+            },
+        }
+    )
+
+    assert result.ok
+    assert [artifact.title for artifact in result.artifact_results] == [
+        "smc_reaching_law.csv",
+        "smc_reaching_law.svg",
+    ]
+
+
+def test_code_output_case_runs_python_through_local_job_runner():
+    result = evaluate_code_output_case(
+        {
+            "id": "code-output-local-job",
+            "language": "python",
+            "execution_mode": "local_job",
+            "entrypoint": "main.py",
+            "files": {
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "Path('job-summary.txt').write_text('job-backed code-output eval', encoding='utf-8')\n"
+                    "Path('job-plot.svg').write_text('<svg>job-backed plot</svg>', encoding='utf-8')\n"
+                    "print('fluxmind-job-code-output job-summary.txt job-plot.svg')\n"
+                )
+            },
+            "required_stdout_terms": ["fluxmind-job-code-output", "job-summary.txt"],
+            "expected_artifacts": [
+                {
+                    "title": "job-summary.txt",
+                    "kind": "text",
+                    "mime_type": "text/plain",
+                    "contains": "job-backed code-output eval",
+                },
+                {
+                    "title": "job-plot.svg",
+                    "kind": "plot",
+                    "mime_type": "image/svg+xml",
+                    "contains": "job-backed plot",
+                },
+            ],
+            "expected_runtime_metadata": {
+                "provider_runtime": "python-local",
+                "filesystem_isolation": "temporary_workdir",
+            },
+            "expected_job_status": "succeeded",
+            "expected_job_metadata": {
+                "kind": "code_execution",
+                "attempts": "1",
+            },
+            "expected_job_log_statuses": ["running", "succeeded"],
+        }
+    )
+
+    assert result.ok
+    assert result.execution_mode == "local_job"
+    assert result.job_status == "succeeded"
+    assert result.job_metadata_ok
+    assert [artifact.title for artifact in result.artifact_results] == [
+        "job-summary.txt",
+        "job-plot.svg",
+    ]
+
+
+def test_code_output_case_rejects_unknown_template():
+    result = evaluate_code_output_case(
+        {
+            "id": "code-output-unknown-template",
+            "language": "python",
+            "template_id": "missing-template",
+            "expected_artifacts": [
+                {
+                    "title": "plot.png",
+                    "kind": "plot",
+                    "mime_type": "image/png",
+                },
+            ],
+        }
+    )
+
+    assert not result.ok
+    assert result.exit_code == 2
+    assert result.message == "unknown_code_output_template:python:missing-template"
+
+
+def test_code_output_case_rejects_missing_expected_artifacts():
+    result = evaluate_code_output_case(
+        {
+            "id": "code-output-missing-artifact",
+            "language": "python",
+            "entrypoint": "main.py",
+            "files": {"main.py": "print('no artifact')"},
+            "required_stdout_terms": ["no artifact"],
+            "expected_artifacts": [
+                {
+                    "title": "plot.png",
+                    "kind": "plot",
+                    "mime_type": "image/png",
+                },
+            ],
+        }
+    )
+
+    assert not result.ok
+    assert result.stdout_ok
+    assert result.artifact_results[0].message == "artifact_missing"
 
 
 def test_regression_gates_reject_narrow_eval_set():
@@ -388,11 +788,31 @@ def test_regression_gates_reject_narrow_eval_set():
             "minimum_recorded_answer_count": 1,
             "minimum_recorded_answer_pass_rate": 1.0,
             "minimum_average_recorded_answer_term_coverage": 0.8,
+            "minimum_topic_tag_count": 2,
+            "required_topic_tags": ["SMC", "PMSM"],
+            "minimum_eval_lane_count": 2,
+            "required_eval_lanes": ["retrieval", "answer_quality"],
+            "required_topic_groups": ["motor_control"],
+            "minimum_code_output_case_count": 1,
+            "required_code_output_languages": ["python"],
+            "required_code_output_template_ids": ["smc_reaching_law"],
+            "required_code_output_execution_modes": ["provider", "local_job"],
+            "minimum_code_output_pass_rate": 1.0,
+            "minimum_pdf_structure_case_count": 1,
+            "required_pdf_structure_kinds": ["equation", "table", "figure"],
+            "minimum_pdf_structure_pass_rate": 1.0,
+        },
+        "domain_ontology": {
+            "topic_groups": {
+                "motor_control": ["PMSM"],
+            },
         },
         "cases": [
             {
                 "id": "only-explanation",
                 "answer_mode": "explanation",
+                "topic_tags": ["SMC"],
+                "eval_lanes": ["retrieval"],
                 "expected_refs": [],
             }
         ],
@@ -410,6 +830,59 @@ def test_regression_gates_reject_narrow_eval_set():
     assert "required_answer_modes" in failed_gate_ids
     assert "minimum_recorded_answer_count" in failed_gate_ids
     assert "minimum_average_recorded_answer_term_coverage" in failed_gate_ids
+    assert "minimum_topic_tag_count" in failed_gate_ids
+    assert "required_topic_tags" in failed_gate_ids
+    assert "minimum_eval_lane_count" in failed_gate_ids
+    assert "required_eval_lanes" in failed_gate_ids
+    assert "required_topic_groups" in failed_gate_ids
+    assert "minimum_code_output_case_count" in failed_gate_ids
+    assert "required_code_output_languages" in failed_gate_ids
+    assert "required_code_output_template_ids" in failed_gate_ids
+    assert "required_code_output_execution_modes" in failed_gate_ids
+    assert "minimum_code_output_pass_rate" in failed_gate_ids
+    assert "minimum_pdf_structure_case_count" in failed_gate_ids
+    assert "required_pdf_structure_kinds" in failed_gate_ids
+    assert "minimum_pdf_structure_pass_rate" in failed_gate_ids
+
+
+def test_regression_gates_accept_domain_coverage_metadata():
+    config = {
+        "domain_ontology": {
+            "topic_groups": {
+                "motor_control": ["PMSM", "FOC"],
+                "robust_control": ["SMC"],
+            },
+        },
+        "quality_gates": {
+            "minimum_topic_tag_count": 3,
+            "required_topic_tags": ["SMC", "PMSM", "FOC"],
+            "minimum_eval_lane_count": 3,
+            "required_eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+            "required_topic_groups": ["motor_control", "robust_control"],
+        },
+        "cases": [
+            {
+                "id": "smc",
+                "topic_tags": ["SMC", "PMSM"],
+                "eval_lanes": ["retrieval", "answer_quality"],
+            },
+            {
+                "id": "foc",
+                "topic_tags": ["FOC"],
+                "eval_lanes": ["forum_style"],
+            },
+        ],
+    }
+
+    results = evaluate_regression_gates(
+        config,
+        case_results=[],
+        provider_results=[],
+        recorded_results=[],
+    )
+
+    assert results
+    assert all(result.ok for result in results)
 
 
 def test_regression_gates_score_live_results_when_supplied():

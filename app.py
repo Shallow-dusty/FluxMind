@@ -1,5 +1,7 @@
 """FluxMind — RAG-based Copilot for Sliding Mode Control & Flux Linkage Estimation."""
 
+import json
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -12,9 +14,11 @@ st.set_page_config(
 )
 
 from src.admin import (
+    apply_retention_delete,
     collect_admin_status,
     collect_corpus_profile_status,
     collect_retention_preview,
+    format_admin_metrics,
     format_admin_status_report,
     format_corpus_profile_status_report,
 )
@@ -35,7 +39,12 @@ from src.ingestion import (
 from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.metadata import CorpusProfileStore
 from src.runtime import list_runtime_events, logger, new_request_id, normalize_exception
-from src.storage_manifest import collect_runtime_backup_manifest, format_runtime_backup_manifest_markdown
+from src.storage_manifest import (
+    collect_runtime_backup_manifest,
+    collect_runtime_restore_check,
+    format_runtime_backup_manifest_markdown,
+    format_runtime_restore_check_markdown,
+)
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -101,13 +110,20 @@ I18N = {
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
         "download_status_report": "下载状态报告",
+        "download_metrics": "下载指标文本",
         "download_runtime_manifest": "下载运行时备份清单",
+        "download_runtime_restore_check": "下载恢复校验报告",
+        "runtime_restore_manifest_upload": "上传运行时备份清单 JSON",
+        "runtime_restore_check": "恢复校验",
+        "runtime_restore_invalid_manifest": "清单解析失败：{error}",
         "retention_preview": "保留预览",
         "upload_retention_days": "上传保留天数",
         "artifact_retention_days": "产物保留天数",
         "retention_limit": "候选上限",
         "retention_uploads": "上传候选",
         "retention_artifacts": "产物候选",
+        "retention_delete": "删除候选",
+        "retention_delete_result": "删除结果",
         "runtime_events": "运行事件",
         "event_kind_filter": "事件类型",
         "event_code_filter": "事件代码",
@@ -117,9 +133,16 @@ I18N = {
         "status_corpus": "语料",
         "status_provider_failures": "Provider 错误",
         "status_query_usage": "查询用量估算",
+        "status_retrieval_traces": "检索追踪",
         "status_cost_pricing": "成本估算配置",
+        "status_code_execution": "代码执行事件",
+        "status_api_access": "API 访问审计",
+        "status_upload_scan": "上传扫描",
+        "status_execution_policy": "执行策略",
         "status_storage": "存储就绪状态",
         "status_storage_inventory": "本地存储盘点",
+        "status_storage_schemas": "本地存储模式",
+        "status_platform_readiness": "平台化就绪状态",
         "status_runtime_manifest": "运行时备份清单",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
@@ -228,13 +251,20 @@ I18N = {
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
         "download_status_report": "Download status report",
+        "download_metrics": "Download metrics text",
         "download_runtime_manifest": "Download runtime manifest",
+        "download_runtime_restore_check": "Download restore check report",
+        "runtime_restore_manifest_upload": "Upload runtime manifest JSON",
+        "runtime_restore_check": "Restore check",
+        "runtime_restore_invalid_manifest": "Manifest parse failed: {error}",
         "retention_preview": "Retention preview",
         "upload_retention_days": "Upload retention days",
         "artifact_retention_days": "Artifact retention days",
         "retention_limit": "Candidate limit",
         "retention_uploads": "Upload candidates",
         "retention_artifacts": "Artifact candidates",
+        "retention_delete": "Delete candidates",
+        "retention_delete_result": "Delete result",
         "runtime_events": "Runtime events",
         "event_kind_filter": "Event kind",
         "event_code_filter": "Event code",
@@ -244,9 +274,16 @@ I18N = {
         "status_corpus": "Corpus",
         "status_provider_failures": "Provider failures",
         "status_query_usage": "Query usage estimates",
+        "status_retrieval_traces": "Retrieval traces",
         "status_cost_pricing": "Cost estimate pricing",
+        "status_code_execution": "Code execution events",
+        "status_api_access": "API access audit",
+        "status_upload_scan": "Upload scan",
+        "status_execution_policy": "Execution policy",
         "status_storage": "Storage readiness",
         "status_storage_inventory": "Local storage inventory",
+        "status_storage_schemas": "Local storage schemas",
+        "status_platform_readiness": "Platform readiness",
         "status_runtime_manifest": "Runtime backup manifest",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
@@ -547,9 +584,15 @@ def render_admin_status() -> None:
     jobs = status["jobs"]
     artifacts = status["artifacts"]
     storage = status["storage"]
+    storage_schemas = status["storage_schemas"]
+    platform_readiness = status["platform_readiness"]
     corpus = status["corpus"]
     provider_failures = status["provider_failures"]
     query_usage = status["query_usage"]
+    retrieval_traces = status["retrieval_traces"]
+    code_execution = status["code_execution"]
+    api_access = status["api_access"]
+    upload_scans = status["upload_scans"]
     config = status["config"]
     storage_readiness = config.get("storage_readiness", {})
 
@@ -580,8 +623,85 @@ def render_admin_status() -> None:
     st.json(provider_failures)
     st.caption(text["status_query_usage"])
     st.json(query_usage)
+    st.caption(text["status_retrieval_traces"])
+    st.json(
+        {
+            "total_recent": retrieval_traces.get("total_recent", 0),
+            "by_code": retrieval_traces.get("by_code", {}),
+            "by_endpoint": retrieval_traces.get("by_endpoint", {}),
+            "by_answer_mode": retrieval_traces.get("by_answer_mode", {}),
+            "empty_recent": retrieval_traces.get("empty_recent", 0),
+            "empty_rate": retrieval_traces.get("empty_rate", 0),
+            "source_page_incomplete_recent": retrieval_traces.get("source_page_incomplete_recent", 0),
+            "source_page_incomplete_rate": retrieval_traces.get("source_page_incomplete_rate", 0),
+            "citation_checked_recent": retrieval_traces.get("citation_checked_recent", 0),
+            "citation_failed_recent": retrieval_traces.get("citation_failed_recent", 0),
+            "citation_failure_rate": retrieval_traces.get("citation_failure_rate", 0),
+            "alerts": retrieval_traces.get("alerts", []),
+            "alert_thresholds": retrieval_traces.get("alert_thresholds", {}),
+            "context_count": retrieval_traces.get("context_count", {}),
+            "duration_ms": retrieval_traces.get("duration_ms", {}),
+        }
+    )
     st.caption(text["status_cost_pricing"])
     st.json(query_usage.get("pricing", {}))
+    st.caption(text["status_code_execution"])
+    st.json(
+        {
+            "total_recent": code_execution.get("total_recent", 0),
+            "by_code": code_execution.get("by_code", {}),
+            "by_status": code_execution.get("by_status", {}),
+            "failure_rate": code_execution.get("failure_rate", 0),
+            "alerts": code_execution.get("alerts", []),
+            "alert_thresholds": code_execution.get("alert_thresholds", {}),
+            "duration_ms": code_execution.get("duration_ms", {}),
+        }
+    )
+    st.caption(text["status_api_access"])
+    st.json(
+        {
+            "audit_enabled": api_access.get("audit_enabled", False),
+            "total_recent": api_access.get("total_recent", 0),
+            "by_token_status": api_access.get("by_token_status", {}),
+            "by_status_code": api_access.get("by_status_code", {}),
+            "by_method": api_access.get("by_method", {}),
+            "invalid_recent": api_access.get("invalid_recent", 0),
+            "missing_recent": api_access.get("missing_recent", 0),
+            "rate_limited_recent": api_access.get("rate_limited_recent", 0),
+            "rate_limit": api_access.get("rate_limit", {}),
+        }
+    )
+    st.caption(text["status_upload_scan"])
+    st.json(
+        {
+            "scan_enabled": upload_scans.get("scan_enabled", False),
+            "total_recent": upload_scans.get("total_recent", 0),
+            "by_status": upload_scans.get("by_status", {}),
+            "by_reason": upload_scans.get("by_reason", {}),
+            "allowed_recent": upload_scans.get("allowed_recent", 0),
+            "blocked_recent": upload_scans.get("blocked_recent", 0),
+            "active_content_recent": upload_scans.get("active_content_recent", 0),
+            "parse_failed_recent": upload_scans.get("parse_failed_recent", 0),
+            "config": upload_scans.get("config", {}),
+        }
+    )
+    st.caption(text["status_execution_policy"])
+    st.json(
+        {
+            "backend": config.get("code_execution_backend", ""),
+            "policy": config.get("code_execution_policy", ""),
+            "allowed_imports": config.get("code_execution_allowed_imports", []),
+            "output_limits": {
+                "stdout_bytes": config.get("code_execution_max_stdout_bytes", 0),
+                "stderr_bytes": config.get("code_execution_max_stderr_bytes", 0),
+                "artifacts": config.get("code_execution_max_artifacts", 0),
+                "artifact_bytes": config.get("code_execution_max_artifact_bytes", 0),
+                "artifact_total_bytes": config.get("code_execution_max_artifact_total_bytes", 0),
+                "artifact_candidates": config.get("code_execution_max_artifact_candidates", 0),
+            },
+            "docker": config.get("docker_execution", {}),
+        }
+    )
     st.caption(text["status_storage"])
     st.json(
         {
@@ -593,6 +713,10 @@ def render_admin_status() -> None:
     )
     st.caption(text["status_storage_inventory"])
     st.json(storage)
+    st.caption(text["status_storage_schemas"])
+    st.json(storage_schemas)
+    st.caption(text["status_platform_readiness"])
+    st.json(platform_readiness)
     runtime_manifest = collect_runtime_backup_manifest()
     st.caption(text["status_runtime_manifest"])
     st.json(
@@ -624,6 +748,14 @@ def render_admin_status() -> None:
         key="download_admin_status_report",
     )
     st.download_button(
+        text["download_metrics"],
+        data=format_admin_metrics(status).encode("utf-8"),
+        file_name="fluxmind-admin-metrics.prom",
+        mime="text/plain",
+        use_container_width=True,
+        key="download_admin_metrics",
+    )
+    st.download_button(
         text["download_runtime_manifest"],
         data=format_runtime_backup_manifest_markdown(runtime_manifest).encode("utf-8"),
         file_name="fluxmind-runtime-manifest.md",
@@ -631,6 +763,41 @@ def render_admin_status() -> None:
         use_container_width=True,
         key="download_runtime_manifest",
     )
+    uploaded_manifest = st.file_uploader(
+        text["runtime_restore_manifest_upload"],
+        type=["json"],
+        key="runtime_restore_manifest_upload",
+    )
+    if uploaded_manifest is not None:
+        try:
+            restore_manifest = json.loads(uploaded_manifest.getvalue().decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            st.error(text["runtime_restore_invalid_manifest"].format(error=exc))
+        else:
+            restore_check = collect_runtime_restore_check(restore_manifest)
+            st.caption(text["runtime_restore_check"])
+            st.json(
+                {
+                    "ok": restore_check["ok"],
+                    "manifest_errors": restore_check["manifest_errors"],
+                    "checked_groups": restore_check["checked_groups"],
+                    "checked_files": restore_check["checked_files"],
+                    "missing_groups": restore_check["missing_groups"],
+                    "mismatched_groups": restore_check["mismatched_groups"],
+                    "missing_files": restore_check["missing_files"],
+                    "mismatched_files": restore_check["mismatched_files"],
+                    "content_restored": restore_check["content_restored"],
+                    "delete_enabled": restore_check["delete_enabled"],
+                }
+            )
+            st.download_button(
+                text["download_runtime_restore_check"],
+                data=format_runtime_restore_check_markdown(restore_check).encode("utf-8"),
+                file_name="fluxmind-runtime-restore-dry-run.md",
+                mime="text/markdown",
+                use_container_width=True,
+                key="download_runtime_restore_check",
+            )
 
 
 def render_retention_preview() -> None:
@@ -679,6 +846,24 @@ def render_retention_preview() -> None:
     st.json(preview["uploads"])
     st.caption(text["retention_artifacts"])
     st.json(preview["artifacts"])
+    if preview["delete_enabled"]:
+        if st.button(text["retention_delete"], key="retention_delete", use_container_width=True):
+            result = apply_retention_delete(
+                upload_days=int(upload_days),
+                artifact_days=int(artifact_days),
+                limit=int(limit),
+            )
+            st.caption(text["retention_delete_result"])
+            st.json(
+                {
+                    "mode": result["mode"],
+                    "deleted_files": result["deleted_files"],
+                    "deleted_bytes": result["deleted_bytes"],
+                    "failed_files": result["failed_files"],
+                    "uploads": result["uploads"],
+                    "artifacts": result["artifacts"],
+                }
+            )
 
 
 def render_runtime_events() -> None:
@@ -687,7 +872,7 @@ def render_runtime_events() -> None:
     with col_kind:
         event_kind = st.selectbox(
             text["event_kind_filter"],
-            options=["", "provider_failure", "query_usage"],
+            options=["", "provider_failure", "query_usage", "retrieval_trace", "code_execution", "api_access", "upload_scan", "retention_delete"],
             format_func=lambda value: value or "all",
             key="event_kind_filter",
         )

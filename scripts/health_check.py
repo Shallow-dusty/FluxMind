@@ -99,6 +99,7 @@ def main() -> int:
         "src/chain.py",
         "src/ingestion.py",
         "src/capabilities.py",
+        "src/execution_policy.py",
         "src/providers.py",
         "src/jobs.py",
         "src/artifacts.py",
@@ -106,11 +107,13 @@ def main() -> int:
         "src/runtime.py",
         "src/metadata.py",
         "src/storage_manifest.py",
+        "src/storage_schema.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
         "scripts/runtime_manifest.py",
+        "scripts/storage_schema.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -162,6 +165,7 @@ def main() -> int:
     check("API Route Coverage" in feature_audit, "feature audit route coverage installed", failures)
     check("POST   /query/retrieve" in feature_audit, "feature audit records retrieval diagnostics route", failures)
     check("GET    /admin/runtime-manifest" in feature_audit, "feature audit records runtime manifest route", failures)
+    check("POST   /admin/runtime-manifest/restore-check" in feature_audit, "feature audit records runtime restore-check route", failures)
     check("Product platform layer        incomplete" in feature_audit, "feature audit records platform gap", failures)
 
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
@@ -175,13 +179,23 @@ def main() -> int:
     check("OCTAVE_EXECUTION_TEMPLATES" in app_source and "octave_execution_template" in app_source, "Streamlit Octave execution templates installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
     check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
+    check("retention_delete" in app_source and "apply_retention_delete" in app_source, "Streamlit retention delete guard installed", failures)
     check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
     check("status_provider_failures" in app_source, "Streamlit provider failure status panel installed", failures)
     check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
+    check("status_retrieval_traces" in app_source and "retrieval_trace" in app_source, "Streamlit retrieval trace status panel installed", failures)
     check("status_cost_pricing" in app_source, "Streamlit query cost pricing panel installed", failures)
+    check("status_code_execution" in app_source and "alert_thresholds" in app_source, "Streamlit code execution alert status installed", failures)
+    check("status_api_access" in app_source and '"api_access"' in app_source, "Streamlit API access audit status installed", failures)
+    check("rate_limited_recent" in app_source and '"rate_limit"' in app_source, "Streamlit API rate-limit status installed", failures)
+    check("download_admin_metrics" in app_source and "format_admin_metrics" in app_source, "Streamlit metrics download installed", failures)
+    check("status_execution_policy" in app_source and "code_execution_allowed_imports" in app_source, "Streamlit execution policy status installed", failures)
     check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
     check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
+    check("status_storage_schemas" in app_source and "storage_schemas" in app_source, "Streamlit storage schema panel installed", failures)
+    check("status_platform_readiness" in app_source and "platform_readiness" in app_source, "Streamlit platform readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
+    check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
@@ -198,11 +212,15 @@ def main() -> int:
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
     check("/admin/runtime-manifest" in api_source and "collect_runtime_backup_manifest" in api_source, "admin runtime manifest route installed", failures)
+    check("/admin/runtime-manifest/restore-check" in api_source and "collect_runtime_restore_check" in api_source, "admin runtime restore-check route installed", failures)
     check("/admin/retention" in api_source and "collect_retention_preview" in api_source, "admin retention preview route installed", failures)
+    check("/admin/retention/delete" in api_source and "apply_retention_delete" in api_source, "admin retention delete route installed", failures)
     check("/admin/events" in api_source and "list_runtime_events" in api_source, "admin runtime events route installed", failures)
     check("/corpus/papers" in api_source, "corpus metadata route installed", failures)
     check("filter_paper_records" in api_source and "indexed_status" in api_source, "corpus paper metadata filters installed", failures)
     check("/corpus/chunks" in api_source and "page: int | None" in api_source and "q=q" in api_source, "corpus chunk metadata route installed", failures)
+    check("/corpus/structure" in api_source and "extract_pdf_structure_markers" in api_source and "q: str | None" in api_source, "corpus PDF structure route installed", failures)
+    check("/corpus/structure/report" in api_source and "format_corpus_structure_report" in api_source, "corpus PDF structure report route installed", failures)
     check("/corpus/status" in api_source and "collect_corpus_status" in api_source, "corpus lifecycle status route installed", failures)
     check("/corpus/active" in api_source, "active corpus selection route installed", failures)
     check(
@@ -217,22 +235,32 @@ def main() -> int:
     check("/query/inspect" in api_source and "query_with_metadata" in api_source, "query citation inspection route installed", failures)
     check("/query/retrieve" in api_source and "retrieve_with_metadata" in api_source, "query retrieval diagnostics route installed", failures)
     check("/query/report" in api_source and "format_query_report" in api_source, "query Markdown report route installed", failures)
+    check("Paper-to-Code Handoff" in api_source and "extract_markdown_code_blocks" in api_source, "paper-to-code report handoff installed", failures)
     check("/admin/status/report" in api_source and "format_admin_status_report" in api_source, "admin status report route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("status: str | None" in api_source and "kind: str | None" in api_source and "q=q" in api_source, "job metadata filters installed", failures)
+    check("idempotency_key" in api_source and "existing_idempotent_job" in api_source, "job idempotency API installed", failures)
+    check("owner_id: str | None" in api_source and "request_ownership" in api_source, "API ownership metadata fields installed", failures)
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
     check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
     check('"logs": record.logs' in api_source, "job transition logs exposed by API", failures)
     check("append_runtime_event" in api_source, "query provider failures are recorded", failures)
+    check("api_access_audit_middleware" in api_source and "kind=\"api_access\"" in api_source, "API access audit events are recorded", failures)
+    check("api_rate_limit_decision" in api_source and "API rate limit exceeded" in api_source, "API rate-limit guard installed", failures)
     check("record_query_usage" in api_source and "query_usage" in api_source, "query usage estimates are recorded", failures)
+    check("record_retrieval_trace" in api_source and 'kind="retrieval_trace"' in api_source, "query retrieval trace events are recorded", failures)
     check("provider_usage" in api_source and "provider_total_tokens" in api_source, "provider query usage passthrough installed", failures)
+    check("/admin/metrics" in api_source and "format_admin_metrics" in api_source, "admin metrics route installed", failures)
     check("warm_existing_vector_store" in api_source and "build_vector_store" not in api_source, "API startup avoids synchronous index rebuild", failures)
     storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")
     check("collect_runtime_backup_manifest" in storage_manifest_source and "secrets_exported" in storage_manifest_source, "runtime backup manifest installed", failures)
+    check("collect_runtime_restore_check" in storage_manifest_source and "content_restored" in storage_manifest_source, "runtime restore dry-run check installed", failures)
+    check("manifest_errors" in storage_manifest_source and "hash_algorithm must be sha256" in storage_manifest_source, "runtime restore manifest validation installed", failures)
     runtime_manifest_cli = (PROJECT_ROOT / "scripts" / "runtime_manifest.py").read_text(encoding="utf-8")
     check("format_runtime_backup_manifest_markdown" in runtime_manifest_cli and "--format" in runtime_manifest_cli, "runtime manifest CLI installed", failures)
+    check("--restore-check" in runtime_manifest_cli and "format_runtime_restore_check_markdown" in runtime_manifest_cli, "runtime restore-check CLI installed", failures)
     jobs_source = (PROJECT_ROOT / "src" / "jobs.py").read_text(encoding="utf-8")
     check("sqlite3" in jobs_source and "CREATE TABLE IF NOT EXISTS jobs" in jobs_source, "SQLite job state mirror installed", failures)
     check("logs:" in jobs_source and "append_job_log" in jobs_source, "job transition logs installed", failures)
@@ -240,7 +268,12 @@ def main() -> int:
     check("recover_queued_jobs" in jobs_source and "queue_health" in jobs_source, "durable queued job recovery installed", failures)
     check("worker_lease_health" in jobs_source and "active_worker_ids" in jobs_source, "worker lease health summary installed", failures)
     check("execution_timeout" in jobs_source, "local execution timeout error code installed", failures)
+    check("_code_execution_provider" in jobs_source and "CODE_EXECUTION_BACKEND" in jobs_source, "job execution backend selector installed", failures)
     check("deadline_at" in jobs_source and "job_deadline_exceeded" in jobs_source, "queued job deadline policy installed", failures)
+    check("find_by_idempotency_key" in jobs_source and "job_idempotency" in jobs_source and "append_new" in jobs_source, "durable job idempotency lookup installed", failures)
+    check("dead_lettered" in jobs_source and "max_attempts" in jobs_source and "retry_backoff_s" in jobs_source, "durable job retry/dead-letter policy installed", failures)
+    check("normalize_ownership" in jobs_source and "owner_id TEXT" in jobs_source, "durable job ownership metadata installed", failures)
+    check("kind=\"code_execution\"" in jobs_source and "_record_code_execution_event" in jobs_source, "code execution runtime events installed", failures)
     check("claim_next_due_job" in jobs_source and "lease_expires_at" in jobs_source, "durable worker lease foundation installed", failures)
     check("LocalDurableJobWorker" in jobs_source and "run_once" in jobs_source, "explicit durable worker loop installed", failures)
     check("_monitor_cancellation" in jobs_source and "cancel_poll_interval_s" in jobs_source, "durable worker cancellation polling installed", failures)
@@ -257,13 +290,27 @@ def main() -> int:
     check("extract_pdf_bibliographic_metadata" in ingestion_source and "paper_metadata_entries" in ingestion_source, "uploaded PDF metadata extraction installed", failures)
     check("_candidate_authors_from_first_page" in ingestion_source and "_candidate_topic_tags_from_first_page" in ingestion_source, "first-page author/keyword extraction installed", failures)
     check("_find_existing_pdf_by_checksum" in ingestion_source and "_sha256_bytes" in ingestion_source, "uploaded PDF checksum dedup installed", failures)
+    check("scan_uploaded_pdf" in ingestion_source and "active_content_markers" in ingestion_source, "uploaded PDF pre-write scan installed", failures)
     providers_source = (PROJECT_ROOT / "src" / "providers.py").read_text(encoding="utf-8")
+    execution_policy_source = (PROJECT_ROOT / "src" / "execution_policy.py").read_text(encoding="utf-8")
+    check("ExecutionPolicyResult" in execution_policy_source and "POLICY_VIOLATION_EXIT_CODE" in execution_policy_source, "execution policy module installed", failures)
+    check("python_import_not_allowed" in execution_policy_source and "octave_shell_call" in execution_policy_source, "execution policy abuse guards installed", failures)
     check("LocalOctaveExecutionProvider" in providers_source and "gnu-octave-local" in providers_source, "local Octave provider installed", failures)
     check("sliding-mode-observer" in providers_source and "paper-figure-redraft" in providers_source, "local diagram templates installed", failures)
     check("docker_execution_status" in providers_source and "docker_permission_denied" in providers_source, "docker execution readiness status installed", failures)
+    check("DockerExecutionProvider" in providers_source and "docker_container_bind_mount" in providers_source, "Docker execution provider installed", failures)
+    check('"--network"' in providers_source and '"none"' in providers_source and "no-new-privileges" in providers_source, "Docker execution sandbox flags installed", failures)
+    check("evaluate_request_policy" in providers_source and "execution_policy_failure_result" in providers_source, "execution policy preflight installed", failures)
     check("execution_limit_preexec" in providers_source and "cpu_limit_enforced" in providers_source, "local execution CPU/memory resource metadata installed", failures)
     check("provider_runtime" in providers_source and "python_version" in providers_source, "local execution environment metadata installed", failures)
     check("filesystem_isolation" in providers_source and "network_policy_enforced" in providers_source, "local execution policy metadata installed", failures)
+    check("BoundedStreamReader" in providers_source and "stdout_truncated" in providers_source, "local execution output limits installed", failures)
+    check(
+        "CODE_EXECUTION_MAX_ARTIFACTS" in providers_source
+        and "artifact_collection_truncated" in providers_source,
+        "local execution artifact limits installed",
+        failures,
+    )
     check("_resolve_workdir_path" in providers_source and "_is_collectable_output" in providers_source, "local execution path containment installed", failures)
     check("MAX_EXECUTION_FILES" in providers_source and "MAX_EXECUTION_TOTAL_BYTES" in providers_source, "local execution input size limits installed", failures)
     check("checksum_sha256" in providers_source and "byte_count" in providers_source, "local artifact checksum metadata installed", failures)
@@ -280,6 +327,7 @@ def main() -> int:
     artifacts_source = (PROJECT_ROOT / "src" / "artifacts.py").read_text(encoding="utf-8")
     check("format_artifact_references" in artifacts_source, "artifact reference formatter installed", failures)
     check("CREATE TABLE IF NOT EXISTS artifacts" in artifacts_source and "storage_status" in artifacts_source, "artifact SQLite metadata mirror installed", failures)
+    check("ownership_from_record" in artifacts_source and "idx_artifacts_owner_id" in artifacts_source, "artifact ownership metadata installed", failures)
     check("integrity_status" in artifacts_source and "checksum_mismatch" in artifacts_source, "artifact integrity status installed", failures)
     metadata_source = (PROJECT_ROOT / "src" / "metadata.py").read_text(encoding="utf-8")
     check("CREATE TABLE IF NOT EXISTS papers" in metadata_source and "storage_status" in metadata_source, "corpus SQLite metadata mirror installed", failures)
@@ -291,19 +339,53 @@ def main() -> int:
     check("page: int | None" in metadata_source and "preview LIKE" in metadata_source, "chunk metadata filters installed", failures)
     admin_source = (PROJECT_ROOT / "src" / "admin.py").read_text(encoding="utf-8")
     check("provider_failures" in admin_source and "list_runtime_events" in admin_source, "admin provider failure history installed", failures)
+    check("api_access" in admin_source and "by_token_status" in admin_source, "admin API access audit summary installed", failures)
+    check("rate_limited_recent" in admin_source and "api_rate_limit_enabled" in admin_source, "admin API rate-limit summary installed", failures)
+    check("upload_scans" in admin_source and "upload_scan_events" in admin_source, "admin upload scan summary installed", failures)
+    check("summarize_provider_failure_alerts" in admin_source and "provider_failure_rate_high" in admin_source, "admin provider failure alerts installed", failures)
     check("collect_retention_preview" in admin_source and "delete_enabled" in admin_source, "no-delete retention preview installed", failures)
+    check("apply_retention_delete" in admin_source and "RETENTION_DELETE_ENABLED" in admin_source, "guarded retention delete installed", failures)
     check("query_usage" in admin_source and "estimated_total_tokens" in admin_source, "admin query usage estimates installed", failures)
+    check("query_usage_duration_ms" in admin_source and '"duration_ms"' in admin_source, "admin query latency summary installed", failures)
+    check("summarize_query_usage_alerts" in admin_source and "query_duration_average_high" in admin_source, "admin query latency alerts installed", failures)
+    check("retrieval_traces" in admin_source and "retrieval_source_page_incomplete" in admin_source, "admin retrieval trace summary installed", failures)
+    check("summarize_retrieval_trace_alerts" in admin_source and "retrieval_empty_rate_high" in admin_source, "admin retrieval trace alerts installed", failures)
+    check("fluxmind_retrieval_traces_recent_total" in admin_source, "admin retrieval trace metrics installed", failures)
+    check("by_owner_id" in admin_source and "job_owner_counts" in admin_source, "admin ownership summaries installed", failures)
+    check("summarize_job_alerts" in admin_source and "job_failures_recent" in admin_source, "admin job health alerts installed", failures)
     check("worker_leases" in admin_source and "worker_lease_health" in admin_source, "admin worker lease status installed", failures)
     check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
     check("summarize_query_cost" in admin_source and "cost_source" in admin_source, "admin query cost estimates installed", failures)
     check("docker_execution" in admin_source and "code_execution_backend" in admin_source, "admin execution sandbox readiness installed", failures)
+    check("code_execution_policy" in admin_source and "code_execution_allowed_imports" in admin_source, "admin execution policy status installed", failures)
+    check("code_execution_max_stdout_bytes" in admin_source and "code_execution_max_stderr_bytes" in admin_source, "admin execution output limits installed", failures)
+    check(
+        "code_execution_max_artifacts" in admin_source
+        and "artifact_collection_truncations" in admin_source,
+        "admin execution artifact limits installed",
+        failures,
+    )
+    check(
+        "summarize_code_execution_alerts" in admin_source
+        and "code_execution_failure_rate_high" in admin_source,
+        "admin code execution alerts installed",
+        failures,
+    )
+    check("code_execution_events" in admin_source and "policy_violations" in admin_source, "admin code execution event summary installed", failures)
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
+    check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
+    check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
+    storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
+    storage_schema_cli = (PROJECT_ROOT / "scripts" / "storage_schema.py").read_text(encoding="utf-8")
+    check("STORAGE_SCHEMA_VERSION" in storage_schema_source and "missing_required_columns" in storage_schema_source, "storage schema drift checks installed", failures)
+    check("storage_schema_status_for_root" in storage_schema_cli and "format_storage_schema_markdown" in storage_schema_cli, "storage schema CLI installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
     check("corpus_index_status" in admin_source, "admin corpus index freshness installed", failures)
     check("corpus_status_from_state" in admin_source and "index_jobs" in admin_source, "corpus lifecycle status installed", failures)
     check("format_admin_status_report" in admin_source, "admin status Markdown report installed", failures)
+    check("format_admin_metrics" in admin_source and "fluxmind_jobs_total" in admin_source, "admin metrics text export installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
     check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
@@ -313,15 +395,83 @@ def main() -> int:
         failures,
     )
     eval_config = json.loads((PROJECT_ROOT / "eval" / "rag_baseline.json").read_text(encoding="utf-8"))
+    retrieval_eval_cases = eval_config.get("cases", []) + eval_config.get("retrieval_only_cases", [])
     check(
         any(case.get("recorded_answer") for case in eval_config.get("cases", [])),
         "recorded answer eval fixtures installed",
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_case_count", 0) >= 5
+        eval_config.get("quality_gates", {}).get("minimum_case_count", 0) >= 20
         and len(eval_config.get("quality_gates", {}).get("required_answer_modes", [])) >= 5,
         "RAG eval aggregate quality gates installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_topic_tag_count", 0) >= 50
+        and "zero speed" in eval_config.get("quality_gates", {}).get("required_topic_tags", []),
+        "RAG eval topic coverage gates installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_recorded_answer_count", 0) >= 20
+        and sum(1 for case in eval_config.get("cases", []) if case.get("recorded_answer")) >= 20,
+        "RAG eval 20-case recorded-answer gate installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_retrieval_only_case_count", 0) >= 30
+        and len(eval_config.get("retrieval_only_cases", [])) >= 30,
+        "RAG eval retrieval-only case gate installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_retrieval_eval_question_count", 0) >= 50
+        and len(eval_config.get("cases", [])) + len(eval_config.get("retrieval_only_cases", [])) >= 50,
+        "RAG eval 50-question retrieval gate installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_code_output_case_count", 0) >= 3
+        and len(eval_config.get("code_output_cases", [])) >= 3,
+        "RAG eval code-output case gate installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_code_output_pass_rate", 0) >= 1.0
+        and "python" in eval_config.get("quality_gates", {}).get("required_code_output_languages", []),
+        "RAG eval code-output language/pass gates installed",
+        failures,
+    )
+    check(
+        "smc_reaching_law" in eval_config.get("quality_gates", {}).get("required_code_output_template_ids", [])
+        and any(case.get("template_id") == "smc_reaching_law" for case in eval_config.get("code_output_cases", [])),
+        "RAG eval code-output template gate installed",
+        failures,
+    )
+    check(
+        "local_job" in eval_config.get("quality_gates", {}).get("required_code_output_execution_modes", [])
+        and any(case.get("execution_mode") == "local_job" for case in eval_config.get("code_output_cases", [])),
+        "RAG eval job-backed code-output gate installed",
+        failures,
+    )
+    check(
+        eval_config.get("quality_gates", {}).get("minimum_pdf_structure_case_count", 0) >= 6
+        and {"equation", "table", "figure"}.issubset(set(eval_config.get("quality_gates", {}).get("required_pdf_structure_kinds", [])))
+        and len(eval_config.get("pdf_structure_cases", [])) >= 6,
+        "RAG eval PDF structure gate installed",
+        failures,
+    )
+    check(
+        "paper_to_code" in eval_config.get("quality_gates", {}).get("required_eval_lanes", [])
+        and all(case.get("topic_tags") and case.get("eval_lanes") for case in retrieval_eval_cases),
+        "RAG eval lane metadata installed",
+        failures,
+    )
+    check(
+        "observer_estimation" in eval_config.get("quality_gates", {}).get("required_topic_groups", [])
+        and "topic_groups" in eval_config.get("domain_ontology", {}),
+        "RAG eval domain ontology gates installed",
         failures,
     )
     check(
@@ -336,11 +486,21 @@ def main() -> int:
     check("verify_source_reference" in evaluation_source, "source/page eval verification installed", failures)
     check("evaluate_live_config" in evaluation_source and "query_inspect_payload" in evaluation_source, "live RAG eval scoring installed", failures)
     check("evaluate_live_retrieval_config" in evaluation_source and "query_retrieve_payload" in evaluation_source, "live retrieval eval scoring installed", failures)
+    check(
+        "evaluate_code_output_case" in evaluation_source
+        and "CodeOutputCaseResult" in evaluation_source
+        and "PYTHON_EXECUTION_TEMPLATES" in evaluation_source,
+        "code-output eval scoring installed",
+        failures,
+    )
+    check("evaluate_pdf_structure_case" in evaluation_source and "PdfStructureCaseResult" in evaluation_source, "PDF structure eval scoring installed", failures)
     check("evaluate_regression_gates" in evaluation_source and "RegressionGateResult" in evaluation_source, "aggregate RAG regression gates installed", failures)
     check("build_evaluation_report" in evaluation_source and "schema_version" in evaluation_source, "RAG eval JSON report builder installed", failures)
     evaluate_rag_source = (PROJECT_ROOT / "scripts" / "evaluate_rag.py").read_text(encoding="utf-8")
     check("--live-url" in evaluate_rag_source and "evaluate_live_config" in evaluate_rag_source, "live RAG eval CLI installed", failures)
     check("--retrieval-url" in evaluate_rag_source and "evaluate_live_retrieval_config" in evaluate_rag_source, "live retrieval eval CLI installed", failures)
+    check("code-output case" in evaluate_rag_source, "code-output eval CLI installed", failures)
+    check("PDF structure case" in evaluate_rag_source, "PDF structure eval CLI installed", failures)
     check("regression gate" in evaluate_rag_source and "evaluate_regression_gates" in evaluate_rag_source, "RAG aggregate regression gate CLI installed", failures)
     check("--json-report" in evaluate_rag_source and "build_evaluation_report" in evaluate_rag_source, "RAG eval JSON report CLI installed", failures)
     deploy_sync_source = (PROJECT_ROOT / "scripts" / "deploy_sync.py").read_text(encoding="utf-8")
@@ -395,6 +555,8 @@ def main() -> int:
             "grep -q 'status_provider_failures' /opt/fluxmind/app.py; "
             "grep -q 'status_query_usage' /opt/fluxmind/app.py; "
             "grep -q 'status_cost_pricing' /opt/fluxmind/app.py; "
+            "grep -q 'download_admin_metrics' /opt/fluxmind/app.py; "
+            "grep -q 'status_execution_policy' /opt/fluxmind/app.py; "
             "grep -q 'status_storage' /opt/fluxmind/app.py; "
             "grep -q 'status_storage_inventory' /opt/fluxmind/app.py; "
             "grep -q 'storage_readiness' /opt/fluxmind/app.py; "
@@ -434,12 +596,14 @@ def main() -> int:
             "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
             "grep -q '\"logs\": record.logs' /opt/fluxmind/api.py; "
             "grep -q '/admin/status/report' /opt/fluxmind/api.py; "
+            "grep -q '/admin/metrics' /opt/fluxmind/api.py; "
             "grep -q 'append_runtime_event' /opt/fluxmind/api.py; "
             "grep -q 'record_query_usage' /opt/fluxmind/api.py; "
             "grep -q 'provider_total_tokens' /opt/fluxmind/api.py; "
             "grep -q 'warm_existing_vector_store' /opt/fluxmind/api.py; "
             "! grep -q 'build_vector_store' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
+            "test -f /opt/fluxmind/src/execution_policy.py; "
             "test -f /opt/fluxmind/src/admin.py; "
             "test -f /opt/fluxmind/src/runtime.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
@@ -462,6 +626,10 @@ def main() -> int:
             "grep -q 'lease_expires_at' /opt/fluxmind/src/jobs.py; "
             "grep -q 'LocalDurableJobWorker' /opt/fluxmind/src/jobs.py; "
             "grep -q '_monitor_cancellation' /opt/fluxmind/src/jobs.py; "
+            "grep -q '_code_execution_provider' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'CODE_EXECUTION_BACKEND' /opt/fluxmind/src/jobs.py; "
+            "grep -q '_record_code_execution_event' /opt/fluxmind/src/jobs.py; "
+            "grep -q 'kind=\"code_execution\"' /opt/fluxmind/src/jobs.py; "
             "grep -q 'LocalDurableJobWorker' /opt/fluxmind/scripts/run_job_worker.py; "
             "grep -q -- '--forever' /opt/fluxmind/scripts/run_job_worker.py; "
             "grep -q 'scripts/run_job_worker.py --forever' /etc/systemd/system/fluxmind-worker.service; "
@@ -474,15 +642,25 @@ def main() -> int:
             "grep -q 'queue_health' /opt/fluxmind/src/admin.py; "
             "grep -q 'worker_leases' /opt/fluxmind/src/admin.py; "
             "grep -q 'LocalOctaveExecutionProvider' /opt/fluxmind/src/providers.py; "
+            "grep -q 'evaluate_request_policy' /opt/fluxmind/src/providers.py; "
+            "grep -q 'execution_policy_failure_result' /opt/fluxmind/src/providers.py; "
+            "grep -q 'ExecutionPolicyResult' /opt/fluxmind/src/execution_policy.py; "
+            "grep -q 'python_import_not_allowed' /opt/fluxmind/src/execution_policy.py; "
+            "grep -q 'octave_shell_call' /opt/fluxmind/src/execution_policy.py; "
             "grep -q 'sliding-mode-observer' /opt/fluxmind/src/providers.py; "
             "grep -q 'paper-figure-redraft' /opt/fluxmind/src/providers.py; "
             "grep -q 'docker_execution_status' /opt/fluxmind/src/providers.py; "
+            "grep -q 'DockerExecutionProvider' /opt/fluxmind/src/providers.py; "
+            "grep -q 'docker_container_bind_mount' /opt/fluxmind/src/providers.py; "
+            "grep -q 'no-new-privileges' /opt/fluxmind/src/providers.py; "
             "grep -q 'execution_limit_preexec' /opt/fluxmind/src/providers.py; "
             "grep -q 'cpu_limit_enforced' /opt/fluxmind/src/providers.py; "
             "grep -q 'provider_runtime' /opt/fluxmind/src/providers.py; "
             "grep -q 'python_version' /opt/fluxmind/src/providers.py; "
             "grep -q 'filesystem_isolation' /opt/fluxmind/src/providers.py; "
             "grep -q 'network_policy_enforced' /opt/fluxmind/src/providers.py; "
+            "grep -q 'BoundedStreamReader' /opt/fluxmind/src/providers.py; "
+            "grep -q 'stdout_truncated' /opt/fluxmind/src/providers.py; "
             "grep -q '_resolve_workdir_path' /opt/fluxmind/src/providers.py; "
             "grep -q 'MAX_EXECUTION_TOTAL_BYTES' /opt/fluxmind/src/providers.py; "
             "grep -q 'checksum_sha256' /opt/fluxmind/src/providers.py; "
@@ -522,6 +700,12 @@ def main() -> int:
             "grep -q 'provider_total_tokens' /opt/fluxmind/src/admin.py; "
             "grep -q 'summarize_query_cost' /opt/fluxmind/src/admin.py; "
             "grep -q 'docker_execution' /opt/fluxmind/src/admin.py; "
+            "grep -q 'code_execution_policy' /opt/fluxmind/src/admin.py; "
+            "grep -q 'code_execution_allowed_imports' /opt/fluxmind/src/admin.py; "
+            "grep -q 'code_execution_max_stdout_bytes' /opt/fluxmind/src/admin.py; "
+            "grep -q 'code_execution_max_stderr_bytes' /opt/fluxmind/src/admin.py; "
+            "grep -q 'code_execution_events' /opt/fluxmind/src/admin.py; "
+            "grep -q 'policy_violations' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_readiness_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_inventory_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'content_scanned' /opt/fluxmind/src/admin.py; "
@@ -531,6 +715,7 @@ def main() -> int:
             "grep -q 'corpus_index_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'corpus_status_from_state' /opt/fluxmind/src/admin.py; "
             "grep -q 'format_admin_status_report' /opt/fluxmind/src/admin.py; "
+            "grep -q 'format_admin_metrics' /opt/fluxmind/src/admin.py; "
             "grep -E '^(LLM_MODEL|EMBEDDING_MODEL)=' /opt/fluxmind/.env; "
             "test -s /opt/fluxmind/faiss_index/index.faiss; "
             "python3 - <<'PY'\n"
@@ -583,6 +768,12 @@ def main() -> int:
             "    with request.urlopen(req, timeout=20) as resp:\n"
             "        return json.loads(resp.read().decode('utf-8'))\n"
             "admin_status = api_get('/admin/status').get('status', {})\n"
+            "metrics = api_get_text('/admin/metrics')\n"
+            "if 'fluxmind_jobs_total' not in metrics or 'fluxmind_api_access_recent_total' not in metrics:\n"
+            "    raise SystemExit('admin metrics smoke returned unexpected metrics text')\n"
+            "if 'api_key' in metrics.lower() or 'owner_id' in metrics.lower():\n"
+            "    raise SystemExit('admin metrics smoke exposed forbidden metadata')\n"
+            "print('admin_metrics_smoke=ok')\n"
             "docker_execution = admin_status.get('config', {}).get('docker_execution', {})\n"
             "if 'configured' not in docker_execution or 'available' not in docker_execution:\n"
             "    raise SystemExit('admin status missing docker execution readiness')\n"

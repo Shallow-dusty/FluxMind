@@ -2,8 +2,10 @@ from pathlib import Path
 import hashlib
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
-from src.execution_templates import PYTHON_EXECUTION_TEMPLATES
+from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
+from src.execution_policy import POLICY_VIOLATION_EXIT_CODE
 from src.providers import (
+    DockerExecutionProvider,
     LocalArtifactStore,
     LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
@@ -85,6 +87,17 @@ def test_local_python_execution_provider_runs_snippet():
     assert result.runtime_metadata["max_files"] == "32"
     assert result.runtime_metadata["max_file_bytes"] == str(256 * 1024)
     assert result.runtime_metadata["max_total_file_bytes"] == str(1024 * 1024)
+    assert result.runtime_metadata["max_stdout_bytes"] == str(64 * 1024)
+    assert result.runtime_metadata["max_stderr_bytes"] == str(64 * 1024)
+    assert result.runtime_metadata["stdout_bytes"] == str(len("fluxmind-ok\n".encode("utf-8")))
+    assert result.runtime_metadata["stderr_bytes"] == "0"
+    assert result.runtime_metadata["stdout_truncated"] == "false"
+    assert result.runtime_metadata["stderr_truncated"] == "false"
+    assert result.runtime_metadata["output_truncated"] == "false"
+    assert result.runtime_metadata["execution_policy"] == "local-safe-v1"
+    assert result.runtime_metadata["execution_policy_enforced"] == "true"
+    assert result.runtime_metadata["execution_policy_violations"] == "0"
+    assert result.runtime_metadata["policy_violation"] == "false"
 
 
 def test_docker_execution_status_reports_not_configured(monkeypatch):
@@ -111,6 +124,178 @@ def test_docker_execution_status_reports_permission_denied(monkeypatch):
     assert status["configured"] is True
     assert status["available"] is False
     assert status["reason"] == "docker_permission_denied"
+
+
+def test_docker_execution_provider_reports_missing_docker(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+    provider = DockerExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('should-not-run')"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 127
+    assert "Docker executable not found" in result.stderr
+    assert result.runtime_metadata["provider_runtime"] == "docker-python"
+    assert result.runtime_metadata["runtime_available"] == "false"
+    assert result.runtime_metadata["filesystem_isolation"] == "docker_container_bind_mount"
+    assert result.runtime_metadata["network_policy_enforced"] == "true"
+    assert result.runtime_metadata["memory_limit_enforced"] == "true"
+    assert result.runtime_metadata["cpu_limit_enforced"] == "true"
+    assert result.runtime_metadata["docker_image"]
+
+
+def test_docker_execution_provider_runs_with_sandbox_flags_and_collects_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+):
+    captured: dict[str, list[str]] = {}
+
+    class FakePopen:
+        returncode = 0
+
+        def __init__(self, command, **_kwargs):
+            captured["command"] = command
+            mount = command[command.index("-v") + 1]
+            workdir = Path(mount.split(":", 1)[0])
+            assert (workdir / "main.py").read_text(encoding="utf-8") == "print('docker-ok')"
+            (workdir / "result.txt").write_text("artifact-ok", encoding="utf-8")
+
+        def poll(self):
+            return self.returncode
+
+        def communicate(self, timeout=None):
+            return "docker-ok\n", ""
+
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+    monkeypatch.setattr("src.providers.subprocess.Popen", FakePopen)
+    provider = DockerExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"), image="python:3.12-slim")
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('docker-ok')"},
+            memory_mb=128,
+        )
+    )
+
+    assert result.success is True
+    assert result.stdout == "docker-ok\n"
+    command = captured["command"]
+    assert command[:2] == ["/usr/bin/docker", "run"]
+    assert "--rm" in command
+    assert command[command.index("--network") + 1] == "none"
+    assert command[command.index("--memory") + 1] == "128m"
+    assert command[command.index("--cpus") + 1] == "1"
+    assert command[command.index("--pids-limit") + 1] == "64"
+    assert command[command.index("--security-opt") + 1] == "no-new-privileges"
+    assert command[command.index("--cap-drop") + 1] == "ALL"
+    assert "--read-only" in command
+    assert command[-3:] == ["python:3.12-slim", "python", "main.py"]
+    assert result.runtime_metadata["provider_runtime"] == "docker-python"
+    assert result.runtime_metadata["runtime_available"] == "true"
+    assert result.runtime_metadata["docker_image"] == "python:3.12-slim"
+    assert result.runtime_metadata["docker_returncode"] == "0"
+    assert result.artifacts[0].title == "result.txt"
+    assert result.artifacts[0].metadata["runtime"] == "docker-python"
+    assert result.artifacts[0].metadata["docker_image"] == "python:3.12-slim"
+    assert result.artifacts[0].metadata["checksum_sha256"] == hashlib.sha256(b"artifact-ok").hexdigest()
+
+
+def test_local_python_execution_provider_truncates_large_output(monkeypatch):
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDOUT_BYTES", 32)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDERR_BYTES", 48)
+    provider = LocalPythonExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": (
+                    "print('O' * 100)\n"
+                    "raise RuntimeError('E' * 100)\n"
+                )
+            },
+        )
+    )
+
+    assert result.success is False
+    assert len(result.stdout.encode("utf-8")) == 32
+    assert len(result.stderr.encode("utf-8")) == 48
+    assert int(result.runtime_metadata["stdout_bytes"]) > 32
+    assert int(result.runtime_metadata["stderr_bytes"]) > 48
+    assert result.runtime_metadata["max_stdout_bytes"] == "32"
+    assert result.runtime_metadata["max_stderr_bytes"] == "48"
+    assert result.runtime_metadata["stdout_truncated"] == "true"
+    assert result.runtime_metadata["stderr_truncated"] == "true"
+    assert result.runtime_metadata["output_truncated"] == "true"
+
+
+def test_docker_execution_provider_truncates_output_in_fallback_path(monkeypatch):
+    class FakePopen:
+        returncode = 0
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def poll(self):
+            return self.returncode
+
+        def communicate(self, timeout=None):
+            return "O" * 30, "E" * 20
+
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDOUT_BYTES", 10)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDERR_BYTES", 8)
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+    monkeypatch.setattr("src.providers.subprocess.Popen", FakePopen)
+    provider = DockerExecutionProvider(image="python:3.12-slim")
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('docker-output')"},
+        )
+    )
+
+    assert result.success is True
+    assert result.stdout == "O" * 10
+    assert result.stderr == "E" * 8
+    assert result.runtime_metadata["stdout_bytes"] == "30"
+    assert result.runtime_metadata["stderr_bytes"] == "20"
+    assert result.runtime_metadata["stdout_truncated"] == "true"
+    assert result.runtime_metadata["stderr_truncated"] == "true"
+
+
+def test_docker_execution_provider_rejects_policy_violation_before_container(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+
+    def fail_popen(*_args, **_kwargs):
+        raise AssertionError("policy violation should not start docker")
+
+    monkeypatch.setattr("src.providers.subprocess.Popen", fail_popen)
+    provider = DockerExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "import subprocess\nsubprocess.run(['echo', 'bad'])\n"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == POLICY_VIOLATION_EXIT_CODE
+    assert result.runtime_metadata["policy_violation"] == "true"
+    assert result.runtime_metadata["execution_policy_enforced"] == "true"
+    assert "python_import_not_allowed" in result.stderr
 
 
 def test_local_python_execution_provider_captures_generated_files(tmp_path: Path):
@@ -142,6 +327,109 @@ def test_local_python_execution_provider_captures_generated_files(tmp_path: Path
     assert Path(result.artifacts[1].uri.removeprefix("file://")).read_text(encoding="utf-8") == "done"
 
 
+def test_local_python_execution_provider_limits_generated_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACTS", 2)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_BYTES", 12)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES", 20)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES", 16)
+    provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "Path('a.txt').write_text('aaaa', encoding='utf-8')\n"
+                    "Path('b.txt').write_text('bbbb', encoding='utf-8')\n"
+                    "Path('c.txt').write_text('c' * 20, encoding='utf-8')\n"
+                    "Path('d.txt').write_text('dddd', encoding='utf-8')\n"
+                    "Path('e.txt').write_text('eeee', encoding='utf-8')\n"
+                )
+            },
+        )
+    )
+
+    assert result.success is True
+    assert [artifact.title for artifact in result.artifacts] == ["a.txt", "b.txt"]
+    assert result.runtime_metadata["max_artifacts"] == "2"
+    assert result.runtime_metadata["max_artifact_bytes"] == "12"
+    assert result.runtime_metadata["max_artifact_total_bytes"] == "20"
+    assert result.runtime_metadata["artifact_candidate_count"] == "5"
+    assert result.runtime_metadata["artifact_exported_count"] == "2"
+    assert result.runtime_metadata["artifact_exported_bytes"] == "8"
+    assert result.runtime_metadata["artifact_skipped_too_large_count"] == "1"
+    assert result.runtime_metadata["artifact_skipped_count_limit"] == "2"
+    assert result.runtime_metadata["artifact_collection_truncated"] == "true"
+
+
+def test_local_python_execution_provider_limits_total_artifact_bytes(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACTS", 10)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_BYTES", 12)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES", 6)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES", 16)
+    provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "Path('a.txt').write_text('aaaa', encoding='utf-8')\n"
+                    "Path('b.txt').write_text('bbbb', encoding='utf-8')\n"
+                )
+            },
+        )
+    )
+
+    assert result.success is True
+    assert [artifact.title for artifact in result.artifacts] == ["a.txt"]
+    assert result.runtime_metadata["artifact_skipped_total_bytes_limit"] == "1"
+    assert result.runtime_metadata["artifact_collection_truncated"] == "true"
+
+
+def test_local_python_execution_provider_limits_artifact_candidate_scan(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACTS", 10)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_BYTES", 12)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES", 100)
+    monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES", 3)
+    provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": (
+                    "from pathlib import Path\n"
+                    "for name in ['a.txt', 'b.txt', 'c.txt', 'd.txt']:\n"
+                    "    Path(name).write_text('ok', encoding='utf-8')\n"
+                )
+            },
+        )
+    )
+
+    assert result.success is True
+    exported_titles = [artifact.title for artifact in result.artifacts]
+    assert set(exported_titles).issubset({"a.txt", "b.txt", "c.txt", "d.txt"})
+    assert 0 < len(exported_titles) < 4
+    assert result.runtime_metadata["artifact_scanned_entries"] == "3"
+    assert result.runtime_metadata["artifact_scan_truncated"] == "true"
+    assert result.runtime_metadata["artifact_collection_truncated"] == "true"
+
+
 def test_local_python_execution_provider_runs_smc_template(tmp_path: Path):
     provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
 
@@ -161,6 +449,64 @@ def test_local_python_execution_provider_runs_smc_template(tmp_path: Path):
     ]
     assert result.artifacts[0].kind == "text"
     assert result.artifacts[1].kind == "plot"
+    assert result.runtime_metadata["execution_policy_checked_files"] == "1"
+    assert result.runtime_metadata["policy_violation"] == "false"
+
+
+def test_local_python_execution_provider_runs_pmsm_current_step_template(tmp_path: Path):
+    provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": PYTHON_EXECUTION_TEMPLATES["pmsm_current_step"]},
+        )
+    )
+
+    assert result.success is True
+    assert "wrote pmsm_current_step.csv and pmsm_current_step.svg" in result.stdout
+    assert [artifact.title for artifact in result.artifacts] == [
+        "pmsm_current_step.csv",
+        "pmsm_current_step.svg",
+    ]
+    assert result.artifacts[0].kind == "text"
+    assert result.artifacts[0].mime_type == "text/csv"
+    assert result.artifacts[1].kind == "plot"
+    assert result.runtime_metadata["policy_violation"] == "false"
+
+
+def test_octave_execution_templates_are_well_formed():
+    # Octave is not installed in CI, so this statically checks template breadth and
+    # the expected output filenames without invoking the octave binary.
+    assert set(OCTAVE_EXECUTION_TEMPLATES) >= {
+        "hello",
+        "pmsm_current_decay",
+        "smc_sign_switching",
+    }
+    assert "pmsm_current_decay.csv" in OCTAVE_EXECUTION_TEMPLATES["pmsm_current_decay"]
+    assert "smc_sign_switching.csv" in OCTAVE_EXECUTION_TEMPLATES["smc_sign_switching"]
+    for body in OCTAVE_EXECUTION_TEMPLATES.values():
+        assert body.strip()
+
+
+def test_local_python_execution_provider_rejects_policy_violation():
+    provider = LocalPythonExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "import subprocess\nsubprocess.run(['echo', 'bad'])\n"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == POLICY_VIOLATION_EXIT_CODE
+    assert result.runtime_metadata["policy_violation"] == "true"
+    assert result.runtime_metadata["execution_policy_violations"] != "0"
+    assert "python_import_not_allowed" in result.stderr
+    assert "subprocess" in result.stderr
 
 
 def test_local_python_execution_provider_rejects_file_path_escape():
@@ -311,6 +657,29 @@ def test_local_octave_execution_provider_reports_missing_binary(monkeypatch):
     assert result.runtime_metadata["network_policy_enforced"] == "false"
     assert result.runtime_metadata["memory_limit_enforced"] == "false"
     assert result.runtime_metadata["cpu_limit_enforced"] == "false"
+    assert result.runtime_metadata["execution_policy_enforced"] == "true"
+    assert result.runtime_metadata["policy_violation"] == "false"
+
+
+def test_local_octave_execution_provider_rejects_policy_violation_before_runtime_lookup(monkeypatch):
+    def fail_which(_name):
+        raise AssertionError("policy violation should not look up octave")
+
+    monkeypatch.setattr("src.providers.shutil.which", fail_which)
+    provider = LocalOctaveExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"main.m": "system('echo bad');"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == POLICY_VIOLATION_EXIT_CODE
+    assert result.runtime_metadata["policy_violation"] == "true"
+    assert "octave_shell_call" in result.stderr
 
 
 def test_local_octave_execution_provider_rejects_file_path_escape(tmp_path: Path, monkeypatch):

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -5,6 +6,18 @@ from langchain_core.documents import Document
 
 from src import ingestion
 from src.metadata import ChunkMetadataStore
+
+
+def _minimal_pdf_bytes(text: str = "FluxMind upload scan fixture", *, pages: int = 1) -> bytes:
+    import fitz
+
+    document = fitz.open()
+    for _ in range(pages):
+        page = document.new_page()
+        page.insert_text((72, 72), text)
+    data = document.tobytes()
+    document.close()
+    return data
 
 
 def test_safe_pdf_name_preserves_unicode_and_strips_reserved_chars():
@@ -18,6 +31,83 @@ def test_safe_pdf_name_uses_basename_to_prevent_path_traversal():
 def test_safe_pdf_name_rejects_non_pdf():
     with pytest.raises(ValueError, match="Only PDF"):
         ingestion._safe_pdf_name("notes.txt")
+
+
+def test_scan_uploaded_pdf_allows_valid_pdf():
+    result = ingestion.scan_uploaded_pdf(_minimal_pdf_bytes(pages=2))
+
+    assert result.allowed is True
+    assert result.status == "allowed"
+    assert result.reason_codes == ()
+    assert result.page_count == 2
+    assert result.to_metadata()["active_content_marker_count"] == 0
+
+
+def test_scan_uploaded_pdf_blocks_invalid_magic():
+    result = ingestion.scan_uploaded_pdf(b"not a pdf")
+
+    assert result.allowed is False
+    assert result.status == "blocked"
+    assert result.reason_codes == ("invalid_pdf_magic",)
+
+
+def test_scan_uploaded_pdf_blocks_active_content_marker():
+    result = ingestion.scan_uploaded_pdf(b"%PDF-1.7\n1 0 obj << /OpenAction 2 0 R /JavaScript 3 0 R >>\n%%EOF")
+
+    assert result.allowed is False
+    assert "active_content_javascript" in result.reason_codes
+    assert "active_content_open_action" in result.reason_codes
+    assert set(result.active_content_markers) == {"javascript", "open_action"}
+
+
+def test_scan_uploaded_pdf_blocks_page_limit(monkeypatch):
+    monkeypatch.setattr(ingestion, "UPLOAD_SCAN_MAX_PAGES", 1)
+
+    result = ingestion.scan_uploaded_pdf(_minimal_pdf_bytes(pages=2))
+
+    assert result.allowed is False
+    assert result.reason_codes == ("pdf_page_limit_exceeded",)
+    assert result.page_count == 2
+
+
+def test_ingest_uploaded_pdf_rejects_failed_scan_before_write(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    upload_dir = root / "papers" / "uploads"
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", root / "papers" / "library")
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", upload_dir)
+
+    with pytest.raises(ValueError, match="invalid_pdf_magic"):
+        ingestion.ingest_uploaded_pdf(b"not a pdf", "paper.pdf")
+
+    assert not upload_dir.exists()
+
+
+def test_ingest_uploaded_pdf_records_metadata_only_scan_event(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    metadata_dir = root / "metadata"
+    upload_dir = root / "papers" / "uploads"
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", root / "papers" / "library")
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", upload_dir)
+    monkeypatch.setattr("src.runtime.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
+
+    with pytest.raises(ValueError, match="active_content_javascript"):
+        ingestion.ingest_uploaded_pdf(b"%PDF-1.7\n1 0 obj << /JavaScript 2 0 R >>\n%%EOF", "secret-title.pdf")
+
+    events = [
+        json.loads(line)
+        for line in (metadata_dir / "runtime_events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert events[0]["kind"] == "upload_scan"
+    assert events[0]["code"] == "upload_scan_blocked"
+    assert events[0]["metadata"]["reason_codes"] == ["active_content_javascript"]
+    assert "secret-title" not in json.dumps(events[0], ensure_ascii=False)
 
 
 def test_resolve_unique_path_adds_suffix(tmp_path: Path):
@@ -193,6 +283,34 @@ def test_extract_pdf_bibliographic_metadata_from_first_page_authors_and_keywords
     assert metadata["topic_tags"] == ["sliding mode observer", "flux linkage", "PMSM drives"]
 
 
+def test_extract_pdf_structure_markers_finds_layout_markers(tmp_path: Path):
+    import fitz
+
+    pdf_path = tmp_path / "structure.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text(
+        (72, 72),
+        (
+            "PMSM model excerpt\n"
+            "ud = Rsid + Ld did/dt\n"
+            "Table 1. PMSM parameter summary\n"
+            "Figure 2. PMSM control block diagram\n"
+            "Algorithm 1. Observer tuning loop\n"
+        ),
+    )
+    document.save(pdf_path)
+    document.close()
+
+    markers = ingestion.extract_pdf_structure_markers(pdf_path)
+
+    assert any(marker.kind == "equation" and "ud = Rsid" in marker.text for marker in markers)
+    assert any(marker.kind == "table" and "Table 1" in marker.text for marker in markers)
+    assert any(marker.kind == "figure" and "Figure 2" in marker.text for marker in markers)
+    assert any(marker.kind == "algorithm" and "Algorithm 1" in marker.text for marker in markers)
+    assert {marker.page for marker in markers} == {1}
+
+
 def test_refresh_paper_metadata_uses_extracted_upload_metadata(tmp_path: Path, monkeypatch):
     import fitz
 
@@ -320,8 +438,9 @@ def test_ingest_uploaded_pdf_reuses_indexed_duplicate(tmp_path: Path, monkeypatc
     upload_dir.mkdir(parents=True)
     library.mkdir(parents=True)
     index_dir.mkdir()
+    pdf_bytes = _minimal_pdf_bytes("duplicate upload")
     existing = upload_dir / "existing.pdf"
-    existing.write_bytes(b"%PDF duplicate")
+    existing.write_bytes(pdf_bytes)
     (index_dir / "index.faiss").write_bytes(b"index")
 
     monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
@@ -350,7 +469,7 @@ def test_ingest_uploaded_pdf_reuses_indexed_duplicate(tmp_path: Path, monkeypatc
 
     monkeypatch.setattr(ingestion, "load_pdf", fail_if_reindexed)
 
-    path, chunk_count = ingestion.ingest_uploaded_pdf(b"%PDF duplicate", "same-content.pdf")
+    path, chunk_count = ingestion.ingest_uploaded_pdf(pdf_bytes, "same-content.pdf")
 
     assert path == existing
     assert chunk_count == 7

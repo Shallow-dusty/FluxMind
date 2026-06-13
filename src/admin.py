@@ -12,8 +12,23 @@ from typing import Any
 
 from src.config import (
     ACTIVE_PAPERS_FILE,
+    API_ACCESS_AUDIT_ENABLED,
+    API_RATE_LIMIT_ENABLED,
+    API_RATE_LIMIT_MAX_REQUESTS,
+    API_RATE_LIMIT_WINDOW_S,
     ARTIFACTS_DIR,
+    CODE_EXECUTION_ALLOWED_IMPORTS,
+    CODE_EXECUTION_ALERT_DURATION_MS,
+    CODE_EXECUTION_ALERT_FAILURE_RATE,
+    CODE_EXECUTION_ALERT_MIN_EVENTS,
     CODE_EXECUTION_BACKEND,
+    CODE_EXECUTION_MAX_ARTIFACT_BYTES,
+    CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES,
+    CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES,
+    CODE_EXECUTION_MAX_ARTIFACTS,
+    CODE_EXECUTION_MAX_STDERR_BYTES,
+    CODE_EXECUTION_MAX_STDOUT_BYTES,
+    CODE_EXECUTION_POLICY,
     CHUNK_METADATA_DB_FILE,
     CORPUS_METADATA_DB_FILE,
     CORPUS_METADATA_FILE,
@@ -27,6 +42,8 @@ from src.config import (
     JOBS_FILE,
     LLM_BASE_URL,
     LLM_MODEL,
+    JOB_ALERT_EXPIRED_MIN_EVENTS,
+    JOB_ALERT_FAILED_MIN_EVENTS,
     METADATA_DIR,
     METADATA_STORAGE_BACKEND,
     OBJECT_STORAGE_BACKEND,
@@ -35,11 +52,24 @@ from src.config import (
     OBJECT_STORAGE_REGION,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
+    PROVIDER_FAILURE_ALERT_MIN_EVENTS,
+    PROVIDER_FAILURE_ALERT_RATE,
     QUERY_COST_COMPLETION_USD_PER_1M,
     QUERY_COST_PROMPT_USD_PER_1M,
     QUERY_COST_PROVIDER,
+    QUERY_ALERT_DURATION_MS,
+    QUERY_ALERT_MIN_EVENTS,
+    RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE,
+    RETRIEVAL_TRACE_ALERT_EMPTY_RATE,
+    RETRIEVAL_TRACE_ALERT_MIN_EVENTS,
+    RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE,
+    RETENTION_DELETE_ENABLED,
     RERANKER_MODEL,
     RUNTIME_EVENTS_FILE,
+    UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
+    UPLOAD_SCAN_ENABLED,
+    UPLOAD_SCAN_MAX_PAGES,
+    UPLOAD_SCAN_REJECT_ENCRYPTED,
 )
 from src.artifacts import LocalArtifactRegistry
 from src.costs import summarize_query_cost
@@ -47,7 +77,8 @@ from src.ingestion import refresh_paper_metadata
 from src.jobs import LocalJobStore
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore
 from src.providers import docker_execution_status
-from src.runtime import list_runtime_events
+from src.runtime import append_runtime_event, list_runtime_events
+from src.storage_schema import storage_schema_status
 
 
 def directory_size_bytes(path: Path) -> int:
@@ -72,8 +103,14 @@ class AdminStatus:
     corpus: dict[str, Any]
     artifacts: dict[str, Any]
     storage: dict[str, Any]
+    storage_schemas: dict[str, Any]
+    platform_readiness: dict[str, Any]
     provider_failures: dict[str, Any]
     query_usage: dict[str, Any]
+    retrieval_traces: dict[str, Any]
+    code_execution: dict[str, Any]
+    api_access: dict[str, Any]
+    upload_scans: dict[str, Any]
     config: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
@@ -95,6 +132,342 @@ def _query_cost_token_value(event: Any, provider_key: str, estimated_key: str) -
     if event.metadata.get("usage_source") == "provider" and provider_value is not None:
         return int(provider_value or 0)
     return int(event.metadata.get(estimated_key, 0) or 0)
+
+
+def _event_int_metadata(event: Any, key: str) -> int:
+    try:
+        return int(event.metadata.get(key, 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _dict_int(data: dict[str, Any], key: str) -> int:
+    try:
+        return int(data.get(key, 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _code_execution_alert(
+    *,
+    code: str,
+    severity: str,
+    message: str,
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "code": code,
+        "severity": severity,
+        "message": message,
+        "metadata": metadata,
+    }
+
+
+def summarize_code_execution_alerts(
+    *,
+    total_recent: int,
+    failed_recent: int,
+    failure_rate: float,
+    max_duration_ms: int,
+    policy_violations: int,
+    output_truncations: int,
+    artifact_collection_truncations: int,
+    min_events: int,
+    failure_rate_threshold: float,
+    duration_ms_threshold: int,
+) -> list[dict[str, Any]]:
+    """Return no-secret advisory alerts for recent local code execution."""
+    alerts: list[dict[str, Any]] = []
+    if total_recent >= min_events and failure_rate >= failure_rate_threshold:
+        alerts.append(
+            _code_execution_alert(
+                code="code_execution_failure_rate_high",
+                severity="warning",
+                message="Recent code execution failure rate is above the configured threshold.",
+                metadata={
+                    "total_recent": total_recent,
+                    "failed_recent": failed_recent,
+                    "failure_rate": f"{failure_rate:.2f}",
+                    "threshold": f"{failure_rate_threshold:.2f}",
+                    "min_events": min_events,
+                },
+            )
+        )
+    if max_duration_ms >= duration_ms_threshold:
+        alerts.append(
+            _code_execution_alert(
+                code="code_execution_duration_high",
+                severity="warning",
+                message="A recent code execution duration exceeded the configured threshold.",
+                metadata={
+                    "max_duration_ms": max_duration_ms,
+                    "threshold_ms": duration_ms_threshold,
+                },
+            )
+        )
+    if policy_violations:
+        alerts.append(
+            _code_execution_alert(
+                code="code_execution_policy_violations_recent",
+                severity="warning",
+                message="Recent code execution requests were blocked by policy.",
+                metadata={"policy_violations": policy_violations},
+            )
+        )
+    if output_truncations:
+        alerts.append(
+            _code_execution_alert(
+                code="code_execution_output_truncated_recent",
+                severity="info",
+                message="Recent code execution output hit stdout/stderr capture limits.",
+                metadata={"output_truncations": output_truncations},
+            )
+        )
+    if artifact_collection_truncations:
+        alerts.append(
+            _code_execution_alert(
+                code="code_execution_artifacts_truncated_recent",
+                severity="info",
+                message="Recent code execution artifact export hit collection limits.",
+                metadata={
+                    "artifact_collection_truncations": artifact_collection_truncations,
+                },
+            )
+        )
+    return alerts
+
+
+def _admin_alert(
+    *,
+    code: str,
+    severity: str,
+    message: str,
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "code": code,
+        "severity": severity,
+        "message": message,
+        "metadata": metadata,
+    }
+
+
+def summarize_query_usage_alerts(
+    *,
+    total_recent: int,
+    avg_duration_ms: int,
+    max_duration_ms: int,
+    min_events: int,
+    duration_ms_threshold: int,
+) -> list[dict[str, Any]]:
+    """Return no-secret advisory alerts for recent query latency."""
+    alerts: list[dict[str, Any]] = []
+    base_metadata = {
+        "total_recent": total_recent,
+        "avg_duration_ms": avg_duration_ms,
+        "max_duration_ms": max_duration_ms,
+        "threshold_ms": duration_ms_threshold,
+        "min_events": min_events,
+    }
+    if total_recent >= min_events and avg_duration_ms >= duration_ms_threshold:
+        alerts.append(
+            _admin_alert(
+                code="query_duration_average_high",
+                severity="warning",
+                message="Recent average query duration exceeded the configured threshold.",
+                metadata=base_metadata,
+            )
+        )
+    elif max_duration_ms >= duration_ms_threshold:
+        alerts.append(
+            _admin_alert(
+                code="query_duration_high",
+                severity="info",
+                message="A recent query duration exceeded the configured threshold.",
+                metadata=base_metadata,
+            )
+        )
+    return alerts
+
+
+def summarize_retrieval_trace_alerts(
+    *,
+    total_recent: int,
+    empty_recent: int,
+    empty_rate: float,
+    source_page_incomplete_recent: int,
+    source_page_incomplete_rate: float,
+    citation_checked_recent: int,
+    citation_failed_recent: int,
+    citation_failure_rate: float,
+    min_events: int,
+    empty_rate_threshold: float,
+    source_page_incomplete_rate_threshold: float,
+    citation_failure_rate_threshold: float,
+) -> list[dict[str, Any]]:
+    """Return no-secret advisory alerts for recent local retrieval traces."""
+    alerts: list[dict[str, Any]] = []
+    base_metadata = {
+        "total_recent": total_recent,
+        "min_events": min_events,
+    }
+    if total_recent >= min_events and empty_rate >= empty_rate_threshold:
+        alerts.append(
+            _admin_alert(
+                code="retrieval_empty_rate_high",
+                severity="warning",
+                message="Recent retrieval traces were empty above the configured threshold.",
+                metadata=base_metadata
+                | {
+                    "empty_recent": empty_recent,
+                    "empty_rate": f"{empty_rate:.2f}",
+                    "threshold": f"{empty_rate_threshold:.2f}",
+                },
+            )
+        )
+    if (
+        total_recent >= min_events
+        and source_page_incomplete_rate >= source_page_incomplete_rate_threshold
+    ):
+        alerts.append(
+            _admin_alert(
+                code="retrieval_source_page_incomplete_rate_high",
+                severity="warning",
+                message="Recent retrieval traces missed source/page metadata above the configured threshold.",
+                metadata=base_metadata
+                | {
+                    "source_page_incomplete_recent": source_page_incomplete_recent,
+                    "source_page_incomplete_rate": f"{source_page_incomplete_rate:.2f}",
+                    "threshold": f"{source_page_incomplete_rate_threshold:.2f}",
+                },
+            )
+        )
+    if (
+        citation_checked_recent >= min_events
+        and citation_failure_rate >= citation_failure_rate_threshold
+    ):
+        alerts.append(
+            _admin_alert(
+                code="retrieval_citation_failure_rate_high",
+                severity="warning",
+                message="Recent generated-query retrieval traces failed citation validation above the configured threshold.",
+                metadata={
+                    "citation_checked_recent": citation_checked_recent,
+                    "citation_failed_recent": citation_failed_recent,
+                    "citation_failure_rate": f"{citation_failure_rate:.2f}",
+                    "threshold": f"{citation_failure_rate_threshold:.2f}",
+                    "min_events": min_events,
+                },
+            )
+        )
+    return alerts
+
+
+def summarize_provider_failure_alerts(
+    *,
+    total_recent: int,
+    total_query_outcomes: int,
+    failure_rate: float,
+    by_code: dict[str, int],
+    min_events: int,
+    failure_rate_threshold: float,
+) -> list[dict[str, Any]]:
+    """Return no-secret advisory alerts for recent provider failures."""
+    alerts: list[dict[str, Any]] = []
+    if total_recent >= min_events and failure_rate >= failure_rate_threshold:
+        alerts.append(
+            _admin_alert(
+                code="provider_failure_rate_high",
+                severity="warning",
+                message="Recent provider failure rate is above the configured threshold.",
+                metadata={
+                    "total_recent_failures": total_recent,
+                    "total_query_outcomes": total_query_outcomes,
+                    "failure_rate": f"{failure_rate:.2f}",
+                    "threshold": f"{failure_rate_threshold:.2f}",
+                    "min_events": min_events,
+                },
+            )
+        )
+    if by_code:
+        repeated_code, repeated_count = max(by_code.items(), key=lambda item: item[1])
+        if repeated_count >= min_events:
+            alerts.append(
+                _admin_alert(
+                    code="provider_failure_code_repeated",
+                    severity="info",
+                    message="A provider failure code repeated in recent events.",
+                    metadata={
+                        "failure_code": repeated_code,
+                        "failure_count": repeated_count,
+                        "min_events": min_events,
+                    },
+                )
+            )
+    return alerts
+
+
+def summarize_job_alerts(
+    *,
+    failed_recent: int,
+    dead_lettered_recent: int,
+    queue_health: dict[str, Any],
+    worker_leases: dict[str, Any],
+    failed_min_events: int,
+    expired_min_events: int,
+) -> list[dict[str, Any]]:
+    """Return no-secret advisory alerts for local job and worker health."""
+    alerts: list[dict[str, Any]] = []
+    if failed_recent >= failed_min_events:
+        alerts.append(
+            _admin_alert(
+                code="job_failures_recent",
+                severity="warning",
+                message="Recent local jobs failed above the configured threshold.",
+                metadata={
+                    "failed_recent": failed_recent,
+                    "threshold": failed_min_events,
+                },
+            )
+        )
+    if dead_lettered_recent:
+        alerts.append(
+            _admin_alert(
+                code="job_dead_letters_recent",
+                severity="warning",
+                message="Recent local jobs reached dead-letter state.",
+                metadata={"dead_lettered_recent": dead_lettered_recent},
+            )
+        )
+    expired_deadlines = _dict_int(queue_health, "expired")
+    if expired_deadlines >= expired_min_events:
+        alerts.append(
+            _admin_alert(
+                code="job_queue_deadlines_expired",
+                severity="warning",
+                message="Queued local jobs have expired deadlines.",
+                metadata={
+                    "expired": expired_deadlines,
+                    "threshold": expired_min_events,
+                },
+            )
+        )
+    expired_queued_leases = _dict_int(queue_health, "lease_expired_queued")
+    expired_worker_leases = _dict_int(worker_leases, "expired_leases")
+    if max(expired_queued_leases, expired_worker_leases) >= expired_min_events:
+        alerts.append(
+            _admin_alert(
+                code="job_worker_leases_expired",
+                severity="warning",
+                message="Local worker leases have expired.",
+                metadata={
+                    "lease_expired_queued": expired_queued_leases,
+                    "expired_leases": expired_worker_leases,
+                    "threshold": expired_min_events,
+                },
+            )
+        )
+    return alerts
 
 
 def _local_model_path_exists(value: str) -> bool:
@@ -313,6 +686,130 @@ def storage_readiness_status(
     }
 
 
+def _storage_component_external_ready(component: dict[str, Any]) -> bool:
+    return (
+        str(component.get("backend", "local")).lower() != "local"
+        and bool(component.get("configured"))
+        and bool(component.get("available"))
+    )
+
+
+def _has_keys(data: dict[str, Any], keys: set[str]) -> bool:
+    return keys.issubset(set(data))
+
+
+def platform_readiness_status(
+    *,
+    storage_readiness: dict[str, Any],
+    storage_schemas: dict[str, Any],
+    storage: dict[str, Any],
+    jobs: dict[str, Any],
+) -> dict[str, Any]:
+    """Return no-secret acceptance status for production storage and workers."""
+    metadata_storage = storage_readiness.get("metadata", {})
+    object_storage = storage_readiness.get("object_storage", {})
+    metadata_external_ready = _storage_component_external_ready(metadata_storage)
+    object_external_ready = _storage_component_external_ready(object_storage)
+    schema_ok = bool(storage_schemas.get("ok"))
+    schema_problem_count = _dict_int(storage_schemas, "problem_count")
+    storage_inventory_ready = storage.get("mode") == "local" and bool(storage.get("groups"))
+
+    storage_blockers: list[str] = []
+    if not metadata_external_ready:
+        storage_blockers.append("production_metadata_database_not_configured")
+    if not object_external_ready:
+        storage_blockers.append("production_object_storage_not_configured")
+    if not schema_ok:
+        storage_blockers.append("local_storage_schema_drift")
+    if not storage_inventory_ready:
+        storage_blockers.append("local_storage_inventory_unavailable")
+
+    job_storage = jobs.get("storage", {})
+    queue_health = jobs.get("queue_health", {})
+    worker_leases = jobs.get("worker_leases", {})
+    durable_job_store_ready = bool(job_storage.get("sqlite_exists"))
+    queue_contract_ready = _has_keys(
+        queue_health,
+        {
+            "queued",
+            "due",
+            "scheduled",
+            "expired",
+            "running",
+            "leased_queued",
+            "lease_expired_queued",
+            "running_leased",
+            "oldest_queued_at",
+        },
+    )
+    lease_contract_ready = _has_keys(
+        worker_leases,
+        {
+            "total_leased_jobs",
+            "worker_ids",
+            "active_worker_ids",
+            "expired_worker_ids",
+            "active_leases",
+            "expired_leases",
+        },
+    )
+    queue_health_clean = (
+        _dict_int(queue_health, "expired") == 0
+        and _dict_int(queue_health, "lease_expired_queued") == 0
+        and _dict_int(worker_leases, "expired_leases") == 0
+    )
+
+    worker_blockers: list[str] = []
+    if not durable_job_store_ready:
+        worker_blockers.append("local_durable_job_store_missing")
+    if not queue_contract_ready:
+        worker_blockers.append("queue_health_contract_missing")
+    if not lease_contract_ready:
+        worker_blockers.append("worker_lease_contract_missing")
+    if not queue_health_clean:
+        worker_blockers.append("queue_or_worker_lease_health_not_clean")
+    if not metadata_external_ready:
+        worker_blockers.append("distributed_job_store_not_configured")
+
+    storage_ready = not storage_blockers
+    workers_ready = not worker_blockers
+    return {
+        "mode": "local_platform_readiness",
+        "scope": [
+            "production_storage_migration",
+            "distributed_worker_acceptance",
+        ],
+        "overall_ready": storage_ready and workers_ready,
+        "activation_enabled": False,
+        "storage_migration": {
+            "ready": storage_ready,
+            "blockers": storage_blockers,
+            "checks": {
+                "metadata_database_external_ready": metadata_external_ready,
+                "object_storage_external_ready": object_external_ready,
+                "storage_schema_ok": schema_ok,
+                "storage_schema_problem_count": schema_problem_count,
+                "storage_inventory_ready": storage_inventory_ready,
+                "storage_group_count": len(storage.get("groups", [])),
+            },
+        },
+        "distributed_workers": {
+            "ready": workers_ready,
+            "blockers": worker_blockers,
+            "checks": {
+                "local_worker_bridge_ready": durable_job_store_ready
+                and queue_contract_ready
+                and lease_contract_ready,
+                "local_durable_job_store_ready": durable_job_store_ready,
+                "queue_health_contract_ready": queue_contract_ready,
+                "worker_lease_contract_ready": lease_contract_ready,
+                "queue_health_clean": queue_health_clean,
+                "distributed_job_store_configured": metadata_external_ready,
+            },
+        },
+    }
+
+
 def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     """Render the no-secret admin snapshot as a portable Markdown report."""
     data = status.to_dict() if hasattr(status, "to_dict") else status
@@ -320,8 +817,14 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     artifacts = data.get("artifacts", {})
     corpus = data.get("corpus", {})
     storage = data.get("storage", {})
+    storage_schemas = data.get("storage_schemas", {})
+    platform_readiness = data.get("platform_readiness", {})
     provider_failures = data.get("provider_failures", {})
     query_usage = data.get("query_usage", {})
+    retrieval_traces = data.get("retrieval_traces", {})
+    code_execution = data.get("code_execution", {})
+    api_access = data.get("api_access", {})
+    upload_scans = data.get("upload_scans", {})
     worker_leases = jobs.get("worker_leases", {})
     config = data.get("config", {})
 
@@ -335,8 +838,11 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         f"- Total: {jobs.get('total', 0)}",
         f"- By status: {_format_counts(jobs.get('by_status', {}))}",
         f"- By kind: {_format_counts(jobs.get('by_kind', {}))}",
+        f"- By owner: {_format_counts(jobs.get('by_owner_id', {}))}",
         f"- Failed: {jobs.get('failed', 0)}",
+        f"- Dead lettered: {jobs.get('dead_lettered', 0)}",
         f"- Scheduled: {jobs.get('scheduled', 0)}",
+        f"- Alert count: {len(jobs.get('alerts', []))}",
         f"- Queue health: {_format_counts(jobs.get('queue_health', {}))}",
         f"- Worker leases: total={worker_leases.get('total_leased_jobs', 0)}, "
         f"active={worker_leases.get('active_leases', 0)}, "
@@ -358,6 +864,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         "## Artifacts",
         "",
         f"- Total: {artifacts.get('total', 0)}",
+        f"- By owner: {_format_counts(artifacts.get('by_owner_id', {}))}",
         f"- Bytes: {artifacts.get('bytes', 0)}",
         f"- Storage: {_format_counts(artifacts.get('storage', {}))}",
         f"- Integrity: {_format_counts(artifacts.get('integrity', {}))}",
@@ -380,10 +887,42 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Storage Schemas",
+            "",
+            f"- Schema version: {storage_schemas.get('schema_version', 0)}",
+            f"- Mode: {storage_schemas.get('mode', 'local_storage_schema_inventory')}",
+            f"- OK: {_format_bool(storage_schemas.get('ok', False))}",
+            f"- Store count: {storage_schemas.get('store_count', 0)}",
+            f"- Problem count: {storage_schemas.get('problem_count', 0)}",
+        ]
+    )
+    for store in storage_schemas.get("stores", []):
+        lines.append(
+            f"- {store.get('name', '')}: kind={store.get('kind', '')}, "
+            f"exists={_format_bool(store.get('exists', False))}, "
+            f"ok={_format_bool(store.get('ok', False))}, "
+            f"errors={','.join(store.get('errors', [])) or 'none'}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Platform Readiness",
+            "",
+            f"- Mode: {platform_readiness.get('mode', 'local_platform_readiness')}",
+            f"- Overall ready: {_format_bool(platform_readiness.get('overall_ready', False))}",
+            f"- Activation enabled: {_format_bool(platform_readiness.get('activation_enabled', False))}",
+            f"- Storage migration ready: {_format_bool(platform_readiness.get('storage_migration', {}).get('ready', False))}",
+            f"- Storage blockers: {', '.join(platform_readiness.get('storage_migration', {}).get('blockers', [])) or 'none'}",
+            f"- Distributed workers ready: {_format_bool(platform_readiness.get('distributed_workers', {}).get('ready', False))}",
+            f"- Worker blockers: {', '.join(platform_readiness.get('distributed_workers', {}).get('blockers', [])) or 'none'}",
+            "",
             "## Provider Failures",
             "",
             f"- Recent total: {provider_failures.get('total_recent', 0)}",
             f"- By code: {_format_counts(provider_failures.get('by_code', {}))}",
+            f"- Failure rate: {provider_failures.get('failure_rate', 0)}",
+            f"- Alert count: {len(provider_failures.get('alerts', []))}",
             f"- Event log exists: {_format_bool(provider_failures.get('event_log_exists', False))}",
             f"- Event log bytes: {provider_failures.get('event_log_bytes', 0)}",
             "",
@@ -399,14 +938,120 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Provider completion tokens: {query_usage.get('provider_completion_tokens', 0)}",
             f"- Provider total tokens: {query_usage.get('provider_total_tokens', 0)}",
             f"- Provider usage events: {query_usage.get('provider_usage_events', 0)}",
+            f"- Avg duration ms: {query_usage.get('duration_ms', {}).get('avg', 0)}",
+            f"- Max duration ms: {query_usage.get('duration_ms', {}).get('max', 0)}",
+            f"- Alert count: {len(query_usage.get('alerts', []))}",
             f"- Estimated cost USD: {query_usage.get('estimated_cost_usd', '0')}",
             f"- Cost source: {query_usage.get('cost_source', 'not_configured')}",
             f"- Pricing configured: {_format_bool(query_usage.get('pricing', {}).get('configured', False))}",
             f"- Pricing provider: {query_usage.get('pricing', {}).get('provider', 'unspecified')}",
             f"- Prompt USD per 1M tokens: {query_usage.get('pricing', {}).get('prompt_usd_per_1m', '0')}",
             f"- Completion USD per 1M tokens: {query_usage.get('pricing', {}).get('completion_usd_per_1m', '0')}",
+            "",
+            "## Retrieval Traces",
+            "",
+            f"- Recent total: {retrieval_traces.get('total_recent', 0)}",
+            f"- By code: {_format_counts(retrieval_traces.get('by_code', {}))}",
+            f"- By endpoint: {_format_counts(retrieval_traces.get('by_endpoint', {}))}",
+            f"- By answer mode: {_format_counts(retrieval_traces.get('by_answer_mode', {}))}",
+            f"- Empty retrievals: {retrieval_traces.get('empty_recent', 0)}",
+            f"- Empty rate: {retrieval_traces.get('empty_rate', 0)}",
+            f"- Source/page incomplete: {retrieval_traces.get('source_page_incomplete_recent', 0)}",
+            f"- Source/page incomplete rate: {retrieval_traces.get('source_page_incomplete_rate', 0)}",
+            f"- Citation checked: {retrieval_traces.get('citation_checked_recent', 0)}",
+            f"- Citation failures: {retrieval_traces.get('citation_failed_recent', 0)}",
+            f"- Citation failure rate: {retrieval_traces.get('citation_failure_rate', 0)}",
+            f"- Provider-called traces: {retrieval_traces.get('provider_called_recent', 0)}",
+            f"- Alert count: {len(retrieval_traces.get('alerts', []))}",
+            f"- Avg context count: {retrieval_traces.get('context_count', {}).get('avg', 0)}",
+            f"- Max context count: {retrieval_traces.get('context_count', {}).get('max', 0)}",
+            f"- Avg duration ms: {retrieval_traces.get('duration_ms', {}).get('avg', 0)}",
+            f"- Max duration ms: {retrieval_traces.get('duration_ms', {}).get('max', 0)}",
+            "",
+            "## Code Execution Events",
+            "",
+            f"- Recent total: {code_execution.get('total_recent', 0)}",
+            f"- By code: {_format_counts(code_execution.get('by_code', {}))}",
+            f"- By status: {_format_counts(code_execution.get('by_status', {}))}",
+            f"- By backend: {_format_counts(code_execution.get('by_backend', {}))}",
+            f"- Failed recent: {code_execution.get('failed_recent', 0)}",
+            f"- Failure rate: {code_execution.get('failure_rate', 0)}",
+            f"- Policy violations: {code_execution.get('policy_violations', 0)}",
+            f"- Output truncations: {code_execution.get('output_truncations', 0)}",
+            f"- Artifact collection truncations: {code_execution.get('artifact_collection_truncations', 0)}",
+            f"- Artifact exported bytes: {code_execution.get('artifact_exported_bytes', 0)}",
+            f"- Alert count: {len(code_execution.get('alerts', []))}",
+            f"- Avg duration ms: {code_execution.get('duration_ms', {}).get('avg', 0)}",
+            f"- Max duration ms: {code_execution.get('duration_ms', {}).get('max', 0)}",
+            "",
+            "## API Access Audit",
+            "",
+            f"- Audit enabled: {_format_bool(api_access.get('audit_enabled', False))}",
+            f"- Recent total: {api_access.get('total_recent', 0)}",
+            f"- By auth status: {_format_counts(api_access.get('by_token_status', {}))}",
+            f"- By status code: {_format_counts(api_access.get('by_status_code', {}))}",
+            f"- By method: {_format_counts(api_access.get('by_method', {}))}",
+            f"- Invalid credentials: {api_access.get('invalid_recent', 0)}",
+            f"- Missing credentials: {api_access.get('missing_recent', 0)}",
+            f"- Rate limited: {api_access.get('rate_limited_recent', 0)}",
+            "",
+            "## Upload Scans",
+            "",
+            f"- Scan enabled: {_format_bool(upload_scans.get('scan_enabled', False))}",
+            f"- Recent total: {upload_scans.get('total_recent', 0)}",
+            f"- By status: {_format_counts(upload_scans.get('by_status', {}))}",
+            f"- By reason: {_format_counts(upload_scans.get('by_reason', {}))}",
+            f"- Allowed: {upload_scans.get('allowed_recent', 0)}",
+            f"- Blocked: {upload_scans.get('blocked_recent', 0)}",
+            f"- Active-content blocks: {upload_scans.get('active_content_recent', 0)}",
+            f"- Parse failures: {upload_scans.get('parse_failed_recent', 0)}",
         ]
     )
+
+    code_execution_alerts = code_execution.get("alerts", [])
+    if code_execution_alerts:
+        lines.extend(["", "Code execution alerts:"])
+        for alert in code_execution_alerts[:10]:
+            lines.append(
+                f"- {alert.get('severity', '')}: {alert.get('code', '')} "
+                f"{alert.get('message', '')}"
+            )
+
+    query_usage_alerts = query_usage.get("alerts", [])
+    if query_usage_alerts:
+        lines.extend(["", "Query alerts:"])
+        for alert in query_usage_alerts[:10]:
+            lines.append(
+                f"- {alert.get('severity', '')}: {alert.get('code', '')} "
+                f"{alert.get('message', '')}"
+            )
+
+    retrieval_trace_alerts = retrieval_traces.get("alerts", [])
+    if retrieval_trace_alerts:
+        lines.extend(["", "Retrieval trace alerts:"])
+        for alert in retrieval_trace_alerts[:10]:
+            lines.append(
+                f"- {alert.get('severity', '')}: {alert.get('code', '')} "
+                f"{alert.get('message', '')}"
+            )
+
+    provider_failure_alerts = provider_failures.get("alerts", [])
+    if provider_failure_alerts:
+        lines.extend(["", "Provider failure alerts:"])
+        for alert in provider_failure_alerts[:10]:
+            lines.append(
+                f"- {alert.get('severity', '')}: {alert.get('code', '')} "
+                f"{alert.get('message', '')}"
+            )
+
+    job_alerts = jobs.get("alerts", [])
+    if job_alerts:
+        lines.extend(["", "Job alerts:"])
+        for alert in job_alerts[:10]:
+            lines.append(
+                f"- {alert.get('severity', '')}: {alert.get('code', '')} "
+                f"{alert.get('message', '')}"
+            )
 
     latest_failures = provider_failures.get("latest", [])
     if latest_failures:
@@ -428,7 +1073,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             error = job.get("error", {}) or {}
             lines.append(
                 f"- {job.get('updated_at', '')}: {job.get('job_id', '')} "
-                f"kind={job.get('kind', '')} code={error.get('code', '')}"
+                f"kind={job.get('kind', '')} owner={job.get('owner_id', '')} "
+                f"code={error.get('code', '')}"
             )
 
     latest_usage = query_usage.get("latest", [])
@@ -441,6 +1087,58 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
                 f"endpoint={metadata.get('endpoint', '')} "
                 f"answer_mode={metadata.get('answer_mode', '')} "
                 f"estimated_total_tokens={metadata.get('estimated_total_tokens', 0)}"
+            )
+
+    latest_retrieval_traces = retrieval_traces.get("latest", [])
+    if latest_retrieval_traces:
+        lines.extend(["", "Latest retrieval traces:"])
+        for event in latest_retrieval_traces[:5]:
+            metadata = event.get("metadata", {}) or {}
+            lines.append(
+                f"- {event.get('created_at', '')}: code={event.get('code', '')} "
+                f"endpoint={metadata.get('endpoint', '')} "
+                f"answer_mode={metadata.get('answer_mode', '')} "
+                f"context_count={metadata.get('context_count', 0)} "
+                f"missing_source_page_count={metadata.get('missing_source_page_count', 0)}"
+            )
+
+    latest_code_execution = code_execution.get("latest", [])
+    if latest_code_execution:
+        lines.extend(["", "Latest code execution events:"])
+        for event in latest_code_execution[:5]:
+            metadata = event.get("metadata", {}) or {}
+            lines.append(
+                f"- {event.get('created_at', '')}: request_id={event.get('request_id', '')} "
+                f"job_id={metadata.get('job_id', '')} "
+                f"status={metadata.get('status', '')} "
+                f"backend={metadata.get('backend', '')} "
+                f"code={event.get('code', '')}"
+            )
+
+    latest_api_access = api_access.get("latest", [])
+    if latest_api_access:
+        lines.extend(["", "Latest API access audit events:"])
+        for event in latest_api_access[:5]:
+            metadata = event.get("metadata", {}) or {}
+            lines.append(
+                f"- {event.get('created_at', '')}: request_id={event.get('request_id', '')} "
+                f"method={metadata.get('method', '')} "
+                f"path={metadata.get('path', '')} "
+                f"status_code={metadata.get('status_code', '')} "
+                f"token_status={metadata.get('token_status', '')}"
+            )
+
+    latest_upload_scans = upload_scans.get("latest", [])
+    if latest_upload_scans:
+        lines.extend(["", "Latest upload scan events:"])
+        for event in latest_upload_scans[:5]:
+            metadata = event.get("metadata", {}) or {}
+            lines.append(
+                f"- {event.get('created_at', '')}: code={event.get('code', '')} "
+                f"request_id={event.get('request_id', '')} "
+                f"status={metadata.get('status', '')} "
+                f"reasons={','.join(metadata.get('reason_codes', [])) or 'none'} "
+                f"pages={metadata.get('page_count', 0)}"
             )
 
     lines.extend(
@@ -476,6 +1174,36 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Object storage available: {_format_bool(config.get('storage_readiness', {}).get('object_storage', {}).get('available', False))}",
             f"- Object storage reason: {config.get('storage_readiness', {}).get('object_storage', {}).get('reason', '')}",
             f"- Code execution backend: {config.get('code_execution_backend', '')}",
+            f"- Code execution policy: {config.get('code_execution_policy', '')}",
+            f"- Code execution max stdout bytes: {config.get('code_execution_max_stdout_bytes', 0)}",
+            f"- Code execution max stderr bytes: {config.get('code_execution_max_stderr_bytes', 0)}",
+            f"- Code execution max artifacts: {config.get('code_execution_max_artifacts', 0)}",
+            f"- Code execution max artifact bytes: {config.get('code_execution_max_artifact_bytes', 0)}",
+            f"- Code execution max artifact total bytes: {config.get('code_execution_max_artifact_total_bytes', 0)}",
+            f"- Code execution max artifact candidates: {config.get('code_execution_max_artifact_candidates', 0)}",
+            f"- Code execution alert min events: {config.get('code_execution_alert_min_events', 0)}",
+            f"- Code execution alert failure rate: {config.get('code_execution_alert_failure_rate', 0)}",
+            f"- Code execution alert duration ms: {config.get('code_execution_alert_duration_ms', 0)}",
+            f"- Query alert min events: {config.get('query_alert_min_events', 0)}",
+            f"- Query alert duration ms: {config.get('query_alert_duration_ms', 0)}",
+            f"- Retrieval trace alert min events: {config.get('retrieval_trace_alert_min_events', 0)}",
+            f"- Retrieval trace alert empty rate: {config.get('retrieval_trace_alert_empty_rate', 0)}",
+            f"- Retrieval trace alert source/page incomplete rate: {config.get('retrieval_trace_alert_source_page_incomplete_rate', 0)}",
+            f"- Retrieval trace alert citation failure rate: {config.get('retrieval_trace_alert_citation_failure_rate', 0)}",
+            f"- Provider failure alert min events: {config.get('provider_failure_alert_min_events', 0)}",
+            f"- Provider failure alert rate: {config.get('provider_failure_alert_rate', 0)}",
+            f"- Job alert failed min events: {config.get('job_alert_failed_min_events', 0)}",
+            f"- Job alert expired min events: {config.get('job_alert_expired_min_events', 0)}",
+            f"- API access audit enabled: {_format_bool(config.get('api_access_audit_enabled', False))}",
+            f"- API rate limit enabled: {_format_bool(config.get('api_rate_limit_enabled', False))}",
+            f"- API rate limit max requests: {config.get('api_rate_limit_max_requests', 0)}",
+            f"- API rate limit window s: {config.get('api_rate_limit_window_s', 0)}",
+            f"- Upload scan enabled: {_format_bool(config.get('upload_scan_enabled', False))}",
+            f"- Upload scan max pages: {config.get('upload_scan_max_pages', 0)}",
+            f"- Upload scan reject encrypted: {_format_bool(config.get('upload_scan_reject_encrypted', False))}",
+            f"- Upload scan block active content: {_format_bool(config.get('upload_scan_block_active_content', False))}",
+            f"- Retention delete enabled: {_format_bool(config.get('retention_delete_enabled', False))}",
+            f"- Code execution allowed imports: {','.join(config.get('code_execution_allowed_imports', []))}",
             f"- Docker execution configured: {_format_bool(config.get('docker_execution', {}).get('configured', False))}",
             f"- Docker execution available: {_format_bool(config.get('docker_execution', {}).get('available', False))}",
             f"- Docker execution reason: {config.get('docker_execution', {}).get('reason', '')}",
@@ -484,6 +1212,401 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _metrics_label_value(value: Any) -> str:
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace('"', '\\"')
+    )
+
+
+def _metrics_number(value: Any) -> str:
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "0"
+    if number != number or number in {float("inf"), float("-inf")}:
+        return "0"
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.6g}"
+
+
+def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
+    """Render no-secret admin status as Prometheus/OpenMetrics-style text."""
+    data = status.to_dict() if hasattr(status, "to_dict") else status
+    jobs = data.get("jobs", {})
+    artifacts = data.get("artifacts", {})
+    corpus = data.get("corpus", {})
+    storage = data.get("storage", {})
+    storage_schemas = data.get("storage_schemas", {})
+    platform_readiness = data.get("platform_readiness", {})
+    provider_failures = data.get("provider_failures", {})
+    query_usage = data.get("query_usage", {})
+    retrieval_traces = data.get("retrieval_traces", {})
+    code_execution = data.get("code_execution", {})
+    api_access = data.get("api_access", {})
+    upload_scans = data.get("upload_scans", {})
+    config = data.get("config", {})
+    storage_readiness = config.get("storage_readiness", {})
+    metadata_storage = storage_readiness.get("metadata", {})
+    object_storage = storage_readiness.get("object_storage", {})
+    docker_execution = config.get("docker_execution", {})
+    platform_storage = platform_readiness.get("storage_migration", {})
+    platform_workers = platform_readiness.get("distributed_workers", {})
+
+    lines = [
+        "# FluxMind no-secret admin metrics.",
+        "# Recent event metrics are local-window gauges, not durable counters.",
+    ]
+    emitted: set[str] = set()
+
+    def emit(
+        name: str,
+        value: Any,
+        help_text: str,
+        *,
+        labels: dict[str, Any] | None = None,
+    ) -> None:
+        if name not in emitted:
+            lines.append(f"# HELP {name} {help_text}")
+            lines.append(f"# TYPE {name} gauge")
+            emitted.add(name)
+        label_text = ""
+        if labels:
+            label_pairs = [
+                f'{key}="{_metrics_label_value(label_value)}"'
+                for key, label_value in sorted(labels.items())
+            ]
+            label_text = "{" + ",".join(label_pairs) + "}"
+        lines.append(f"{name}{label_text} {_metrics_number(value)}")
+
+    def emit_counts(
+        name: str,
+        help_text: str,
+        counts: dict[str, Any],
+        label_name: str,
+    ) -> None:
+        for key, value in sorted((counts or {}).items()):
+            emit(name, value, help_text, labels={label_name: key})
+
+    emit("fluxmind_admin_metrics_schema_version", 1, "FluxMind admin metrics schema version.")
+
+    emit("fluxmind_jobs_total", jobs.get("total", 0), "Recent local jobs in the admin status window.")
+    emit_counts("fluxmind_jobs_by_status", "Recent local jobs by status.", jobs.get("by_status", {}), "status")
+    emit_counts("fluxmind_jobs_by_kind", "Recent local jobs by kind.", jobs.get("by_kind", {}), "kind")
+    emit("fluxmind_jobs_failed", jobs.get("failed", 0), "Recent failed local jobs.")
+    emit("fluxmind_jobs_cancelled", jobs.get("cancelled", 0), "Recent cancelled local jobs.")
+    emit("fluxmind_jobs_scheduled", jobs.get("scheduled", 0), "Recent scheduled local jobs.")
+    emit("fluxmind_jobs_dead_lettered", jobs.get("dead_lettered", 0), "Recent dead-lettered local jobs.")
+    emit("fluxmind_job_alerts_total", len(jobs.get("alerts", [])), "Current local job advisory alerts.")
+    emit_counts(
+        "fluxmind_job_queue_state",
+        "Current local queue health by state.",
+        jobs.get("queue_health", {}),
+        "state",
+    )
+    worker_leases = jobs.get("worker_leases", {})
+    emit("fluxmind_worker_leases_total", worker_leases.get("total_leased_jobs", 0), "Local worker leased jobs.")
+    emit("fluxmind_worker_leases_active", worker_leases.get("active_leases", 0), "Active local worker leases.")
+    emit("fluxmind_worker_leases_expired", worker_leases.get("expired_leases", 0), "Expired local worker leases.")
+
+    emit("fluxmind_corpus_papers_total", corpus.get("papers", 0), "Local corpus papers.")
+    emit("fluxmind_corpus_papers_active", corpus.get("active", 0), "Active local corpus papers.")
+    emit("fluxmind_corpus_papers_indexed", corpus.get("indexed", 0), "Indexed local corpus papers.")
+    emit("fluxmind_corpus_papers_failed", corpus.get("failed", 0), "Failed local corpus papers.")
+    corpus_index = corpus.get("index", {})
+    emit("fluxmind_corpus_index_fresh", corpus_index.get("fresh", False), "Whether local corpus index is fresh.")
+    emit("fluxmind_corpus_faiss_exists", corpus_index.get("faiss_exists", False), "Whether the local FAISS index file exists.")
+    emit("fluxmind_corpus_chunk_source_paths", corpus_index.get("chunk_source_paths", 0), "Distinct source paths in chunk metadata.")
+
+    emit("fluxmind_artifacts_total", artifacts.get("total", 0), "Recent local generated artifacts.")
+    emit("fluxmind_artifacts_bytes", artifacts.get("bytes", 0), "Local artifact directory bytes.")
+    emit_counts(
+        "fluxmind_artifact_integrity",
+        "Local artifact integrity counts.",
+        artifacts.get("integrity", {}),
+        "state",
+    )
+
+    emit("fluxmind_storage_files_total", storage.get("total_files", 0), "Local runtime storage file count.")
+    emit("fluxmind_storage_bytes_total", storage.get("total_bytes", 0), "Local runtime storage bytes.")
+    emit("fluxmind_storage_schema_ok", 1 if storage_schemas.get("ok") else 0, "Local storage schema inventory status.")
+    emit(
+        "fluxmind_storage_schema_problem_total",
+        storage_schemas.get("problem_count", 0),
+        "Local storage schema inventory problem count.",
+    )
+    emit_counts(
+        "fluxmind_storage_schema_store_ok",
+        "Local storage schema status by store.",
+        {
+            str(store.get("name", "unknown")): 1 if store.get("ok") else 0
+            for store in storage_schemas.get("stores", [])
+        },
+        "store",
+    )
+    emit(
+        "fluxmind_platform_readiness_overall_ready",
+        platform_readiness.get("overall_ready", False),
+        "Whether local production-storage and distributed-worker acceptance checks are ready.",
+    )
+    emit(
+        "fluxmind_platform_storage_migration_ready",
+        platform_storage.get("ready", False),
+        "Whether production storage migration acceptance checks are ready.",
+    )
+    emit(
+        "fluxmind_platform_distributed_workers_ready",
+        platform_workers.get("ready", False),
+        "Whether distributed worker acceptance checks are ready.",
+    )
+    emit(
+        "fluxmind_platform_readiness_blockers_total",
+        len(platform_storage.get("blockers", [])) + len(platform_workers.get("blockers", [])),
+        "Current production platform readiness blocker count.",
+    )
+    for code in platform_storage.get("blockers", []):
+        emit(
+            "fluxmind_platform_readiness_blocker",
+            1,
+            "Current production platform readiness blockers by area and code.",
+            labels={"area": "storage", "code": code},
+        )
+    for code in platform_workers.get("blockers", []):
+        emit(
+            "fluxmind_platform_readiness_blocker",
+            1,
+            "Current production platform readiness blockers by area and code.",
+            labels={"area": "workers", "code": code},
+        )
+    for group in storage.get("groups", []):
+        group_label = group.get("name", "unknown")
+        emit(
+            "fluxmind_storage_group_files",
+            group.get("files", 0),
+            "Local runtime storage files by group.",
+            labels={"group": group_label},
+        )
+        emit(
+            "fluxmind_storage_group_bytes",
+            group.get("bytes", 0),
+            "Local runtime storage bytes by group.",
+            labels={"group": group_label},
+        )
+
+    emit("fluxmind_provider_failures_recent_total", provider_failures.get("total_recent", 0), "Recent provider failures.")
+    emit_counts(
+        "fluxmind_provider_failures_by_code",
+        "Recent provider failures by normalized code.",
+        provider_failures.get("by_code", {}),
+        "code",
+    )
+    emit("fluxmind_provider_failure_rate", provider_failures.get("failure_rate", 0), "Recent provider failure rate.")
+    emit("fluxmind_provider_failure_alerts_total", len(provider_failures.get("alerts", [])), "Current provider-failure advisory alerts.")
+
+    emit("fluxmind_query_usage_recent_total", query_usage.get("total_recent", 0), "Recent query usage events.")
+    emit_counts(
+        "fluxmind_query_usage_by_endpoint",
+        "Recent query usage by internal endpoint.",
+        query_usage.get("by_endpoint", {}),
+        "endpoint",
+    )
+    emit("fluxmind_query_estimated_tokens_total", query_usage.get("estimated_total_tokens", 0), "Recent estimated query tokens.")
+    emit("fluxmind_query_provider_tokens_total", query_usage.get("provider_total_tokens", 0), "Recent provider-reported query tokens.")
+    emit(
+        "fluxmind_query_usage_duration_ms",
+        query_usage.get("duration_ms", {}).get("avg", 0),
+        "Recent query duration in milliseconds.",
+        labels={"stat": "avg"},
+    )
+    emit(
+        "fluxmind_query_usage_duration_ms",
+        query_usage.get("duration_ms", {}).get("max", 0),
+        "Recent query duration in milliseconds.",
+        labels={"stat": "max"},
+    )
+    emit("fluxmind_query_alerts_total", len(query_usage.get("alerts", [])), "Current query advisory alerts.")
+
+    emit("fluxmind_retrieval_traces_recent_total", retrieval_traces.get("total_recent", 0), "Recent retrieval trace events.")
+    emit_counts(
+        "fluxmind_retrieval_traces_by_code",
+        "Recent retrieval trace events by code.",
+        retrieval_traces.get("by_code", {}),
+        "code",
+    )
+    emit_counts(
+        "fluxmind_retrieval_traces_by_endpoint",
+        "Recent retrieval trace events by internal endpoint.",
+        retrieval_traces.get("by_endpoint", {}),
+        "endpoint",
+    )
+    emit("fluxmind_retrieval_empty_recent", retrieval_traces.get("empty_recent", 0), "Recent retrieval traces with no context.")
+    emit("fluxmind_retrieval_empty_rate", retrieval_traces.get("empty_rate", 0), "Recent retrieval empty rate.")
+    emit(
+        "fluxmind_retrieval_source_page_incomplete_recent",
+        retrieval_traces.get("source_page_incomplete_recent", 0),
+        "Recent retrieval traces with missing source/page metadata.",
+    )
+    emit(
+        "fluxmind_retrieval_source_page_incomplete_rate",
+        retrieval_traces.get("source_page_incomplete_rate", 0),
+        "Recent retrieval source/page incomplete rate.",
+    )
+    emit(
+        "fluxmind_retrieval_citation_checked_recent",
+        retrieval_traces.get("citation_checked_recent", 0),
+        "Recent retrieval traces with citation validation metadata.",
+    )
+    emit(
+        "fluxmind_retrieval_citation_failed_recent",
+        retrieval_traces.get("citation_failed_recent", 0),
+        "Recent generated-query retrieval traces with failed citation validation.",
+    )
+    emit(
+        "fluxmind_retrieval_citation_failure_rate",
+        retrieval_traces.get("citation_failure_rate", 0),
+        "Recent retrieval citation failure rate.",
+    )
+    emit("fluxmind_retrieval_alerts_total", len(retrieval_traces.get("alerts", [])), "Current retrieval advisory alerts.")
+    emit(
+        "fluxmind_retrieval_context_count",
+        retrieval_traces.get("context_count", {}).get("avg", 0),
+        "Recent retrieval context count.",
+        labels={"stat": "avg"},
+    )
+    emit(
+        "fluxmind_retrieval_context_count",
+        retrieval_traces.get("context_count", {}).get("max", 0),
+        "Recent retrieval context count.",
+        labels={"stat": "max"},
+    )
+    emit(
+        "fluxmind_retrieval_duration_ms",
+        retrieval_traces.get("duration_ms", {}).get("avg", 0),
+        "Recent retrieval trace duration in milliseconds.",
+        labels={"stat": "avg"},
+    )
+    emit(
+        "fluxmind_retrieval_duration_ms",
+        retrieval_traces.get("duration_ms", {}).get("max", 0),
+        "Recent retrieval trace duration in milliseconds.",
+        labels={"stat": "max"},
+    )
+
+    emit("fluxmind_code_execution_recent_total", code_execution.get("total_recent", 0), "Recent code execution events.")
+    emit_counts(
+        "fluxmind_code_execution_by_code",
+        "Recent code execution events by normalized code.",
+        code_execution.get("by_code", {}),
+        "code",
+    )
+    emit_counts(
+        "fluxmind_code_execution_by_status",
+        "Recent code execution events by status.",
+        code_execution.get("by_status", {}),
+        "status",
+    )
+    emit_counts(
+        "fluxmind_code_execution_by_backend",
+        "Recent code execution events by backend.",
+        code_execution.get("by_backend", {}),
+        "backend",
+    )
+    emit("fluxmind_code_execution_failed_recent", code_execution.get("failed_recent", 0), "Recent failed code execution events.")
+    emit("fluxmind_code_execution_failure_rate", code_execution.get("failure_rate", 0), "Recent code execution failure rate.")
+    emit("fluxmind_code_execution_policy_violations", code_execution.get("policy_violations", 0), "Recent code execution policy violations.")
+    emit("fluxmind_code_execution_output_truncations", code_execution.get("output_truncations", 0), "Recent code execution output truncations.")
+    emit("fluxmind_code_execution_artifact_collection_truncations", code_execution.get("artifact_collection_truncations", 0), "Recent code execution artifact collection truncations.")
+    emit("fluxmind_code_execution_artifact_exported_bytes", code_execution.get("artifact_exported_bytes", 0), "Recent code execution exported artifact bytes.")
+    emit(
+        "fluxmind_code_execution_duration_ms",
+        code_execution.get("duration_ms", {}).get("avg", 0),
+        "Recent code execution duration in milliseconds.",
+        labels={"stat": "avg"},
+    )
+    emit(
+        "fluxmind_code_execution_duration_ms",
+        code_execution.get("duration_ms", {}).get("max", 0),
+        "Recent code execution duration in milliseconds.",
+        labels={"stat": "max"},
+    )
+    emit("fluxmind_code_execution_alerts_total", len(code_execution.get("alerts", [])), "Current code execution advisory alerts.")
+
+    emit("fluxmind_api_access_audit_enabled", api_access.get("audit_enabled", False), "Whether metadata-only API access audit is enabled.")
+    emit("fluxmind_api_access_recent_total", api_access.get("total_recent", 0), "Recent metadata-only API access events.")
+    emit_counts(
+        "fluxmind_api_access_by_token_status",
+        "Recent API access events by token status.",
+        api_access.get("by_token_status", {}),
+        "token_status",
+    )
+    emit_counts(
+        "fluxmind_api_access_by_status_code",
+        "Recent API access events by HTTP status code.",
+        api_access.get("by_status_code", {}),
+        "status_code",
+    )
+    emit_counts(
+        "fluxmind_api_access_by_method",
+        "Recent API access events by HTTP method.",
+        api_access.get("by_method", {}),
+        "method",
+    )
+    emit("fluxmind_api_access_invalid_recent", api_access.get("invalid_recent", 0), "Recent invalid API credentials.")
+    emit("fluxmind_api_access_missing_recent", api_access.get("missing_recent", 0), "Recent missing API credentials.")
+    emit("fluxmind_api_access_valid_recent", api_access.get("valid_recent", 0), "Recent valid API credentials.")
+    emit("fluxmind_api_access_rate_limited_recent", api_access.get("rate_limited_recent", 0), "Recent API rate-limited responses.")
+
+    emit("fluxmind_upload_scan_enabled", upload_scans.get("scan_enabled", False), "Whether local upload scanning is enabled.")
+    emit("fluxmind_upload_scans_recent_total", upload_scans.get("total_recent", 0), "Recent upload scan events.")
+    emit_counts(
+        "fluxmind_upload_scans_by_status",
+        "Recent upload scan events by status.",
+        upload_scans.get("by_status", {}),
+        "status",
+    )
+    emit_counts(
+        "fluxmind_upload_scans_by_reason",
+        "Recent upload scan blocked reasons.",
+        upload_scans.get("by_reason", {}),
+        "reason",
+    )
+    emit("fluxmind_upload_scans_allowed_recent", upload_scans.get("allowed_recent", 0), "Recent allowed upload scans.")
+    emit("fluxmind_upload_scans_blocked_recent", upload_scans.get("blocked_recent", 0), "Recent blocked upload scans.")
+    emit("fluxmind_upload_scans_active_content_recent", upload_scans.get("active_content_recent", 0), "Recent active-content upload scan blocks.")
+    emit("fluxmind_upload_scans_parse_failed_recent", upload_scans.get("parse_failed_recent", 0), "Recent upload scan parse failures.")
+
+    emit("fluxmind_api_rate_limit_enabled", config.get("api_rate_limit_enabled", False), "Whether local API rate limiting is enabled.")
+    emit("fluxmind_api_rate_limit_max_requests", config.get("api_rate_limit_max_requests", 0), "Configured local API rate-limit max requests.")
+    emit("fluxmind_api_rate_limit_window_seconds", config.get("api_rate_limit_window_s", 0), "Configured local API rate-limit window seconds.")
+    emit("fluxmind_retention_delete_enabled", config.get("retention_delete_enabled", False), "Whether guarded local retention delete is enabled.")
+    emit("fluxmind_storage_external_configured", storage_readiness.get("external_storage_configured", False), "Whether external storage is configured.")
+    emit("fluxmind_storage_external_available", storage_readiness.get("external_storage_available", False), "Whether configured external storage is available.")
+    emit(
+        "fluxmind_metadata_storage_available",
+        metadata_storage.get("available", False),
+        "Whether metadata storage is available.",
+        labels={"backend": metadata_storage.get("backend", "unknown")},
+    )
+    emit(
+        "fluxmind_object_storage_available",
+        object_storage.get("available", False),
+        "Whether object storage is available.",
+        labels={"backend": object_storage.get("backend", "unknown")},
+    )
+    emit("fluxmind_docker_execution_configured", docker_execution.get("configured", False), "Whether Docker execution backend is configured.")
+    emit("fluxmind_docker_execution_available", docker_execution.get("available", False), "Whether Docker execution is available to the runtime user.")
+    emit("fluxmind_external_providers_enabled", config.get("external_providers_enabled", False), "Whether external providers are enabled.")
+    emit("fluxmind_identity_quotas_billing_enabled", config.get("identity_quotas_billing_enabled", False), "Whether identity, quotas, and billing are enabled.")
+
+    lines.append("# EOF")
+    return "\n".join(lines) + "\n"
 
 
 def runtime_directory_status(name: str, path: Path) -> RuntimeDirectoryStatus:
@@ -581,7 +1704,7 @@ def collect_retention_preview(
     now = time.time() if now_ts is None else now_ts
     return {
         "mode": "preview",
-        "delete_enabled": False,
+        "delete_enabled": RETENTION_DELETE_ENABLED,
         "limit": bounded_limit,
         "uploads": _retention_candidates(
             PAPERS_UPLOADS_DIR,
@@ -597,6 +1720,140 @@ def collect_retention_preview(
             exclude_names={"artifacts.sqlite3", "artifacts.sqlite3-journal", "artifacts.sqlite3-wal", "artifacts.sqlite3-shm"},
         ),
     }
+
+
+def _retention_candidate_path(path_value: str, root: Path) -> Path:
+    path = (PROJECT_ROOT / path_value).resolve()
+    path.relative_to(root.resolve())
+    return path
+
+
+def _delete_retention_candidates(
+    root: Path,
+    *,
+    retention_days: int,
+    limit: int,
+    now_ts: float,
+    exclude_names: set[str] | None = None,
+) -> dict[str, Any]:
+    preview = _retention_candidates(
+        root,
+        retention_days=retention_days,
+        limit=limit,
+        now_ts=now_ts,
+        exclude_names=exclude_names,
+    )
+    deleted: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    deleted_bytes = 0
+    for candidate in preview.get("candidates", []):
+        path_text = str(candidate.get("path", ""))
+        try:
+            path = _retention_candidate_path(path_text, root)
+            bytes_before = path.stat().st_size
+            path.unlink()
+        except (OSError, ValueError) as exc:
+            failures.append(
+                {
+                    "path": path_text,
+                    "error": type(exc).__name__,
+                }
+            )
+            continue
+        deleted.append(
+            {
+                "path": path_text,
+                "bytes": bytes_before,
+                "age_days": candidate.get("age_days", 0),
+            }
+        )
+        deleted_bytes += bytes_before
+    return {
+        "enabled": preview["enabled"],
+        "retention_days": preview["retention_days"],
+        "total_candidates": preview["total_candidates"],
+        "candidate_bytes": preview["bytes"],
+        "deleted_files": len(deleted),
+        "deleted_bytes": deleted_bytes,
+        "failed_files": len(failures),
+        "deleted": deleted,
+        "failures": failures,
+    }
+
+
+def apply_retention_delete(
+    *,
+    upload_days: int = 0,
+    artifact_days: int = 0,
+    limit: int = 100,
+    now_ts: float | None = None,
+) -> dict[str, Any]:
+    """Delete age-matched local upload/artifact files only when enabled."""
+    bounded_limit = min(max(limit, 1), 500)
+    now = time.time() if now_ts is None else now_ts
+    if not RETENTION_DELETE_ENABLED:
+        preview = collect_retention_preview(
+            upload_days=upload_days,
+            artifact_days=artifact_days,
+            limit=bounded_limit,
+            now_ts=now,
+        )
+        result = {
+            **preview,
+            "mode": "delete_disabled",
+            "deleted_files": 0,
+            "deleted_bytes": 0,
+            "failed_files": 0,
+        }
+        _record_retention_delete_event(result)
+        return result
+
+    uploads = _delete_retention_candidates(
+        PAPERS_UPLOADS_DIR,
+        retention_days=upload_days,
+        limit=bounded_limit,
+        now_ts=now,
+    )
+    artifacts = _delete_retention_candidates(
+        ARTIFACTS_DIR,
+        retention_days=artifact_days,
+        limit=bounded_limit,
+        now_ts=now,
+        exclude_names={"artifacts.sqlite3", "artifacts.sqlite3-journal", "artifacts.sqlite3-wal", "artifacts.sqlite3-shm"},
+    )
+    result = {
+        "mode": "delete",
+        "delete_enabled": True,
+        "limit": bounded_limit,
+        "uploads": uploads,
+        "artifacts": artifacts,
+        "deleted_files": uploads["deleted_files"] + artifacts["deleted_files"],
+        "deleted_bytes": uploads["deleted_bytes"] + artifacts["deleted_bytes"],
+        "failed_files": uploads["failed_files"] + artifacts["failed_files"],
+    }
+    _record_retention_delete_event(result)
+    return result
+
+
+def _record_retention_delete_event(result: dict[str, Any]) -> None:
+    try:
+        append_runtime_event(
+            kind="retention_delete",
+            code="retention_delete_applied" if result.get("delete_enabled") else "retention_delete_disabled",
+            message="Metadata-only local retention delete event.",
+            metadata={
+                "mode": result.get("mode", ""),
+                "delete_enabled": result.get("delete_enabled", False),
+                "limit": result.get("limit", 0),
+                "deleted_files": result.get("deleted_files", 0),
+                "deleted_bytes": result.get("deleted_bytes", 0),
+                "failed_files": result.get("failed_files", 0),
+                "upload_deleted_files": result.get("uploads", {}).get("deleted_files", 0),
+                "artifact_deleted_files": result.get("artifacts", {}).get("deleted_files", 0),
+            },
+        )
+    except OSError:
+        pass
 
 
 def corpus_index_status(papers: list[Any], chunk_metadata_store: ChunkMetadataStore) -> dict[str, Any]:
@@ -808,12 +2065,40 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     jobs = job_store.list_latest(limit=job_limit)
     job_status_counts = Counter(job.status for job in jobs)
     job_kind_counts = Counter(job.kind for job in jobs)
+    job_owner_counts = Counter(job.owner_id for job in jobs)
     failed_jobs = [job for job in jobs if job.status == "failed"]
+    dead_lettered_jobs = [
+        job for job in jobs if job.status == "dead_lettered" or job.dead_lettered_at
+    ]
     cancelled_jobs = [job for job in jobs if job.status == "cancelled"]
     scheduled_jobs = [job for job in jobs if job.status == "queued" and job.not_before]
+    queue_health = job_store.queue_health()
+    worker_leases = job_store.worker_lease_health()
+    job_alerts = summarize_job_alerts(
+        failed_recent=len(failed_jobs),
+        dead_lettered_recent=len(dead_lettered_jobs),
+        queue_health=queue_health,
+        worker_leases=worker_leases,
+        failed_min_events=JOB_ALERT_FAILED_MIN_EVENTS,
+        expired_min_events=JOB_ALERT_EXPIRED_MIN_EVENTS,
+    )
     provider_failure_events = list_runtime_events(kind="provider_failure", limit=20)
     provider_failure_counts = Counter(event.code for event in provider_failure_events)
     query_usage_events = list_runtime_events(kind="query_usage", limit=100)
+    total_query_outcomes = len(provider_failure_events) + len(query_usage_events)
+    provider_failure_rate = (
+        len(provider_failure_events) / total_query_outcomes
+        if total_query_outcomes
+        else 0.0
+    )
+    provider_failure_alerts = summarize_provider_failure_alerts(
+        total_recent=len(provider_failure_events),
+        total_query_outcomes=total_query_outcomes,
+        failure_rate=provider_failure_rate,
+        by_code=dict(provider_failure_counts),
+        min_events=PROVIDER_FAILURE_ALERT_MIN_EVENTS,
+        failure_rate_threshold=PROVIDER_FAILURE_ALERT_RATE,
+    )
     query_usage_by_endpoint = Counter(
         str(event.metadata.get("endpoint", "unknown")) for event in query_usage_events
     )
@@ -845,6 +2130,24 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         for event in query_usage_events
         if event.metadata.get("usage_source") == "provider"
     )
+    query_usage_duration_ms = [
+        _event_int_metadata(event, "duration_ms")
+        for event in query_usage_events
+        if event.metadata.get("duration_ms") is not None
+    ]
+    query_usage_avg_duration_ms = (
+        sum(query_usage_duration_ms) // len(query_usage_duration_ms)
+        if query_usage_duration_ms
+        else 0
+    )
+    query_usage_max_duration_ms = max(query_usage_duration_ms) if query_usage_duration_ms else 0
+    query_usage_alerts = summarize_query_usage_alerts(
+        total_recent=len(query_usage_events),
+        avg_duration_ms=query_usage_avg_duration_ms,
+        max_duration_ms=query_usage_max_duration_ms,
+        min_events=QUERY_ALERT_MIN_EVENTS,
+        duration_ms_threshold=QUERY_ALERT_DURATION_MS,
+    )
     cost_prompt_tokens = sum(
         _query_cost_token_value(event, "provider_prompt_tokens", "estimated_prompt_tokens")
         for event in query_usage_events
@@ -866,6 +2169,177 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         prompt_usd_per_1m=QUERY_COST_PROMPT_USD_PER_1M,
         completion_usd_per_1m=QUERY_COST_COMPLETION_USD_PER_1M,
     )
+    retrieval_trace_events = list_runtime_events(kind="retrieval_trace", limit=100)
+    retrieval_trace_by_code = Counter(event.code for event in retrieval_trace_events)
+    retrieval_trace_by_endpoint = Counter(
+        str(event.metadata.get("endpoint", "unknown")) for event in retrieval_trace_events
+    )
+    retrieval_trace_by_answer_mode = Counter(
+        str(event.metadata.get("answer_mode", "unknown")) for event in retrieval_trace_events
+    )
+    retrieval_context_counts = [
+        _event_int_metadata(event, "context_count") for event in retrieval_trace_events
+    ]
+    retrieval_duration_ms = [
+        _event_int_metadata(event, "duration_ms")
+        for event in retrieval_trace_events
+        if event.metadata.get("duration_ms") is not None
+    ]
+    retrieval_source_page_incomplete_recent = sum(
+        1
+        for event in retrieval_trace_events
+        if event.code == "retrieval_source_page_incomplete"
+        or event.metadata.get("source_page_complete") is False
+        or _event_int_metadata(event, "missing_source_page_count") > 0
+    )
+    retrieval_empty_recent = sum(
+        1
+        for event in retrieval_trace_events
+        if event.code == "retrieval_empty"
+        or _event_int_metadata(event, "context_count") <= 0
+    )
+    retrieval_empty_rate = (
+        retrieval_empty_recent / len(retrieval_trace_events)
+        if retrieval_trace_events
+        else 0.0
+    )
+    retrieval_source_page_incomplete_rate = (
+        retrieval_source_page_incomplete_recent / len(retrieval_trace_events)
+        if retrieval_trace_events
+        else 0.0
+    )
+    retrieval_citation_checked_recent = sum(
+        1 for event in retrieval_trace_events if event.metadata.get("citation_ok") is not None
+    )
+    retrieval_citation_failed_recent = sum(
+        1 for event in retrieval_trace_events if event.metadata.get("citation_ok") is False
+    )
+    retrieval_citation_failure_rate = (
+        retrieval_citation_failed_recent / retrieval_citation_checked_recent
+        if retrieval_citation_checked_recent
+        else 0.0
+    )
+    retrieval_provider_called_recent = sum(
+        1 for event in retrieval_trace_events if event.metadata.get("provider_called") is True
+    )
+    retrieval_trace_alerts = summarize_retrieval_trace_alerts(
+        total_recent=len(retrieval_trace_events),
+        empty_recent=retrieval_empty_recent,
+        empty_rate=retrieval_empty_rate,
+        source_page_incomplete_recent=retrieval_source_page_incomplete_recent,
+        source_page_incomplete_rate=retrieval_source_page_incomplete_rate,
+        citation_checked_recent=retrieval_citation_checked_recent,
+        citation_failed_recent=retrieval_citation_failed_recent,
+        citation_failure_rate=retrieval_citation_failure_rate,
+        min_events=RETRIEVAL_TRACE_ALERT_MIN_EVENTS,
+        empty_rate_threshold=RETRIEVAL_TRACE_ALERT_EMPTY_RATE,
+        source_page_incomplete_rate_threshold=RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE,
+        citation_failure_rate_threshold=RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE,
+    )
+    code_execution_events = list_runtime_events(kind="code_execution", limit=100)
+    code_execution_by_code = Counter(event.code for event in code_execution_events)
+    code_execution_by_status = Counter(
+        str(event.metadata.get("status", "unknown")) for event in code_execution_events
+    )
+    code_execution_by_backend = Counter(
+        str(event.metadata.get("backend", "unknown")) for event in code_execution_events
+    )
+    code_execution_failed_recent = sum(
+        1
+        for event in code_execution_events
+        if event.metadata.get("status") in {"failed", "cancelled", "dead_lettered"}
+        or event.code not in {"execution_succeeded"}
+    )
+    code_execution_failure_rate = (
+        code_execution_failed_recent / len(code_execution_events)
+        if code_execution_events
+        else 0.0
+    )
+    code_execution_policy_violations = sum(
+        1
+        for event in code_execution_events
+        if event.metadata.get("policy_violation") == "true"
+        or event.code == "execution_policy_violation"
+    )
+    code_execution_duration_ms = [
+        _event_int_metadata(event, "duration_ms") for event in code_execution_events
+    ]
+    code_execution_output_truncations = sum(
+        1
+        for event in code_execution_events
+        if event.metadata.get("output_truncated") == "true"
+    )
+    code_execution_artifact_collection_truncations = sum(
+        1
+        for event in code_execution_events
+        if event.metadata.get("artifact_collection_truncated") == "true"
+    )
+    code_execution_artifact_exported_bytes = sum(
+        _event_int_metadata(event, "artifact_exported_bytes")
+        for event in code_execution_events
+    )
+    code_execution_max_duration_ms = max(code_execution_duration_ms) if code_execution_duration_ms else 0
+    code_execution_alerts = summarize_code_execution_alerts(
+        total_recent=len(code_execution_events),
+        failed_recent=code_execution_failed_recent,
+        failure_rate=code_execution_failure_rate,
+        max_duration_ms=code_execution_max_duration_ms,
+        policy_violations=code_execution_policy_violations,
+        output_truncations=code_execution_output_truncations,
+        artifact_collection_truncations=code_execution_artifact_collection_truncations,
+        min_events=CODE_EXECUTION_ALERT_MIN_EVENTS,
+        failure_rate_threshold=CODE_EXECUTION_ALERT_FAILURE_RATE,
+        duration_ms_threshold=CODE_EXECUTION_ALERT_DURATION_MS,
+    )
+    api_access_events = list_runtime_events(kind="api_access", limit=100)
+    api_access_by_code = Counter(event.code for event in api_access_events)
+    api_access_by_token_status = Counter(
+        str(event.metadata.get("token_status", "unknown")) for event in api_access_events
+    )
+    api_access_by_status_code = Counter(
+        str(event.metadata.get("status_code", "unknown")) for event in api_access_events
+    )
+    api_access_by_method = Counter(
+        str(event.metadata.get("method", "unknown")) for event in api_access_events
+    )
+    api_access_invalid_recent = sum(
+        1 for event in api_access_events if event.metadata.get("token_status") == "invalid"
+    )
+    api_access_missing_recent = sum(
+        1 for event in api_access_events if event.metadata.get("token_status") == "missing"
+    )
+    api_access_valid_recent = sum(
+        1 for event in api_access_events if event.metadata.get("token_status") == "valid"
+    )
+    api_access_rate_limited_recent = sum(
+        1
+        for event in api_access_events
+        if event.metadata.get("rate_limited") is True
+        or event.metadata.get("status_code") == 429
+    )
+    upload_scan_events = list_runtime_events(kind="upload_scan", limit=100)
+    upload_scan_by_code = Counter(event.code for event in upload_scan_events)
+    upload_scan_by_status = Counter(
+        str(event.metadata.get("status", "unknown")) for event in upload_scan_events
+    )
+    upload_scan_reason_counts: Counter[str] = Counter()
+    for event in upload_scan_events:
+        for reason in event.metadata.get("reason_codes", []) or []:
+            upload_scan_reason_counts[str(reason)] += 1
+    upload_scan_blocked_recent = sum(
+        1
+        for event in upload_scan_events
+        if event.code == "upload_scan_blocked" or event.metadata.get("status") == "blocked"
+    )
+    upload_scan_allowed_recent = sum(
+        1 for event in upload_scan_events if event.metadata.get("status") == "allowed"
+    )
+    upload_scan_active_content_recent = sum(
+        1
+        for event in upload_scan_events
+        if any(str(reason).startswith("active_content_") for reason in event.metadata.get("reason_codes", []) or [])
+    )
+    upload_scan_parse_failed_recent = upload_scan_reason_counts.get("pdf_parse_failed", 0)
 
     metadata_store = CorpusMetadataStore()
     profile_store = CorpusProfileStore()
@@ -873,7 +2347,34 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     papers = refresh_paper_metadata()
     artifact_registry = LocalArtifactRegistry(job_store, db_path=ARTIFACTS_DIR / "artifacts.sqlite3")
     artifacts = artifact_registry.list_artifacts(limit=job_limit)
+    artifact_owner_counts = Counter(artifact.owner_id for artifact in artifacts)
     corpus_status = corpus_status_from_state(papers, chunk_metadata_store, jobs, metadata_store, profile_store)
+    storage_status = storage_inventory_status()
+    storage_schemas_status = storage_schema_status()
+    storage_readiness = storage_readiness_status(
+        metadata_backend=METADATA_STORAGE_BACKEND,
+        object_backend=OBJECT_STORAGE_BACKEND,
+        database_url=DATABASE_URL,
+        object_bucket=OBJECT_STORAGE_BUCKET,
+        object_endpoint=OBJECT_STORAGE_ENDPOINT,
+        object_region=OBJECT_STORAGE_REGION,
+    )
+    jobs_for_platform_readiness = {
+        "storage": {
+            "jsonl_exists": JOBS_FILE.exists(),
+            "jsonl_bytes": JOBS_FILE.stat().st_size if JOBS_FILE.exists() else 0,
+            "sqlite_exists": JOBS_DB_FILE.exists(),
+            "sqlite_bytes": JOBS_DB_FILE.stat().st_size if JOBS_DB_FILE.exists() else 0,
+        },
+        "queue_health": queue_health,
+        "worker_leases": worker_leases,
+    }
+    platform_readiness = platform_readiness_status(
+        storage_readiness=storage_readiness,
+        storage_schemas=storage_schemas_status,
+        storage=storage_status,
+        jobs=jobs_for_platform_readiness,
+    )
 
     return AdminStatus(
         runtime_dirs=[
@@ -886,21 +2387,31 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "total": len(jobs),
             "by_status": dict(sorted(job_status_counts.items())),
             "by_kind": dict(sorted(job_kind_counts.items())),
+            "by_owner_id": dict(sorted(job_owner_counts.items())),
             "failed": len(failed_jobs),
             "cancelled": len(cancelled_jobs),
             "scheduled": len(scheduled_jobs),
+            "dead_lettered": len(dead_lettered_jobs),
+            "alerts": job_alerts,
+            "alert_thresholds": {
+                "failed_min_events": JOB_ALERT_FAILED_MIN_EVENTS,
+                "expired_min_events": JOB_ALERT_EXPIRED_MIN_EVENTS,
+            },
             "storage": {
                 "jsonl_exists": JOBS_FILE.exists(),
                 "jsonl_bytes": JOBS_FILE.stat().st_size if JOBS_FILE.exists() else 0,
                 "sqlite_exists": JOBS_DB_FILE.exists(),
                 "sqlite_bytes": JOBS_DB_FILE.stat().st_size if JOBS_DB_FILE.exists() else 0,
             },
-            "queue_health": job_store.queue_health(),
-            "worker_leases": job_store.worker_lease_health(),
+            "queue_health": queue_health,
+            "worker_leases": worker_leases,
             "latest_failed": [
                 {
                     "job_id": job.job_id,
                     "kind": job.kind,
+                    "owner_id": job.owner_id,
+                    "owner_label": job.owner_label,
+                    "ownership_source": job.ownership_source,
                     "updated_at": job.updated_at,
                     "error": job.error,
                 }
@@ -910,14 +2421,23 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         corpus=corpus_status,
         artifacts={
             "total": len(artifacts),
+            "by_owner_id": dict(sorted(artifact_owner_counts.items())),
             "bytes": directory_size_bytes(ARTIFACTS_DIR),
             "storage": artifact_registry.storage_status(),
             "integrity": artifact_registry.integrity_status(limit=job_limit),
         },
-        storage=storage_inventory_status(),
+        storage=storage_status,
+        storage_schemas=storage_schemas_status,
+        platform_readiness=platform_readiness,
         provider_failures={
             "total_recent": len(provider_failure_events),
             "by_code": dict(sorted(provider_failure_counts.items())),
+            "failure_rate": round(provider_failure_rate, 3),
+            "alerts": provider_failure_alerts,
+            "alert_thresholds": {
+                "min_events": PROVIDER_FAILURE_ALERT_MIN_EVENTS,
+                "failure_rate": PROVIDER_FAILURE_ALERT_RATE,
+            },
             "event_log_exists": RUNTIME_EVENTS_FILE.exists(),
             "event_log_bytes": RUNTIME_EVENTS_FILE.stat().st_size if RUNTIME_EVENTS_FILE.exists() else 0,
             "latest": [
@@ -943,6 +2463,15 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "provider_completion_tokens": provider_completion_tokens,
             "provider_total_tokens": provider_total_tokens,
             "provider_usage_events": provider_usage_events,
+            "duration_ms": {
+                "avg": query_usage_avg_duration_ms,
+                "max": query_usage_max_duration_ms,
+            },
+            "alerts": query_usage_alerts,
+            "alert_thresholds": {
+                "min_events": QUERY_ALERT_MIN_EVENTS,
+                "duration_ms": QUERY_ALERT_DURATION_MS,
+            },
             "estimated_cost_usd": query_cost["estimated_cost_usd"],
             "cost_source": query_cost["cost_source"],
             "cost_prompt_tokens": query_cost["cost_prompt_tokens"],
@@ -960,6 +2489,146 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 for event in query_usage_events[:5]
             ],
         },
+        retrieval_traces={
+            "total_recent": len(retrieval_trace_events),
+            "by_code": dict(sorted(retrieval_trace_by_code.items())),
+            "by_endpoint": dict(sorted(retrieval_trace_by_endpoint.items())),
+            "by_answer_mode": dict(sorted(retrieval_trace_by_answer_mode.items())),
+            "empty_recent": retrieval_empty_recent,
+            "empty_rate": round(retrieval_empty_rate, 3),
+            "source_page_incomplete_recent": retrieval_source_page_incomplete_recent,
+            "source_page_incomplete_rate": round(retrieval_source_page_incomplete_rate, 3),
+            "citation_checked_recent": retrieval_citation_checked_recent,
+            "citation_failed_recent": retrieval_citation_failed_recent,
+            "citation_failure_rate": round(retrieval_citation_failure_rate, 3),
+            "provider_called_recent": retrieval_provider_called_recent,
+            "alerts": retrieval_trace_alerts,
+            "alert_thresholds": {
+                "min_events": RETRIEVAL_TRACE_ALERT_MIN_EVENTS,
+                "empty_rate": RETRIEVAL_TRACE_ALERT_EMPTY_RATE,
+                "source_page_incomplete_rate": RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE,
+                "citation_failure_rate": RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE,
+            },
+            "context_count": {
+                "avg": (
+                    sum(retrieval_context_counts) // len(retrieval_context_counts)
+                    if retrieval_context_counts
+                    else 0
+                ),
+                "max": max(retrieval_context_counts) if retrieval_context_counts else 0,
+            },
+            "duration_ms": {
+                "avg": (
+                    sum(retrieval_duration_ms) // len(retrieval_duration_ms)
+                    if retrieval_duration_ms
+                    else 0
+                ),
+                "max": max(retrieval_duration_ms) if retrieval_duration_ms else 0,
+            },
+            "latest": [
+                {
+                    "event_id": event.event_id,
+                    "code": event.code,
+                    "message": event.message,
+                    "created_at": event.created_at,
+                    "metadata": event.metadata,
+                }
+                for event in retrieval_trace_events[:5]
+            ],
+        },
+        code_execution={
+            "total_recent": len(code_execution_events),
+            "by_code": dict(sorted(code_execution_by_code.items())),
+            "by_status": dict(sorted(code_execution_by_status.items())),
+            "by_backend": dict(sorted(code_execution_by_backend.items())),
+            "failed_recent": code_execution_failed_recent,
+            "failure_rate": round(code_execution_failure_rate, 3),
+            "policy_violations": code_execution_policy_violations,
+            "output_truncations": code_execution_output_truncations,
+            "artifact_collection_truncations": code_execution_artifact_collection_truncations,
+            "artifact_exported_bytes": code_execution_artifact_exported_bytes,
+            "alerts": code_execution_alerts,
+            "alert_thresholds": {
+                "min_events": CODE_EXECUTION_ALERT_MIN_EVENTS,
+                "failure_rate": CODE_EXECUTION_ALERT_FAILURE_RATE,
+                "duration_ms": CODE_EXECUTION_ALERT_DURATION_MS,
+            },
+            "duration_ms": {
+                "avg": (
+                    sum(code_execution_duration_ms) // len(code_execution_duration_ms)
+                    if code_execution_duration_ms
+                    else 0
+                ),
+                "max": code_execution_max_duration_ms,
+            },
+            "latest": [
+                {
+                    "event_id": event.event_id,
+                    "code": event.code,
+                    "message": event.message,
+                    "created_at": event.created_at,
+                    "request_id": event.request_id,
+                    "metadata": event.metadata,
+                }
+                for event in code_execution_events[:5]
+            ],
+        },
+        api_access={
+            "audit_enabled": API_ACCESS_AUDIT_ENABLED,
+            "total_recent": len(api_access_events),
+            "by_code": dict(sorted(api_access_by_code.items())),
+            "by_token_status": dict(sorted(api_access_by_token_status.items())),
+            "by_status_code": dict(sorted(api_access_by_status_code.items())),
+            "by_method": dict(sorted(api_access_by_method.items())),
+            "invalid_recent": api_access_invalid_recent,
+            "missing_recent": api_access_missing_recent,
+            "valid_recent": api_access_valid_recent,
+            "rate_limited_recent": api_access_rate_limited_recent,
+            "rate_limit": {
+                "enabled": API_RATE_LIMIT_ENABLED,
+                "max_requests": API_RATE_LIMIT_MAX_REQUESTS,
+                "window_s": API_RATE_LIMIT_WINDOW_S,
+            },
+            "latest": [
+                {
+                    "event_id": event.event_id,
+                    "code": event.code,
+                    "message": event.message,
+                    "created_at": event.created_at,
+                    "request_id": event.request_id,
+                    "metadata": event.metadata,
+                }
+                for event in api_access_events[:5]
+            ],
+        },
+        upload_scans={
+            "scan_enabled": UPLOAD_SCAN_ENABLED,
+            "total_recent": len(upload_scan_events),
+            "by_code": dict(sorted(upload_scan_by_code.items())),
+            "by_status": dict(sorted(upload_scan_by_status.items())),
+            "by_reason": dict(sorted(upload_scan_reason_counts.items())),
+            "allowed_recent": upload_scan_allowed_recent,
+            "blocked_recent": upload_scan_blocked_recent,
+            "active_content_recent": upload_scan_active_content_recent,
+            "parse_failed_recent": upload_scan_parse_failed_recent,
+            "config": {
+                "enabled": UPLOAD_SCAN_ENABLED,
+                "max_pages": UPLOAD_SCAN_MAX_PAGES,
+                "reject_encrypted": UPLOAD_SCAN_REJECT_ENCRYPTED,
+                "block_active_content": UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
+            },
+            "latest": [
+                {
+                    "event_id": event.event_id,
+                    "code": event.code,
+                    "message": event.message,
+                    "created_at": event.created_at,
+                    "request_id": event.request_id,
+                    "metadata": event.metadata,
+                }
+                for event in upload_scan_events[:5]
+            ],
+        },
         config={
             "llm_base_url_configured": bool(LLM_BASE_URL and "example.com" not in LLM_BASE_URL),
             "llm_model": LLM_MODEL,
@@ -967,14 +2636,41 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "reranker_model_configured": bool(RERANKER_MODEL),
             "reranker_model_available": _local_model_path_exists(RERANKER_MODEL),
             "code_execution_backend": CODE_EXECUTION_BACKEND,
-            "storage_readiness": storage_readiness_status(
-                metadata_backend=METADATA_STORAGE_BACKEND,
-                object_backend=OBJECT_STORAGE_BACKEND,
-                database_url=DATABASE_URL,
-                object_bucket=OBJECT_STORAGE_BUCKET,
-                object_endpoint=OBJECT_STORAGE_ENDPOINT,
-                object_region=OBJECT_STORAGE_REGION,
-            ),
+            "code_execution_policy": CODE_EXECUTION_POLICY,
+            "code_execution_max_stdout_bytes": CODE_EXECUTION_MAX_STDOUT_BYTES,
+            "code_execution_max_stderr_bytes": CODE_EXECUTION_MAX_STDERR_BYTES,
+            "code_execution_max_artifacts": CODE_EXECUTION_MAX_ARTIFACTS,
+            "code_execution_max_artifact_bytes": CODE_EXECUTION_MAX_ARTIFACT_BYTES,
+            "code_execution_max_artifact_total_bytes": CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES,
+            "code_execution_max_artifact_candidates": CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES,
+            "code_execution_alert_min_events": CODE_EXECUTION_ALERT_MIN_EVENTS,
+            "code_execution_alert_failure_rate": CODE_EXECUTION_ALERT_FAILURE_RATE,
+            "code_execution_alert_duration_ms": CODE_EXECUTION_ALERT_DURATION_MS,
+            "query_alert_min_events": QUERY_ALERT_MIN_EVENTS,
+            "query_alert_duration_ms": QUERY_ALERT_DURATION_MS,
+            "retrieval_trace_alert_min_events": RETRIEVAL_TRACE_ALERT_MIN_EVENTS,
+            "retrieval_trace_alert_empty_rate": RETRIEVAL_TRACE_ALERT_EMPTY_RATE,
+            "retrieval_trace_alert_source_page_incomplete_rate": RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE,
+            "retrieval_trace_alert_citation_failure_rate": RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE,
+            "provider_failure_alert_min_events": PROVIDER_FAILURE_ALERT_MIN_EVENTS,
+            "provider_failure_alert_rate": PROVIDER_FAILURE_ALERT_RATE,
+            "job_alert_failed_min_events": JOB_ALERT_FAILED_MIN_EVENTS,
+            "job_alert_expired_min_events": JOB_ALERT_EXPIRED_MIN_EVENTS,
+            "api_access_audit_enabled": API_ACCESS_AUDIT_ENABLED,
+            "api_rate_limit_enabled": API_RATE_LIMIT_ENABLED,
+            "api_rate_limit_max_requests": API_RATE_LIMIT_MAX_REQUESTS,
+            "api_rate_limit_window_s": API_RATE_LIMIT_WINDOW_S,
+            "upload_scan_enabled": UPLOAD_SCAN_ENABLED,
+            "upload_scan_max_pages": UPLOAD_SCAN_MAX_PAGES,
+            "upload_scan_reject_encrypted": UPLOAD_SCAN_REJECT_ENCRYPTED,
+            "upload_scan_block_active_content": UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
+            "retention_delete_enabled": RETENTION_DELETE_ENABLED,
+            "code_execution_allowed_imports": [
+                item.strip()
+                for item in CODE_EXECUTION_ALLOWED_IMPORTS.split(",")
+                if item.strip()
+            ],
+            "storage_readiness": storage_readiness,
             "docker_execution": docker_execution_status(
                 configured_backend=CODE_EXECUTION_BACKEND,
                 image=DOCKER_EXECUTION_IMAGE,

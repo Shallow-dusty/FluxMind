@@ -6,6 +6,7 @@ import re
 import shutil
 import threading
 import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -25,9 +26,14 @@ from src.config import (
     PAPERS_LIBRARY_DIR,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
+    UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
+    UPLOAD_SCAN_ENABLED,
+    UPLOAD_SCAN_MAX_PAGES,
+    UPLOAD_SCAN_REJECT_ENCRYPTED,
 )
 from src.embeddings import get_embedding_model
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, PaperRecord, file_sha256
+from src.runtime import append_runtime_event, logger
 
 
 _FS_RESERVED_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]+')
@@ -39,6 +45,17 @@ _ARXIV_RE = re.compile(
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _KEYWORD_LINE_RE = re.compile(
     r"^(?:key\s*words?|index\s+terms?)\s*[:\-\u2013\u2014]\s*(.+)$",
+    re.IGNORECASE,
+)
+_TABLE_CAPTION_RE = re.compile(r"^Table\s+\d+[.:]?\s*", re.IGNORECASE)
+_FIGURE_CAPTION_RE = re.compile(r"^(?:Fig(?:ure)?\.?)\s+\d+[.:]?\s*", re.IGNORECASE)
+_ALGORITHM_CAPTION_RE = re.compile(r"^Algorithm\s+\d+[.:]?\s*", re.IGNORECASE)
+_EQUATION_HINT_RE = re.compile(
+    r"(=|≤|≥|≠|≈|∈|∀|∑|√|α|β|γ|η|λ|ψ|ω|θ|∆|Δ|˙|\bdt\b|\bsgn\b|\btan[−-]?1\b)",
+    re.IGNORECASE,
+)
+_EQUATION_CONTEXT_RE = re.compile(
+    r"\b(equation|voltage|flux|sliding|surface|state[- ]space|control law)\b",
     re.IGNORECASE,
 )
 _AUTHOR_STOP_PREFIXES = (
@@ -67,10 +84,61 @@ _AFFILIATION_MARKERS = (
     "company",
     "email",
 )
+_PDF_MAGIC_RE = re.compile(rb"%PDF-\d\.\d")
+_PDF_ACTIVE_CONTENT_MARKERS: dict[str, tuple[bytes, ...]] = {
+    "javascript": (b"JavaScript", b"JS"),
+    "open_action": (b"OpenAction",),
+    "additional_action": (b"AA",),
+    "launch_action": (b"Launch",),
+    "embedded_file": (b"EmbeddedFile", b"EmbeddedFiles", b"Filespec"),
+    "rich_media": (b"RichMedia",),
+    "xfa_form": (b"XFA",),
+}
 
 
 class IngestionCancelled(RuntimeError):
     """Raised when an index rebuild is cancelled before committing new state."""
+
+
+@dataclass(frozen=True)
+class PdfStructureMarker:
+    """Best-effort layout marker extracted from a PDF page."""
+
+    kind: str
+    source: str
+    source_path: str
+    page: int
+    text: str
+    rule: str
+
+
+@dataclass(frozen=True)
+class UploadScanResult:
+    """Metadata-only pre-write PDF upload scan result."""
+
+    allowed: bool
+    status: str
+    reason_codes: tuple[str, ...]
+    byte_count: int
+    page_count: int = 0
+    encrypted: bool = False
+    active_content_markers: tuple[str, ...] = ()
+    scan_enabled: bool = True
+
+    def to_metadata(self) -> dict[str, Any]:
+        return {
+            "scan_enabled": self.scan_enabled,
+            "status": self.status,
+            "reason_codes": list(self.reason_codes),
+            "byte_count": self.byte_count,
+            "page_count": self.page_count,
+            "encrypted": self.encrypted,
+            "active_content_markers": list(self.active_content_markers),
+            "active_content_marker_count": len(self.active_content_markers),
+            "max_pages": UPLOAD_SCAN_MAX_PAGES,
+            "reject_encrypted": UPLOAD_SCAN_REJECT_ENCRYPTED,
+            "block_active_content": UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
+        }
 
 
 def _raise_if_cancelled(cancel_event: threading.Event | None) -> None:
@@ -108,6 +176,100 @@ def _resolve_unique_path(target: Path) -> Path:
 
 def _sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def _has_pdf_magic(content: bytes) -> bool:
+    return bool(_PDF_MAGIC_RE.search(content[:1024]))
+
+
+def _pdf_name_object_pattern(name: bytes) -> bytes:
+    return rb"/" + re.escape(name) + rb"(?=[\s/<>\[\]\(\)]|$)"
+
+
+def _active_content_markers(content: bytes) -> tuple[str, ...]:
+    markers: list[str] = []
+    for code, names in _PDF_ACTIVE_CONTENT_MARKERS.items():
+        for name in names:
+            if re.search(_pdf_name_object_pattern(name), content, flags=re.IGNORECASE):
+                markers.append(code)
+                break
+    return tuple(markers)
+
+
+def scan_uploaded_pdf(pdf_bytes: bytes) -> UploadScanResult:
+    """Run a local no-secret PDF upload scan before writing upload bytes."""
+    byte_count = len(pdf_bytes)
+    if not UPLOAD_SCAN_ENABLED:
+        return UploadScanResult(
+            allowed=True,
+            status="skipped",
+            reason_codes=("scan_disabled",),
+            byte_count=byte_count,
+            scan_enabled=False,
+        )
+
+    reason_codes: list[str] = []
+    active_markers: tuple[str, ...] = ()
+    page_count = 0
+    encrypted = False
+
+    if not _has_pdf_magic(pdf_bytes):
+        reason_codes.append("invalid_pdf_magic")
+    else:
+        if UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT:
+            active_markers = _active_content_markers(pdf_bytes)
+            reason_codes.extend(f"active_content_{marker}" for marker in active_markers)
+        if not reason_codes:
+            try:
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            except Exception:
+                reason_codes.append("pdf_parse_failed")
+            else:
+                try:
+                    encrypted = bool(
+                        getattr(doc, "is_encrypted", False)
+                        or getattr(doc, "needs_pass", False)
+                    )
+                    if encrypted and UPLOAD_SCAN_REJECT_ENCRYPTED:
+                        reason_codes.append("encrypted_pdf")
+                    else:
+                        page_count = len(doc)
+                        if page_count < 1:
+                            reason_codes.append("pdf_empty")
+                        elif UPLOAD_SCAN_MAX_PAGES > 0 and page_count > UPLOAD_SCAN_MAX_PAGES:
+                            reason_codes.append("pdf_page_limit_exceeded")
+                finally:
+                    doc.close()
+
+    allowed = not reason_codes
+    return UploadScanResult(
+        allowed=allowed,
+        status="allowed" if allowed else "blocked",
+        reason_codes=tuple(reason_codes),
+        byte_count=byte_count,
+        page_count=page_count,
+        encrypted=encrypted,
+        active_content_markers=active_markers,
+    )
+
+
+def _record_upload_scan_event(result: UploadScanResult) -> None:
+    if not result.scan_enabled:
+        return
+    try:
+        append_runtime_event(
+            kind="upload_scan",
+            code="upload_scan_allowed" if result.allowed else "upload_scan_blocked",
+            message="Metadata-only PDF upload scan event.",
+            metadata=result.to_metadata(),
+        )
+    except OSError:
+        logger.warning("upload_scan.event_log_failed status=%s", result.status)
+
+
+def _upload_scan_error(result: UploadScanResult) -> ValueError:
+    reasons = ", ".join(result.reason_codes) or "blocked"
+    return ValueError(f"Upload scan blocked PDF: {reasons}.")
 
 
 def _find_existing_pdf_by_checksum(checksum_sha256: str) -> Path | None:
@@ -153,6 +315,13 @@ def _save_rebuilt_vector_store(store: FAISS, index_path: Path) -> None:
 
 def _relative(path: Path) -> str:
     return path.resolve().relative_to(PROJECT_ROOT).as_posix()
+
+
+def _safe_source_path(path: Path) -> str:
+    try:
+        return _relative(path)
+    except ValueError:
+        return path.resolve().as_posix()
 
 
 def _clean_metadata_value(value: Any) -> str | None:
@@ -322,6 +491,69 @@ def extract_pdf_bibliographic_metadata(path: Path) -> dict[str, Any]:
         metadata["topic_tags"] = tags
         metadata["topic"] = tags[0]
     return metadata
+
+
+def _structure_marker_for_line(line: str) -> tuple[str, str] | None:
+    if _TABLE_CAPTION_RE.search(line):
+        return "table", "table_caption"
+    if _FIGURE_CAPTION_RE.search(line):
+        return "figure", "figure_caption"
+    if _ALGORITHM_CAPTION_RE.search(line):
+        return "algorithm", "algorithm_caption"
+    if _EQUATION_HINT_RE.search(line):
+        if len(line) <= 220 or _EQUATION_CONTEXT_RE.search(line):
+            return "equation", "math_symbol"
+    return None
+
+
+def extract_pdf_structure_markers(
+    path: Path,
+    *,
+    kinds: set[str] | None = None,
+    page: int | None = None,
+    max_pages: int | None = None,
+    max_markers: int = 100,
+) -> list[PdfStructureMarker]:
+    """Extract no-key PDF layout markers for acceptance checks and APIs."""
+    markers: list[PdfStructureMarker] = []
+    allowed = {kind.casefold() for kind in kinds} if kinds else None
+    source_path = _safe_source_path(path)
+    doc = fitz.open(str(path))
+    try:
+        page_indexes: list[int]
+        if page is not None:
+            if page < 1 or page > len(doc):
+                return []
+            page_indexes = [page - 1]
+        else:
+            upper = len(doc) if max_pages is None else min(len(doc), max_pages)
+            page_indexes = list(range(upper))
+        for page_index in page_indexes:
+            for raw_line in doc[page_index].get_text().splitlines():
+                line = _clean_metadata_value(raw_line)
+                if not line or len(line) < 3:
+                    continue
+                classified = _structure_marker_for_line(line)
+                if classified is None:
+                    continue
+                kind, rule = classified
+                if allowed and kind.casefold() not in allowed:
+                    continue
+                markers.append(
+                    PdfStructureMarker(
+                        kind=kind,
+                        source=path.name,
+                        source_path=source_path,
+                        page=page_index + 1,
+                        text=line[:500],
+                        rule=rule,
+                    )
+                )
+                if len(markers) >= max_markers:
+                    return markers
+    finally:
+        doc.close()
+    return markers
 
 
 def paper_metadata_entries(paths: list[Path], manifest: dict[str, dict] | None = None) -> dict[str, dict]:
@@ -578,6 +810,11 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
     max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
     if len(pdf_bytes) > max_bytes:
         raise ValueError(f"PDF is larger than {MAX_UPLOAD_SIZE_MB} MB.")
+
+    scan_result = scan_uploaded_pdf(pdf_bytes)
+    _record_upload_scan_event(scan_result)
+    if not scan_result.allowed:
+        raise _upload_scan_error(scan_result)
 
     checksum_sha256 = _sha256_bytes(pdf_bytes)
     PAPERS_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
