@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-08 00:45 CST
+Last live check: 2026-06-14 01:04 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -93,6 +93,29 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live read-only checks refreshed on 2026-06-14 01:04 CST during git/docs status
+cleanup. No deploy sync, service restart, runtime mutation, or push was
+performed. `.venv/bin/python scripts/health_check.py --url
+https://smy.hyper-dusty.cloud/ --url https://api-smy.hyper-dusty.cloud/health`
+passed with both HTTPS endpoints returning 200. The full current-code SSH gate
+`.venv/bin/python scripts/health_check.py --ssh-host root@100.100.233.26`
+connected and confirmed active systemd services, `18501`/`18502` listeners, and
+local API health, but exited nonzero because the current local health checker
+expects the latest `origin/main` feature slice to already exist under
+`/opt/fluxmind`; that slice has been pushed but has not been deployed or
+restarted on Trace-Twin. Targeted read-only SSH probes confirmed
+`cloudflared-fluxmind-smy.service`, `fluxmind-ui.service`,
+`fluxmind-api.service`, `fluxmind-worker.service`, and `docker.service` active;
+local API health `{"status":"ok"}`; `LLM_MODEL=mimo-v2.5-pro`; embedding model
+`/opt/fluxmind/models/all-MiniLM-L6-v2`; `active_papers=6`;
+`faiss_index_bytes=786477`; `chunk_metadata_rows=512`;
+`chunk_metadata_sources=6`; corpus index `fresh`; Docker execution still
+`configured=False available=False reason=not_configured`; and local metadata
+and object storage available. The running remote `/admin/status` response does
+not yet expose the newer `storage_schemas` and `platform_readiness` summaries,
+which confirms the latest storage-schema/platform-readiness slice is not active
+on the live API process.
 
 Live read-only checks refreshed on 2026-06-08 00:45 CST during production-gap
 research and roadmap verification. No deploy sync, service restart, runtime

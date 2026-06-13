@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-13 CST
+Snapshot time: 2026-06-14 01:04 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,9 +13,9 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   898d671 docs: sync project docs to current platform + eval state (plus this status follow-up)
-Current remote status          main...origin/main up to date (pushed 2026-06-13)
-Current worktree               clean; the prior uncommitted no-key platform + eval-breadth + docs slice is now committed (898d671) and pushed to origin/main
+Current HEAD                   87fa3b9 docs: record push of platform + eval slice to origin/main
+Current remote status          main...origin/main up to date before this status-doc refresh
+Current worktree               status-doc refresh pending in docs/REPO_STATUS.md and docs/DEPLOYMENT_STATUS.md; no source/runtime changes
 Last clean local/origin state  32fca21 docs: record no-key baseline deployment
 Divergence at clean boundary   ahead 0, behind 0
 Deployed source baseline       a51a060 docs: confirm no-key platform baseline
@@ -52,8 +52,9 @@ The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
 This formerly in-progress local work is now committed and pushed to
-`origin/main` (HEAD `898d671`), but it has not been deployed or restarted; the
-Trace-Twin deployed baseline remains `32fca21`. It expands the deterministic RAG baseline from answer-only checks into a
+`origin/main` through `87fa3b9`, but it has not been deployed or restarted; the
+Trace-Twin deployed application baseline remains the no-key baseline recorded by
+`32fca21`. It expands the deterministic RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
@@ -254,15 +255,17 @@ docs/REPO_STATUS.md                    This git/status snapshot
 docs/ARCHITECTURE.md                   Runtime and module architecture
 docs/BACKLOG.md                        Work packages and acceptance criteria
 docs/DEPLOYMENT_STATUS.md              Live deployment snapshot and commands
+docs/FEATURE_AUDIT.md                  Feature inventory, route coverage, and gaps
 docs/PLATFORM_AUDIT_AND_ROADMAP.md     Broader platform audit and roadmap
 docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md  Production gap and market research
 docs/demo-script.md                    Chinese demo script and Q&A
 docs/handover.html                     Single-file presentation handover
 ```
 
-## Local Verification Run
+## Historical Local Verification Run
 
-Refreshed on 2026-06-13 CST. Commands run from
+This 2026-06-13 run verified the platform/eval slice before it was pushed.
+Commands ran from
 `/home/shallow/04.AI-Prism/11.FluxMind` using `.venv`:
 
 ```text
@@ -300,15 +303,50 @@ Command                                                                 Result
                                                                         manifest_errors=0,
                                                                         0 missing/mismatched
 git diff --check                                                       pass
-git status --short --branch                                            main...origin/main [ahead 7],
+git status --short --branch                                            historical pre-push state:
+                                                                        main...origin/main [ahead 7],
                                                                         34 modified files,
                                                                         4 untracked files
 ```
 
+Follow-up status refresh on 2026-06-14 01:04 CST:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+git status --porcelain=v1 --branch                                     main...origin/main, no local
+                                                                        changes before this status
+                                                                        refresh
+git rev-parse --short HEAD / origin/main                               both 87fa3b9
+git rev-list --left-right --count main...origin/main                    0 0
+.venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
+                                                                        returned 200
+.venv/bin/python scripts/health_check.py --ssh-host ...                expected fail as a current-code
+                                                                        deploy-sync gate: services,
+                                                                        listeners, and API health passed,
+                                                                        but remote /opt/fluxmind is not
+                                                                        synced to the latest origin/main
+                                                                        feature slice
+targeted SSH runtime/API probes                                        pass; UI/API/worker/cloudflared/
+                                                                        docker active, ports 18501/18502
+                                                                        listening, local API health OK,
+                                                                        active_papers=6,
+                                                                        faiss_index_bytes=786477,
+                                                                        chunk_metadata_rows=512,
+                                                                        chunk_metadata_sources=6,
+                                                                        index fresh, Docker execution
+                                                                        not configured, local storage
+                                                                        readiness available
+```
+
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot is still the 2026-06-08 00:45 CST read-only
-check in `docs/DEPLOYMENT_STATUS.md`; it was not refreshed by the local
+The latest live deployment snapshot was refreshed with read-only checks on
+2026-06-14 01:04 CST in `docs/DEPLOYMENT_STATUS.md`; no deploy sync, service
+restart, runtime mutation, or push was performed. The full current-code SSH
+health gate is expected to fail until Trace-Twin is synced to the latest
+`origin/main` feature slice, but targeted service/runtime probes passed.
+The deployment was not refreshed by the local
 eval/API/runtime-restore/job-idempotency/retry-dead-letter/ownership/
 Docker-execution/execution-policy/execution-observability/output-limits/
 artifact-limits/execution-alerts/query-latency/query-alerts/provider-alerts/
@@ -346,7 +384,7 @@ Disk                /dev/vda3 40G total, 25G free, 35% used
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
   the eval-breadth slice is verified, committed, and pushed to `origin/main`
-  (`898d671`). It is not yet deployed; deployment to Trace-Twin (currently at
-  `32fca21`) remains a separate, explicit step.
+  through `87fa3b9`. It is not yet deployed; deployment to Trace-Twin remains a
+  separate, explicit step.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.
