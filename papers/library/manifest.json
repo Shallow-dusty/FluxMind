@@ -70,5 +70,65 @@
     "source_url": "https://www.mdpi.com/2076-3417/11/17/8158",
     "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-11-08158/article_deploy/applsci-11-08158.pdf",
     "license": "CC BY"
+  },
+  "liu-2023-adaptive-gain-smo-pmsm.pdf": {
+    "title": "An Adaptive-Gain Sliding Mode Observer with Precise Compensation for Sensorless Control of PMSM",
+    "authors": "Wenfei Liu; Bo Luo; Yong Yang; Haoming Niu; Xujun Zhang; Yu Zhou; Chengbi Zeng",
+    "year": 2023,
+    "topic": "adaptive-gain SMO",
+    "doi": "10.3390/en16247968",
+    "venue": "Energies",
+    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "adaptive gain", "compensation"],
+    "source_url": "https://www.mdpi.com/1996-1073/16/24/7968",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-07968/article_deploy/energies-16-07968.pdf",
+    "license": "CC BY"
+  },
+  "zhao-2021-super-twisting-smo-pmsm.pdf": {
+    "title": "An Improved Super-Twisting High-Order Sliding Mode Observer for Sensorless Control of Permanent Magnet Synchronous Motor",
+    "authors": "Yujiao Zhao; Haisheng Yu; Shixian Wang",
+    "year": 2021,
+    "topic": "super-twisting SMO",
+    "doi": "10.3390/en14196047",
+    "venue": "Energies",
+    "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "sensorless control", "parameter disturbance"],
+    "source_url": "https://www.mdpi.com/1996-1073/14/19/6047",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06047/article_deploy/energies-14-06047.pdf",
+    "license": "CC BY"
+  },
+  "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf": {
+    "title": "Sliding Mode Observer with Adaptive Parameter Estimation for Sensorless Control of IPMSM",
+    "authors": "Yubo Liu; Junlong Fang; Kezhu Tan; Boyan Huang; Wenshuai He",
+    "year": 2020,
+    "topic": "adaptive parameter STA-SMO",
+    "doi": "10.3390/en13225991",
+    "venue": "Energies",
+    "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "adaptive parameters", "parameter mismatch"],
+    "source_url": "https://www.mdpi.com/1996-1073/13/22/5991",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-13-05991/article_deploy/energies-13-05991.pdf",
+    "license": "CC BY"
+  },
+  "scholz-2022-switching-functions-smo-pmsm.pdf": {
+    "title": "A Comparative Study and Optimization of Switching Functions for Sliding-Mode Observer in Sensorless Control of PMSM",
+    "authors": "Karol Kyslan; Viktor Petro; Peter Bober; Viktor Slapak; Frantisek Durovsky; Mateusz Dybkowski; Matus Hric",
+    "year": 2022,
+    "topic": "SMO switching functions",
+    "doi": "10.3390/en15072689",
+    "venue": "Energies",
+    "topic_tags": ["PMSM", "sliding mode observer", "switching function", "sensorless control", "optimization"],
+    "source_url": "https://www.mdpi.com/1996-1073/15/7/2689",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-15-02689/article_deploy/energies-15-02689.pdf",
+    "license": "CC BY"
+  },
+  "zhu-2024-mras-flux-linkage-observer-pmsm.pdf": {
+    "title": "Nonlinear Flux Linkage Observer with Model Reference Adaptive System for Improved Permanent Magnet Synchronous Motor Control",
+    "authors": "Shaopeng Zhu; Kaida Hu; Jian Lin; Yongqing Liu; Huipeng Chen; Weiyang Wang; Jian Gao",
+    "year": 2024,
+    "topic": "MRAS flux linkage observer",
+    "doi": "10.3390/act13100403",
+    "venue": "Actuators",
+    "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "sensorless control"],
+    "source_url": "https://www.mdpi.com/2076-0825/13/10/403",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00403/article_deploy/actuators-13-00403.pdf",
+    "license": "CC BY"
   }
 }

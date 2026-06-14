@@ -39,9 +39,11 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    278 passed, 2 known warnings
+pytest                                    307 passed, 2 known warnings
+coverage                                  86% total branch coverage over api,
+                                          scripts, and src
 offline RAG eval                          20 answer cases, 30 retrieval-only
-                                          cases, 3 code-output cases,
+                                          cases, 4 code-output cases,
                                           6 PDF structure cases,
                                           20 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
@@ -99,7 +101,7 @@ Priority                High. This is the trust layer users will judge first.
 ```text
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
-Content/corpus          6 active papers, local metadata, profiles, chunk mirror,
+Content/corpus          11-paper curated seed library, local metadata, profiles, chunk mirror,
                         DOI/arXiv enrichment fields, upload/index flow.
 
 Gap to production       Curated domain corpus, topic ontology, paper quality
@@ -455,7 +457,8 @@ Recommended near-term corpus target:
 ```text
 Milestone       Corpus target
 --------------  --------------------------------------------------------------
-M0 current      6 active papers, 512 chunks
+M0 current      11 bundled seed papers; deployed active index may still reflect
+                the latest runtime rebuild snapshot
 M1              30-50 curated papers, tagged by topic and method
 M2              100+ curated papers plus benchmark questions and code templates
 M3              Add forum-style implementation notes and failure-mode cards
@@ -492,7 +495,7 @@ Order  Lane                                      Why first
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
 
-Current progress on 2026-06-08: the no-key baseline has advanced from 5 to 20
+Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 20
 offline/recorded answer cases and 30 retrieval-only cases, for 50 total no-LLM
 retrieval questions. The baseline gates 64 source/page refs and 59 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
@@ -508,9 +511,11 @@ source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
 IDs, and validation checklist fields. The 20 recorded-answer target, 50
 retrieval-question target, first equation/table/figure extraction acceptance
 cases, first paper-to-code export shape, and first local Python code-output
-gates are now met; the next content-scale milestone is corpus growth from 6 active papers
-toward the 30-50 curated-paper target plus richer PDF layout extraction, broader
-Octave, and additional job-attached code-output evals.
+gates are now met; the next content-scale milestone is corpus growth from 11 bundled
+seed papers toward the 30-50 curated-paper target plus richer PDF layout extraction,
+broader Octave, and additional job-attached code-output evals. The 2026-06-15 seed
+library expansion adds adaptive-gain SMO, super-twisting SMO, switching-function
+comparison, adaptive-parameter IPMSM, and MRAS flux-linkage observer coverage.
 
 Success criterion: a skeptical control student or engineer can ask paper-backed
 implementation questions and receive traceable, executable outputs.

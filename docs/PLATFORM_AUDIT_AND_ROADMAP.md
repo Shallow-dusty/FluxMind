@@ -46,7 +46,9 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 282 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 307 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest
+coverage report                           pass, 86% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 20 answer cases, 30 retrieval-only
                                              cases, 4 code-output cases,
                                              6 PDF structure cases,
@@ -127,7 +129,8 @@ answer citation validation against retrieved source/page refs. This is a
 regression harness and retrieval baseline, not a claim that fresh live model
 output has been fully scored.
 
-Current corpus storage work includes a local JSON metadata registry in
+Current corpus storage work includes an 11-paper curated seed library plus a
+local JSON metadata registry in
 `metadata/corpus.json` with checksums, source paths, titles, authors, year,
 DOI, arXiv ID, venue, topic tags, active/indexed state, chunk counts, and
 parse/index error fields. That state is now mirrored into

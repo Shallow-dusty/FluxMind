@@ -16,7 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 286 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 307 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest &&
+.venv/bin/python -m coverage report --sort=cover                    pass, 86% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 20 answer cases and
                                                                       30 retrieval-only cases,
                                                                       4 code-output cases,
@@ -47,7 +49,8 @@ RAG query and inspection      verified      /query, /query/inspect, /query/retri
                                             offline eval, citation tests, code-output artifact and
                                             template checks, PDF structure checks, and paper-to-code
                                             report handoff tests pass. Live QA breadth is still limited.
-Corpus and profile control    verified      paper/chunk/status/active/profile routes exist; local
+Corpus and profile control    verified      11-paper curated seed library plus paper/chunk/status/
+                                            active/profile routes exist; local
                                             JSON/SQLite store is inspectable. Multi-user ownership and
                                             production DB/object storage remain planned.
                                             Uploaded PDFs have a local pre-write scan guard.
@@ -207,6 +210,9 @@ Retrieval alerts        tests/test_admin.py covers metadata-only retrieval trace
   metrics/traces beyond the local export baseline.
 - Runtime storage and queue state are local SQLite/JSONL/filesystem bridges, not
   a distributed production database or object store.
+- The bundled seed corpus has been expanded from 6 to 11 open-access papers, but
+  the next content milestone is still a curated 30-50 paper library with richer
+  topic coverage and more PDF-layout acceptance cases.
 - Streamlit remains acceptable for demo/personal workflows, but platform UX,
   user/workspace state, and account-level admin need a frontend/API split.
 - Provider activation, MATLAB licensing, identity, quotas, and billing should

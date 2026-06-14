@@ -392,7 +392,7 @@ def main() -> int:
     check("format_admin_metrics" in admin_source and "fluxmind_jobs_total" in admin_source, "admin metrics text export installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
-    check(len(manifest) >= 6, "seed paper manifest has at least 6 entries", failures)
+    check(len(manifest) >= 11, "seed paper manifest has at least 11 entries", failures)
     check(
         any(item.get("doi") or item.get("arxiv_id") for item in manifest.values()),
         "seed paper manifest has DOI/arXiv enrichment",

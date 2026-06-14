@@ -2,6 +2,26 @@ import scripts.health_check as health_check
 import subprocess
 
 
+def test_main_local_health_check_passes(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["health_check.py"])
+
+    assert health_check.main() == 0
+    output = capsys.readouterr().out
+    assert "ok   required file: app.py" in output
+    assert "ok   API startup warmup readiness route installed" in output
+    assert "skip local FAISS index is absent" in output or "ok   local FAISS index is non-empty" in output
+
+
+def test_main_reports_url_failures(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["health_check.py", "--url", "https://example.test"])
+    monkeypatch.setattr(health_check, "http_status", lambda url, timeout, retries: 503)
+
+    assert health_check.main() == 1
+    output = capsys.readouterr().out
+    assert "fail https://example.test returns 200 (got 503)" in output
+    assert "Failed checks:" in output
+
+
 def test_http_status_retries_after_transient_error(monkeypatch):
     calls = {"count": 0}
 

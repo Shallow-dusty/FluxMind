@@ -26,6 +26,11 @@ WP5 code execution    complete for local Python/Octave-compatible dev providers
 WP6 product shell     complete for local no-secret admin/reporting foundation
 ```
 
+Current hardening progress on 2026-06-15: the automated suite has 307 passing
+tests, the repository now has a coverage command/gate with 86% total branch
+coverage over `api`, `scripts`, and `src`, and the curated seed library has been
+expanded from 6 to 11 open-access papers.
+
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
 distributed worker/storage, and production database/object storage. Those remain
@@ -207,6 +212,9 @@ local storage inventory, local storage-schema inventory, no-secret runtime backu
 manifest, and dry-run restore verifier implemented;
 durable multi-user database/object storage migration remains planned
 
+- The bundled seed corpus currently contains 11 open-access papers across SMC,
+  PMSM sensorless control, sliding-mode observers, flux observers, adaptive
+  parameter estimation, and MRAS flux-linkage observation.
 - `src/metadata.py` stores local paper metadata in git-ignored
   `metadata/corpus.json`.
 - Local corpus/profile JSON writes use same-directory temporary files followed

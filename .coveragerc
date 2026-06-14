@@ -1,0 +1,14 @@
+[run]
+branch = True
+source =
+    api
+    scripts
+    src
+
+[report]
+show_missing = True
+skip_covered = True
+exclude_also =
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    if TYPE_CHECKING:
