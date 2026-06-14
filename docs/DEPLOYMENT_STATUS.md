@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 02:31 CST
+Last live check: 2026-06-15 03:15 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,8 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last pushed source baseline before this deployment record: `17aacc3`
-(`docs: refresh FluxMind git and deployment status`). `/opt/fluxmind` is not a
+Last pushed source baseline before this deployment record: `3cfa426`
+(`fix: reduce FluxMind API import latency`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash.
 
@@ -93,6 +93,33 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-15 03:15 CST after pushing `main` through
+`3cfa426` and deploying with `.venv/bin/python scripts/deploy_sync.py --apply
+--restart`. This refresh fixed the two startup findings from the previous
+deploy: API retrieval warmup now runs in the background with `/health` as
+process liveness and `/ready` as retrieval readiness, and the API import path no
+longer imports the PDF/FAISS ingestion stack before uvicorn can bind. Local
+verification passed with `.venv/bin/python -m pytest` (286 passed),
+`.venv/bin/python scripts/health_check.py`, and
+`.venv/bin/python scripts/evaluate_rag.py`. The local API import smoke measured
+0:00.88; the remote `/opt/fluxmind` import smoke measured 0:15.52.
+
+The guarded deploy restarted API/UI/worker. An immediate public API probe and
+first SSH runtime gate still hit the shortened bind window, but follow-up checks
+passed: HTTPS UI and API health returned 200, public `/ready` returned
+`{"status":"ready","warmup":{"status":"ready","ready":true,"error":""}}`,
+and the SSH gate confirmed active UI/API/worker/cloudflared/docker services,
+listeners on `18501` and `18502`, local API health OK, `active_papers=6`,
+`faiss_index_bytes=786477`, `chunk_metadata_rows=512`,
+`chunk_metadata_sources=6`, `index_fresh=True`, Docker execution still
+`configured=False available=False reason=not_configured`, local storage
+available, and retrieval/admin metrics smokes passing. The new journal window
+from the 03:12 restart showed Uvicorn running about 22 seconds after systemd
+start, down from the previous 68-second warmup window; application startup
+completed in about one second after process start. The same journal window did
+not show FAISS AVX512/AVX2 fallback lines; it only logged SentenceTransformer
+model loading during background readiness warmup.
 
 Live checks refreshed on 2026-06-15 02:31 CST after pushing `main` through
 `17aacc3` and deploying with `.venv/bin/python scripts/deploy_sync.py --apply
@@ -478,7 +505,7 @@ safe FAISS rebuild       present in /opt/fluxmind/src/ingestion.py; temp save re
 cancellable index rebuild present in /opt/fluxmind/src/ingestion.py and /opt/fluxmind/src/jobs.py; cancelled rebuilds raise before publishing post-cancel state
 uploaded metadata extract present in /opt/fluxmind/src/ingestion.py; remote temp-PDF smoke extracted title/authors/year/topic_tags from first-page text, and existing DOI/arXiv extraction remains covered by local tests
 uploaded PDF dedup      present in /opt/fluxmind/src/ingestion.py; isolated remote smoke reused existing.pdf with chunk_count=7 and wrote no duplicate file
-startup warmup only      present in /opt/fluxmind/api.py; API startup does not call build_vector_store
+startup warmup only      present in /opt/fluxmind/api.py; API startup does not call build_vector_store and exposes /ready for retrieval readiness
 deployed job layer       present in /opt/fluxmind/src/jobs.py
 SQLite job mirror        present in /opt/fluxmind/src/jobs.py
 scheduled retry/backoff  present in /opt/fluxmind/src/jobs.py

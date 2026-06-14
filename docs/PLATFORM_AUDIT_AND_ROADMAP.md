@@ -649,7 +649,7 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Treat `17aacc3` as the current pushed/deployed no-key baseline and keep
+1. Treat `3cfa426` as the current pushed/deployed no-key baseline and keep
    `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after any
    future release or live-state verification pass.
 2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
