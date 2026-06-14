@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-14 01:04 CST
+Snapshot time: 2026-06-15 02:31 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,13 +13,13 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   87fa3b9 docs: record push of platform + eval slice to origin/main
-Current remote status          main...origin/main up to date before this status-doc refresh
-Current worktree               status-doc refresh pending in docs/REPO_STATUS.md and docs/DEPLOYMENT_STATUS.md; no source/runtime changes
+Current HEAD                   17aacc3 docs: refresh FluxMind git and deployment status
+Current remote status          main...origin/main up to date before this deployment-record refresh
+Current worktree               deployment-record refresh pending in docs/REPO_STATUS.md and docs/DEPLOYMENT_STATUS.md; no source/runtime changes
 Last clean local/origin state  32fca21 docs: record no-key baseline deployment
 Divergence at clean boundary   ahead 0, behind 0
-Deployed source baseline       a51a060 docs: confirm no-key platform baseline
-Deployment record follow-up    32fca21 after live verification and docs-only sync
+Deployed source baseline       17aacc3 docs: refresh FluxMind git and deployment status
+Deployment record follow-up    this docs refresh after 2026-06-15 live verification
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -51,10 +51,10 @@ then recorded and pushed in `32fca21`.
 The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
-This formerly in-progress local work is now committed and pushed to
-`origin/main` through `87fa3b9`, but it has not been deployed or restarted; the
-Trace-Twin deployed application baseline remains the no-key baseline recorded by
-`32fca21`. It expands the deterministic RAG baseline from answer-only checks into a
+This formerly in-progress local work is now committed, pushed to `origin/main`
+through `17aacc3`, deployed to Trace-Twin with the guarded sync/restart path,
+and verified after the normal API warmup window. It expands the deterministic
+RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
@@ -309,26 +309,22 @@ git status --short --branch                                            historica
                                                                         4 untracked files
 ```
 
-Follow-up status refresh on 2026-06-14 01:04 CST:
+Follow-up status refresh on 2026-06-15 02:31 CST:
 
 ```text
 Command                                                                 Result
 ----------------------------------------------------------------------  ------
 git status --porcelain=v1 --branch                                     main...origin/main, no local
-                                                                        changes before this status
-                                                                        refresh
-git rev-parse --short HEAD / origin/main                               both 87fa3b9
+                                                                        changes before this
+                                                                        deployment-record refresh
+git rev-parse --short HEAD / origin/main                               both 17aacc3
 git rev-list --left-right --count main...origin/main                    0 0
 .venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
                                                                         returned 200
-.venv/bin/python scripts/health_check.py --ssh-host ...                expected fail as a current-code
-                                                                        deploy-sync gate: services,
-                                                                        listeners, and API health passed,
-                                                                        but remote /opt/fluxmind is not
-                                                                        synced to the latest origin/main
-                                                                        feature slice
-targeted SSH runtime/API probes                                        pass; UI/API/worker/cloudflared/
-                                                                        docker active, ports 18501/18502
+.venv/bin/python scripts/health_check.py --ssh-host ...                pass after one normal API
+                                                                        warmup-window retry; UI/API/
+                                                                        worker/cloudflared/docker
+                                                                        active, ports 18501/18502
                                                                         listening, local API health OK,
                                                                         active_papers=6,
                                                                         faiss_index_bytes=786477,
@@ -336,26 +332,23 @@ targeted SSH runtime/API probes                                        pass; UI/
                                                                         chunk_metadata_sources=6,
                                                                         index fresh, Docker execution
                                                                         not configured, local storage
-                                                                        readiness available
+                                                                        readiness available, retrieval
+                                                                        and admin metrics smokes OK
 ```
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed with read-only checks on
-2026-06-14 01:04 CST in `docs/DEPLOYMENT_STATUS.md`; no deploy sync, service
-restart, runtime mutation, or push was performed. The full current-code SSH
-health gate is expected to fail until Trace-Twin is synced to the latest
-`origin/main` feature slice, but targeted service/runtime probes passed.
-The deployment was not refreshed by the local
-eval/API/runtime-restore/job-idempotency/retry-dead-letter/ownership/
-Docker-execution/execution-policy/execution-observability/output-limits/
-artifact-limits/execution-alerts/query-latency/query-alerts/provider-alerts/
-job-alerts/API-access-audit/API-rate-limit/upload-scan/retention-delete/
-metrics-export/retrieval-trace/retrieval-alerts/storage-schema work above.
-The query-latency, query-alert, provider-alert, job-alert, API-access-audit,
-API-rate-limit, upload-scan, retention-delete, metrics-export, retrieval-trace,
-retrieval-alerts, and storage-schema slices are also local only and have not
-been deployed or restarted.
+The latest live deployment snapshot was refreshed after guarded deploy and
+post-restart verification on 2026-06-15 02:31 CST in
+`docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
+job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
+execution-observability/output-limits/artifact-limits/execution-alerts/
+query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
+API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
+retrieval-alerts/storage-schema work above is now synced to Trace-Twin through
+the current source tree. External providers, hosted sandboxes, MATLAB,
+identity-backed quotas/billing, distributed storage, and distributed workers
+remain intentionally disabled or planned.
 Highlights from that deployment snapshot:
 
 ```text
@@ -370,7 +363,7 @@ Chunk rows          512 across 6 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
 Docker execution    configured=False available=False reason=not_configured
-Disk                /dev/vda3 40G total, 25G free, 35% used
+Disk                /dev/vda3 40G total, 21G free, 46% used
 ```
 
 ## Immediate Boundary
@@ -383,8 +376,7 @@ Disk                /dev/vda3 40G total, 25G free, 35% used
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
-  the eval-breadth slice is verified, committed, and pushed to `origin/main`
-  through `87fa3b9`. It is not yet deployed; deployment to Trace-Twin remains a
-  separate, explicit step.
+  the eval-breadth slice is verified, committed, pushed to `origin/main`
+  through `17aacc3`, deployed to Trace-Twin, and post-restart verified.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.

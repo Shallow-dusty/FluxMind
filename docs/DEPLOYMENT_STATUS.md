@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-14 01:04 CST
+Last live check: 2026-06-15 02:31 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,10 +9,10 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last pushed source baseline before this deployment record: `a51a060`
-(`docs: confirm no-key platform baseline`). `/opt/fluxmind` is not a git
-checkout, so the live deployment should be treated as a synchronized source tree
-rather than a deployed commit hash.
+Last pushed source baseline before this deployment record: `17aacc3`
+(`docs: refresh FluxMind git and deployment status`). `/opt/fluxmind` is not a
+git checkout, so the live deployment should be treated as a synchronized source
+tree rather than a deployed commit hash.
 
 ```
 Host          Trace-Twin
@@ -93,6 +93,26 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Live checks refreshed on 2026-06-15 02:31 CST after pushing `main` through
+`17aacc3` and deploying with `.venv/bin/python scripts/deploy_sync.py --apply
+--restart`. The guarded sync excluded `.env`, `.cache/`, `venv/`, `models/`,
+`metadata/`, `jobs/`, `artifacts/`, `papers/`, and `faiss_index/`; it synced
+source/docs/test changes and restarted API/UI/worker. The first post-restart
+probe hit the normal API warmup window: the UI returned 200 and `18501` was
+listening, but API health briefly returned 502 externally and `127.0.0.1:18502`
+was not yet bound. A follow-up run passed both public HTTPS checks and the full
+SSH gate. The verified state was: UI/API/worker/cloudflared/docker active;
+listeners on `18501` and `18502`; local API health `{"status":"ok"}`;
+`LLM_MODEL=mimo-v2.5-pro`; embedding model
+`/opt/fluxmind/models/all-MiniLM-L6-v2`; `active_papers=6`;
+`faiss_index_bytes=786477`; `chunk_metadata_rows=512`;
+`chunk_metadata_sources=6`; `index_fresh=True`; admin metrics smoke OK; Docker
+execution still `configured=False available=False reason=not_configured`;
+local metadata/object storage available; chunk-filter, retrieval, and corpus
+profile report smokes passed; root disk 21G free. The remote journal still
+includes FAISS optional AVX512/AVX2 module fallback lines, but API health,
+index/chunk metadata, retrieval smoke, and admin metrics all passed.
 
 Live read-only checks refreshed on 2026-06-14 01:04 CST during git/docs status
 cleanup. No deploy sync, service restart, runtime mutation, or push was

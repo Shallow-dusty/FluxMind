@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-08
+Last updated: 2026-06-15
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -31,7 +31,7 @@ RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
 token-protected FastAPI `/query` endpoint until those activation decisions are
 made.
 
-## Project Evaluation: 2026-06-08
+## Project Evaluation: 2026-06-15
 
 Current verified state: the no-key/local platform baseline is healthy and
 deployed, but the project is still a single-machine product foundation rather
@@ -54,8 +54,8 @@ Gate                                      Result
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-health_check.py HTTPS endpoints            00:45 snapshot, UI/API 200
-health_check.py SSH runtime                00:45 snapshot, services active, index_fresh=True
+health_check.py HTTPS endpoints            02:31 snapshot, UI/API 200
+health_check.py SSH runtime                02:31 snapshot, services active, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
@@ -649,7 +649,7 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Treat `32fca21` as the current pushed/deployed no-key baseline and keep
+1. Treat `17aacc3` as the current pushed/deployed no-key baseline and keep
    `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after any
    future release or live-state verification pass.
 2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
