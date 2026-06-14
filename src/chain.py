@@ -1,5 +1,7 @@
 """RAG chain: retrieval + LLM generation."""
 
+from __future__ import annotations
+
 import math
 import re
 import threading
@@ -13,7 +15,6 @@ from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
 
 from src.artifacts import LocalArtifactRegistry, format_artifact_references
 from src.config import (
@@ -192,6 +193,8 @@ def get_vector_store() -> FAISS | None:
     with _VECTOR_STORE_LOCK:
         if _VECTOR_STORE_CACHE["signature"] == signature:
             return _VECTOR_STORE_CACHE["store"]
+        from langchain_community.vectorstores import FAISS
+
         store = FAISS.load_local(
             str(FAISS_INDEX_DIR),
             get_embedding_model(),

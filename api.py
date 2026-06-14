@@ -41,13 +41,6 @@ from src.config import (
     QUERY_COST_PROVIDER,
 )
 from src.costs import summarize_query_cost
-from src.ingestion import (
-    discover_pdfs,
-    extract_pdf_structure_markers,
-    refresh_paper_metadata,
-    resolve_selectable_source_paths,
-    set_active_paper_source_paths,
-)
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager, normalize_ownership, ownership_from_record
 from src.metadata import ChunkMetadataStore, CorpusProfileStore
 from src.runtime import append_runtime_event, estimate_text_tokens, list_runtime_events, logger, new_request_id, normalize_exception
@@ -81,6 +74,36 @@ _STARTUP_WARMUP_STATE: dict[str, Any] = {
     "ready": False,
     "error": "",
 }
+
+
+def discover_pdfs():
+    from src.ingestion import discover_pdfs as _discover_pdfs
+
+    return _discover_pdfs()
+
+
+def extract_pdf_structure_markers(*args, **kwargs):
+    from src.ingestion import extract_pdf_structure_markers as _extract_pdf_structure_markers
+
+    return _extract_pdf_structure_markers(*args, **kwargs)
+
+
+def refresh_paper_metadata():
+    from src.ingestion import refresh_paper_metadata as _refresh_paper_metadata
+
+    return _refresh_paper_metadata()
+
+
+def resolve_selectable_source_paths(*args, **kwargs):
+    from src.ingestion import resolve_selectable_source_paths as _resolve_selectable_source_paths
+
+    return _resolve_selectable_source_paths(*args, **kwargs)
+
+
+def set_active_paper_source_paths(*args, **kwargs):
+    from src.ingestion import set_active_paper_source_paths as _set_active_paper_source_paths
+
+    return _set_active_paper_source_paths(*args, **kwargs)
 
 
 def _set_startup_warmup_state(status: str, *, ready: bool, error: str = "") -> None:

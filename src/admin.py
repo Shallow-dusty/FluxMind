@@ -73,12 +73,17 @@ from src.config import (
 )
 from src.artifacts import LocalArtifactRegistry
 from src.costs import summarize_query_cost
-from src.ingestion import refresh_paper_metadata
 from src.jobs import LocalJobStore
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore
 from src.providers import docker_execution_status
 from src.runtime import append_runtime_event, list_runtime_events
 from src.storage_schema import storage_schema_status
+
+
+def refresh_paper_metadata():
+    from src.ingestion import refresh_paper_metadata as _refresh_paper_metadata
+
+    return _refresh_paper_metadata()
 
 
 def directory_size_bytes(path: Path) -> int:

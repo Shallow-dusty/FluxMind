@@ -1,3 +1,5 @@
+import sys
+import types
 from pathlib import Path
 
 from langchain_core.documents import Document
@@ -232,8 +234,12 @@ def test_get_vector_store_reuses_cache_until_index_files_change(tmp_path, monkey
             return {"load": len(loads)}
 
     monkeypatch.setattr(chain, "FAISS_INDEX_DIR", index_dir)
-    monkeypatch.setattr(chain, "FAISS", FakeFAISS)
     monkeypatch.setattr(chain, "get_embedding_model", lambda: "embedding")
+    monkeypatch.setitem(
+        sys.modules,
+        "langchain_community.vectorstores",
+        types.SimpleNamespace(FAISS=FakeFAISS),
+    )
     clear_vector_store_cache()
 
     first = get_vector_store()

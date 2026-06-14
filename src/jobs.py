@@ -20,7 +20,6 @@ from src.capabilities import (
     ImageGenerationRequest,
 )
 from src.config import CODE_EXECUTION_BACKEND, DOCKER_EXECUTION_IMAGE, JOBS_FILE, PROJECT_ROOT
-from src import ingestion
 from src.providers import (
     DockerExecutionProvider,
     LocalArtifactStore,
@@ -37,6 +36,18 @@ MAX_IDEMPOTENCY_KEY_LENGTH = 128
 MAX_OWNER_FIELD_LENGTH = 128
 DEFAULT_OWNER_ID = "local-user"
 DEFAULT_OWNER_LABEL = "Local user"
+
+
+class _LazyIngestion:
+    """Delay PDF/FAISS imports until an index job actually needs them."""
+
+    def __getattr__(self, name: str) -> Any:
+        from src import ingestion as ingestion_module
+
+        return getattr(ingestion_module, name)
+
+
+ingestion = _LazyIngestion()
 
 
 def utc_now() -> str:
