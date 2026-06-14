@@ -19,6 +19,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SSH_COMMAND_TIMEOUT_FLOOR_S = 45.0
 
 
 def check(condition: bool, label: str, failures: list[str]) -> None:
@@ -48,6 +49,7 @@ def http_status(url: str, timeout: float, retries: int) -> int | None:
 
 
 def run_ssh(host: str, command: str, timeout: float) -> tuple[int, str]:
+    command_timeout = max(timeout + 15, SSH_COMMAND_TIMEOUT_FLOOR_S)
     ssh_command = [
         "ssh",
         "-o",
@@ -64,13 +66,13 @@ def run_ssh(host: str, command: str, timeout: float) -> tuple[int, str]:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=timeout + 15,
+            timeout=command_timeout,
         )
     except subprocess.TimeoutExpired as exc:
         output = exc.stdout or ""
         if isinstance(output, bytes):
             output = output.decode(errors="replace")
-        detail = f"ssh command timed out after {timeout + 15:.1f}s"
+        detail = f"ssh command timed out after {command_timeout:.1f}s"
         return 124, f"{output.rstrip()}\n{detail}\n" if output else f"{detail}\n"
     except FileNotFoundError:
         return 127, "ssh executable not found\n"

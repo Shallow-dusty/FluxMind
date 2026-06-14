@@ -71,7 +71,7 @@ def test_directory_size_bytes_counts_nested_files(tmp_path):
 
 def test_run_ssh_reports_timeout_without_traceback(monkeypatch):
     def fake_run(*_args, **_kwargs):
-        raise subprocess.TimeoutExpired(cmd=["ssh"], timeout=25, output="partial")
+        raise subprocess.TimeoutExpired(cmd=["ssh"], timeout=45, output="partial")
 
     monkeypatch.setattr(health_check.subprocess, "run", fake_run)
 
@@ -79,4 +79,24 @@ def test_run_ssh_reports_timeout_without_traceback(monkeypatch):
 
     assert code == 124
     assert "partial" in output
-    assert "timed out" in output
+    assert "timed out after 45.0s" in output
+
+
+def test_run_ssh_uses_minimum_command_timeout(monkeypatch):
+    calls = {}
+
+    class Result:
+        returncode = 0
+        stdout = "ok\n"
+
+    def fake_run(*_args, **kwargs):
+        calls["timeout"] = kwargs["timeout"]
+        return Result()
+
+    monkeypatch.setattr(health_check.subprocess, "run", fake_run)
+
+    code, output = health_check.run_ssh("root@example.test", "true", 10)
+
+    assert code == 0
+    assert output == "ok\n"
+    assert calls["timeout"] == 45.0
