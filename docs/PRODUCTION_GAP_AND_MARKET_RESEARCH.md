@@ -28,10 +28,10 @@ Current local git state at this research pass:
 
 ```text
 Branch          main
-Remote status   main...origin/main [ahead 7]
-HEAD            f840c8e docs: trim production research formatting
-Worktree        in-progress eval/code-output/API/runtime-restore/job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/execution-observability/output-limits/artifact-limits/execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema-CLI/docs changes; not a clean release boundary
-Diff hygiene    git diff --check passed on 2026-06-08 08:48 CST
+Remote status   main...origin/main up to date before this deployment-record refresh
+HEAD            391ac7f test: harden coverage and expand seed corpus
+Worktree        deployment-record/docs refresh pending; source/runtime baseline deployed
+Diff hygiene    git diff --check passed on 2026-06-15 04:23 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -49,14 +49,14 @@ offline RAG eval                          20 answer cases, 30 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  00:45 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          00:45 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                00:45 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  04:23 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          04:23 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                04:23 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
-Remote active corpus                       active_papers=6
-Remote chunk metadata                     chunk_metadata_rows=512, sources=6
+Remote active corpus                       active_papers=11
+Remote chunk metadata                     chunk_metadata_rows=800, sources=11
 Remote index freshness                     index_fresh=True
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
@@ -486,7 +486,7 @@ Order  Lane                                      Why first
 
 ### 0-30 Days: Domain Trust Sprint
 
-- Expand the curated corpus from 6 papers to 30-50 high-quality papers.
+- Expand the curated corpus from 11 papers to 30-50 high-quality papers.
 - Add topic tags and a control-engineering ontology: SMC, FOC, PMSM, SMO,
   observers, flux estimation, chattering, discretization, parameter tuning.
 - Create 50 retrieval-only eval questions and 20 recorded-answer eval cases.

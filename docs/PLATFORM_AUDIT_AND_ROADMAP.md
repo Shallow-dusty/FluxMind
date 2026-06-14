@@ -56,8 +56,8 @@ coverage report                           pass, 86% total branch coverage
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-health_check.py HTTPS endpoints            02:31 snapshot, UI/API 200
-health_check.py SSH runtime                02:31 snapshot, services active, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            04:23 snapshot, UI/API 200
+health_check.py SSH runtime                04:23 snapshot, services active, active_papers=11, chunks=800, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
@@ -652,7 +652,7 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Treat `3cfa426` as the current pushed/deployed no-key baseline and keep
+1. Treat `391ac7f` as the current pushed/deployed no-key baseline and keep
    `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after any
    future release or live-state verification pass.
 2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend

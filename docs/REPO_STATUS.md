@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 03:15 CST
+Snapshot time: 2026-06-15 04:23 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,13 +13,13 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   3cfa426 fix: reduce FluxMind API import latency
-Current remote status          main...origin/main up to date before this deployment-record refresh
-Current worktree               deployment-record refresh pending in docs/REPO_STATUS.md and docs/DEPLOYMENT_STATUS.md; no source/runtime changes
-Last clean local/origin state  32fca21 docs: record no-key baseline deployment
+Current HEAD                   391ac7f test: harden coverage and expand seed corpus
+Current remote status          main...origin/main up to date before this corpus/deployment-record refresh
+Current worktree               corpus/deployment-record refresh pending in docs/status files and tests; no runtime files tracked
+Last clean local/origin state  391ac7f test: harden coverage and expand seed corpus
 Divergence at clean boundary   ahead 0, behind 0
-Deployed source baseline       3cfa426 fix: reduce FluxMind API import latency
-Deployment record follow-up    this docs refresh after 2026-06-15 03:15 live verification
+Deployed source baseline       391ac7f test: harden coverage and expand seed corpus
+Deployment record follow-up    this docs refresh after 2026-06-15 04:23 live verification
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -52,7 +52,7 @@ The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
 This formerly in-progress local work is now committed, pushed to `origin/main`
-through `3cfa426`, deployed to Trace-Twin with the guarded sync/restart path,
+through `391ac7f`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
@@ -360,18 +360,52 @@ git rev-parse --short HEAD / origin/main                               both 3cfa
                                                                         /ready OK, retrieval/admin smokes OK
 ```
 
+Follow-up status refresh on 2026-06-15 04:23 CST:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+git rev-parse --short HEAD / origin/main                               both 391ac7f
+.venv/bin/python -m pytest                                             pass, 307 tests, 2 warnings
+.venv/bin/python -m coverage run -m pytest &&
+.venv/bin/python -m coverage report --fail-under=85                    pass, 86% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                               pass, all offline RAG/eval gates
+rsync papers/library/ ... /opt/fluxmind/papers/library/                synced 5 new seed PDFs plus
+                                                                        manifest without deleting runtime
+                                                                        uploads/state
+PUT /corpus/active + async index rebuild job 8c4f1995a02a              pass, 11 active papers,
+                                                                        800 chunks, index fresh
+.venv/bin/python scripts/deploy_sync.py --apply --restart              synced source to /opt/fluxmind and
+                                                                        restarted API/UI/worker; runtime
+                                                                        state excludes preserved
+.venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
+                                                                        returned 200
+.venv/bin/python scripts/health_check.py --ssh-host ...                pass on rerun after the normal API
+                                                                        bind window; active_papers=11,
+                                                                        faiss_index_bytes=1228845,
+                                                                        chunk_metadata_rows=800,
+                                                                        chunk_metadata_sources=11,
+                                                                        index fresh, /ready ready,
+                                                                        retrieval/admin smokes OK
+authenticated /query/retrieve smoke                                    pass; q="MRAS flux linkage observer
+                                                                        PMSM" returned ok=true and first
+                                                                        context from the new Zhu 2024 MRAS
+                                                                        flux-linkage observer paper
+```
+
 ## Latest Deployment Snapshot
 
 The latest live deployment snapshot was refreshed after guarded deploy and
-post-restart verification on 2026-06-15 03:15 CST in
+post-restart verification on 2026-06-15 04:23 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
-retrieval-alerts/storage-schema work above plus the API startup readiness and
-import-latency fixes are now synced to Trace-Twin through the current source
-tree. External providers, hosted sandboxes, MATLAB,
+retrieval-alerts/storage-schema work above plus the API startup readiness,
+import-latency fixes, coverage gate, and 11-paper seed corpus are now synced or
+rebuilt on Trace-Twin through the current source/runtime boundary. External
+providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.
 Highlights from that deployment snapshot:
@@ -383,9 +417,9 @@ Local API health    {"status":"ok"}
 Local API readiness {"status":"ready","warmup":{"status":"ready","ready":true,"error":""}}
 Model config        LLM_MODEL=mimo-v2.5-pro
 Embedding model     /opt/fluxmind/models/all-MiniLM-L6-v2
-Active papers       6
-FAISS index bytes   786477
-Chunk rows          512 across 6 source paths
+Active papers       11
+FAISS index bytes   1228845
+Chunk rows          800 across 11 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
 Docker execution    configured=False available=False reason=not_configured
@@ -402,7 +436,8 @@ Disk                /dev/vda3 40G total, 21G free, 46% used
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
-  the eval-breadth slice is verified, committed, pushed to `origin/main`
-  through `3cfa426`, deployed to Trace-Twin, and post-restart verified.
+  the eval-breadth plus coverage/corpus-hardening slice is verified, committed,
+  pushed to `origin/main` through `391ac7f`, deployed to Trace-Twin, and
+  post-restart verified.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.

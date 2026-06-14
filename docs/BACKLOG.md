@@ -120,7 +120,7 @@ CI/runtime) remain planned.
   The extractor also recognizes algorithm captions, anchored by the synthetic-PDF
   unit test `test_extract_pdf_structure_markers_finds_layout_markers`; a real-PDF
   algorithm-caption case in `pdf_structure_cases` remains blocked because none of
-  the six curated library papers contain a numbered `Algorithm N` block.
+  the 11 curated library papers contain a numbered `Algorithm N` block.
 - Offline expected refs now verify that the referenced PDF exists, the page is
   parseable, and the configured snippet appears on that page.
 - Provider failure fixtures cover timeout, 429/rate-limit, empty output, and

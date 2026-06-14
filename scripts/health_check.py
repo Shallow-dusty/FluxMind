@@ -135,7 +135,9 @@ def main() -> int:
     check("Previous temporary index `80` has been retired" in readme, "README records 80 retirement", failures)
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
-        "Last clean local/origin state  32fca21 docs: record no-key baseline deployment" in repo_status,
+        "Deployed source baseline       391ac7f test: harden coverage and expand seed corpus" in repo_status
+        and "Deployment record follow-up    this docs refresh after 2026-06-15 04:23 live verification"
+        in repo_status,
         "repo status records deployment-record baseline",
         failures,
     )
