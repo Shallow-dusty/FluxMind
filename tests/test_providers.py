@@ -1,10 +1,13 @@
-from pathlib import Path
 import hashlib
+import io
+import subprocess
+from pathlib import Path
 
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
 from src.execution_policy import POLICY_VIOLATION_EXIT_CODE
 from src.providers import (
+    BoundedStreamReader,
     DockerExecutionProvider,
     LocalArtifactStore,
     LocalOctaveExecutionProvider,
@@ -124,6 +127,66 @@ def test_docker_execution_status_reports_permission_denied(monkeypatch):
     assert status["configured"] is True
     assert status["available"] is False
     assert status["reason"] == "docker_permission_denied"
+
+
+def test_docker_execution_status_reports_timeout_oserror_unavailable_and_ok(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+
+    def timeout_run(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired("docker", 3)
+
+    monkeypatch.setattr("src.providers.subprocess.run", timeout_run)
+    assert docker_execution_status(configured_backend="docker", image="python")["reason"] == "docker_timeout"
+
+    def oserror_run(*_args, **_kwargs):
+        raise FileNotFoundError("missing")
+
+    monkeypatch.setattr("src.providers.subprocess.run", oserror_run)
+    assert docker_execution_status(configured_backend="docker", image="python")["reason"] == "FileNotFoundError"
+
+    class Unavailable:
+        returncode = 2
+        stdout = ""
+        stderr = "Cannot connect to the Docker daemon"
+
+    monkeypatch.setattr("src.providers.subprocess.run", lambda *_args, **_kwargs: Unavailable())
+    unavailable = docker_execution_status(configured_backend="docker", image="python")
+    assert unavailable["available"] is False
+    assert unavailable["reason"] == "docker_unavailable"
+
+    class Available:
+        returncode = 0
+        stdout = "25.0.0\n"
+        stderr = ""
+
+    monkeypatch.setattr("src.providers.subprocess.run", lambda *_args, **_kwargs: Available())
+    available = docker_execution_status(configured_backend="docker", image="python")
+    assert available["available"] is True
+    assert available["reason"] == "ok"
+    assert available["docker_server_version"] == "25.0.0"
+
+
+def test_bounded_stream_reader_handles_text_stream_and_zero_limit():
+    reader = BoundedStreamReader(io.StringIO("abcdef"), limit_bytes=0)
+
+    reader.start()
+    reader.join()
+
+    assert reader.total_bytes == 6
+    assert reader.truncated is True
+    assert reader.text() == ""
+
+
+def test_local_artifact_store_classifies_binary_file_artifacts(tmp_path: Path):
+    artifact = LocalArtifactStore(tmp_path).write_bytes(
+        "binary/result.bin",
+        b"\x00\x01",
+        "application/octet-stream",
+    )
+
+    assert artifact.kind == "file"
+    assert artifact.title == "result.bin"
+    assert artifact.metadata["byte_count"] == "2"
 
 
 def test_docker_execution_provider_reports_missing_docker(monkeypatch):
@@ -544,6 +607,22 @@ def test_local_python_execution_provider_rejects_absolute_entrypoint():
     assert "Invalid execution file path" in result.stderr
 
 
+def test_local_python_execution_provider_rejects_missing_entrypoint_file():
+    provider = LocalPythonExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"helper.py": "print('not main')"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 2
+    assert "Entrypoint not found: main.py" in result.stderr
+
+
 def test_local_python_execution_provider_rejects_too_many_files():
     provider = LocalPythonExecutionProvider()
     files = {"main.py": "print('should-not-run')"}
@@ -723,6 +802,50 @@ def test_local_octave_execution_provider_rejects_large_file(tmp_path: Path, monk
     assert result.success is False
     assert result.exit_code == 2
     assert "too large" in result.stderr
+
+
+def test_local_octave_execution_provider_rejects_missing_entrypoint_file(tmp_path: Path, monkeypatch):
+    fake_octave = tmp_path / "octave"
+    fake_octave.write_text("#!/bin/sh\necho should-not-run\n", encoding="utf-8")
+    fake_octave.chmod(0o755)
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: str(fake_octave))
+    provider = LocalOctaveExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"helper.m": "disp('not main');"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 2
+    assert "Entrypoint not found: main.m" in result.stderr
+
+
+def test_docker_execution_provider_reports_popen_oserror(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+
+    def fail_popen(*_args, **_kwargs):
+        raise OSError("docker unavailable")
+
+    monkeypatch.setattr("src.providers.subprocess.Popen", fail_popen)
+    provider = DockerExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('never')"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 127
+    assert "Docker execution backend unavailable" in result.stderr
+    assert result.runtime_metadata["runtime_available"] == "false"
+    assert result.runtime_metadata["docker_error"] == "OSError"
 
 
 def test_local_octave_execution_provider_runs_when_binary_exists(tmp_path: Path, monkeypatch):

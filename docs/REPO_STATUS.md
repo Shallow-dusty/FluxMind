@@ -393,6 +393,18 @@ authenticated /query/retrieve smoke                                    pass; q="
                                                                         flux-linkage observer paper
 ```
 
+Local coverage-hardening follow-up after the 04:23 deployment:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+.venv/bin/python -m pytest                                             pass, 323 tests, 2 warnings
+.venv/bin/python -m coverage run -m pytest &&
+.venv/bin/python -m coverage report --fail-under=87                    pass, 87% total branch coverage
+scope                                                                  local tests/CI/docs only; no runtime
+                                                                        service deploy required
+```
+
 ## Latest Deployment Snapshot
 
 The latest live deployment snapshot was refreshed after guarded deploy and

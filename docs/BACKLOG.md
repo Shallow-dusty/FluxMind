@@ -26,8 +26,8 @@ WP5 code execution    complete for local Python/Octave-compatible dev providers
 WP6 product shell     complete for local no-secret admin/reporting foundation
 ```
 
-Current hardening progress on 2026-06-15: the automated suite has 307 passing
-tests, the repository now has a coverage command/gate with 86% total branch
+Current hardening progress on 2026-06-15: the automated suite has 323 passing
+tests, the repository now has a coverage command/gate with 87% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded from 6 to 11 open-access papers.
 

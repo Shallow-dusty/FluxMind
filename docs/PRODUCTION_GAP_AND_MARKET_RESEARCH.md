@@ -39,8 +39,8 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    307 passed, 2 known warnings
-coverage                                  86% total branch coverage over api,
+pytest                                    323 passed, 2 known warnings
+coverage                                  87% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          20 answer cases, 30 retrieval-only
                                           cases, 4 code-output cases,

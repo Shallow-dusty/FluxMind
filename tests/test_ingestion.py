@@ -70,6 +70,29 @@ def test_scan_uploaded_pdf_blocks_page_limit(monkeypatch):
     assert result.page_count == 2
 
 
+def test_scan_uploaded_pdf_can_be_disabled(monkeypatch):
+    monkeypatch.setattr(ingestion, "UPLOAD_SCAN_ENABLED", False)
+
+    result = ingestion.scan_uploaded_pdf(b"not even a pdf")
+
+    assert result.allowed is True
+    assert result.status == "skipped"
+    assert result.reason_codes == ("scan_disabled",)
+    assert result.scan_enabled is False
+
+
+def test_scan_uploaded_pdf_reports_parse_failure(monkeypatch):
+    def fail_open(*_args, **_kwargs):
+        raise RuntimeError("parse failed")
+
+    monkeypatch.setattr(ingestion.fitz, "open", fail_open)
+
+    result = ingestion.scan_uploaded_pdf(b"%PDF-1.7\n%%EOF")
+
+    assert result.allowed is False
+    assert result.reason_codes == ("pdf_parse_failed",)
+
+
 def test_ingest_uploaded_pdf_rejects_failed_scan_before_write(tmp_path: Path, monkeypatch):
     root = tmp_path
     upload_dir = root / "papers" / "uploads"
@@ -311,6 +334,35 @@ def test_extract_pdf_structure_markers_finds_layout_markers(tmp_path: Path):
     assert {marker.page for marker in markers} == {1}
 
 
+def test_extract_pdf_structure_markers_filters_page_kind_and_limit(tmp_path: Path):
+    import fitz
+
+    pdf_path = tmp_path / "structure-filter.pdf"
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text(
+        (72, 72),
+        (
+            "Table 1. PMSM parameter summary\n"
+            "Figure 2. PMSM control block diagram\n"
+            "ud = Rsid + Ld did/dt\n"
+        ),
+    )
+    document.save(pdf_path)
+    document.close()
+
+    table_markers = ingestion.extract_pdf_structure_markers(
+        pdf_path,
+        kinds={"table"},
+        page=1,
+        max_markers=1,
+    )
+
+    assert len(table_markers) == 1
+    assert table_markers[0].kind == "table"
+    assert ingestion.extract_pdf_structure_markers(pdf_path, page=2) == []
+
+
 def test_refresh_paper_metadata_uses_extracted_upload_metadata(tmp_path: Path, monkeypatch):
     import fitz
 
@@ -427,6 +479,82 @@ def test_set_active_paper_source_paths_rejects_unselectable(tmp_path: Path, monk
 
     with pytest.raises(ValueError, match="selectable corpus"):
         ingestion.set_active_paper_source_paths(["papers/library/missing.pdf"])
+
+
+def test_load_active_paper_paths_filters_stale_selection_and_defaults_to_library(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    uploads = root / "papers" / "uploads"
+    index_dir = root / "faiss_index"
+    library.mkdir(parents=True)
+    uploads.mkdir(parents=True)
+    index_dir.mkdir()
+    library_pdf = library / "library.pdf"
+    upload_pdf = uploads / "upload.pdf"
+    note = uploads / "note.txt"
+    library_pdf.write_bytes(b"%PDF-1.4 library")
+    upload_pdf.write_bytes(b"%PDF-1.4 upload")
+    note.write_text("not a pdf", encoding="utf-8")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", uploads)
+    monkeypatch.setattr(ingestion, "ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
+
+    (index_dir / "active_papers.json").write_text(
+        json.dumps(
+            [
+                "papers/uploads/upload.pdf",
+                "papers/uploads/missing.pdf",
+                "papers/uploads/note.txt",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert ingestion.load_active_paper_paths() == [upload_pdf]
+
+    (index_dir / "active_papers.json").unlink()
+    assert ingestion.load_active_paper_paths() == [library_pdf]
+
+
+def test_resolve_selectable_source_paths_strips_blanks_and_deduplicates(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    library.mkdir(parents=True)
+    paper = library / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 paper")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", root / "papers" / "uploads")
+
+    paths = ingestion.resolve_selectable_source_paths(
+        ["", " papers/library/paper.pdf ", "papers/library/paper.pdf"]
+    )
+
+    assert paths == [paper]
+
+
+def test_find_existing_pdf_by_checksum_skips_unreadable_candidates(tmp_path: Path, monkeypatch):
+    bad = tmp_path / "bad.pdf"
+    good = tmp_path / "good.pdf"
+    bad.write_bytes(b"bad")
+    good.write_bytes(b"good")
+
+    monkeypatch.setattr(ingestion, "discover_pdfs", lambda: [bad, good])
+
+    def fake_sha256(path: Path) -> str:
+        if path == bad:
+            raise OSError("unreadable")
+        return "wanted"
+
+    monkeypatch.setattr(ingestion, "file_sha256", fake_sha256)
+
+    assert ingestion._find_existing_pdf_by_checksum("wanted") == good
+    assert ingestion._find_existing_pdf_by_checksum("missing") is None
 
 
 def test_ingest_uploaded_pdf_reuses_indexed_duplicate(tmp_path: Path, monkeypatch):
