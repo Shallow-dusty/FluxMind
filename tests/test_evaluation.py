@@ -6,8 +6,10 @@ from src.chain import (
     ANSWER_MODE_INSTRUCTIONS,
     bm25_relevance_scores,
     citation_instruction,
+    clear_vector_store_cache,
     format_context,
     generated_artifact_context,
+    get_vector_store,
     hybrid_retrieve,
     learned_rerank_documents,
     neutralize_invalid_numbered_citations,
@@ -212,6 +214,37 @@ def test_hybrid_retrieve_reranks_keyword_hits(monkeypatch):
     docs = hybrid_retrieve("flux observer", k=2)
 
     assert docs == [keyword_doc, vector_doc]
+
+
+def test_get_vector_store_reuses_cache_until_index_files_change(tmp_path, monkeypatch):
+    from src import chain
+
+    index_dir = tmp_path / "faiss_index"
+    index_dir.mkdir()
+    (index_dir / "index.faiss").write_text("index-1", encoding="utf-8")
+    (index_dir / "index.pkl").write_text("pickle-1", encoding="utf-8")
+    loads = []
+
+    class FakeFAISS:
+        @staticmethod
+        def load_local(path, embeddings, allow_dangerous_deserialization):
+            loads.append((path, embeddings, allow_dangerous_deserialization))
+            return {"load": len(loads)}
+
+    monkeypatch.setattr(chain, "FAISS_INDEX_DIR", index_dir)
+    monkeypatch.setattr(chain, "FAISS", FakeFAISS)
+    monkeypatch.setattr(chain, "get_embedding_model", lambda: "embedding")
+    clear_vector_store_cache()
+
+    first = get_vector_store()
+    second = get_vector_store()
+    assert first is second
+    assert len(loads) == 1
+
+    (index_dir / "index.faiss").write_text("index-2-changed", encoding="utf-8")
+    third = get_vector_store()
+    assert third is not first
+    assert len(loads) == 2
 
 
 def test_bm25_relevance_scores_use_term_frequency_and_metadata():

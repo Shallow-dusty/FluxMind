@@ -4,6 +4,7 @@ import os
 import logging
 import hashlib
 import re
+import threading
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
@@ -59,6 +60,7 @@ from src.storage_manifest import (
 
 API_TOKEN = os.getenv("FLUXMIND_API_TOKEN", "")
 logging.basicConfig(level=os.getenv("FLUXMIND_LOG_LEVEL", "INFO"))
+logging.getLogger("faiss.loader").setLevel(logging.ERROR)
 
 _CODE_BLOCK_RE = re.compile(r"```(?P<language>[\w.+-]*)\n(?P<body>.*?)```", re.DOTALL)
 _ARTIFACT_REF_RE = re.compile(r"\[Artifact:(?P<artifact_id>[A-Za-z0-9_.:-]+)\]")
@@ -73,24 +75,55 @@ _PAPER_TO_CODE_TERMS = (
     "plot",
 )
 _API_RATE_LIMIT_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
+_STARTUP_WARMUP_LOCK = threading.Lock()
+_STARTUP_WARMUP_STATE: dict[str, Any] = {
+    "status": "not_started",
+    "ready": False,
+    "error": "",
+}
+
+
+def _set_startup_warmup_state(status: str, *, ready: bool, error: str = "") -> None:
+    with _STARTUP_WARMUP_LOCK:
+        _STARTUP_WARMUP_STATE.update({"status": status, "ready": ready, "error": error})
+
+
+def startup_warmup_status() -> dict[str, Any]:
+    with _STARTUP_WARMUP_LOCK:
+        return dict(_STARTUP_WARMUP_STATE)
+
 
 def warm_existing_vector_store() -> bool:
     """Best-effort startup warmup without rebuilding a missing index."""
     if not (FAISS_INDEX_DIR / "index.faiss").exists():
         logger.warning("startup.index_missing path=%s", FAISS_INDEX_DIR)
+        _set_startup_warmup_state("missing_index", ready=False)
         return False
     try:
         get_vector_store()
     except Exception:
         logger.exception("startup.index_warmup_failed path=%s", FAISS_INDEX_DIR)
+        _set_startup_warmup_state("failed", ready=False, error="index_warmup_failed")
         return False
+    _set_startup_warmup_state("ready", ready=True)
     return True
+
+
+def start_background_vector_store_warmup() -> None:
+    """Warm retrieval state without blocking the API socket bind."""
+    _set_startup_warmup_state("warming", ready=False)
+    thread = threading.Thread(
+        target=warm_existing_vector_store,
+        name="fluxmind-vector-store-warmup",
+        daemon=True,
+    )
+    thread.start()
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Warm existing retrieval state and recover durable queued local jobs."""
-    warm_existing_vector_store()
+    start_background_vector_store_warmup()
     get_async_job_manager().recover_queued_jobs()
     yield
 
@@ -2158,3 +2191,11 @@ def schedule_retry_job(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready():
+    status = startup_warmup_status()
+    if status.get("ready"):
+        return {"status": "ready", "warmup": status}
+    raise HTTPException(status_code=503, detail={"status": status.get("status", "not_ready"), "warmup": status})

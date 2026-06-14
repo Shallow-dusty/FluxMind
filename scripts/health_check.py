@@ -256,6 +256,8 @@ def main() -> int:
     check("provider_usage" in api_source and "provider_total_tokens" in api_source, "provider query usage passthrough installed", failures)
     check("/admin/metrics" in api_source and "format_admin_metrics" in api_source, "admin metrics route installed", failures)
     check("warm_existing_vector_store" in api_source and "build_vector_store" not in api_source, "API startup avoids synchronous index rebuild", failures)
+    check("start_background_vector_store_warmup" in api_source and "@app.get(\"/ready\")" in api_source, "API startup warmup readiness route installed", failures)
+    check("faiss.loader" in api_source and "setLevel(logging.ERROR)" in api_source, "FAISS optional fallback log noise reduced", failures)
     storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")
     check("collect_runtime_backup_manifest" in storage_manifest_source and "secrets_exported" in storage_manifest_source, "runtime backup manifest installed", failures)
     check("collect_runtime_restore_check" in storage_manifest_source and "content_restored" in storage_manifest_source, "runtime restore dry-run check installed", failures)
@@ -603,6 +605,9 @@ def main() -> int:
             "grep -q 'record_query_usage' /opt/fluxmind/api.py; "
             "grep -q 'provider_total_tokens' /opt/fluxmind/api.py; "
             "grep -q 'warm_existing_vector_store' /opt/fluxmind/api.py; "
+            "grep -q 'start_background_vector_store_warmup' /opt/fluxmind/api.py; "
+            "grep -q '@app.get(\"/ready\")' /opt/fluxmind/api.py; "
+            "grep -q 'faiss.loader' /opt/fluxmind/api.py; "
             "! grep -q 'build_vector_store' /opt/fluxmind/api.py; "
             "test -f /opt/fluxmind/src/capabilities.py; "
             "test -f /opt/fluxmind/src/execution_policy.py; "

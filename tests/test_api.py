@@ -179,6 +179,43 @@ def test_startup_warmup_does_not_abort_when_index_load_fails(tmp_path, monkeypat
     assert api.warm_existing_vector_store() is False
 
 
+def test_startup_warmup_can_run_in_background(monkeypatch):
+    started = {}
+
+    class FakeThread:
+        def __init__(self, *, target, name, daemon):
+            started["target"] = target
+            started["name"] = name
+            started["daemon"] = daemon
+
+        def start(self):
+            started["started"] = True
+
+    monkeypatch.setattr(api.threading, "Thread", FakeThread)
+
+    api.start_background_vector_store_warmup()
+
+    assert started == {
+        "target": api.warm_existing_vector_store,
+        "name": "fluxmind-vector-store-warmup",
+        "daemon": True,
+        "started": True,
+    }
+    assert api.startup_warmup_status()["status"] == "warming"
+
+
+def test_ready_endpoint_reports_background_warmup_state(monkeypatch):
+    api._set_startup_warmup_state("ready", ready=True)
+    ready_response = api.ready()
+    assert ready_response["status"] == "ready"
+
+    api._set_startup_warmup_state("warming", ready=False)
+    with pytest.raises(HTTPException) as exc:
+        api.ready()
+    assert exc.value.status_code == 503
+    assert exc.value.detail["status"] == "warming"
+
+
 def test_query_response_includes_request_id(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     usage_events = []

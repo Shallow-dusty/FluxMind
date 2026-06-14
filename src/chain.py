@@ -2,6 +2,7 @@
 
 import math
 import re
+import threading
 from collections import Counter
 from dataclasses import asdict, dataclass
 from functools import lru_cache
@@ -77,6 +78,8 @@ If a generated diagram, plot, or file is relevant, cite it by its stable
 USER_TEMPLATE = "{question}"
 _BRACKET_CITATION_RE = re.compile(r"(?<!\!)\[(\d+)\]")
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
+_VECTOR_STORE_LOCK = threading.RLock()
+_VECTOR_STORE_CACHE: dict[str, Any] = {"signature": None, "store": None}
 
 
 @dataclass(frozen=True)
@@ -157,16 +160,46 @@ def get_llm() -> ChatOpenAI:
     )
 
 
+def _vector_store_signature(index_path: Path | None = None) -> tuple[tuple[str, int, int], ...] | None:
+    """Return a cheap freshness signature for the persisted FAISS store."""
+    index_path = index_path or FAISS_INDEX_DIR
+    index_file = index_path / "index.faiss"
+    if not index_file.exists():
+        return None
+    signature = []
+    for name in ("index.faiss", "index.pkl"):
+        path = index_path / name
+        if not path.exists():
+            return None
+        stat = path.stat()
+        signature.append((name, stat.st_mtime_ns, stat.st_size))
+    return tuple(signature)
+
+
+def clear_vector_store_cache() -> None:
+    """Drop the in-process FAISS cache after a local index mutation."""
+    with _VECTOR_STORE_LOCK:
+        _VECTOR_STORE_CACHE["signature"] = None
+        _VECTOR_STORE_CACHE["store"] = None
+
+
 def get_vector_store() -> FAISS | None:
-    """Load existing FAISS index if available."""
-    index_path = FAISS_INDEX_DIR
-    if index_path.exists() and (index_path / "index.faiss").exists():
-        return FAISS.load_local(
-            str(index_path),
+    """Load the existing FAISS index and reuse it until the files change."""
+    signature = _vector_store_signature()
+    if signature is None:
+        clear_vector_store_cache()
+        return None
+    with _VECTOR_STORE_LOCK:
+        if _VECTOR_STORE_CACHE["signature"] == signature:
+            return _VECTOR_STORE_CACHE["store"]
+        store = FAISS.load_local(
+            str(FAISS_INDEX_DIR),
             get_embedding_model(),
             allow_dangerous_deserialization=True,
         )
-    return None
+        _VECTOR_STORE_CACHE["signature"] = signature
+        _VECTOR_STORE_CACHE["store"] = store
+        return store
 
 
 def tokenize_query(text: str) -> set[str]:

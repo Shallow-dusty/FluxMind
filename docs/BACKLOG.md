@@ -41,15 +41,18 @@ checks still apply before each deploy
   `python scripts/health_check.py --ssh-host root@100.100.233.26`.
 - Provider-error normalization exists for UI and API responses.
 - Request IDs exist for `/query`, Streamlit responses, and logs.
-- FastAPI startup only warms an already-present FAISS index and recovers queued
-  jobs; it does not synchronously rebuild a missing index before binding the
-  API port.
+- FastAPI startup starts retrieval warmup for an already-present FAISS index in
+  the background and recovers queued jobs; it does not synchronously rebuild a
+  missing index or block the API port while warming retrieval state.
+- `/health` reports process liveness, while `/ready` reports retrieval warmup
+  readiness for the existing FAISS index.
 - `scripts/health_check.py` reports local/remote FAISS index size and active
   paper count when available.
 - `scripts/health_check.py` verifies that API startup avoids synchronous index
-  rebuilds, that remote chunk metadata rows exist when an active corpus is
-  present, and that deployed `/corpus/chunks` filters can return a sampled
-  chunk while rejecting an impossible query.
+  rebuilds, that the non-blocking readiness route exists, that remote chunk
+  metadata rows exist when an active corpus is present, and that deployed
+  `/corpus/chunks` filters can return a sampled chunk while rejecting an
+  impossible query.
 - `scripts/health_check.py --url` retries transient HTTP warmup failures such
   as 502/503/504/429 before reporting endpoint failure.
 - `scripts/health_check.py --ssh-host ...` includes recent journal error lines

@@ -307,10 +307,21 @@ def _save_rebuilt_vector_store(store: FAISS, index_path: Path) -> None:
         for item in temp_path.iterdir():
             item.replace(index_path / item.name)
         temp_path.rmdir()
+        _clear_vector_store_cache()
     except Exception:
         if temp_path.exists():
             shutil.rmtree(temp_path)
         raise
+
+
+def _clear_vector_store_cache() -> None:
+    """Best-effort cache invalidation for the API process after index writes."""
+    try:
+        from src.chain import clear_vector_store_cache
+
+        clear_vector_store_cache()
+    except Exception:
+        logger.debug("vector_store_cache_clear_failed", exc_info=True)
 
 
 def _relative(path: Path) -> str:
@@ -735,6 +746,7 @@ def build_vector_store(
                 store.add_documents(chunks)
                 _raise_if_cancelled(cancel_event)
                 store.save_local(str(index_path))
+                _clear_vector_store_cache()
         return store
 
     # Build from scratch
@@ -753,6 +765,7 @@ def build_vector_store(
             _save_rebuilt_vector_store(store, index_path)
         else:
             store.save_local(str(index_path))
+            _clear_vector_store_cache()
         return store
 
     chunks = split_documents(documents, cancel_event=cancel_event)
@@ -763,6 +776,7 @@ def build_vector_store(
         _save_rebuilt_vector_store(store, index_path)
     else:
         store.save_local(str(index_path))
+        _clear_vector_store_cache()
     return store
 
 
@@ -867,6 +881,7 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
         store = FAISS.from_documents(chunks, embeddings)
 
     store.save_local(str(FAISS_INDEX_DIR))
+    _clear_vector_store_cache()
 
     active = load_active_paper_paths()
     if pdf_path not in active:

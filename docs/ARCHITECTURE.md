@@ -32,8 +32,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `app.py`: Streamlit UI, bilingual labels, PDF selection/upload controls, chat
   rendering, browser-translation guard, and local no-key job panel.
 - `api.py`: FastAPI request contract, token verification, metadata-only API
-  access audit and local rate-limit middleware, lifecycle startup, and
-  best-effort warming of an already-present FAISS index.
+  access audit and local rate-limit middleware, non-blocking retrieval warmup,
+  `/health` process liveness, and `/ready` retrieval readiness.
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
   reasoning-aware streaming, answer modes, generated-answer inspection
   metadata, and numbered citation validation.
@@ -165,9 +165,13 @@ outside the API process. Running local Python jobs observe cancellation, and
 local execution timeout failures persist as `execution_timeout` instead of
 generic execution failures.
 FastAPI startup intentionally does not synchronously rebuild a missing FAISS
-index. If the index is missing or cannot be warmed, `/health` and job/admin
-routes should still bind so operators can inspect state and trigger an explicit
-index rebuild job.
+index or block the API socket while warming an existing index. `/health`
+reports process liveness after bind, while `/ready` reports whether retrieval
+warmup has loaded the existing FAISS index. If the index is missing or cannot be
+warmed, `/health` and job/admin routes should still bind so operators can
+inspect state and trigger an explicit index rebuild job. The in-process
+embedding model and FAISS store are cached, and the FAISS cache reloads when the
+persisted index files change.
 Index rebuild jobs now check cancellation during PDF loading, chunk splitting,
 and before committing rebuilt index state, so a cancelled local rebuild should
 not replace the live FAISS index or publish updated chunk metadata after the

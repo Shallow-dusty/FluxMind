@@ -1,6 +1,6 @@
 # FluxMind Feature Audit
 
-Last updated: 2026-06-08
+Last updated: 2026-06-15
 
 This document inventories the currently implemented FluxMind feature surface and
 the evidence that checks it. It is a no-secret audit document: do not copy API
@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 282 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 286 tests, 2 known warnings
 .venv/bin/python scripts/evaluate_rag.py                             pass, 20 answer cases and
                                                                       30 retrieval-only cases,
                                                                       4 code-output cases,
@@ -27,14 +27,14 @@ Command                                                               Result
                                                                       API-rate-limit/upload-scan/
                                                                       retention-delete/metrics-export/retrieval-trace/
                                                                       retrieval-alerts/storage-schema/artifact-limit/
-                                                                      execution-alert anchors
+                                                                      execution-alert/readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   00:45 snapshot, HTTPS UI/API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  00:45 snapshot, live runtime green
+.venv/bin/python scripts/health_check.py --url ...                   02:31 snapshot, HTTPS UI/API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  02:31 snapshot, live runtime green
 ```
 
 ## Feature Groups
@@ -140,6 +140,7 @@ POST   /jobs/{job_id}/retry
 POST   /jobs/{job_id}/retry-scheduled
 
 GET    /health
+GET    /ready
 ```
 
 ## Current Test Coverage Shape
