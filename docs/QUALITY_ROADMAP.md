@@ -52,7 +52,7 @@ small_group  met: 30 curated papers, 100 no-LLM retrieval questions,
 community    gap: mainly corpus size, live answer evidence, and coverage depth
 ```
 
-Latest measured deployed quality snapshot on 2026-06-16 01:34 CST:
+Latest measured deployed quality snapshot on 2026-06-16 01:47 CST:
 
 ```text
 Metric                         Current  Small-group target  Gap
