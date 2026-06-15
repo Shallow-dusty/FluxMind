@@ -136,8 +136,8 @@ def main() -> int:
     check("Previous temporary index `80` has been retired" in readme, "README records 80 retirement", failures)
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
-        "Last deployed source/eval baseline d1e5326 test: recalibrate live retrieval baseline" in repo_status
-        and "Live verification follow-up    18-paper corpus rebuild and 86/86 live retrieval refreshed on 2026-06-15 14:29 CST"
+        "Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates" in repo_status
+        and "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 01:34 CST"
         in repo_status,
         "repo status records deployment-record baseline",
         failures,
@@ -395,7 +395,7 @@ def main() -> int:
     check("format_admin_metrics" in admin_source and "fluxmind_jobs_total" in admin_source, "admin metrics text export installed", failures)
 
     manifest = json.loads((PROJECT_ROOT / "papers/library/manifest.json").read_text(encoding="utf-8"))
-    check(len(manifest) >= 11, "seed paper manifest has at least 11 entries", failures)
+    check(len(manifest) >= 30, "seed paper manifest has at least 30 entries", failures)
     check(
         any(item.get("doi") or item.get("arxiv_id") for item in manifest.values()),
         "seed paper manifest has DOI/arXiv enrichment",
@@ -409,7 +409,7 @@ def main() -> int:
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_case_count", 0) >= 20
+        eval_config.get("quality_gates", {}).get("minimum_case_count", 0) >= 40
         and len(eval_config.get("quality_gates", {}).get("required_answer_modes", [])) >= 5,
         "RAG eval aggregate quality gates installed",
         failures,
@@ -425,32 +425,32 @@ def main() -> int:
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_topic_tag_count", 0) >= 50
+        eval_config.get("quality_gates", {}).get("minimum_topic_tag_count", 0) >= 80
         and "zero speed" in eval_config.get("quality_gates", {}).get("required_topic_tags", []),
         "RAG eval topic coverage gates installed",
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_recorded_answer_count", 0) >= 20
-        and sum(1 for case in eval_config.get("cases", []) if case.get("recorded_answer")) >= 20,
-        "RAG eval 20-case recorded-answer gate installed",
+        eval_config.get("quality_gates", {}).get("minimum_recorded_answer_count", 0) >= 40
+        and sum(1 for case in eval_config.get("cases", []) if case.get("recorded_answer")) >= 40,
+        "RAG eval 40-case recorded-answer gate installed",
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_retrieval_only_case_count", 0) >= 30
-        and len(eval_config.get("retrieval_only_cases", [])) >= 30,
+        eval_config.get("quality_gates", {}).get("minimum_retrieval_only_case_count", 0) >= 60
+        and len(eval_config.get("retrieval_only_cases", [])) >= 60,
         "RAG eval retrieval-only case gate installed",
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_retrieval_eval_question_count", 0) >= 50
-        and len(eval_config.get("cases", [])) + len(eval_config.get("retrieval_only_cases", [])) >= 50,
-        "RAG eval 50-question retrieval gate installed",
+        eval_config.get("quality_gates", {}).get("minimum_retrieval_eval_question_count", 0) >= 100
+        and len(eval_config.get("cases", [])) + len(eval_config.get("retrieval_only_cases", [])) >= 100,
+        "RAG eval 100-question retrieval gate installed",
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_code_output_case_count", 0) >= 3
-        and len(eval_config.get("code_output_cases", [])) >= 3,
+        eval_config.get("quality_gates", {}).get("minimum_code_output_case_count", 0) >= 8
+        and len(eval_config.get("code_output_cases", [])) >= 8,
         "RAG eval code-output case gate installed",
         failures,
     )
@@ -472,10 +472,11 @@ def main() -> int:
         "RAG eval job-backed code-output gate installed",
         failures,
     )
+    required_pdf_kinds = set(eval_config.get("quality_gates", {}).get("required_pdf_structure_kinds", []))
     check(
-        eval_config.get("quality_gates", {}).get("minimum_pdf_structure_case_count", 0) >= 6
-        and {"equation", "table", "figure"}.issubset(set(eval_config.get("quality_gates", {}).get("required_pdf_structure_kinds", [])))
-        and len(eval_config.get("pdf_structure_cases", [])) >= 6,
+        eval_config.get("quality_gates", {}).get("minimum_pdf_structure_case_count", 0) >= 15
+        and {"equation", "table", "figure", "algorithm"}.issubset(required_pdf_kinds)
+        and len(eval_config.get("pdf_structure_cases", [])) >= 15,
         "RAG eval PDF structure gate installed",
         failures,
     )

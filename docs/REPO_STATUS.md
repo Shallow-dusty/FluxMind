@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 14:29 CST
+Snapshot time: 2026-06-16 01:34 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,16 +13,16 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified repo baseline         d1e5326 test: recalibrate live retrieval baseline
+Verified source/eval baseline  d80c083 test: tighten FluxMind small-group quality gates
 Remote status at verification  main...origin/main up to date before this status refresh
-Current docs refresh scope     final 18-paper corpus-expansion deployment status note only
-Last deployed source/eval baseline d1e5326 test: recalibrate live retrieval baseline
-Live verification follow-up    18-paper corpus rebuild and 86/86 live retrieval refreshed on 2026-06-15 14:29 CST
+Current docs refresh scope     small-group quality completion status and docs guard refresh
+Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates
+Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 01:34 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
-The no-key platform release work is now pushed to `origin/main`. Its main
-contents were:
+The no-key platform foundation and current small-group quality baseline are
+pushed to `origin/main`. Their main contents are:
 
 ```text
 Area                 Main contents
@@ -43,23 +43,22 @@ Deployment/docs      guarded deploy sync, health-check expansion, deployment
                      evidence updates
 ```
 
-Push and deployment completed for `a51a060`; the live verification evidence was
-then recorded and pushed in `32fca21`.
-
-The documentation cleanup and completion snapshot are included in `a51a060`; the
-deployment record follow-up is included in `32fca21`.
+Earlier no-key platform deployment completed for `a51a060`; that live
+verification evidence was recorded in `32fca21`. The current small-group quality
+source/eval baseline is `d80c083`, with the main corpus/eval expansion in
+`e069873` and the live retrieval recalibration in `cc705dc`.
 
 This formerly in-progress local work is now committed, pushed to `origin/main`
-through application baseline `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
+through source/eval baseline `d80c083`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
-86-question no-LLM retrieval gate: 32 answer cases, 32 recorded answers, and 54
-retrieval-only source/page cases with topic, lane, and ontology coverage gates.
+100-question no-LLM retrieval gate: 40 answer cases, 40 recorded answers, and
+60 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
-implementation and code-generation report exports, plus the first local Python
-code-output eval cases that verify generated plot/text artifacts and reusable
-execution-template output, one local job-backed code-output eval path, and the
-first seeded PDF equation/table/figure structure gates exposed through
+implementation and code-generation report exports, plus local Python
+code-output eval cases that verify generated plot/text artifacts, reusable
+execution-template output, paper-specific examples, and job-backed execution
+paths, and seeded PDF equation/table/figure/algorithm structure gates exposed through
 `GET /corpus/structure` and the Markdown handoff export at
 `GET /corpus/structure/report`. The same local slice adds a no-secret runtime
 restore dry-run verifier through `scripts/runtime_manifest.py --restore-check`,
@@ -475,19 +474,19 @@ scope                                                                  docs-only
 
 The latest live deployment snapshot was refreshed after guarded corpus sync,
 index rebuild, live retrieval evaluation, and HTTPS/SSH health checks on
-2026-06-15 14:29 CST in
+2026-06-16 01:34 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
 retrieval-alerts/storage-schema work above plus the API startup readiness,
-import-latency fixes, coverage gate, 18-paper seed corpus, API token comparison
+import-latency fixes, coverage gate, 30-paper seed corpus, API token comparison
 hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
 exclude are now synced or rebuilt on Trace-Twin through the current
-source/runtime boundary. The latest remote corpus status is `papers=18`,
-`active=18`, `indexed=18`, `chunks=1216`, and `index=fresh`; live retrieval eval
-passes `86/86`. External
+source/runtime boundary. The latest remote corpus status is `papers=30`,
+`active=30`, `indexed=30`, `chunks=1934`, and `index=fresh`; live retrieval eval
+passes `100/100`, with `small_group=met`. External
 providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.
@@ -500,9 +499,9 @@ Local API health    {"status":"ok"}
 Local API readiness {"status":"ready","warmup":{"status":"ready","ready":true,"error":""}}
 Model config        LLM_MODEL=mimo-v2.5-pro
 Embedding model     /opt/fluxmind/models/all-MiniLM-L6-v2
-Active papers       18
-FAISS index bytes   1867821
-Chunk rows          1216 across 18 source paths
+Active papers       30
+FAISS index bytes   2970669
+Chunk rows          1934 across 30 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
 Docker execution    configured=False available=False reason=not_configured

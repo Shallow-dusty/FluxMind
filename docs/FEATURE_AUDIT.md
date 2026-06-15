@@ -1,6 +1,6 @@
 # FluxMind Feature Audit
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 This document inventories the currently implemented FluxMind feature surface and
 the evidence that checks it. It is a no-secret audit document: do not copy API
@@ -19,11 +19,11 @@ Command                                                               Result
 .venv/bin/python -m pytest                                           pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py                             pass, 32 answer cases and
-                                                                      54 retrieval-only cases,
-                                                                      8 code-output cases,
-                                                                      16 PDF structure cases,
-                                                                      32 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                             pass, 40 answer cases and
+                                                                      60 retrieval-only cases,
+                                                                      11 code-output cases,
+                                                                      17 PDF structure cases,
+                                                                      40 recorded answers
 .venv/bin/python scripts/health_check.py                             pass, local/docs/query-latency/query-alert/
                                                                       provider-alert/job-alert/API-access-audit/
                                                                       API-rate-limit/upload-scan/
@@ -33,15 +33,15 @@ Command                                                               Result
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   14:29 snapshot, 86/86 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   01:34 snapshot, 100/100 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   14:29 snapshot, HTTPS UI 200
-curl https://api-smy.hyper-dusty.cloud/health                        14:29 snapshot, HTTPS API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  14:29 snapshot, live runtime green,
-                                                                      active_papers=18, chunks=1216
+.venv/bin/python scripts/health_check.py --url ...                   01:34 snapshot, HTTPS UI 200
+curl https://api-smy.hyper-dusty.cloud/health                        01:34 snapshot, HTTPS API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  01:34 snapshot, live runtime green,
+                                                                      active_papers=30, chunks=1934
 ```
 
 ## Feature Groups
@@ -54,7 +54,7 @@ RAG query and inspection      verified      /query, /query/inspect, /query/retri
                                             offline eval, citation tests, code-output artifact and
                                             template checks, PDF structure checks, and paper-to-code
                                             report handoff tests pass. Live QA breadth is still limited.
-Corpus and profile control    verified      18-paper curated seed library plus paper/chunk/status/
+Corpus and profile control    verified      30-paper curated seed library plus paper/chunk/status/
                                             active/profile routes exist; local
                                             JSON/SQLite store is inspectable. Multi-user ownership and
                                             production DB/object storage remain planned.
@@ -167,7 +167,7 @@ Ingestion/upload        tests/test_ingestion.py covers filename safety, PDF meta
 RAG evaluation          tests/test_evaluation.py and scripts/evaluate_rag.py cover citations,
                         recorded answers, retrieval-only source/page cases, provider fixtures,
                         local code-output artifacts/templates/job-backed execution,
-                        PDF equation/table/figure structure cases, retrieval diagnostics, ontology,
+                        PDF equation/table/figure/algorithm structure cases, retrieval diagnostics, ontology,
                         topic/lane coverage gates, quality-maturity target reporting,
                         and no-LLM retrieval diagnostics
 Jobs and workers        tests/test_jobs.py covers JSONL/SQLite state, durable idempotency,
@@ -198,10 +198,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Known Evaluation Gaps
 
-- The offline RAG baseline is deterministic and now covers 86 no-LLM retrieval
-  questions plus eight local Python code-output cases (four job-backed, across the
-  `smc_reaching_law` and `pmsm_current_step` templates) and 16 seeded PDF
-  equation/table/figure structure cases, but the live answer QA set, richer PDF
+- The offline RAG baseline is deterministic and now covers 100 no-LLM retrieval
+  questions plus 11 local Python code-output cases (four job-backed, across
+  reusable templates and paper-specific examples) and 17 seeded PDF
+  equation/table/figure/algorithm structure cases, but the live answer QA set, richer PDF
   layout extraction, and broader Octave *execution* eval (blocked on an Octave
   binary in CI/runtime) are still narrow for broad control-engineering coverage.
 - The local Python/Octave child-process providers are contract tests, while the
@@ -221,8 +221,8 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   metrics/traces beyond the local export baseline.
 - Runtime storage and queue state are local SQLite/JSONL/filesystem bridges, not
   a distributed production database or object store.
-- The bundled seed corpus has been expanded from 6 to 11 open-access papers, but
-  the next content milestone is still a curated 30-50 paper library with richer
+- The bundled seed corpus has been expanded to 30 open-access papers, and the
+  next content milestone is a curated 50+ paper library with richer
   topic coverage and more PDF-layout acceptance cases.
 - Streamlit remains acceptable for demo/personal workflows, but platform UX,
   user/workspace state, and account-level admin need a frontend/API split.
@@ -231,8 +231,8 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Next Audit Actions
 
-1. Expand live retrieval and live answer evaluation cases before claiming broad
-   RAG quality.
+1. Add live answer evaluation cases before claiming broad RAG quality beyond
+   the small-group retrieval bar.
 2. Use the production storage/distributed-worker readiness blockers to choose
    the next real database/object-storage/queue migration tests before moving
    runtime state out of local files.

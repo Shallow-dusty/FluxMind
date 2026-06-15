@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-15 14:29 CST
+Last updated: 2026-06-16 01:34 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      run on 2026-06-15 14:29 CST; re-run before deploy claims
+                      run on 2026-06-16 01:34 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -30,13 +30,14 @@ Documentation-pass state:
 
 ```text
 Branch          main
-Start state     main...origin/main up to date at d1e5326 before docs refresh
-Source/eval     b2f543e test: expand FluxMind corpus quality baseline
-Calibration     d1e5326 test: recalibrate live retrieval baseline
+Start state     source/eval baseline d80c083 before docs refresh
+Source/eval     e069873 test: complete FluxMind small-group quality baseline
+Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
+Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Status note     this docs-status refresh follows verified live deployment
-Deployed source/eval  d1e5326 test: recalibrate live retrieval baseline
-Work scope      docs/status/test-guard updates after deployed corpus/eval expansion
-Diff hygiene    git diff --check passed on 2026-06-15 14:29 CST
+Deployed source/eval  d80c083 test: tighten FluxMind small-group quality gates
+Work scope      docs/status/test-guard updates after deployed small-group quality completion
+Diff hygiene    git diff --check passed on 2026-06-16 01:34 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -47,21 +48,21 @@ Check                                      Result
 pytest                                    332 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
-offline RAG eval                          32 answer cases, 54 retrieval-only
-                                          cases, 8 code-output cases,
-                                          16 PDF structure cases,
-                                          32 recorded answers
+offline RAG eval                          40 answer cases, 60 retrieval-only
+                                          cases, 11 code-output cases,
+                                          17 PDF structure cases,
+                                          40 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  14:29 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          14:29 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                14:29 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  01:34 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          01:34 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                01:34 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
-Remote active corpus                       active_papers=18
-Remote chunk metadata                     chunk_metadata_rows=1216, sources=18
+Remote active corpus                       active_papers=30
+Remote chunk metadata                     chunk_metadata_rows=1934, sources=30
 Remote index freshness                     index_fresh=True
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
@@ -106,7 +107,7 @@ Priority                High. This is the trust layer users will judge first.
 ```text
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
-Content/corpus          18-paper curated seed library, local metadata, profiles, chunk mirror,
+Content/corpus          30-paper curated seed library, local metadata, profiles, chunk mirror,
                         DOI/arXiv enrichment fields, upload/index flow.
 
 Gap to production       Curated domain corpus, topic ontology, paper quality
@@ -462,9 +463,9 @@ Recommended near-term corpus target:
 ```text
 Milestone       Corpus target
 --------------  --------------------------------------------------------------
-M0 current      18 bundled seed papers; deployed active index may still reflect
-                the latest runtime rebuild snapshot
-M1              30-50 curated papers, tagged by topic and method
+M0 current      30 bundled seed papers; deployed active index is fresh for the
+                latest 30-paper runtime rebuild snapshot
+M1              50 curated papers, tagged by topic and method
 M2              100+ curated papers plus benchmark questions and code templates
 M3              Add forum-style implementation notes and failure-mode cards
 ```
@@ -491,39 +492,46 @@ Order  Lane                                      Why first
 
 ### 0-30 Days: Domain Trust Sprint
 
-- Expand the curated corpus from 11 papers to 30-50 high-quality papers.
+- Expand the curated corpus from 30 papers toward 50 high-quality papers.
 - Add topic tags and a control-engineering ontology: SMC, FOC, PMSM, SMO,
   observers, flux estimation, chattering, discretization, parameter tuning.
-- Create at least 60 retrieval-only eval questions and 40 recorded-answer eval cases for the small-group bar.
-- Add equation/table/figure extraction acceptance tests for representative PDFs.
+- Create live answer eval cases and broaden recorded/retrieval cases toward the
+  community bar.
+- Add equation/table/figure/algorithm extraction acceptance tests for representative PDFs.
 - Add code-output evals where Python/Octave examples must run and produce plots.
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
 
-Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 32
-offline/recorded answer cases and 54 retrieval-only cases, for 86 total no-LLM
-retrieval questions. The baseline gates 112 source/page refs and 89 topic tags
+Current progress on 2026-06-16: the no-key baseline has advanced from 5 to 40
+offline/recorded answer cases and 60 retrieval-only cases, for 100 total no-LLM
+retrieval questions. The baseline gates 136 source/page refs and 102 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
-eight local Python code-output gates that verify expected stdout plus plot/text
+11 local Python code-output gates that verify expected stdout plus plot/text
 artifacts in a temporary artifact store, including reusable execution-template
-coverage plus four local job-backed execution paths. The evaluator also has 16
-seeded PDF structure gates for equation/table/figure markers on representative
+coverage, paper-specific examples, and four local job-backed execution paths.
+The evaluator also has 17 seeded PDF structure gates for
+equation/table/figure/algorithm markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
 anchors as a Markdown handoff report. `POST /query/report` now adds a local
 paper-to-code handoff for implementation and code-generation reports, including
 source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
-IDs, and validation checklist fields. The self-use target is met; the
-small-group target still needs corpus growth from 18 bundled seed papers toward
-30 curated papers, plus 8 more answer/recorded-answer cases, 6 more
-retrieval-only cases, and 14 more total retrieval questions. Broader Octave
+IDs, and validation checklist fields. The self-use and small-group targets are
+met in the latest deployed live retrieval report; the community target still
+needs corpus growth toward 50 papers, 80 recorded answers, 180 retrieval
+questions, 30 PDF structure cases, 12 code-output cases, and live answer
+evidence. Broader Octave
 execution remains deferred until an Octave binary
-is available in CI/runtime. The 2026-06-15 seed
-library expansion adds adaptive-gain SMO, super-twisting SMO, switching-function
+is available in CI/runtime. The 2026-06-15 and 2026-06-16 seed-library
+expansions add adaptive-gain SMO, super-twisting SMO, switching-function
 comparison, adaptive-parameter IPMSM, MRAS flux-linkage observer, combined
-reaching-law SMO, PID/ITSMRL/ESO speed control, and fuzzy super-twisted SMO
-coverage, plus super-twisting SMC with ESO feedback, adaptive quick reaching law
-with SFTSMO, DSMO/LQR current-loop control, and NFTSMC with SDOB validation.
+reaching-law SMO, PID/ITSMRL/ESO speed control, fuzzy super-twisted SMO,
+super-twisting SMC with ESO feedback, adaptive quick reaching law with SFTSMO,
+DSMO/LQR current-loop control, NFTSMC with SDOB validation, integrated
+SMC/DOB/LPF, fast terminal SMPC, model-free GSTA/FTSMC, fractional
+super-twisting SMDO, IFTSM adaptive control, CESO composite SMC, prescribed
+performance LESO, ISMO antidisturbance control, and SMO/sensorless-control
+survey coverage.
 
 Success criterion: a skeptical control student or engineer can ask paper-backed
 implementation questions and receive traceable, executable outputs.

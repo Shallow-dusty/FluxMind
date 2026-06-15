@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 14:29 CST
+Last live check: 2026-06-16 01:34 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,8 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last verified source/eval baseline before this deployment record: `d1e5326`
-(`test: recalibrate live retrieval baseline`). `/opt/fluxmind` is not a
+Last verified source/eval baseline before this deployment record: `d80c083`
+(`test: tighten FluxMind small-group quality gates`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
@@ -94,6 +94,40 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Small-group quality completion deploy and live retrieval evaluation were
+refreshed on 2026-06-16 01:34 CST after pushing `e069873`, `cc705dc`, and
+`d80c083`.
+Twelve additional official-source open-access `papers/library/` PDFs were added
+for integrated SMC/DOB/LPF, second-order adaptive SMO, fast terminal SMPC,
+model-free GSTA/FTSMC, fractional super-twisting SMDO, IFTSM adaptive control,
+CESO composite SMC, SMC model-predictive current control, prescribed-performance
+LESO, ISMO antidisturbance control, and two Frontiers SMO/sensorless-control
+surveys. The curated PDFs were synced explicitly because
+`scripts/deploy_sync.py` excludes `papers/`; source/eval were synced with
+`.venv/bin/python scripts/deploy_sync.py --apply` without restarting services.
+All 30 library papers were activated through the local API, and synchronous
+index rebuild job `dbf88a8dfa1d` succeeded with `paper_count=30` and
+`chunk_count=1934`.
+
+Server-local
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
+--json-report /tmp/fluxmind-live-corpus30-report.json` passed all 100 live
+retrieval cases, with regression gates `24/24` OK and
+`minimum_live_retrieval_pass_rate=1.00`. The report shows
+`self_use=met`, `small_group=met`, and `community=gap`.
+
+The same verification pass confirmed public UI 200 at
+`https://smy.hyper-dusty.cloud/`, public API health 200 at
+`https://api-smy.hyper-dusty.cloud/health`, SSH runtime checks green, and
+remote corpus status `papers=30`, `active=30`, `indexed=30`, `chunks=1934`,
+`index=fresh`. The SSH health gate reported UI/API/worker/cloudflared/docker
+active, ports `18501` and `18502` listening, Docker execution still
+`configured=False available=False reason=not_configured`, local storage
+available, retrieval/admin smokes passing, and `/dev/vda3` at 36% used. Current
+small-group gaps are zero. Community gaps remain: corpus growth toward 50
+papers, 80 recorded answers, 180 retrieval questions, 30 PDF structure cases,
+12 code-output cases, and live answer evidence.
 
 Corpus-expansion deploy and live retrieval evaluation were refreshed on
 2026-06-15 14:29 CST after pushing `b2f543e` and `d1e5326`. Four additional

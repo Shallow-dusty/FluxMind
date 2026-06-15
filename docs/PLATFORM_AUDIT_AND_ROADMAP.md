@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -49,15 +49,15 @@ Gate                                      Result
 .venv/bin/python -m pytest                pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py  pass, 32 answer cases, 54 retrieval-only
-                                             cases, 8 code-output cases,
-                                             16 PDF structure cases,
-                                             32 recorded answers
+.venv/bin/python scripts/evaluate_rag.py  pass, 40 answer cases, 60 retrieval-only
+                                             cases, 11 code-output cases,
+                                             17 PDF structure cases,
+                                             40 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-health_check.py HTTPS endpoints            14:29 snapshot, UI/API 200
-health_check.py SSH runtime                14:29 snapshot, services active, active_papers=18, chunks=1216, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            01:34 snapshot, UI/API 200
+health_check.py SSH runtime                01:34 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
@@ -68,7 +68,7 @@ Dimension                 Assessment
 Research demo readiness   strong: deployed UI/API, seed corpus, citation checks
 No-key local platform     strong: WP0-WP6 baseline implemented and tested
 Operational visibility    strong for local runtime; no-secret reports available
-RAG quality coverage      useful deterministic baseline, but not broad live QA
+RAG quality coverage      small-group retrieval bar met; broad live answer QA remains open
 Execution/artifacts       good contract baseline; not production sandboxed
 Storage/queue durability  local SQLite/JSONL bridge only; not distributed
 Product maturity          pre-platform: no accounts, quotas, billing, teams
@@ -100,10 +100,10 @@ Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
-baseline now has 32 domain-trust answer cases, 32 recorded answers, and 54
-retrieval-only cases for 86 total no-LLM retrieval questions, plus eight local
-Python code-output cases (four job-backed) and 16 seeded PDF
-equation/table/figure structure cases. The baseline gates 112 expected source/page refs, 89 topic tags,
+baseline now has 40 small-group answer cases, 40 recorded answers, and 60
+retrieval-only cases for 100 total no-LLM retrieval questions, plus 11 local
+Python code-output cases (four job-backed) and 17 seeded PDF
+equation/table/figure/algorithm structure cases. The baseline gates 136 expected source/page refs, 102 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports, code-output case/language/template/execution-mode/pass
@@ -112,10 +112,9 @@ that expected PDF sources/pages contain their configured snippets, checks
 retrieval-only source/page anchors without answer fixtures, checks recorded
 answers for citation validity plus deterministic key-term coverage thresholds,
 verifies that local Python code-output fixtures produce expected stdout plus
-plot/text artifacts, including the reusable `smc_reaching_law` and
-`pmsm_current_step` execution templates plus job-backed local execution paths,
-and verifies that
-representative PDF pages still expose equation/table/figure markers for
+plot/text artifacts, including reusable execution templates, paper-specific
+paper-to-code examples, and job-backed local execution paths, and verifies that
+representative PDF pages still expose equation/table/figure/algorithm markers for
 paper-to-code work.
 Retrieval now uses a local hybrid path: FAISS
 vector hits plus BM25-lite keyword matches from the indexed docstore, with
@@ -130,7 +129,7 @@ answer citation validation against retrieved source/page refs. This is a
 regression harness and retrieval baseline, not a claim that fresh live model
 output has been fully scored.
 
-Current corpus storage work includes an 18-paper curated seed library plus a
+Current corpus storage work includes a 30-paper curated seed library plus a
 local JSON metadata registry in
 `metadata/corpus.json` with checksums, source paths, titles, authors, year,
 DOI, arXiv ID, venue, topic tags, active/indexed state, chunk counts, and
@@ -640,7 +639,7 @@ assumption/parameter guardrails, fenced code blocks, cited artifact IDs, and
 validation checklist fields. The `GET /corpus/profiles/{profile_id}/report`
 route exports one saved local corpus profile's read-only status as a Markdown
 handoff report. `GET /corpus/structure/report` exports filtered
-equation/table/figure layout anchors as a Markdown handoff report with
+equation/table/figure/algorithm layout anchors as a Markdown handoff report with
 kind/source summaries. `GET /admin/retention`
 previews upload/artifact files matching age-based retention thresholds.
 `POST /admin/retention/delete` can delete the same bounded candidate set only
@@ -657,10 +656,10 @@ blocked on product decisions.
 ## Near-Term Implementation Plan
 
 1. Use `docs/QUALITY_ROADMAP.md` and the `quality_maturity` section of the eval
-   JSON report as the next product steering layer: reach the small-group quality
-   bar through corpus/eval/live-retrieval breadth before prioritizing account,
-   billing, or frontend rewrite work.
-2. Treat `d1e5326` as the current pushed/deployed source/eval baseline and
+   JSON report as the product steering layer: the small-group quality bar is
+   met, so the next decision is community-quality evidence versus production
+   storage/distributed-worker hardening.
+2. Treat `d80c083` as the current pushed/deployed source/eval baseline and
    keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.

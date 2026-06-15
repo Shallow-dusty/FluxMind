@@ -1,6 +1,6 @@
 # FluxMind Implementation Backlog
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -10,7 +10,7 @@ It is intentionally ordered by dependency, not by excitement.
 
 ## Completion Snapshot
 
-Confirmed on: 2026-06-15
+Confirmed on: 2026-06-16
 
 The current completed scope is the no-key/local platform baseline:
 
@@ -26,14 +26,15 @@ WP5 code execution    complete for local Python/Octave-compatible dev providers
 WP6 product shell     complete for local no-secret admin/reporting foundation
 ```
 
-Current hardening progress on 2026-06-15: the automated suite has 328 passing
+Current hardening progress on 2026-06-16: the automated suite has 332 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
-expanded from 6 to 11 open-access papers. The same hardening pass added
+expanded to 30 open-access papers. The same hardening pass added
 constant-time API token comparison, tolerant runtime JSON/JSONL state parsing,
 atomic active-paper selection writes, and a `.coverage` deploy-sync exclude.
 The eval report also carries staged quality-maturity targets for self-use,
-small-group, and community readiness so corpus/eval growth can be tracked before
+small-group, and community readiness; self-use and small-group are now met, so
+corpus/eval growth can be tracked before
 new platform features are prioritized.
 
 The incomplete scope is production platformization: real external providers,
@@ -92,21 +93,21 @@ BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
 metadata-only retrieval trace events/admin summaries/metrics and local
 retrieval-quality advisory alerts,
-retrieval-only source/page cases, eight local Python code-output artifact cases
-(four of them job-backed) across the `smc_reaching_law` and `pmsm_current_step`
-templates plus paper-specific local fixtures, 16 seeded PDF equation/table/figure
+retrieval-only source/page cases, 11 local Python code-output artifact cases
+(four of them job-backed) across reusable execution templates plus
+paper-specific local fixtures, 17 seeded PDF equation/table/figure/algorithm
 structure extraction acceptance cases, optional JSON eval report export, and
-aggregate eval-set regression gates implemented. The baseline now has a 32-case
-domain-trust intermediate gate with 32 recorded answers plus 54 retrieval-only
-cases for 86 total no-LLM retrieval questions. It gates 112 expected source/page refs, topic-tag coverage,
+aggregate eval-set regression gates implemented. The baseline now has a 40-case
+small-group quality gate with 40 recorded answers plus 60 retrieval-only cases
+for 100 total no-LLM retrieval questions. It gates 136 expected source/page refs, topic-tag coverage,
 ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
 equation fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports; external/service reranking plus richer PDF layout
 extraction and broader Octave *execution* eval (blocked on an Octave binary in
 CI/runtime) remain planned.
 
-- `eval/rag_baseline.json` contains a 32-case control-engineering answer
-  evaluation set plus 54 retrieval-only source/page cases, with a small domain
+- `eval/rag_baseline.json` contains a 40-case control-engineering answer
+  evaluation set plus 60 retrieval-only source/page cases, with a small domain
   ontology for SMC, PMSM/FOC, observer/estimation, and implementation-trust
   groups.
 - Answer cases record expected source papers/pages, fixture snippets, recorded
@@ -124,13 +125,11 @@ CI/runtime) remain planned.
   metadata, runtime metadata, provider/direct mode, local job-backed mode, and
   reusable execution-template coverage without writing project runtime artifacts.
 - `pdf_structure_cases` verify that representative seeded PDF pages expose
-  equation, table, and figure markers through no-key PyMuPDF extraction, so
+  equation, table, figure, and algorithm markers through no-key PyMuPDF extraction, so
   paper-to-code workflows can fail locally when source layout anchors disappear.
-  The extractor also recognizes algorithm captions, anchored by the synthetic-PDF
-  unit test `test_extract_pdf_structure_markers_finds_layout_markers`; the
-  expanded corpus now includes a real numbered algorithm anchor, so a future
-  quality slice should add an algorithm-caption case instead of treating it as
-  blocked.
+  The real corpus now includes a numbered algorithm anchor from the DSMO/LQR
+  current-control paper, so algorithm extraction is covered by both synthetic
+  marker tests and seeded-PDF evaluation.
 - Offline expected refs now verify that the referenced PDF exists, the page is
   parseable, and the configured snippet appears on that page.
 - Provider failure fixtures cover timeout, 429/rate-limit, empty output, and
@@ -202,7 +201,7 @@ Acceptance:
 - Code-output regressions fail when local execution misses expected stdout,
   runtime metadata, or generated plot/text artifacts.
 - PDF structure regressions fail when representative source pages no longer
-  expose required equation/table/figure anchors.
+  expose required equation/table/figure/algorithm anchors.
 - Live model answers can be scored through the deployed inspect endpoint without
   committing provider tokens.
 - Eval breadth and aggregate answer-quality regressions fail through configured
@@ -223,7 +222,7 @@ local storage inventory, local storage-schema inventory, no-secret runtime backu
 manifest, and dry-run restore verifier implemented;
 durable multi-user database/object storage migration remains planned
 
-- The bundled seed corpus currently contains 11 open-access papers across SMC,
+- The bundled seed corpus currently contains 30 open-access papers across SMC,
   PMSM sensorless control, sliding-mode observers, flux observers, adaptive
   parameter estimation, and MRAS flux-linkage observation.
 - `src/metadata.py` stores local paper metadata in git-ignored

@@ -1,6 +1,6 @@
 # FluxMind Quality Roadmap
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 For current repo state, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the health checks before making
@@ -46,50 +46,55 @@ Current status:
 Target       Status
 -----------  ---------------------------------------------------------------
 self_use     met by the current no-key/local baseline
-small_group  gap: corpus size and eval breadth remain; code-output breadth is
-             met locally, PDF structure breadth is met, and live retrieval is
-             86/86 in the latest deployment run
+small_group  met: 30 curated papers, 100 no-LLM retrieval questions,
+             40 recorded answers, 11 code-output cases, 17 PDF structure
+             cases, and 100/100 live retrieval pass in the latest deployment run
 community    gap: mainly corpus size, live answer evidence, and coverage depth
 ```
 
-Latest measured deployed quality snapshot on 2026-06-15 14:29 CST:
+Latest measured deployed quality snapshot on 2026-06-16 01:34 CST:
 
 ```text
 Metric                         Current  Small-group target  Gap
 -----------------------------  -------  ------------------  ---
-seed_paper_count               18       30                  12
-answer_case_count              32       40                  8
-retrieval_only_case_count      54       60                  6
-retrieval_eval_question_count  86       100                 14
-recorded_answer_count          32       40                  8
-live_retrieval_result_count    86       50                  0
-code_output_case_count         8        8                   0
-pdf_structure_case_count       16       15                  0
+seed_paper_count               30       30                  0
+answer_case_count              40       40                  0
+retrieval_only_case_count      60       60                  0
+retrieval_eval_question_count  100      100                 0
+recorded_answer_count          40       40                  0
+live_retrieval_result_count    100      50                  0
+code_output_case_count         11       8                   0
+pdf_structure_case_count       17       15                  0
 topic_group_count              4        4                   0
 ```
 
-The offline rows come from `/tmp/fluxmind-corpus18-calibrated-report.json`; live
-retrieval comes from
-`/tmp/fluxmind-live-corpus18-report.json` on the deployed host and is
-recorded in `docs/DEPLOYMENT_STATUS.md`.
+The offline rows come from `/tmp/fluxmind-p0-p1-local-report-v3.json`; live
+retrieval comes from `/tmp/fluxmind-live-corpus30-report.json` on the deployed
+host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
 
 ## Near-Term Quality Lane
 
-The next quality lane is intentionally content and evaluation first:
+The small-group lane is complete. The next quality lane should stay evidence-led:
 
 ```text
 Order  Work
 -----  ---------------------------------------------------------------------
-1      Expand curated papers from 11 toward 30, with topic tags and provenance.
-2      Add retrieval-only and recorded-answer cases alongside each useful paper.
-3      Run live /query/retrieve before trusting live /query/inspect answers.
-4      Add PDF structure cases only when the source paper actually has useful
-       equation, table, figure, or algorithm anchors.
-5      Convert repeated strong cases into paper-to-code templates or examples.
+1      Choose whether the next milestone is community-quality evidence or the
+       production storage/distributed-worker foundation.
+2      For community quality, expand from 30 toward 50 curated papers, 80
+       recorded answers, 180 retrieval questions, and live answer evidence.
+3      For platform foundation, migrate metadata/object/job state behind a
+       durable backend while preserving the no-secret local contracts.
+4      Keep running live /query/retrieve before trusting live /query/inspect
+       answers.
+5      Add PDF structure cases only when the source paper has useful equation,
+       table, figure, or algorithm anchors, and convert repeated strong cases
+       into paper-to-code templates or examples.
 ```
 
-The small-group target should be reached before starting identity, quotas,
-billing, or a frontend rewrite as a primary lane.
+The community target should be reached, or the production storage/job boundary
+should be made durable, before starting identity, quotas, billing, or a frontend
+rewrite as a primary lane.
 
 ## Acceptance Discipline
 

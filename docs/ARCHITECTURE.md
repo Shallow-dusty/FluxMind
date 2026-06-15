@@ -1,6 +1,6 @@
 # FluxMind Architecture
 
-Last updated: 2026-06-15
+Last updated: 2026-06-16
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -193,14 +193,14 @@ Implementation work packages are tracked in `docs/BACKLOG.md`.
 The first RAG quality gate is intentionally offline. `eval/rag_baseline.json`
 stores domain questions, answer modes, expected source/page references, fixture
 answers, recorded answers, required answer terms, local code-output cases, PDF
-equation/table/figure structure cases, and provider failure fixtures.
+equation/table/figure/algorithm structure cases, and provider failure fixtures.
 `scripts/evaluate_rag.py` validates that expected PDF source files exist, that
 configured pages can be parsed, that source snippets appear on those pages, that
 fixture and recorded answers only cite retrieved context refs, that recorded
 answers meet deterministic key-term coverage thresholds, that local code-output
 cases execute through direct no-key provider mode and local job-backed mode, and
 produce expected stdout/artifacts/runtime metadata, including reusable
-execution-template coverage, that representative PDF pages expose equation/table/figure
+execution-template coverage, that representative PDF pages expose equation/table/figure/algorithm
 markers, and that provider errors normalize to stable user-facing codes. It also
 evaluates aggregate
 `quality_gates` for eval-set breadth, answer-mode coverage, recorded-answer

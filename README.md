@@ -493,9 +493,9 @@ compatibility-oriented `/query` response.
 
 ## RAG Quality Baseline
 
-`eval/rag_baseline.json` records 32 offline control-engineering answer cases,
-54 retrieval-only source/page cases, eight local Python code-output cases
-(four job-backed), 16 PDF equation/table/figure structure cases, expected refs, fixture answers,
+`eval/rag_baseline.json` records 40 offline control-engineering answer cases,
+60 retrieval-only source/page cases, 11 local Python code-output cases
+(four job-backed), 17 PDF equation/table/figure/algorithm structure cases, expected refs, fixture answers,
 recorded answers, key answer terms, topic/lane metadata, domain ontology gates,
 and provider-error fixtures. The `python scripts/evaluate_rag.py` command
 validates that expected source PDFs/pages contain their
@@ -504,10 +504,10 @@ fixture and recorded answers cite retrieved context refs such as `[1]`, that
 recorded answers meet deterministic key-term coverage thresholds, that local
 code-output cases run in a temporary artifact store and produce expected stdout,
 plot/text artifacts, runtime metadata, provider-mode coverage, local job-backed
-execution coverage, and the reusable `smc_reaching_law` and `pmsm_current_step`
-execution templates, and
-that representative PDF pages expose equation/table/figure markers for
-paper-to-code work, and that provider failures normalize to stable user-facing
+execution coverage, reusable execution templates, and paper-specific
+paper-to-code examples, and
+that representative PDF pages expose equation/table/figure/algorithm markers
+for paper-to-code work, and that provider failures normalize to stable user-facing
 codes. The same command evaluates aggregate
 `quality_gates` so the eval set fails if it loses answer-mode coverage,
 retrieval-question breadth, source-ref breadth, topic/lane coverage,
