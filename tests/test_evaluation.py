@@ -34,10 +34,12 @@ from src.evaluation import (
     evaluate_live_retrieval_config,
     evaluate_live_retrieval_payload,
     evaluate_pdf_structure_case,
+    evaluate_quality_maturity_targets,
     evaluate_recorded_answer,
     evaluate_retrieval_only_case,
     evaluate_regression_gates,
     load_eval_config,
+    quality_metric_values,
 )
 
 
@@ -449,6 +451,12 @@ def test_evaluation_report_summarizes_results_without_secrets():
     assert "PMSM" in report["coverage"]["topic_tags"]
     assert "answer_quality" in report["coverage"]["eval_lanes"]
     assert "pmsm_motor_control" in report["coverage"]["topic_groups"]
+    assert report["quality_maturity"]["metrics"]["seed_paper_count"] >= 11
+    assert {target["id"] for target in report["quality_maturity"]["targets"]} >= {
+        "self_use",
+        "small_group",
+        "community",
+    }
     assert report["results"]["offline_cases"][0]["case_id"]
     assert report["results"]["pdf_structure_cases"][0]["case_id"]
     assert report["results"]["regression_gates"][0]["gate_id"]
@@ -503,6 +511,91 @@ def test_default_rag_baseline_reaches_twenty_case_domain_gate():
         case.get("topic_tags") and case.get("eval_lanes") and case.get("expected_refs")
         for case in config["cases"] + config["retrieval_only_cases"]
     )
+
+
+def test_default_quality_maturity_targets_mark_self_use_met_and_future_gaps():
+    config = load_eval_config(Path(__file__).resolve().parents[1] / "eval/rag_baseline.json")
+    metrics = quality_metric_values(config)
+    targets = evaluate_quality_maturity_targets(config, metrics)
+
+    by_id = {target["id"]: target for target in targets}
+    assert by_id["self_use"]["ok"]
+    assert by_id["small_group"]["status"] == "gap"
+    assert "seed_paper_count" in by_id["small_group"]["missing_metrics"]
+    assert by_id["community"]["status"] == "gap"
+    assert "live_answer_result_count" in by_id["community"]["missing_metrics"]
+
+
+def test_quality_metric_values_handles_manifest_edges(tmp_path):
+    config = {
+        "domain_ontology": {
+            "topic_groups": {
+                "motor_control": ["PMSM"],
+            },
+        },
+        "cases": [
+            {
+                "id": "answer",
+                "topic_tags": ["PMSM"],
+                "eval_lanes": ["answer_quality"],
+                "recorded_answer": "PMSM answer [1].",
+            }
+        ],
+        "retrieval_only_cases": [
+            {
+                "id": "retrieval",
+                "topic_tags": ["FOC"],
+                "eval_lanes": ["retrieval"],
+            }
+        ],
+    }
+
+    assert quality_metric_values(config, project_root=tmp_path)["seed_paper_count"] == 0
+
+    manifest_path = tmp_path / "papers" / "library" / "manifest.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text("[", encoding="utf-8")
+    assert quality_metric_values(config, project_root=tmp_path)["seed_paper_count"] == 0
+
+    manifest_path.write_text("[]", encoding="utf-8")
+    assert quality_metric_values(config, project_root=tmp_path)["seed_paper_count"] == 0
+
+    manifest_path.write_text('{"paper.pdf": {}}', encoding="utf-8")
+    metrics = quality_metric_values(
+        config,
+        live_results=[object()],
+        live_retrieval_results=[object(), object()],
+        project_root=tmp_path,
+    )
+    assert metrics["seed_paper_count"] == 1
+    assert metrics["retrieval_eval_question_count"] == 2
+    assert metrics["recorded_answer_count"] == 1
+    assert metrics["topic_group_count"] == 1
+    assert metrics["live_answer_result_count"] == 1
+    assert metrics["live_retrieval_result_count"] == 2
+
+
+def test_quality_maturity_targets_ignore_empty_ids_and_bad_required_metrics():
+    targets = evaluate_quality_maturity_targets(
+        {
+            "quality_maturity_targets": [
+                {"label": "missing id"},
+                {"id": "bad-required", "required_metrics": []},
+                {"id": "gap", "required_metrics": {"paper_count": 3, "case_count": 1}},
+                {"id": "met", "required_metrics": {"case_count": 1}},
+            ]
+        },
+        {"case_count": 1, "paper_count": 2},
+    )
+
+    by_id = {target["id"]: target for target in targets}
+    assert set(by_id) == {"bad-required", "gap", "met"}
+    assert by_id["bad-required"]["ok"]
+    assert by_id["gap"]["status"] == "gap"
+    assert by_id["gap"]["missing_metrics"] == ["paper_count"]
+    assert by_id["gap"]["checks"][0]["gap"] == 0
+    assert by_id["gap"]["checks"][1]["gap"] == 1
+    assert by_id["met"]["status"] == "met"
 
 
 def test_retrieval_only_cases_are_reported_and_gated(tmp_path):

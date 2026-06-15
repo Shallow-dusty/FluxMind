@@ -31,7 +31,8 @@ Command                                                               Result
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
-.venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json
+.venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
+                                                                      includes quality_maturity targets
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
@@ -164,7 +165,8 @@ RAG evaluation          tests/test_evaluation.py and scripts/evaluate_rag.py cov
                         recorded answers, retrieval-only source/page cases, provider fixtures,
                         local code-output artifacts/templates/job-backed execution,
                         PDF equation/table/figure structure cases, retrieval diagnostics, ontology,
-                        topic/lane coverage gates, and no-LLM retrieval diagnostics
+                        topic/lane coverage gates, quality-maturity target reporting,
+                        and no-LLM retrieval diagnostics
 Jobs and workers        tests/test_jobs.py covers JSONL/SQLite state, durable idempotency,
                         owner metadata, bounded retry/dead-letter behavior, leases, recovery, deadlines,
                         cancellation, malformed JSONL fallback, and durable worker behavior

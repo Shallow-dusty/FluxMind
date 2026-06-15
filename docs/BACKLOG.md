@@ -32,6 +32,9 @@ coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded from 6 to 11 open-access papers. The same hardening pass added
 constant-time API token comparison, tolerant runtime JSON/JSONL state parsing,
 atomic active-paper selection writes, and a `.coverage` deploy-sync exclude.
+The eval report also carries staged quality-maturity targets for self-use,
+small-group, and community readiness so corpus/eval growth can be tracked before
+new platform features are prioritized.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
@@ -161,7 +164,8 @@ CI/runtime) remain planned.
   instead of the repository.
 - `scripts/evaluate_rag.py --json-report ...` writes a no-secret
   machine-readable summary of offline/retrieval-only/code-output/provider/
-  recorded/live retrieval/live answer eval results for deployment records.
+  recorded/live retrieval/live answer eval results plus quality-maturity target
+  gaps for deployment records.
 - `eval/rag_baseline.json` includes aggregate `quality_gates` for minimum case
   count, retrieval-only case count, total retrieval-question count, expected
   source-ref count, provider fixture count, recorded-answer count/pass

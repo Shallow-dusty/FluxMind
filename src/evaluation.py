@@ -1135,6 +1135,87 @@ def _covered_topic_groups(config: dict[str, Any]) -> list[str]:
     return sorted(covered)
 
 
+def _seed_library_paper_count(*, project_root: Path = PROJECT_ROOT) -> int:
+    manifest_path = project_root / "papers" / "library" / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0
+    if not isinstance(manifest, dict):
+        return 0
+    return len(manifest)
+
+
+def quality_metric_values(
+    config: dict[str, Any],
+    *,
+    live_results: list[LiveAnswerResult] | None = None,
+    live_retrieval_results: list[LiveRetrievalResult] | None = None,
+    project_root: Path = PROJECT_ROOT,
+) -> dict[str, int]:
+    """Return no-secret quality maturity metrics for staged product gates."""
+    all_retrieval_cases = retrieval_eval_cases(config)
+    return {
+        "seed_paper_count": _seed_library_paper_count(project_root=project_root),
+        "answer_case_count": len(config.get("cases", [])),
+        "retrieval_only_case_count": len(config.get("retrieval_only_cases", [])),
+        "retrieval_eval_question_count": len(all_retrieval_cases),
+        "recorded_answer_count": sum(1 for case in config.get("cases", []) if case.get("recorded_answer")),
+        "code_output_case_count": len(config.get("code_output_cases", [])),
+        "pdf_structure_case_count": len(config.get("pdf_structure_cases", [])),
+        "topic_tag_count": len(_case_values(all_retrieval_cases, "topic_tags")),
+        "topic_group_count": len(_covered_topic_groups(config)),
+        "live_answer_result_count": len(live_results or []),
+        "live_retrieval_result_count": len(live_retrieval_results or []),
+    }
+
+
+def evaluate_quality_maturity_targets(
+    config: dict[str, Any],
+    metrics: dict[str, int],
+) -> list[dict[str, Any]]:
+    """Compare current quality metrics with staged product maturity targets."""
+    results: list[dict[str, Any]] = []
+    for target in config.get("quality_maturity_targets", []):
+        target_id = str(target.get("id", "")).strip()
+        if not target_id:
+            continue
+        required_metrics = target.get("required_metrics", {})
+        if not isinstance(required_metrics, dict):
+            required_metrics = {}
+        checks: list[dict[str, Any]] = []
+        missing: list[str] = []
+        for metric_id, expected_value in sorted(required_metrics.items()):
+            expected = int(expected_value)
+            actual = int(metrics.get(str(metric_id), 0))
+            gap = max(0, expected - actual)
+            ok = gap == 0
+            if not ok:
+                missing.append(str(metric_id))
+            checks.append(
+                {
+                    "metric": str(metric_id),
+                    "actual": actual,
+                    "expected": expected,
+                    "gap": gap,
+                    "ok": ok,
+                }
+            )
+        ok = not missing
+        results.append(
+            {
+                "id": target_id,
+                "label": str(target.get("label", target_id)),
+                "scope": str(target.get("scope", "")),
+                "ok": ok,
+                "status": "met" if ok else "gap",
+                "missing_metrics": missing,
+                "checks": checks,
+            }
+        )
+    return results
+
+
 def _gate_result(
     gate_id: str,
     *,
@@ -1562,6 +1643,11 @@ def build_evaluation_report(
     live_retrieval_results = live_retrieval_results or []
     regression_gate_results = regression_gate_results or []
     all_retrieval_cases = retrieval_eval_cases(config)
+    maturity_metrics = quality_metric_values(
+        config,
+        live_results=live_results,
+        live_retrieval_results=live_retrieval_results,
+    )
     return {
         "schema_version": 1,
         "eval_file": str(eval_file) if eval_file else None,
@@ -1586,6 +1672,10 @@ def build_evaluation_report(
             "live_retrieval": _result_summary(live_retrieval_results),
             "live_answers": _result_summary(live_results),
             "regression_gates": _result_summary(regression_gate_results),
+        },
+        "quality_maturity": {
+            "metrics": maturity_metrics,
+            "targets": evaluate_quality_maturity_targets(config, maturity_metrics),
         },
         "results": {
             "offline_cases": [asdict(result) for result in case_results],

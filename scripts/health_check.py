@@ -123,6 +123,7 @@ def main() -> int:
         "docs/ARCHITECTURE.md",
         "docs/BACKLOG.md",
         "docs/PLATFORM_AUDIT_AND_ROADMAP.md",
+        "docs/QUALITY_ROADMAP.md",
         "docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md",
         "docs/FEATURE_AUDIT.md",
         "papers/library/manifest.json",
@@ -413,6 +414,16 @@ def main() -> int:
         "RAG eval aggregate quality gates installed",
         failures,
     )
+    maturity_targets = {
+        str(target.get("id"))
+        for target in eval_config.get("quality_maturity_targets", [])
+        if isinstance(target, dict)
+    }
+    check(
+        {"self_use", "small_group", "community"}.issubset(maturity_targets),
+        "RAG eval quality maturity targets installed",
+        failures,
+    )
     check(
         eval_config.get("quality_gates", {}).get("minimum_topic_tag_count", 0) >= 50
         and "zero speed" in eval_config.get("quality_gates", {}).get("required_topic_tags", []),
@@ -502,6 +513,12 @@ def main() -> int:
     check("evaluate_pdf_structure_case" in evaluation_source and "PdfStructureCaseResult" in evaluation_source, "PDF structure eval scoring installed", failures)
     check("evaluate_regression_gates" in evaluation_source and "RegressionGateResult" in evaluation_source, "aggregate RAG regression gates installed", failures)
     check("build_evaluation_report" in evaluation_source and "schema_version" in evaluation_source, "RAG eval JSON report builder installed", failures)
+    check(
+        "evaluate_quality_maturity_targets" in evaluation_source
+        and "quality_maturity" in evaluation_source,
+        "RAG eval quality maturity report installed",
+        failures,
+    )
     evaluate_rag_source = (PROJECT_ROOT / "scripts" / "evaluate_rag.py").read_text(encoding="utf-8")
     check("--live-url" in evaluate_rag_source and "evaluate_live_config" in evaluate_rag_source, "live RAG eval CLI installed", failures)
     check("--retrieval-url" in evaluate_rag_source and "evaluate_live_retrieval_config" in evaluate_rag_source, "live retrieval eval CLI installed", failures)

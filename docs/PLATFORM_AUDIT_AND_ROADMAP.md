@@ -655,22 +655,26 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Treat `4f27651` as the current pushed/deployed application-code baseline and
+1. Use `docs/QUALITY_ROADMAP.md` and the `quality_maturity` section of the eval
+   JSON report as the next product steering layer: reach the small-group quality
+   bar through corpus/eval/live-retrieval breadth before prioritizing account,
+   billing, or frontend rewrite work.
+2. Treat `4f27651` as the current pushed/deployed application-code baseline and
    keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.
-2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
+3. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
    them when a new status or drift class is found.
-3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
+4. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-4. Use the local `platform_readiness` blockers to choose and test the production
+5. Use the local `platform_readiness` blockers to choose and test the production
    metadata database, object storage, and distributed job-store backend, then
    extend the local restart-recovery/lease/worker-service bridge into a
    distributed worker/storage foundation and extend the local metrics export
    into production scrape/tracing/alert routing plus deeper abuse controls
    before enabling real
    external image generation or hosted code execution providers.
-5. Choose the next platformization lane explicitly: frontend/API split,
+6. Choose the next platformization lane explicitly: frontend/API split,
    production storage, isolated execution, or identity/quota/billing. Do not
    activate real provider keys, hosted sandboxes, or MATLAB licensing until the
    matching runtime boundary is implemented and tested.

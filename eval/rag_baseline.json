@@ -126,6 +126,57 @@
     "minimum_average_live_answer_term_coverage": 0.75,
     "minimum_live_retrieval_pass_rate": 1.0
   },
+  "quality_maturity_targets": [
+    {
+      "id": "self_use",
+      "label": "Self-use reliable research assistant",
+      "scope": "Personal research and demos: the current no-key/local baseline must stay traceable, repeatable, and healthy before adding more surface area.",
+      "required_metrics": {
+        "seed_paper_count": 11,
+        "answer_case_count": 20,
+        "retrieval_only_case_count": 30,
+        "retrieval_eval_question_count": 50,
+        "recorded_answer_count": 20,
+        "code_output_case_count": 4,
+        "pdf_structure_case_count": 6,
+        "topic_group_count": 4
+      }
+    },
+    {
+      "id": "small_group",
+      "label": "Small-group pilot quality bar",
+      "scope": "Lab or small team usage: broaden the corpus and live retrieval evidence before investing in account or billing features.",
+      "required_metrics": {
+        "seed_paper_count": 30,
+        "answer_case_count": 40,
+        "retrieval_only_case_count": 60,
+        "retrieval_eval_question_count": 100,
+        "recorded_answer_count": 40,
+        "live_retrieval_result_count": 50,
+        "code_output_case_count": 8,
+        "pdf_structure_case_count": 15,
+        "topic_group_count": 4
+      }
+    },
+    {
+      "id": "community",
+      "label": "Community release quality bar",
+      "scope": "Public community use: require substantially broader curated content, live answer evidence, and paper-to-code/layout coverage before marketing the product beyond a pilot.",
+      "required_metrics": {
+        "seed_paper_count": 50,
+        "answer_case_count": 80,
+        "retrieval_only_case_count": 100,
+        "retrieval_eval_question_count": 180,
+        "recorded_answer_count": 80,
+        "live_retrieval_result_count": 100,
+        "live_answer_result_count": 40,
+        "code_output_case_count": 12,
+        "pdf_structure_case_count": 30,
+        "topic_tag_count": 80,
+        "topic_group_count": 4
+      }
+    }
+  ],
   "code_output_cases": [
     {
       "id": "python-smc-plot-artifact",
