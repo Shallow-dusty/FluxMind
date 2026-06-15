@@ -1867,14 +1867,6 @@
           "page": 2,
           "snippet": "extended Kalman filter"
         }
-      ],
-      "live_expected_refs": [
-        {
-          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
-          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
-          "page": 2,
-          "snippet": "extended Kalman"
-        }
       ]
     },
     {
