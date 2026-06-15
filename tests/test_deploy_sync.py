@@ -18,6 +18,7 @@ def test_build_rsync_command_is_dry_run_by_default_and_excludes_runtime_state():
         assert ["--exclude", pattern] in [command[index : index + 2] for index in range(len(command) - 1)]
     assert ["--exclude", "venv/"] in [command[index : index + 2] for index in range(len(command) - 1)]
     assert ["--exclude", "models/"] in [command[index : index + 2] for index in range(len(command) - 1)]
+    assert ["--exclude", ".coverage"] in [command[index : index + 2] for index in range(len(command) - 1)]
 
 
 def test_build_rsync_command_apply_removes_dry_run_only():

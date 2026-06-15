@@ -30,6 +30,7 @@ DEPLOY_EXCLUDES = (
     ".pytest_cache/",
     ".mypy_cache/",
     ".ruff_cache/",
+    ".coverage",
     ".env",
     ".cache/",
     "models/",
@@ -42,6 +43,7 @@ DEPLOY_EXCLUDES = (
 
 REQUIRED_RUNTIME_EXCLUDES = {
     ".env",
+    ".coverage",
     ".cache/",
     "venv/",
     "models/",
