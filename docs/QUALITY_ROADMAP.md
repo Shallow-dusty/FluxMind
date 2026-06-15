@@ -47,12 +47,12 @@ Target       Status
 -----------  ---------------------------------------------------------------
 self_use     met by the current no-key/local baseline
 small_group  gap: corpus size and eval breadth remain; code-output breadth is
-             met locally and live retrieval was 65/65 in the latest deployment
-             run before this corpus expansion
+             met locally and live retrieval is 74/74 in the latest deployment
+             run
 community    gap: mainly corpus size, live answer evidence, and coverage depth
 ```
 
-Latest measured local quality snapshot on 2026-06-15 09:59 CST:
+Latest measured deployed quality snapshot on 2026-06-15 10:23 CST:
 
 ```text
 Metric                         Current  Small-group target  Gap
@@ -62,15 +62,16 @@ answer_case_count              28       40                  12
 retrieval_only_case_count      46       60                  14
 retrieval_eval_question_count  74       100                 26
 recorded_answer_count          28       40                  12
-live_retrieval_result_count    0        50                  50
+live_retrieval_result_count    74       50                  0
 code_output_case_count         8        8                   0
 pdf_structure_case_count       12       15                  3
 topic_group_count              4        4                   0
 ```
 
-The local snapshot above is from `/tmp/fluxmind-corpus-expansion-report.json`.
-Live retrieval evidence is recorded only after deployment in
-`docs/DEPLOYMENT_STATUS.md`; do not infer live coverage from the local row.
+The offline rows come from `/tmp/fluxmind-corpus-expansion-report.json`; live
+retrieval comes from
+`/tmp/fluxmind-live-corpus-expansion-report.json` on the deployed host and is
+recorded in `docs/DEPLOYMENT_STATUS.md`.
 
 ## Near-Term Quality Lane
 

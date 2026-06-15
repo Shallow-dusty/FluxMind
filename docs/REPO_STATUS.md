@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 08:48 CST
+Snapshot time: 2026-06-15 10:23 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,11 +13,11 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified repo baseline         20d75e5 docs: refresh FluxMind documentation state
+Verified repo baseline         1b7795a test: calibrate live retrieval refs
 Remote status at verification  main...origin/main up to date before this final status-note refresh
-Current docs refresh scope     final docs/status/test-guard note only; no application-code changes
-Last deployed app baseline     4f27651 fix: exclude coverage data from deploy sync
-Live verification follow-up    docs sync plus read-only checks refreshed on 2026-06-15 08:48 CST
+Current docs refresh scope     final corpus-expansion deployment status note only
+Last deployed source/eval baseline 1b7795a test: calibrate live retrieval refs
+Live verification follow-up    14-paper corpus rebuild and 74/74 live retrieval refreshed on 2026-06-15 10:23 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -473,9 +473,9 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after guarded deploy and
-post-restart verification plus read-only docs-sync recheck on 2026-06-15
-08:48 CST in
+The latest live deployment snapshot was refreshed after guarded corpus sync,
+index rebuild, live retrieval evaluation, and HTTPS/SSH health checks on
+2026-06-15 10:23 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
@@ -485,7 +485,9 @@ retrieval-alerts/storage-schema work above plus the API startup readiness,
 import-latency fixes, coverage gate, 14-paper seed corpus, API token comparison
 hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
 exclude are now synced or rebuilt on Trace-Twin through the current
-source/runtime boundary. External
+source/runtime boundary. The latest remote corpus status is `papers=14`,
+`active=14`, `indexed=14`, `chunks=987`, and `index=fresh`; live retrieval eval
+passes `74/74`. External
 providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.

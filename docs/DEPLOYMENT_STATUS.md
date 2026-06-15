@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 09:38 CST
+Last live check: 2026-06-15 10:23 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,8 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last verified application source baseline before this deployment record: `4f27651`
-(`fix: exclude coverage data from deploy sync`). `/opt/fluxmind` is not a
+Last verified source/eval baseline before this deployment record: `1b7795a`
+(`test: calibrate live retrieval refs`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
@@ -94,6 +94,33 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Corpus-expansion deploy and live retrieval evaluation were refreshed on
+2026-06-15 10:23 CST after pushing `745b7d4` and `1b7795a`. The curated
+`papers/library/` PDFs were synced explicitly because `scripts/deploy_sync.py`
+excludes `papers/`; source/docs/eval were then synced with
+`.venv/bin/python scripts/deploy_sync.py --apply` without restarting services.
+All 14 library papers were activated through the local API, and synchronous
+index rebuild job `7da0aa3167b1` succeeded with `paper_count=14` and
+`chunk_count=987`. Server-local
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
+--json-report /tmp/fluxmind-live-corpus-expansion-report.json` passed all 74
+live retrieval cases, with regression gates `24/24` OK and
+`minimum_live_retrieval_pass_rate=1.00`.
+
+The same verification pass confirmed public UI 200 at
+`https://smy.hyper-dusty.cloud/`, public API health 200 at
+`https://api-smy.hyper-dusty.cloud/health`, SSH runtime checks green, and
+remote corpus status `papers=14`, `active=14`, `indexed=14`, `chunks=987`,
+`index=fresh`. The SSH health gate reported UI/API/worker/cloudflared/docker
+active, ports `18501` and `18502` listening, Docker execution still
+`configured=False available=False reason=not_configured`, local storage
+available, retrieval/admin smokes passing, and `/dev/vda3` at 36% used. Current
+small-group gaps are `seed_paper_count=16`, `answer_case_count=12`,
+`retrieval_only_case_count=14`, `retrieval_eval_question_count=26`,
+`recorded_answer_count=12`, and `pdf_structure_case_count=3`; the
+`live_retrieval_result_count` and `code_output_case_count` small-group metrics
+are now met.
 
 Quality-expansion eval sync and live retrieval evaluation were refreshed on
 2026-06-15 09:38 CST. After syncing the expanded `eval/rag_baseline.json` to

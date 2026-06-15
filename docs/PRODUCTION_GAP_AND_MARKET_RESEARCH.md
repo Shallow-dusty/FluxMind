@@ -12,8 +12,8 @@ It separates four evidence layers:
 Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
-Current live state    health_check.py HTTPS and SSH checks run on 2026-06-15
-                      08:48 CST; re-run before deploy claims
+Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
+                      run on 2026-06-15 10:23 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -33,7 +33,7 @@ Branch          main
 Start state     main...origin/main up to date at 3b8ecd7 before docs refresh
 Docs refresh    20d75e5 docs: refresh FluxMind documentation state
 Status note     this final docs-status note is docs-only and may create a newer commit
-Deployed code   4f27651 fix: exclude coverage data from deploy sync
+Deployed source/eval  1b7795a test: calibrate live retrieval refs
 Work scope      docs/status/test-guard updates only; no application-code changes
 Diff hygiene    git diff --check passed on 2026-06-15 08:48 CST
 ```
@@ -53,14 +53,14 @@ offline RAG eval                          28 answer cases, 46 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  08:48 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          08:48 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                08:48 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  10:23 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          10:23 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                10:23 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
-Remote active corpus                       active_papers=11
-Remote chunk metadata                     chunk_metadata_rows=800, sources=11
+Remote active corpus                       active_papers=14
+Remote chunk metadata                     chunk_metadata_rows=987, sources=14
 Remote index freshness                     index_fresh=True
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```

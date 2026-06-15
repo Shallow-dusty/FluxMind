@@ -56,8 +56,8 @@ coverage report --fail-under=88           pass, 88% total branch coverage
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-health_check.py HTTPS endpoints            08:48 snapshot, UI/API 200
-health_check.py SSH runtime                08:48 snapshot, services active, active_papers=11, chunks=800, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            10:23 snapshot, UI/API 200
+health_check.py SSH runtime                10:23 snapshot, services active, active_papers=14, chunks=987, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
@@ -660,7 +660,7 @@ blocked on product decisions.
    JSON report as the next product steering layer: reach the small-group quality
    bar through corpus/eval/live-retrieval breadth before prioritizing account,
    billing, or frontend rewrite work.
-2. Treat `4f27651` as the current pushed/deployed application-code baseline and
+2. Treat `1b7795a` as the current pushed/deployed source/eval baseline and
    keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.
