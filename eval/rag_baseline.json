@@ -764,6 +764,14 @@
           "snippet": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control"
         }
       ],
+      "live_expected_refs": [
+        {
+          "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "page": 5,
+          "snippet": "The proposed ITSMRL (5) will reach convergence in finite time"
+        }
+      ],
       "fixture_answer": "The answer should explain the gain/chattering tradeoff using the chattering-attenuated terminal SMC and disturbance-observer context [1].",
       "recorded_answer": "Increasing terminal SMC switching gain can improve robustness against disturbance and reduce tracking error, but excessive gain injects high-frequency switching that appears as chattering. A chattering-attenuated terminal SMC design uses disturbance-observer compensation to reduce that tradeoff rather than only raising gain [1].",
       "required_answer_terms": ["gain", "chattering", "disturbance", "terminal SMC"],
@@ -1077,6 +1085,14 @@
           "snippet": "enhancing flux estimation accuracy is critical"
         }
       ],
+      "live_expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 2,
+          "snippet": "Rotor position estimation methods based on a model reference adaptive system"
+        }
+      ],
       "fixture_answer": "The checklist should compare speed region and signal injection [1], MRAS/EKF/active-flux categories [2], and flux-estimation accuracy pressure [3].",
       "recorded_answer": "FluxMind should ask for speed range, whether low-speed signal injection is acceptable, parameter accuracy, sensing noise, desired observer category, and evidence for flux-estimation drift. The checklist can compare low-speed signal-injection versus model-based regions [1], MRAS and related rotor-position categories [2], and the need to improve flux-estimation accuracy [3].",
       "required_answer_terms": ["speed range", "signal injection", "MRAS", "flux-estimation"],
@@ -1108,6 +1124,14 @@
           "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
           "page": 3,
           "snippet": "The IPMSM is modeled in the stationary"
+        }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 9,
+          "snippet": "Simulations were performed using MATLAB Simulink"
         }
       ],
       "fixture_answer": "The export notes should preserve PMSM voltage/current notation [1], state-space variable definitions [2], and stationary-frame IPMSM model assumptions [3].",
@@ -1585,6 +1609,14 @@
           "page": 1,
           "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
         }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "page": 1,
+          "snippet": "Research on an Improved Sliding Mode Observer for Speed Estimation in Permanent Magnet Synchronous Motor"
+        }
       ]
     },
     {
@@ -1612,6 +1644,14 @@
           "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
           "page": 2,
           "snippet": "extended Kalman filter"
+        }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "extended Kalman"
         }
       ]
     },
