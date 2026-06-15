@@ -166,5 +166,53 @@
     "source_url": "https://www.mdpi.com/2076-0825/13/10/403",
     "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00403/article_deploy/actuators-13-00403.pdf",
     "license": "CC BY"
+  },
+  "hu-2023-super-twisting-dob-pmsm.pdf": {
+    "title": "Speed Regulation for PMSM with Super-Twisting Sliding-Mode Controller via Disturbance Observer",
+    "authors": "Mingyuan Hu; Hyeongki Ahn; Yoonuh Chung; Kwanho You",
+    "year": 2023,
+    "topic": "super-twisting SMC disturbance observer",
+    "doi": "10.3390/math11071618",
+    "venue": "Mathematics",
+    "topic_tags": ["PMSM", "sliding mode control", "super twisting", "disturbance observer", "extended state observer"],
+    "source_url": "https://www.mdpi.com/2227-7390/11/7/1618",
+    "pdf_url": "https://res.mdpi.com/d_attachment/mathematics/mathematics-11-01618/article_deploy/mathematics-11-01618.pdf",
+    "license": "CC BY"
+  },
+  "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf": {
+    "title": "Adaptive Quick Sliding Mode Reaching Law and Disturbance Observer for Robust PMSM Control Systems",
+    "authors": "Hyeongki Ahn; Sangkyeum Kim; Jihoon Park; Yoonuh Chung; Mingyuan Hu; Kwanho You",
+    "year": 2024,
+    "topic": "adaptive quick reaching law",
+    "doi": "10.3390/act13040136",
+    "venue": "Actuators",
+    "topic_tags": ["PMSM", "sliding mode control", "quick reaching law", "sliding mode observer", "chattering suppression"],
+    "source_url": "https://www.mdpi.com/2076-0825/13/4/136",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00136/article_deploy/actuators-13-00136.pdf",
+    "license": "CC BY"
+  },
+  "zhang-2024-dsmo-lqr-current-control-pmsm.pdf": {
+    "title": "A Disturbance Sliding Mode Observer Designed for Enhancing the LQR Current-Control Scheme of a Permanent Magnet Synchronous Motor",
+    "authors": "Zhidong Zhang; Gongliu Yang; Jing Fan; Tao Li; Qingzhong Cai",
+    "year": 2024,
+    "topic": "DSMO LQR current loop",
+    "doi": "10.3390/act13080283",
+    "venue": "Actuators",
+    "topic_tags": ["PMSM", "current loop", "sliding mode observer", "LQR", "disturbance suppression"],
+    "source_url": "https://www.mdpi.com/2076-0825/13/8/283",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00283/article_deploy/actuators-13-00283.pdf",
+    "license": "CC BY"
+  },
+  "shi-2024-nftsmc-sdob-pmsm.pdf": {
+    "title": "A Novel Nonsingular Fast Terminal Sliding Mode Control with Sliding Mode Disturbance Observer for Permanent Magnet Synchronous Motor Servo Control",
+    "authors": "Difen Shi; Kai Bodemann; Yao Wang; Changliang Xu; Lulu Liu; Chungui Feng",
+    "year": 2024,
+    "topic": "NFTSMC sliding mode disturbance observer",
+    "doi": "10.3390/pr12091986",
+    "venue": "Processes",
+    "topic_tags": ["PMSM", "terminal sliding mode control", "sliding mode disturbance observer", "chattering", "hardware validation"],
+    "source_url": "https://www.mdpi.com/2227-9717/12/9/1986",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-12-01986/article_deploy/processes-12-01986.pdf",
+    "license": "CC BY"
   }
 }

@@ -582,6 +582,34 @@
       "page": 5,
       "kind": "table",
       "contains": "Mathematical properties and comparison"
+    },
+    {
+      "id": "structure-hu-pmsm-parameter-table",
+      "source_path": "papers/library/hu-2023-super-twisting-dob-pmsm.pdf",
+      "page": 3,
+      "kind": "table",
+      "contains": "Parameters of the dynamical model of the PMSM"
+    },
+    {
+      "id": "structure-ahn-adaptive-reaching-law-figure",
+      "source_path": "papers/library/ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+      "page": 5,
+      "kind": "figure",
+      "contains": "System trajectory of the conventional and adaptive sliding mode reaching laws"
+    },
+    {
+      "id": "structure-zhang-dsmo-current-loop-figure",
+      "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "Current loop control scheme based on a disturbance sliding mode observer"
+    },
+    {
+      "id": "structure-shi-reaching-law-parameter-table",
+      "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+      "page": 7,
+      "kind": "table",
+      "contains": "The sliding mode reaching law parameters"
     }
   ],
   "cases": [
@@ -1356,6 +1384,200 @@
       "minimum_answer_term_coverage": 0.75,
       "live_required_answer_terms": ["switching", "filter", "chattering", "observer"],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "sta-eso-speed-regulation-handoff",
+      "answer_mode": "derivation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "super twisting",
+        "disturbance observer",
+        "extended state observer",
+        "chattering"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
+      "question": "How should FluxMind explain the super-twisting SMC plus ESO handoff for PMSM speed regulation?",
+      "expected_refs": [
+        {
+          "source": "hu-2023-super-twisting-dob-pmsm.pdf",
+          "source_path": "papers/library/hu-2023-super-twisting-dob-pmsm.pdf",
+          "page": 1,
+          "snippet": "extended sliding-mode disturbance observer (ESO) was used to estimate the lumped extended disturbance"
+        },
+        {
+          "source": "hu-2023-super-twisting-dob-pmsm.pdf",
+          "source_path": "papers/library/hu-2023-super-twisting-dob-pmsm.pdf",
+          "page": 4,
+          "snippet": "By using the ESO, external load disturbances are subsequently applied as feedback to the NSTSMC"
+        }
+      ],
+      "fixture_answer": "The derivation should cite the ESO disturbance-estimation role [1] and the feedback compensation handoff into NSTSMC [2].",
+      "recorded_answer": "FluxMind should explain the controller as a composite PMSM speed-regulation design: the extended sliding-mode disturbance observer estimates the lumped extended disturbance [1], then the estimated external load disturbance is fed back into the NSTSMC path so the super-twisting controller does not need to rely only on high switching gain [2].",
+      "required_answer_terms": [
+        "super-twisting",
+        "ESO",
+        "disturbance",
+        "NSTSMC"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "super",
+        "ESO",
+        "disturbance",
+        "feedback"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "adaptive-quick-reaching-law-observer-checklist",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "quick reaching law",
+        "sliding mode observer",
+        "chattering suppression"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style",
+        "failure_mode"
+      ],
+      "question": "What should FluxMind check before recommending an adaptive quick reaching law and SFTSMO for PMSM control?",
+      "expected_refs": [
+        {
+          "source": "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "adaptive quick sliding mode reaching law based on an exponential function and power equation is proposed"
+        },
+        {
+          "source": "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "second-order fast terminal sliding mode observer (SFTSMO) is proposed"
+        }
+      ],
+      "fixture_answer": "The checklist should cite the AQRL reaching-law mechanism [1] and the SFTSMO disturbance-estimation component [2].",
+      "recorded_answer": "FluxMind should ask for the sliding surface, exponential/power reaching-law parameters, disturbance assumptions, and validation scenarios before recommending this controller. The paper proposes an adaptive quick sliding mode reaching law based on an exponential function and a power equation [1], and pairs it with an SFTSMO for short-time unmatched-disturbance estimation [2].",
+      "required_answer_terms": [
+        "adaptive quick",
+        "SFTSMO",
+        "disturbance",
+        "chattering"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "adaptive",
+        "observer",
+        "disturbance",
+        "chattering"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "dsmo-lqr-current-loop-design",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "current loop",
+        "sliding mode observer",
+        "LQR",
+        "disturbance suppression",
+        "hardware validation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code",
+        "failure_mode"
+      ],
+      "question": "How should FluxMind frame a DSMO-enhanced LQR current loop for a PMSM?",
+      "expected_refs": [
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 1,
+          "snippet": "disturbance sliding mode observer (DSMO) in conjunction with a linear quadratic regulator (LQR)"
+        },
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 8,
+          "snippet": "Algorithm 1 Disturbance Estimation Based on Sliding Mode Observer"
+        }
+      ],
+      "fixture_answer": "The implementation note should cite the DSMO+LQR controller scope [1] and the algorithmic disturbance-estimation flow [2].",
+      "recorded_answer": "FluxMind should frame DSMO+LQR as a current-loop design where LQR keeps parameter tuning straightforward while DSMO estimates nonlinear and parameter-related disturbances for feedforward compensation. The source states that DSMO is used together with LQR [1] and provides an algorithmic disturbance-estimation flow for the sliding mode observer [2].",
+      "required_answer_terms": [
+        "DSMO",
+        "LQR",
+        "current loop",
+        "disturbance"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "DSMO",
+        "LQR",
+        "current",
+        "disturbance"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "nftsmc-sdob-chattering-validation",
+      "answer_mode": "literature_review",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "sliding mode disturbance observer",
+        "chattering",
+        "hardware validation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code",
+        "failure_mode"
+      ],
+      "question": "What evidence should FluxMind surface for N-NFTSMC with SDOB in PMSM servo control?",
+      "expected_refs": [
+        {
+          "source": "shi-2024-nftsmc-sdob-pmsm.pdf",
+          "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+          "page": 2,
+          "snippet": "novel NFTSMC with a sliding mode observer (SDOB)"
+        },
+        {
+          "source": "shi-2024-nftsmc-sdob-pmsm.pdf",
+          "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+          "page": 1,
+          "snippet": "Comparative simulations via Matlab/Simulink 2018 are conducted"
+        }
+      ],
+      "fixture_answer": "The literature note should cite the N-NFTSMC+SDOB control structure [1] and the simulation/experiment validation basis [2].",
+      "recorded_answer": "FluxMind should surface the control-structure claim, the disturbance-observer compensation path, the chattering comparison, and whether validation is only simulation or also hardware. The paper proposes a novel NFTSMC with an SDOB [1] and reports comparative Matlab/Simulink validation together with later experimental checks [2].",
+      "required_answer_terms": [
+        "NFTSMC",
+        "SDOB",
+        "chattering",
+        "validation"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "NFTSMC",
+        "observer",
+        "chattering",
+        "validation"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "retrieval_only_cases": [
@@ -2016,6 +2238,190 @@
           "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
           "page": 7,
           "snippet": "there is no need to add an additional low-pass filter"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sta-eso-lumped-disturbance",
+      "question": "Retrieve the passage where Hu 2023 states that the ESO estimates the lumped extended disturbance.",
+      "topic_tags": [
+        "PMSM",
+        "super twisting",
+        "extended state observer",
+        "disturbance",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
+      "expected_refs": [
+        {
+          "source": "hu-2023-super-twisting-dob-pmsm.pdf",
+          "source_path": "papers/library/hu-2023-super-twisting-dob-pmsm.pdf",
+          "page": 1,
+          "snippet": "extended sliding-mode disturbance observer (ESO) was used to estimate the lumped extended disturbance"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sta-eso-feedback-compensation",
+      "question": "Retrieve how the Hu 2023 ESO feeds estimated load disturbance back into NSTSMC.",
+      "topic_tags": [
+        "PMSM",
+        "super twisting",
+        "NSTSMC",
+        "disturbance observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "hu-2023-super-twisting-dob-pmsm.pdf",
+          "source_path": "papers/library/hu-2023-super-twisting-dob-pmsm.pdf",
+          "page": 4,
+          "snippet": "By using the ESO, external load disturbances are subsequently applied as feedback to the NSTSMC"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-aqrl-exponential-power-law",
+      "question": "Retrieve the adaptive quick reaching-law statement using exponential and power terms.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "quick reaching law",
+        "chattering suppression",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
+      "expected_refs": [
+        {
+          "source": "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "adaptive quick sliding mode reaching law based on an exponential function and power equation is proposed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sftsmo-unmatched-disturbance",
+      "question": "Retrieve the SFTSMO statement about short-time unmatched disturbance estimation.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "SFTSMO",
+        "disturbance",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/ahn-2024-adaptive-quick-reaching-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "To estimate the unmatched disturbance in a short time, the second-order fast terminal sliding mode observer (SFTSMO) is proposed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-dsmo-lqr-current-loop-scope",
+      "question": "Retrieve the DSMO plus LQR current-control scope statement.",
+      "topic_tags": [
+        "PMSM",
+        "current loop",
+        "sliding mode observer",
+        "LQR",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 1,
+          "snippet": "disturbance sliding mode observer (DSMO) in conjunction with a linear quadratic regulator (LQR)"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-dsmo-observer-algorithm",
+      "question": "Retrieve the DSMO disturbance-estimation algorithm anchor.",
+      "topic_tags": [
+        "PMSM",
+        "current loop",
+        "sliding mode observer",
+        "algorithm",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 8,
+          "snippet": "Algorithm 1 Disturbance Estimation Based on Sliding Mode Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-nftsmc-sdob-control-structure",
+      "question": "Retrieve the statement introducing novel NFTSMC with SDOB.",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "sliding mode disturbance observer",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "shi-2024-nftsmc-sdob-pmsm.pdf",
+          "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+          "page": 2,
+          "snippet": "novel NFTSMC with a sliding mode observer (SDOB)"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-nftsmc-sdob-matlab-validation",
+      "question": "Retrieve the N-NFTSMC Matlab/Simulink validation statement.",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "Matlab",
+        "hardware validation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "shi-2024-nftsmc-sdob-pmsm.pdf",
+          "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+          "page": 1,
+          "snippet": "Comparative simulations via Matlab/Simulink 2018 are conducted"
         }
       ]
     }
