@@ -48,7 +48,7 @@
     }
   },
   "quality_gates": {
-    "minimum_case_count": 20,
+    "minimum_case_count": 40,
     "required_answer_modes": [
       "explanation",
       "derivation",
@@ -56,7 +56,7 @@
       "literature_review",
       "code_generation"
     ],
-    "minimum_topic_tag_count": 50,
+    "minimum_topic_tag_count": 80,
     "required_topic_tags": [
       "PMSM",
       "sliding mode control",
@@ -94,11 +94,11 @@
       "observer_estimation",
       "implementation_trust"
     ],
-    "minimum_expected_source_ref_count": 64,
-    "minimum_retrieval_only_case_count": 30,
-    "minimum_retrieval_eval_question_count": 50,
+    "minimum_expected_source_ref_count": 120,
+    "minimum_retrieval_only_case_count": 60,
+    "minimum_retrieval_eval_question_count": 100,
     "minimum_retrieval_only_pass_rate": 1.0,
-    "minimum_code_output_case_count": 4,
+    "minimum_code_output_case_count": 8,
     "required_code_output_languages": [
       "python"
     ],
@@ -111,15 +111,16 @@
       "local_job"
     ],
     "minimum_code_output_pass_rate": 1.0,
-    "minimum_pdf_structure_case_count": 6,
+    "minimum_pdf_structure_case_count": 15,
     "required_pdf_structure_kinds": [
       "equation",
       "table",
-      "figure"
+      "figure",
+      "algorithm"
     ],
     "minimum_pdf_structure_pass_rate": 1.0,
     "minimum_provider_fixture_count": 4,
-    "minimum_recorded_answer_count": 20,
+    "minimum_recorded_answer_count": 40,
     "minimum_recorded_answer_pass_rate": 1.0,
     "minimum_average_recorded_answer_term_coverage": 0.9,
     "minimum_live_answer_pass_rate": 1.0,
