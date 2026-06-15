@@ -83,6 +83,42 @@
     "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-07968/article_deploy/energies-16-07968.pdf",
     "license": "CC BY"
   },
+  "liu-2022-improved-smo-speed-estimation-pmsm.pdf": {
+    "title": "Research on an Improved Sliding Mode Observer for Speed Estimation in Permanent Magnet Synchronous Motor",
+    "authors": "Zhiqiang Liu; Wenkai Chen",
+    "year": 2022,
+    "topic": "combined reaching-law SMO",
+    "doi": "10.3390/pr10061182",
+    "venue": "Processes",
+    "topic_tags": ["PMSM", "sliding mode observer", "speed estimation", "combined reaching law", "chattering"],
+    "source_url": "https://www.mdpi.com/2227-9717/10/6/1182",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-10-01182/article_deploy/processes-10-01182.pdf",
+    "license": "CC BY"
+  },
+  "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf": {
+    "title": "PID Sliding Mode Control of PMSM Based on Improved Terminal Sliding Mode Reaching Law",
+    "authors": "Guodong Qin; Min Wang; Guizhou Cao; Qi Wang; Yuefeng Liao",
+    "year": 2025,
+    "topic": "PID sliding surface ITSMRL",
+    "doi": "10.3390/en18102661",
+    "venue": "Energies",
+    "topic_tags": ["PMSM", "sliding mode control", "PID sliding surface", "improved terminal reaching law", "extended state observer"],
+    "source_url": "https://www.mdpi.com/1996-1073/18/10/2661",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-18-02661/article_deploy/energies-18-02661.pdf",
+    "license": "CC BY"
+  },
+  "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf": {
+    "title": "Research on Sensorless Control System of Permanent Magnet Synchronous Motor Based on Improved Fuzzy Super Twisted Sliding Mode Observer",
+    "authors": "Haoran Jiang; Xiaodong Lv; Xiaoqi Fan; Guangming Zhang",
+    "year": 2025,
+    "topic": "fuzzy super-twisted SMO",
+    "doi": "10.3390/electronics14091900",
+    "venue": "Electronics",
+    "topic_tags": ["PMSM", "sliding mode observer", "fuzzy control", "super twisting", "sensorless control", "switching function"],
+    "source_url": "https://www.mdpi.com/2079-9292/14/9/1900",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01900/article_deploy/electronics-14-01900.pdf",
+    "license": "CC BY"
+  },
   "zhao-2021-super-twisting-smo-pmsm.pdf": {
     "title": "An Improved Super-Twisting High-Order Sliding Mode Observer for Sensorless Control of Permanent Magnet Synchronous Motor",
     "authors": "Yujiao Zhao; Haisheng Yu; Shixian Wang",

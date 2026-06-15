@@ -49,10 +49,10 @@ Gate                                      Result
 .venv/bin/python -m pytest                pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py  pass, 25 answer cases, 40 retrieval-only
-                                             cases, 6 code-output cases,
-                                             9 PDF structure cases,
-                                             25 recorded answers
+.venv/bin/python scripts/evaluate_rag.py  pass, 28 answer cases, 46 retrieval-only
+                                             cases, 8 code-output cases,
+                                             12 PDF structure cases,
+                                             28 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
@@ -100,10 +100,10 @@ Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
-baseline now has 25 domain-trust answer cases, 25 recorded answers, and 40
-retrieval-only cases for 65 total no-LLM retrieval questions, plus six local
-Python code-output cases (three job-backed) and nine seeded PDF
-equation/table/figure structure cases. The baseline gates 84 expected source/page refs, 70 topic tags,
+baseline now has 28 domain-trust answer cases, 28 recorded answers, and 46
+retrieval-only cases for 74 total no-LLM retrieval questions, plus eight local
+Python code-output cases (four job-backed) and 12 seeded PDF
+equation/table/figure structure cases. The baseline gates 96 expected source/page refs, 80 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports, code-output case/language/template/execution-mode/pass
@@ -130,7 +130,7 @@ answer citation validation against retrieved source/page refs. This is a
 regression harness and retrieval baseline, not a claim that fresh live model
 output has been fully scored.
 
-Current corpus storage work includes an 11-paper curated seed library plus a
+Current corpus storage work includes a 14-paper curated seed library plus a
 local JSON metadata registry in
 `metadata/corpus.json` with checksums, source paths, titles, authors, year,
 DOI, arXiv ID, venue, topic tags, active/indexed state, chunk counts, and

@@ -493,9 +493,9 @@ compatibility-oriented `/query` response.
 
 ## RAG Quality Baseline
 
-`eval/rag_baseline.json` records 25 offline control-engineering answer cases,
-40 retrieval-only source/page cases, six local Python code-output cases
-(three job-backed), nine PDF equation/table/figure structure cases, expected refs, fixture answers,
+`eval/rag_baseline.json` records 28 offline control-engineering answer cases,
+46 retrieval-only source/page cases, eight local Python code-output cases
+(four job-backed), 12 PDF equation/table/figure structure cases, expected refs, fixture answers,
 recorded answers, key answer terms, topic/lane metadata, domain ontology gates,
 and provider-error fixtures. The `python scripts/evaluate_rag.py` command
 validates that expected source PDFs/pages contain their

@@ -53,7 +53,7 @@ This formerly in-progress local work is now committed, pushed to `origin/main`
 through application baseline `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
-65-question no-LLM retrieval gate: 25 answer cases, 25 recorded answers, and 40
+74-question no-LLM retrieval gate: 28 answer cases, 28 recorded answers, and 46
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
 implementation and code-generation report exports, plus the first local Python
@@ -287,11 +287,11 @@ Command                                                                 Result
                                                                         /tmp/fluxmind-storage-schema-cli.json
 .venv/bin/python scripts/storage_schema.py --format markdown --output.. pass, Markdown at
                                                                         /tmp/fluxmind-storage-schema-cli.md
-.venv/bin/python scripts/evaluate_rag.py                               pass, 25 answer cases,
-                                                                        40 retrieval-only cases,
-                                                                        6 code-output cases,
-                                                                        9 PDF structure cases,
-                                                                        25 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                               pass, 28 answer cases,
+                                                                        46 retrieval-only cases,
+                                                                        8 code-output cases,
+                                                                        12 PDF structure cases,
+                                                                        28 recorded answers
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...        pass, no-secret JSON report
                                                                         at /tmp/fluxmind-eval-report-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...         pass, no-secret manifest at
@@ -482,7 +482,7 @@ execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
 retrieval-alerts/storage-schema work above plus the API startup readiness,
-import-latency fixes, coverage gate, 11-paper seed corpus, API token comparison
+import-latency fixes, coverage gate, 14-paper seed corpus, API token comparison
 hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
 exclude are now synced or rebuilt on Trace-Twin through the current
 source/runtime boundary. External

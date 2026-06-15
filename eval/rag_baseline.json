@@ -414,6 +414,88 @@
         "running",
         "succeeded"
       ]
+    },
+    {
+      "id": "python-combined-reaching-law-summary",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,sliding_surface,mode', '0.0,1.20,exponential', '0.1,0.42,combined', '0.2,0.05,arcsine_saturation']\nPath('combined_reaching_law.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('combined_reaching_law.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>combined reaching law SMO trace</text></svg>', encoding='utf-8')\nprint('fluxmind-combined-reaching-law combined_reaching_law.csv combined_reaching_law.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-combined-reaching-law",
+        "combined_reaching_law.csv",
+        "combined_reaching_law.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "combined_reaching_law.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 80,
+          "contains": "time_s,sliding_surface,mode"
+        },
+        {
+          "title": "combined_reaching_law.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 60,
+          "contains": "combined reaching law SMO trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "python-itsmrl-eso-job-summary",
+      "language": "python",
+      "execution_mode": "local_job",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nPath('itsmrl_eso_summary.txt').write_text('ITSMRL ESO PID sliding surface eval: finite-time reaching and bounded disturbance estimate', encoding='utf-8')\nPath('itsmrl_eso_trace.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>ITSMRL ESO trace</text></svg>', encoding='utf-8')\nprint('fluxmind-itsmrl-eso itsmrl_eso_summary.txt itsmrl_eso_trace.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-itsmrl-eso",
+        "itsmrl_eso_summary.txt",
+        "itsmrl_eso_trace.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "itsmrl_eso_summary.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 60,
+          "contains": "ITSMRL ESO PID sliding surface eval"
+        },
+        {
+          "title": "itsmrl_eso_trace.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 50,
+          "contains": "ITSMRL ESO trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_job_status": "succeeded",
+      "expected_job_metadata": {
+        "kind": "code_execution",
+        "attempts": "1"
+      },
+      "expected_job_log_statuses": [
+        "running",
+        "succeeded"
+      ]
     }
   ],
   "pdf_structure_cases": [
@@ -479,6 +561,27 @@
       "page": 3,
       "kind": "figure",
       "contains": "Parallel MRAS structure diagram"
+    },
+    {
+      "id": "structure-combined-reaching-law-inverse-saturation",
+      "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+      "page": 5,
+      "kind": "figure",
+      "contains": "Inverse saturation function"
+    },
+    {
+      "id": "structure-itsmrl-pmsm-control-figure",
+      "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "control structure of a PMSM system"
+    },
+    {
+      "id": "structure-fuzzy-switching-function-table",
+      "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+      "page": 5,
+      "kind": "table",
+      "contains": "Mathematical properties and comparison"
     }
   ],
   "cases": [
@@ -1148,6 +1251,87 @@
       "minimum_answer_term_coverage": 0.75,
       "live_required_answer_terms": ["MRAS", "flux", "parameter", "observer"],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "combined-reaching-law-smo-speed-estimation",
+      "answer_mode": "derivation",
+      "topic_tags": ["PMSM", "sliding mode observer", "speed estimation", "combined reaching law", "chattering"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "failure_mode"],
+      "question": "How should FluxMind explain the combined reaching-law SMO for PMSM speed estimation?",
+      "expected_refs": [
+        {
+          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "page": 1,
+          "snippet": "combined reaching law algorithm based on the exponential reaching law and arcsine saturation function"
+        },
+        {
+          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "page": 6,
+          "snippet": "in the early stage of sliding mode motion, the exponential reaching law is used"
+        }
+      ],
+      "fixture_answer": "The explanation should cite the combined exponential and arcsine-saturation reaching-law proposal [1] and the staged handoff between reaching laws [2].",
+      "recorded_answer": "FluxMind should describe the method as a PMSM sliding-mode observer that combines exponential reaching with an arcsine saturation reaching law to reduce chattering and improve speed estimation [1]. The practical design note is that the exponential reaching law is used early in sliding-mode motion, while the improved law is used later near steady state [2].",
+      "required_answer_terms": ["combined", "arcsine saturation", "chattering", "speed estimation"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["combined", "chattering", "speed", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "itsmrl-eso-pid-surface-checklist",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "sliding mode control", "PID sliding surface", "improved terminal reaching law", "extended state observer"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "question": "What implementation checklist should FluxMind use for a PMSM controller based on PID sliding surface, ITSMRL, and ESO?",
+      "expected_refs": [
+        {
+          "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "a sliding mode control method based on a PID sliding surface and an improved terminal sliding mode reaching law"
+        },
+        {
+          "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "page": 5,
+          "snippet": "increasing the bandwidth of the ESO"
+        }
+      ],
+      "fixture_answer": "The checklist should cite the PID sliding-surface plus ITSMRL controller scope [1] and the ESO bandwidth/estimation-error tradeoff [2].",
+      "recorded_answer": "For a PID sliding-surface plus ITSMRL PMSM controller, FluxMind should ask for speed-loop model assumptions, sliding-surface gains, reaching-law parameters, ESO bandwidth, disturbance bounds, and validation under load changes. The source frames the controller around a PID sliding surface and improved terminal reaching law [1], and notes that increasing ESO bandwidth reduces estimation error and improves convergence speed [2].",
+      "required_answer_terms": ["PID sliding", "ITSMRL", "ESO bandwidth", "disturbance"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["PID", "ITSMRL", "ESO", "disturbance"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "fuzzy-super-twisted-smo-switching-function",
+      "answer_mode": "explanation",
+      "topic_tags": ["PMSM", "sliding mode observer", "fuzzy control", "super twisting", "switching function", "sensorless control"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode", "paper_to_code"],
+      "question": "How should FluxMind explain the fuzzy super-twisted SMO switching-function change for PMSM sensorless control?",
+      "expected_refs": [
+        {
+          "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "a sin (arctan(nx)) nonlinear function is introduced instead of the sign function"
+        },
+        {
+          "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "page": 7,
+          "snippet": "there is no need to add an additional low-pass filter"
+        }
+      ],
+      "fixture_answer": "The explanation should cite the sin(arctan(nx)) switching-function replacement [1] and the claimed low-pass-filter avoidance [2].",
+      "recorded_answer": "FluxMind should explain the fuzzy super-twisted SMO as replacing the discontinuous sign switching function with sin(arctan(nx)) so the observer can reduce chattering in PMSM sensorless control [1]. It should also flag the claimed implementation benefit: the observer behavior can avoid an additional low-pass filter and therefore reduce phase-delay risk in rotor-position estimation [2].",
+      "required_answer_terms": ["sin(arctan", "switching function", "low-pass filter", "chattering"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["switching", "filter", "chattering", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "retrieval_only_cases": [
@@ -1708,6 +1892,90 @@
           "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
           "page": 2,
           "snippet": "rotor flux linkage value identified by the MRAS is fed into the nonlinear flux linkage model"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-combined-reaching-law-proposal",
+      "question": "Retrieve the combined reaching-law SMO proposal for PMSM speed estimation.",
+      "topic_tags": ["PMSM", "sliding mode observer", "combined reaching law", "speed estimation", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "page": 1,
+          "snippet": "combined reaching law algorithm based on the exponential reaching law and arcsine saturation function"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-combined-reaching-law-handoff",
+      "question": "Retrieve where the combined reaching-law paper describes the early and steady-state reaching-law handoff.",
+      "topic_tags": ["PMSM", "sliding mode observer", "reaching law", "chattering", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+          "page": 6,
+          "snippet": "in the early stage of sliding mode motion, the exponential reaching law is used"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-itsmrl-faster-less-chattering",
+      "question": "Retrieve the ITSMRL comparison statement about reaching speed and chattering.",
+      "topic_tags": ["PMSM", "sliding mode control", "improved terminal reaching law", "chattering", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "page": 4,
+          "snippet": "The ITSMRL has faster reaching speed and less chattering than the TSMRL"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-eso-bandwidth-estimation-error",
+      "question": "Retrieve the ESO bandwidth statement about estimation error and convergence speed.",
+      "topic_tags": ["PMSM", "extended state observer", "disturbance", "convergence", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "source_path": "papers/library/qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
+          "page": 5,
+          "snippet": "increasing the bandwidth of the ESO"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-fuzzy-super-twisted-switching-function",
+      "question": "Retrieve the fuzzy super-twisted SMO switching-function replacement statement.",
+      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "fuzzy control", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "a sin (arctan(nx)) nonlinear function is introduced instead of the sign function"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-fuzzy-super-twisted-no-extra-lpf",
+      "question": "Retrieve the fuzzy super-twisted SMO claim about avoiding an extra low-pass filter.",
+      "topic_tags": ["PMSM", "sliding mode observer", "low-pass filter", "rotor position", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "source_path": "papers/library/jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
+          "page": 7,
+          "snippet": "there is no need to add an additional low-pass filter"
         }
       ]
     }

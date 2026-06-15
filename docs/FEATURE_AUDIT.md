@@ -19,11 +19,11 @@ Command                                                               Result
 .venv/bin/python -m pytest                                           pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py                             pass, 25 answer cases and
-                                                                      40 retrieval-only cases,
-                                                                      6 code-output cases,
-                                                                      9 PDF structure cases,
-                                                                      25 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                             pass, 28 answer cases and
+                                                                      46 retrieval-only cases,
+                                                                      8 code-output cases,
+                                                                      12 PDF structure cases,
+                                                                      28 recorded answers
 .venv/bin/python scripts/health_check.py                             pass, local/docs/query-latency/query-alert/
                                                                       provider-alert/job-alert/API-access-audit/
                                                                       API-rate-limit/upload-scan/
@@ -53,7 +53,7 @@ RAG query and inspection      verified      /query, /query/inspect, /query/retri
                                             offline eval, citation tests, code-output artifact and
                                             template checks, PDF structure checks, and paper-to-code
                                             report handoff tests pass. Live QA breadth is still limited.
-Corpus and profile control    verified      11-paper curated seed library plus paper/chunk/status/
+Corpus and profile control    verified      14-paper curated seed library plus paper/chunk/status/
                                             active/profile routes exist; local
                                             JSON/SQLite store is inspectable. Multi-user ownership and
                                             production DB/object storage remain planned.
@@ -197,9 +197,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Known Evaluation Gaps
 
-- The offline RAG baseline is deterministic and now covers 50 no-LLM retrieval
-  questions plus four local Python code-output cases (two job-backed, across the
-  `smc_reaching_law` and `pmsm_current_step` templates) and six seeded PDF
+- The offline RAG baseline is deterministic and now covers 74 no-LLM retrieval
+  questions plus eight local Python code-output cases (four job-backed, across the
+  `smc_reaching_law` and `pmsm_current_step` templates) and 12 seeded PDF
   equation/table/figure structure cases, but the live answer QA set, richer PDF
   layout extraction, and broader Octave *execution* eval (blocked on an Octave
   binary in CI/runtime) are still narrow for broad control-engineering coverage.
