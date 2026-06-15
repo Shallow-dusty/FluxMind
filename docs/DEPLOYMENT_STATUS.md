@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 08:32 CST
+Last live check: 2026-06-15 08:48 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -95,12 +95,15 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Read-only live checks refreshed on 2026-06-15 08:32 CST during the documentation
-sweep. Public HTTPS UI/API health returned 200, the SSH runtime gate passed, and
-an authenticated `/corpus/status` smoke returned `papers=11`, `active=11`,
-`indexed=11`, `chunks=800`, and `index=fresh`; UI/API/worker all reported
-`active`, and `/opt/fluxmind/.coverage` remained absent. No service restart was
-required for this read-only verification.
+Read-only live checks and a no-restart documentation sync were refreshed on
+2026-06-15 08:48 CST. After pushing docs refresh `20d75e5`, `.venv/bin/python
+scripts/deploy_sync.py --apply` synced the updated docs, health-check script,
+and docs-status test guard to `/opt/fluxmind` without `--restart`. Public HTTPS
+UI/API health returned 200, the SSH runtime gate passed, and the remote runtime
+still reported UI/API/worker/cloudflared/docker `active`, `active_papers=11`,
+`chunk_metadata_rows=800`, `index_fresh=True`, healthy retrieval/admin smokes,
+and `/dev/vda3` at 46% used. No service restart was required for this docs-only
+sync and verification.
 
 Live checks refreshed on 2026-06-15 08:21 CST after pushing `main` through
 `4f27651`, deploying the runtime-state parsing hardening and the `.coverage`

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 08:32 CST
+Snapshot time: 2026-06-15 08:48 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,11 +13,11 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified repo baseline         3b8ecd7 docs: record runtime hardening deployment
-Remote status at verification  main...origin/main up to date before this docs refresh
-Current docs refresh scope     docs/status/test-guard updates only; no application-code changes
+Verified repo baseline         20d75e5 docs: refresh FluxMind documentation state
+Remote status at verification  main...origin/main up to date before this final status-note refresh
+Current docs refresh scope     final docs/status/test-guard note only; no application-code changes
 Last deployed app baseline     4f27651 fix: exclude coverage data from deploy sync
-Live verification follow-up    read-only checks refreshed on 2026-06-15 08:32 CST
+Live verification follow-up    docs sync plus read-only checks refreshed on 2026-06-15 08:48 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -450,10 +450,32 @@ scope                                                                  docs/stat
                                                                         4f27651
 ```
 
+Documentation sync verification on 2026-06-15 08:48 CST:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+git push origin main                                                     pushed docs refresh
+                                                                        20d75e5
+.venv/bin/python scripts/deploy_sync.py --apply                         synced docs, health_check.py,
+                                                                        and docs-status test guard to
+                                                                        /opt/fluxmind without restart
+.venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
+                                                                        returned 200
+.venv/bin/python scripts/health_check.py --ssh-host ...                pass; services active,
+                                                                        active_papers=11,
+                                                                        chunk_metadata_rows=800,
+                                                                        index fresh
+scope                                                                  docs-only sync; deployed
+                                                                        application-code baseline
+                                                                        remains 4f27651
+```
+
 ## Latest Deployment Snapshot
 
 The latest live deployment snapshot was refreshed after guarded deploy and
-post-restart verification plus read-only recheck on 2026-06-15 08:32 CST in
+post-restart verification plus read-only docs-sync recheck on 2026-06-15
+08:48 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/

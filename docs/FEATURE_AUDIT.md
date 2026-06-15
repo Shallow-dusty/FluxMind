@@ -35,8 +35,8 @@ Command                                                               Result
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   08:32 snapshot, HTTPS UI/API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  08:32 snapshot, live runtime green,
+.venv/bin/python scripts/health_check.py --url ...                   08:48 snapshot, HTTPS UI/API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  08:48 snapshot, live runtime green,
                                                                       active_papers=11, chunks=800
 ```
 

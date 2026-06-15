@@ -136,7 +136,7 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Last deployed app baseline     4f27651 fix: exclude coverage data from deploy sync" in repo_status
-        and "Live verification follow-up    read-only checks refreshed on 2026-06-15 08:32 CST"
+        and "Live verification follow-up    docs sync plus read-only checks refreshed on 2026-06-15 08:48 CST"
         in repo_status,
         "repo status records deployment-record baseline",
         failures,

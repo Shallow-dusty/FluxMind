@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-15 08:32 CST
+Last updated: 2026-06-15 08:48 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS and SSH checks run on 2026-06-15
-                      08:32 CST; re-run before deploy claims
+                      08:48 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -26,15 +26,16 @@ using this document for investment, deployment, or release decisions.
 
 ## Current Baseline
 
-Current local git state at this documentation pass:
+Documentation-pass state:
 
 ```text
 Branch          main
-Remote status   main...origin/main up to date before this docs refresh
-Repo baseline   3b8ecd7 docs: record runtime hardening deployment
+Start state     main...origin/main up to date at 3b8ecd7 before docs refresh
+Docs refresh    20d75e5 docs: refresh FluxMind documentation state
+Status note     this final docs-status note is docs-only and may create a newer commit
 Deployed code   4f27651 fix: exclude coverage data from deploy sync
-Worktree        docs refresh pending; no application-code changes in this pass
-Diff hygiene    git diff --check passed on 2026-06-15 08:32 CST
+Work scope      docs/status/test-guard updates only; no application-code changes
+Diff hygiene    git diff --check passed on 2026-06-15 08:48 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -52,9 +53,9 @@ offline RAG eval                          20 answer cases, 30 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  08:32 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          08:32 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                08:32 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  08:48 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          08:48 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                08:48 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
