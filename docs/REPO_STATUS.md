@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 10:23 CST
+Snapshot time: 2026-06-15 14:29 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,11 +13,11 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified repo baseline         1b7795a test: calibrate live retrieval refs
-Remote status at verification  main...origin/main up to date before this final status-note refresh
-Current docs refresh scope     final corpus-expansion deployment status note only
-Last deployed source/eval baseline 1b7795a test: calibrate live retrieval refs
-Live verification follow-up    14-paper corpus rebuild and 74/74 live retrieval refreshed on 2026-06-15 10:23 CST
+Verified repo baseline         d1e5326 test: recalibrate live retrieval baseline
+Remote status at verification  main...origin/main up to date before this status refresh
+Current docs refresh scope     final 18-paper corpus-expansion deployment status note only
+Last deployed source/eval baseline d1e5326 test: recalibrate live retrieval baseline
+Live verification follow-up    18-paper corpus rebuild and 86/86 live retrieval refreshed on 2026-06-15 14:29 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -53,7 +53,7 @@ This formerly in-progress local work is now committed, pushed to `origin/main`
 through application baseline `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
-74-question no-LLM retrieval gate: 28 answer cases, 28 recorded answers, and 46
+86-question no-LLM retrieval gate: 32 answer cases, 32 recorded answers, and 54
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
 implementation and code-generation report exports, plus the first local Python
@@ -475,19 +475,19 @@ scope                                                                  docs-only
 
 The latest live deployment snapshot was refreshed after guarded corpus sync,
 index rebuild, live retrieval evaluation, and HTTPS/SSH health checks on
-2026-06-15 10:23 CST in
+2026-06-15 14:29 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
 retrieval-alerts/storage-schema work above plus the API startup readiness,
-import-latency fixes, coverage gate, 14-paper seed corpus, API token comparison
+import-latency fixes, coverage gate, 18-paper seed corpus, API token comparison
 hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
 exclude are now synced or rebuilt on Trace-Twin through the current
-source/runtime boundary. The latest remote corpus status is `papers=14`,
-`active=14`, `indexed=14`, `chunks=987`, and `index=fresh`; live retrieval eval
-passes `74/74`. External
+source/runtime boundary. The latest remote corpus status is `papers=18`,
+`active=18`, `indexed=18`, `chunks=1216`, and `index=fresh`; live retrieval eval
+passes `86/86`. External
 providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.
@@ -500,13 +500,13 @@ Local API health    {"status":"ok"}
 Local API readiness {"status":"ready","warmup":{"status":"ready","ready":true,"error":""}}
 Model config        LLM_MODEL=mimo-v2.5-pro
 Embedding model     /opt/fluxmind/models/all-MiniLM-L6-v2
-Active papers       11
-FAISS index bytes   1228845
-Chunk rows          800 across 11 source paths
+Active papers       18
+FAISS index bytes   1867821
+Chunk rows          1216 across 18 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
 Docker execution    configured=False available=False reason=not_configured
-Disk                /dev/vda3 40G total, 21G free, 46% used
+Disk                /dev/vda3 40G total, 24G free, 36% used
 ```
 
 ## Immediate Boundary

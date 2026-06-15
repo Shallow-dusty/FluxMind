@@ -19,11 +19,11 @@ Command                                                               Result
 .venv/bin/python -m pytest                                           pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py                             pass, 28 answer cases and
-                                                                      46 retrieval-only cases,
+.venv/bin/python scripts/evaluate_rag.py                             pass, 32 answer cases and
+                                                                      54 retrieval-only cases,
                                                                       8 code-output cases,
-                                                                      12 PDF structure cases,
-                                                                      28 recorded answers
+                                                                      16 PDF structure cases,
+                                                                      32 recorded answers
 .venv/bin/python scripts/health_check.py                             pass, local/docs/query-latency/query-alert/
                                                                       provider-alert/job-alert/API-access-audit/
                                                                       API-rate-limit/upload-scan/
@@ -33,15 +33,15 @@ Command                                                               Result
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   10:23 snapshot, 74/74 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   14:29 snapshot, 86/86 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   10:23 snapshot, HTTPS UI 200
-curl https://api-smy.hyper-dusty.cloud/health                        10:23 snapshot, HTTPS API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  10:23 snapshot, live runtime green,
-                                                                      active_papers=14, chunks=987
+.venv/bin/python scripts/health_check.py --url ...                   14:29 snapshot, HTTPS UI 200
+curl https://api-smy.hyper-dusty.cloud/health                        14:29 snapshot, HTTPS API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  14:29 snapshot, live runtime green,
+                                                                      active_papers=18, chunks=1216
 ```
 
 ## Feature Groups
@@ -54,7 +54,7 @@ RAG query and inspection      verified      /query, /query/inspect, /query/retri
                                             offline eval, citation tests, code-output artifact and
                                             template checks, PDF structure checks, and paper-to-code
                                             report handoff tests pass. Live QA breadth is still limited.
-Corpus and profile control    verified      14-paper curated seed library plus paper/chunk/status/
+Corpus and profile control    verified      18-paper curated seed library plus paper/chunk/status/
                                             active/profile routes exist; local
                                             JSON/SQLite store is inspectable. Multi-user ownership and
                                             production DB/object storage remain planned.
@@ -198,9 +198,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Known Evaluation Gaps
 
-- The offline RAG baseline is deterministic and now covers 74 no-LLM retrieval
+- The offline RAG baseline is deterministic and now covers 86 no-LLM retrieval
   questions plus eight local Python code-output cases (four job-backed, across the
-  `smc_reaching_law` and `pmsm_current_step` templates) and 12 seeded PDF
+  `smc_reaching_law` and `pmsm_current_step` templates) and 16 seeded PDF
   equation/table/figure structure cases, but the live answer QA set, richer PDF
   layout extraction, and broader Octave *execution* eval (blocked on an Octave
   binary in CI/runtime) are still narrow for broad control-engineering coverage.

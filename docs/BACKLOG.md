@@ -94,19 +94,19 @@ metadata-only retrieval trace events/admin summaries/metrics and local
 retrieval-quality advisory alerts,
 retrieval-only source/page cases, eight local Python code-output artifact cases
 (four of them job-backed) across the `smc_reaching_law` and `pmsm_current_step`
-templates plus paper-specific local fixtures, 12 seeded PDF equation/table/figure
+templates plus paper-specific local fixtures, 16 seeded PDF equation/table/figure
 structure extraction acceptance cases, optional JSON eval report export, and
-aggregate eval-set regression gates implemented. The baseline now has a 28-case
-domain-trust intermediate gate with 28 recorded answers plus 46 retrieval-only
-cases for 74 total no-LLM retrieval questions. It gates 96 expected source/page refs, topic-tag coverage,
+aggregate eval-set regression gates implemented. The baseline now has a 32-case
+domain-trust intermediate gate with 32 recorded answers plus 54 retrieval-only
+cases for 86 total no-LLM retrieval questions. It gates 112 expected source/page refs, topic-tag coverage,
 ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
 equation fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports; external/service reranking plus richer PDF layout
 extraction and broader Octave *execution* eval (blocked on an Octave binary in
 CI/runtime) remain planned.
 
-- `eval/rag_baseline.json` contains a 28-case control-engineering answer
-  evaluation set plus 46 retrieval-only source/page cases, with a small domain
+- `eval/rag_baseline.json` contains a 32-case control-engineering answer
+  evaluation set plus 54 retrieval-only source/page cases, with a small domain
   ontology for SMC, PMSM/FOC, observer/estimation, and implementation-trust
   groups.
 - Answer cases record expected source papers/pages, fixture snippets, recorded
@@ -127,9 +127,10 @@ CI/runtime) remain planned.
   equation, table, and figure markers through no-key PyMuPDF extraction, so
   paper-to-code workflows can fail locally when source layout anchors disappear.
   The extractor also recognizes algorithm captions, anchored by the synthetic-PDF
-  unit test `test_extract_pdf_structure_markers_finds_layout_markers`; a real-PDF
-  algorithm-caption case in `pdf_structure_cases` remains blocked because none of
-  the 14 curated library papers contain a numbered `Algorithm N` block.
+  unit test `test_extract_pdf_structure_markers_finds_layout_markers`; the
+  expanded corpus now includes a real numbered algorithm anchor, so a future
+  quality slice should add an algorithm-caption case instead of treating it as
+  blocked.
 - Offline expected refs now verify that the referenced PDF exists, the page is
   parseable, and the configured snippet appears on that page.
 - Provider failure fixtures cover timeout, 429/rate-limit, empty output, and

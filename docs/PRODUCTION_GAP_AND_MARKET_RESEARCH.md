@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-15 08:48 CST
+Last updated: 2026-06-15 14:29 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      run on 2026-06-15 10:23 CST; re-run before deploy claims
+                      run on 2026-06-15 14:29 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -30,12 +30,13 @@ Documentation-pass state:
 
 ```text
 Branch          main
-Start state     main...origin/main up to date at 3b8ecd7 before docs refresh
-Docs refresh    20d75e5 docs: refresh FluxMind documentation state
-Status note     this final docs-status note is docs-only and may create a newer commit
-Deployed source/eval  1b7795a test: calibrate live retrieval refs
-Work scope      docs/status/test-guard updates only; no application-code changes
-Diff hygiene    git diff --check passed on 2026-06-15 08:48 CST
+Start state     main...origin/main up to date at d1e5326 before docs refresh
+Source/eval     b2f543e test: expand FluxMind corpus quality baseline
+Calibration     d1e5326 test: recalibrate live retrieval baseline
+Status note     this docs-status refresh follows verified live deployment
+Deployed source/eval  d1e5326 test: recalibrate live retrieval baseline
+Work scope      docs/status/test-guard updates after deployed corpus/eval expansion
+Diff hygiene    git diff --check passed on 2026-06-15 14:29 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -46,21 +47,21 @@ Check                                      Result
 pytest                                    332 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
-offline RAG eval                          28 answer cases, 46 retrieval-only
+offline RAG eval                          32 answer cases, 54 retrieval-only
                                           cases, 8 code-output cases,
-                                          12 PDF structure cases,
-                                          28 recorded answers
+                                          16 PDF structure cases,
+                                          32 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  10:23 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          10:23 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                10:23 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  14:29 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          14:29 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                14:29 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
-Remote active corpus                       active_papers=14
-Remote chunk metadata                     chunk_metadata_rows=987, sources=14
+Remote active corpus                       active_papers=18
+Remote chunk metadata                     chunk_metadata_rows=1216, sources=18
 Remote index freshness                     index_fresh=True
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
@@ -105,7 +106,7 @@ Priority                High. This is the trust layer users will judge first.
 ```text
 Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
-Content/corpus          14-paper curated seed library, local metadata, profiles, chunk mirror,
+Content/corpus          18-paper curated seed library, local metadata, profiles, chunk mirror,
                         DOI/arXiv enrichment fields, upload/index flow.
 
 Gap to production       Curated domain corpus, topic ontology, paper quality
@@ -461,7 +462,7 @@ Recommended near-term corpus target:
 ```text
 Milestone       Corpus target
 --------------  --------------------------------------------------------------
-M0 current      14 bundled seed papers; deployed active index may still reflect
+M0 current      18 bundled seed papers; deployed active index may still reflect
                 the latest runtime rebuild snapshot
 M1              30-50 curated papers, tagged by topic and method
 M2              100+ curated papers plus benchmark questions and code templates
@@ -499,29 +500,30 @@ Order  Lane                                      Why first
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
 
-Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 28
-offline/recorded answer cases and 46 retrieval-only cases, for 74 total no-LLM
-retrieval questions. The baseline gates 96 source/page refs and 80 topic tags
+Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 32
+offline/recorded answer cases and 54 retrieval-only cases, for 86 total no-LLM
+retrieval questions. The baseline gates 112 source/page refs and 89 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
 eight local Python code-output gates that verify expected stdout plus plot/text
 artifacts in a temporary artifact store, including reusable execution-template
-coverage plus four local job-backed execution paths. The evaluator also has 12
+coverage plus four local job-backed execution paths. The evaluator also has 16
 seeded PDF structure gates for equation/table/figure markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
 anchors as a Markdown handoff report. `POST /query/report` now adds a local
 paper-to-code handoff for implementation and code-generation reports, including
 source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
-IDs, and validation checklist fields. The self-use target is met; the small-group
-target still needs corpus growth from 14 bundled seed papers toward 30 curated
-papers, plus 12 more answer/recorded-answer cases, 14 more retrieval-only cases,
-26 more total retrieval questions, and 3 more PDF
-structure cases. Broader Octave execution remains deferred until an Octave binary
+IDs, and validation checklist fields. The self-use target is met; the
+small-group target still needs corpus growth from 18 bundled seed papers toward
+30 curated papers, plus 8 more answer/recorded-answer cases, 6 more
+retrieval-only cases, and 14 more total retrieval questions. Broader Octave
+execution remains deferred until an Octave binary
 is available in CI/runtime. The 2026-06-15 seed
 library expansion adds adaptive-gain SMO, super-twisting SMO, switching-function
 comparison, adaptive-parameter IPMSM, MRAS flux-linkage observer, combined
 reaching-law SMO, PID/ITSMRL/ESO speed control, and fuzzy super-twisted SMO
-coverage.
+coverage, plus super-twisting SMC with ESO feedback, adaptive quick reaching law
+with SFTSMO, DSMO/LQR current-loop control, and NFTSMC with SDOB validation.
 
 Success criterion: a skeptical control student or engineer can ask paper-backed
 implementation questions and receive traceable, executable outputs.
