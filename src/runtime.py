@@ -119,10 +119,17 @@ def list_runtime_events(
     query = (q or "").strip().casefold()
     events: list[RuntimeEvent] = []
     with target.open(encoding="utf-8") as handle:
-        for line in handle:
+        for line_number, line in enumerate(handle, start=1):
             if not line.strip():
                 continue
-            item = json.loads(line)
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                logger.warning("runtime_events.invalid_json path=%s line=%s", target, line_number)
+                continue
+            if not isinstance(item, dict):
+                logger.warning("runtime_events.invalid_type path=%s line=%s", target, line_number)
+                continue
             if kind and item.get("kind") != kind:
                 continue
             if code and item.get("code") != code:
@@ -141,7 +148,10 @@ def list_runtime_events(
                 ).casefold()
                 if query not in searchable:
                     continue
-            events.append(RuntimeEvent(**item))
+            try:
+                events.append(RuntimeEvent(**item))
+            except TypeError:
+                logger.warning("runtime_events.invalid_event path=%s line=%s", target, line_number)
     return events[-limit:][::-1]
 
 

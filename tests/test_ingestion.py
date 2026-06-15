@@ -433,6 +433,25 @@ def test_manifest_metadata_overrides_extracted_pdf_metadata(tmp_path: Path, monk
     assert records[0].authors == "Curated Author"
 
 
+def test_load_library_manifest_ignores_invalid_or_non_object_manifest(tmp_path: Path, monkeypatch):
+    library = tmp_path / "papers" / "library"
+    library.mkdir(parents=True)
+    manifest = library / "manifest.json"
+    monkeypatch.setattr(ingestion, "PAPER_LIBRARY_MANIFEST", manifest)
+
+    manifest.write_text("{bad-json", encoding="utf-8")
+    assert ingestion.load_library_manifest() == {}
+
+    manifest.write_text('["not", "an", "object"]', encoding="utf-8")
+    assert ingestion.load_library_manifest() == {}
+
+    manifest.write_text(
+        json.dumps({"paper.pdf": {"title": "Paper"}, "bad.pdf": "not metadata"}),
+        encoding="utf-8",
+    )
+    assert ingestion.load_library_manifest() == {"paper.pdf": {"title": "Paper"}}
+
+
 def test_set_active_paper_source_paths_persists_selection(tmp_path: Path, monkeypatch):
     root = tmp_path
     library = root / "papers" / "library"
@@ -508,6 +527,7 @@ def test_load_active_paper_paths_filters_stale_selection_and_defaults_to_library
                 "papers/uploads/upload.pdf",
                 "papers/uploads/missing.pdf",
                 "papers/uploads/note.txt",
+                str((tmp_path / "outside.pdf").resolve()),
             ]
         ),
         encoding="utf-8",
@@ -515,8 +535,48 @@ def test_load_active_paper_paths_filters_stale_selection_and_defaults_to_library
 
     assert ingestion.load_active_paper_paths() == [upload_pdf]
 
+    (index_dir / "active_papers.json").write_text("{bad-json", encoding="utf-8")
+    assert ingestion.load_active_paper_paths() == [library_pdf]
+
+    (index_dir / "active_papers.json").write_text('{"not": "a list"}', encoding="utf-8")
+    assert ingestion.load_active_paper_paths() == [library_pdf]
+
+    (index_dir / "active_papers.json").write_text(
+        json.dumps(["papers/uploads/missing.pdf", 42]),
+        encoding="utf-8",
+    )
+    assert ingestion.load_active_paper_paths() == [library_pdf]
+
     (index_dir / "active_papers.json").unlink()
     assert ingestion.load_active_paper_paths() == [library_pdf]
+
+
+def test_save_active_paper_paths_writes_atomically_and_deduplicates(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    library = root / "papers" / "library"
+    index_dir = root / "faiss_index"
+    metadata_dir = root / "metadata"
+    library.mkdir(parents=True)
+    paper = library / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 paper")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", root / "papers" / "uploads")
+    monkeypatch.setattr(ingestion, "PAPER_LIBRARY_MANIFEST", library / "manifest.json")
+    monkeypatch.setattr(ingestion, "FAISS_INDEX_DIR", index_dir)
+    monkeypatch.setattr(ingestion, "ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
+    monkeypatch.setattr("src.metadata.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.metadata.PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
+
+    ingestion.save_active_paper_paths([paper, paper])
+
+    assert json.loads((index_dir / "active_papers.json").read_text(encoding="utf-8")) == [
+        "papers/library/paper.pdf"
+    ]
+    assert list(index_dir.glob(".active_papers.json.*.tmp")) == []
 
 
 def test_resolve_selectable_source_paths_strips_blanks_and_deduplicates(tmp_path: Path, monkeypatch):

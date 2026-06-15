@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import shutil
+import tempfile
 import threading
 import unicodedata
 from dataclasses import dataclass
@@ -452,7 +453,19 @@ def load_library_manifest() -> dict[str, dict]:
     """Load curated paper metadata keyed by filename."""
     if not PAPER_LIBRARY_MANIFEST.exists():
         return {}
-    return json.loads(PAPER_LIBRARY_MANIFEST.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(PAPER_LIBRARY_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("library_manifest.invalid path=%s", PAPER_LIBRARY_MANIFEST)
+        return {}
+    if not isinstance(payload, dict):
+        logger.warning("library_manifest.invalid_type path=%s", PAPER_LIBRARY_MANIFEST)
+        return {}
+    return {
+        str(filename): metadata
+        for filename, metadata in payload.items()
+        if isinstance(metadata, dict)
+    }
 
 
 def extract_pdf_bibliographic_metadata(path: Path) -> dict[str, Any]:
@@ -612,21 +625,66 @@ def discover_pdfs() -> list[Path]:
 def load_active_paper_paths() -> list[Path]:
     """Load the current manual paper selection, defaulting to bundled papers."""
     all_papers = discover_pdfs()
+    default_papers = [p for p in all_papers if PAPERS_LIBRARY_DIR in p.parents]
     if ACTIVE_PAPERS_FILE.exists():
-        selected = json.loads(ACTIVE_PAPERS_FILE.read_text(encoding="utf-8"))
-        paths = [PROJECT_ROOT / item for item in selected]
-        return [p for p in paths if p.exists() and p.suffix.lower() == ".pdf"]
-    return [p for p in all_papers if PAPERS_LIBRARY_DIR in p.parents]
+        try:
+            selected = json.loads(ACTIVE_PAPERS_FILE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("active_papers.invalid path=%s", ACTIVE_PAPERS_FILE)
+            return default_papers
+        if not isinstance(selected, list):
+            logger.warning("active_papers.invalid_type path=%s", ACTIVE_PAPERS_FILE)
+            return default_papers
+        selectable = {path.resolve(): path for path in all_papers}
+        paths: list[Path] = []
+        seen: set[Path] = set()
+        project_root = PROJECT_ROOT.resolve()
+        for item in selected:
+            if not isinstance(item, str):
+                continue
+            candidate = (PROJECT_ROOT / item).resolve()
+            try:
+                candidate.relative_to(project_root)
+            except ValueError:
+                continue
+            path = selectable.get(candidate)
+            if path is None or path in seen:
+                continue
+            seen.add(path)
+            paths.append(path)
+        return paths or default_papers
+    return default_papers
 
 
 def save_active_paper_paths(paths: list[Path]) -> None:
     """Persist the manual paper selection beside the FAISS index."""
     FAISS_INDEX_DIR.mkdir(parents=True, exist_ok=True)
-    payload = [_relative(p) for p in paths if p.exists() and p.suffix.lower() == ".pdf"]
-    ACTIVE_PAPERS_FILE.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    payload: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        if not path.exists() or path.suffix.lower() != ".pdf":
+            continue
+        source_path = _relative(path)
+        if source_path in seen:
+            continue
+        seen.add(source_path)
+        payload.append(source_path)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=FAISS_INDEX_DIR,
+            prefix=f".{ACTIVE_PAPERS_FILE.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temp_path = Path(handle.name)
+            handle.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        temp_path.replace(ACTIVE_PAPERS_FILE)
+    finally:
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
     CorpusMetadataStore().refresh_from_files(
         discover_pdfs(),
         active_paths=paths,

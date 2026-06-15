@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
 import sqlite3
 import threading
@@ -30,6 +31,7 @@ from src.providers import (
 from src.runtime import append_runtime_event, new_request_id, normalize_exception
 
 
+logger = logging.getLogger("fluxmind")
 JobKind = Literal["image_generation", "code_execution", "index_rebuild"]
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "dead_lettered"]
 MAX_IDEMPOTENCY_KEY_LENGTH = 128
@@ -155,6 +157,26 @@ class JobRecord:
     logs: list[dict[str, Any]] = field(default_factory=list)
 
 
+_JOB_RECORD_FIELDS = set(JobRecord.__dataclass_fields__)
+
+
+def _job_record_from_payload(payload: Any) -> JobRecord | None:
+    if not isinstance(payload, dict):
+        return None
+    try:
+        record = JobRecord(
+            **{
+                key: value
+                for key, value in payload.items()
+                if key in _JOB_RECORD_FIELDS
+            }
+        )
+    except TypeError:
+        return None
+    apply_job_ownership(record)
+    return record
+
+
 def append_job_log(record: JobRecord, status: str, message: str, **metadata: Any) -> None:
     """Append a no-secret transition log entry to a local job record."""
     entry: dict[str, Any] = {
@@ -252,21 +274,25 @@ class LocalJobStore:
         return record
 
     def _get_jsonl(self, job_id: str) -> JobRecord | None:
-        latest: dict[str, Any] | None = None
+        latest: JobRecord | None = None
         if not self.path.exists():
             return None
         with self.path.open(encoding="utf-8") as handle:
-            for line in handle:
+            for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
-                item = json.loads(line)
-                if item.get("job_id") == job_id:
-                    latest = item
-        if not latest:
-            return None
-        record = JobRecord(**latest)
-        apply_job_ownership(record)
-        return record
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    logger.warning("jobs_jsonl.invalid_json path=%s line=%s", self.path, line_number)
+                    continue
+                record = _job_record_from_payload(item)
+                if record is None:
+                    logger.warning("jobs_jsonl.invalid_record path=%s line=%s", self.path, line_number)
+                    continue
+                if record.job_id == job_id:
+                    latest = record
+        return latest
 
     def list_latest(
         self,
@@ -380,14 +406,20 @@ class LocalJobStore:
         if not self.path.exists():
             return []
         with self.path.open(encoding="utf-8") as handle:
-            for line in handle:
+            for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
-                item = json.loads(line)
-                latest[item["job_id"]] = item
-        records = [JobRecord(**item) for item in latest.values()]
-        for record in records:
-            apply_job_ownership(record)
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    logger.warning("jobs_jsonl.invalid_json path=%s line=%s", self.path, line_number)
+                    continue
+                record = _job_record_from_payload(item)
+                if record is None:
+                    logger.warning("jobs_jsonl.invalid_record path=%s line=%s", self.path, line_number)
+                    continue
+                latest[record.job_id] = record
+        records = list(latest.values())
         records.sort(key=lambda record: record.updated_at, reverse=True)
         return records[:limit]
 

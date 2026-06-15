@@ -1,3 +1,5 @@
+import json
+
 from src.runtime import (
     ProviderError,
     append_runtime_event,
@@ -69,3 +71,29 @@ def test_runtime_events_are_listed_newest_first(tmp_path):
     assert [event.event_id for event in list_runtime_events(code="provider_timeout", path=path)] == [first.event_id]
     assert [event.event_id for event in list_runtime_events(q="rate limited", path=path)] == [second.event_id]
     assert list_runtime_events(kind="query_usage", path=path) == []
+
+
+def test_runtime_events_skip_malformed_lines(tmp_path):
+    path = tmp_path / "runtime_events.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                "not-json",
+                json.dumps(["not", "an", "event"]),
+                json.dumps({"kind": "provider_failure"}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    event = append_runtime_event(
+        kind="provider_failure",
+        code="provider_timeout",
+        message="timeout",
+        request_id="req-ok",
+        path=path,
+    )
+
+    events = list_runtime_events(kind="provider_failure", path=path)
+
+    assert [item.event_id for item in events] == [event.event_id]

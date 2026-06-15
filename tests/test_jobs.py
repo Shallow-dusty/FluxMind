@@ -1,3 +1,5 @@
+from dataclasses import asdict
+import json
 import time
 import sqlite3
 import threading
@@ -14,6 +16,7 @@ from src.jobs import (
     LocalDurableJobWorker,
     LocalJobRunner,
     LocalJobStore,
+    JobRecord,
     future_utc,
     parse_utc,
 )
@@ -33,6 +36,38 @@ def wait_for_status(store: LocalJobStore, job_id: str, statuses: set[str], timeo
         time.sleep(0.02)
     job = store.get(job_id)
     raise AssertionError(f"Job {job_id} did not reach {statuses}; last={job.status if job else None}")
+
+
+def test_job_store_skips_malformed_jsonl_records(tmp_path: Path):
+    now = "2026-01-01T00:00:00+00:00"
+    valid = JobRecord(
+        job_id="job-valid",
+        kind="image_generation",
+        status="succeeded",
+        created_at=now,
+        updated_at=now,
+        request={"prompt": "observer"},
+    )
+    jobs_file = tmp_path / "jobs.jsonl"
+    jobs_file.write_text(
+        "\n".join(
+            [
+                "not-json",
+                json.dumps(["not", "a", "record"]),
+                json.dumps({"job_id": "missing-required-fields"}),
+                json.dumps(asdict(valid), ensure_ascii=False),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    store = LocalJobStore(jobs_file)
+
+    loaded = store.get("job-valid")
+
+    assert [job.job_id for job in store.list_latest(limit=10)] == ["job-valid"]
+    assert loaded is not None
+    assert loaded.request == {"prompt": "observer"}
 
 
 def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):

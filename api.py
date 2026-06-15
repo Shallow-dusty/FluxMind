@@ -3,6 +3,7 @@
 import os
 import logging
 import hashlib
+import hmac
 import re
 import threading
 import time
@@ -181,9 +182,14 @@ def api_token_status(authorization: str | None, x_api_key: str | None) -> dict[s
     else:
         credential_type = "none"
 
+    token_valid = any(
+        hmac.compare_digest(candidate, API_TOKEN)
+        for candidate in (x_api_key or "", bearer_token)
+        if candidate
+    )
     if not API_TOKEN:
         token_status = "not_configured"
-    elif x_api_key == API_TOKEN or bearer_token == API_TOKEN:
+    elif token_valid:
         token_status = "valid"
     elif has_bearer or has_x_api_key:
         token_status = "invalid"

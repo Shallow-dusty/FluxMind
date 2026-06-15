@@ -60,6 +60,22 @@ def test_api_token_status_does_not_return_token_values(monkeypatch):
     assert "wrong" not in str(status)
 
 
+def test_api_token_status_uses_constant_time_comparison(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "secret")
+    calls = []
+
+    def fake_compare_digest(candidate, expected):
+        calls.append((candidate, expected))
+        return candidate == expected
+
+    monkeypatch.setattr(api.hmac, "compare_digest", fake_compare_digest)
+
+    status = api.api_token_status("Bearer secret", "wrong")
+
+    assert status["token_status"] == "valid"
+    assert calls == [("wrong", "secret"), ("secret", "secret")]
+
+
 def test_api_access_middleware_records_valid_auth_without_secrets(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "secret")
     monkeypatch.setattr(api, "API_ACCESS_AUDIT_ENABLED", True)

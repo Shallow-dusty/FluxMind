@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 323 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 328 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=87 --sort=cover    pass, 87% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 20 answer cases and
                                                                       30 retrieval-only cases,
                                                                       4 code-output cases,

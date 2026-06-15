@@ -398,9 +398,9 @@ Local coverage-hardening follow-up after the 04:23 deployment:
 ```text
 Command                                                                 Result
 ----------------------------------------------------------------------  ------
-.venv/bin/python -m pytest                                             pass, 323 tests, 2 warnings
+.venv/bin/python -m pytest                                             pass, 328 tests, 2 warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=87                    pass, 87% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88                    pass, 88% total branch coverage
 scope                                                                  local tests/CI/docs only; no runtime
                                                                         service deploy required
 ```
