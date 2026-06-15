@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 08:21 CST
+Last live check: 2026-06-15 08:32 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,10 +9,11 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last pushed source baseline before this deployment record: `4f27651`
+Last verified application source baseline before this deployment record: `4f27651`
 (`fix: exclude coverage data from deploy sync`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
-tree rather than a deployed commit hash.
+tree rather than a deployed commit hash. Repo documentation commits may be newer
+than this application-code baseline.
 
 ```
 Host          Trace-Twin
@@ -93,6 +94,13 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Read-only live checks refreshed on 2026-06-15 08:32 CST during the documentation
+sweep. Public HTTPS UI/API health returned 200, the SSH runtime gate passed, and
+an authenticated `/corpus/status` smoke returned `papers=11`, `active=11`,
+`indexed=11`, `chunks=800`, and `index=fresh`; UI/API/worker all reported
+`active`, and `/opt/fluxmind/.coverage` remained absent. No service restart was
+required for this read-only verification.
 
 Live checks refreshed on 2026-06-15 08:21 CST after pushing `main` through
 `4f27651`, deploying the runtime-state parsing hardening and the `.coverage`

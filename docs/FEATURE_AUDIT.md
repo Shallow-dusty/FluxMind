@@ -35,8 +35,8 @@ Command                                                               Result
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   08:21 snapshot, HTTPS UI/API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  08:21 snapshot, live runtime green,
+.venv/bin/python scripts/health_check.py --url ...                   08:32 snapshot, HTTPS UI/API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  08:32 snapshot, live runtime green,
                                                                       active_papers=11, chunks=800
 ```
 
@@ -152,12 +152,14 @@ GET    /ready
 ```text
 Area                    Primary checks
 ----------------------  ---------------------------------------------------------------------------
-API contract            tests/test_api.py covers auth, query modes, corpus, admin,
+API contract            tests/test_api.py covers auth, constant-time token checks,
+                        query modes, corpus, admin,
                         retention preview/delete, jobs, job idempotency, owner metadata,
                         artifacts
 Ingestion/upload        tests/test_ingestion.py covers filename safety, PDF metadata,
                         checksum dedup, structure markers, cancellation, and upload scan
-                        allowed/blocked paths
+                        allowed/blocked paths plus manifest/active-selection
+                        runtime-state parse hardening
 RAG evaluation          tests/test_evaluation.py and scripts/evaluate_rag.py cover citations,
                         recorded answers, retrieval-only source/page cases, provider fixtures,
                         local code-output artifacts/templates/job-backed execution,
@@ -165,7 +167,7 @@ RAG evaluation          tests/test_evaluation.py and scripts/evaluate_rag.py cov
                         topic/lane coverage gates, and no-LLM retrieval diagnostics
 Jobs and workers        tests/test_jobs.py covers JSONL/SQLite state, durable idempotency,
                         owner metadata, bounded retry/dead-letter behavior, leases, recovery, deadlines,
-                        cancellation, and durable worker behavior
+                        cancellation, malformed JSONL fallback, and durable worker behavior
 Providers               tests/test_providers.py covers mock diagrams, Python/Octave execution,
                         resource/path/input limits, Docker readiness, and runtime-unavailable cases
 Storage metadata        tests/test_metadata.py, tests/test_storage_manifest.py, and
@@ -175,7 +177,8 @@ Storage metadata        tests/test_metadata.py, tests/test_storage_manifest.py, 
 UI guardrails           tests/test_translation_guard.py and tests/test_streaming.py cover browser
                         translation guards, runtime restore-check UI anchors, and streaming error handling
 Deployment hygiene      tests/test_deploy_sync.py, tests/test_health_check.py, and
-                        tests/test_docs_status.py cover safe sync, health checks, and status drift
+                        tests/test_docs_status.py cover safe sync, coverage-data excludes,
+                        health checks, and status drift
 Feature audit drift     tests/test_feature_audit_docs.py covers route-list completeness
 Admin metrics           tests/test_admin.py and tests/test_api.py cover no-secret metrics text
                         formatting, platform-readiness gauges, and the
@@ -184,6 +187,8 @@ Retrieval traces        tests/test_api.py and tests/test_admin.py cover metadata
                         retrieval trace event emission, admin summaries, and metrics
 Retrieval alerts        tests/test_admin.py covers metadata-only retrieval trace
                         alert thresholds, summaries, reports, and metrics
+Runtime events          tests/test_runtime.py covers no-secret event listing plus
+                        malformed JSONL-line tolerance
 ```
 
 ## Known Evaluation Gaps

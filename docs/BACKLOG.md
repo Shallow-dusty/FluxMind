@@ -10,7 +10,7 @@ It is intentionally ordered by dependency, not by excitement.
 
 ## Completion Snapshot
 
-Confirmed on: 2026-06-03
+Confirmed on: 2026-06-15
 
 The current completed scope is the no-key/local platform baseline:
 
@@ -29,7 +29,9 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
 Current hardening progress on 2026-06-15: the automated suite has 328 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
-expanded from 6 to 11 open-access papers.
+expanded from 6 to 11 open-access papers. The same hardening pass added
+constant-time API token comparison, tolerant runtime JSON/JSONL state parsing,
+atomic active-paper selection writes, and a `.coverage` deploy-sync exclude.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
@@ -64,7 +66,11 @@ checks still apply before each deploy
   for the UI/API services.
 - `scripts/deploy_sync.py` wraps the production source sync with a dry-run
   default and required excludes for secrets, virtual environments, models, and
-  mutable runtime state before allowing `rsync --delete`.
+  mutable runtime state before allowing `rsync --delete`. Coverage data
+  (`.coverage`) is also excluded so local test artifacts are not copied to
+  `/opt/fluxmind`.
+- API token checks use constant-time comparison for configured `X-API-Key` or
+  bearer credentials while preserving the existing no-token local mode.
 
 Acceptance:
 
@@ -282,6 +288,13 @@ durable multi-user database/object storage migration remains planned
   mismatched groups, known files, byte counts, and SHA-256 hashes.
 - `PUT /corpus/active` persists activation/deactivation choices after validating
   project-relative source paths against the selectable corpus.
+- `load_library_manifest()` and `load_active_paper_paths()` tolerate malformed
+  or wrong-shaped runtime JSON, reject non-project/unknown active selections, and
+  fall back to the bundled library selection when the active-selection file is
+  unusable.
+- `save_active_paper_paths()` deduplicates existing PDFs and writes
+  `faiss_index/active_papers.json` through a same-directory temporary file plus
+  atomic replace.
 - `GET /corpus/profiles`, `POST /corpus/profiles`,
   `GET /corpus/profiles/{profile_id}/status`, and
   `POST /corpus/profiles/{profile_id}/activate` persist and inspect reusable
@@ -343,6 +356,9 @@ plus admin worker-lease visibility implemented; distributed multi-worker queue
 and full running cancellation for every future worker type remain planned
 
 - Local JSONL job records exist in `src/jobs.py`.
+- JSONL fallback reads skip malformed/non-record lines with warnings, so a single
+  bad append-only history line does not block job listing, single-job lookup, or
+  SQLite mirror recovery.
 - Job writes are mirrored into `jobs/jobs.sqlite3` for current-state lookups and
   migration toward durable worker storage.
 - Immediate and async job creation requests accept optional `idempotency_key`.
@@ -668,7 +684,8 @@ are made
 - `GET /admin/events` lists no-secret runtime events with local `kind`, `code`,
   and `q` filters; the Streamlit status panel exposes the same event viewer.
   Code-execution outcomes are emitted as `code_execution` events and summarized
-  in admin status/report.
+  in admin status/report. Malformed runtime-event JSONL lines are skipped with
+  warnings instead of breaking the event viewer.
 - FastAPI middleware emits metadata-only `api_access` runtime events controlled
   by `API_ACCESS_AUDIT_ENABLED`. These classify token status as
   `not_configured`, `valid`, `missing`, or `invalid` and record method, path,

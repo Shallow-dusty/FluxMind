@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-08 06:26 CST
+Last updated: 2026-06-15 08:32 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -12,11 +12,13 @@ It separates four evidence layers:
 Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
-Current live state    health_check.py HTTPS and SSH checks run on 2026-06-08
-                      00:45 CST; re-run before deploy claims
+Current live state    health_check.py HTTPS and SSH checks run on 2026-06-15
+                      08:32 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
+                      (GitHub counts refreshed 2026-06-15; forum themes remain
+                      the 2026-06-08 qualitative sample)
 ```
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
@@ -24,14 +26,15 @@ using this document for investment, deployment, or release decisions.
 
 ## Current Baseline
 
-Current local git state at this research pass:
+Current local git state at this documentation pass:
 
 ```text
 Branch          main
-Remote status   main...origin/main up to date before this deployment-record refresh
-HEAD            4f27651 fix: exclude coverage data from deploy sync
-Worktree        deployment-record/docs refresh pending; source/runtime baseline deployed
-Diff hygiene    git diff --check passed on 2026-06-15 08:21 CST
+Remote status   main...origin/main up to date before this docs refresh
+Repo baseline   3b8ecd7 docs: record runtime hardening deployment
+Deployed code   4f27651 fix: exclude coverage data from deploy sync
+Worktree        docs refresh pending; no application-code changes in this pass
+Diff hygiene    git diff --check passed on 2026-06-15 08:32 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -49,9 +52,9 @@ offline RAG eval                          20 answer cases, 30 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  08:21 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          08:21 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                08:21 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  08:32 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          08:32 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                08:32 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
@@ -230,26 +233,26 @@ Priority                High before exposing private corpora or execution.
 
 ## Competitor Map
 
-GitHub API snapshot collected on 2026-06-08. Counts are directional, not a
+GitHub API snapshot collected on 2026-06-15 08:32 CST. Counts are directional, not a
 quality ranking.
 
 ```text
 Project                         Stars   Forks  Open issues  License       Pushed
 ------------------------------  ------  -----  -----------  ------------  --------------------
-langgenius/dify                 144271  22703  739          NOASSERTION   2026-06-07T14:30:37Z
-open-webui/open-webui           140476  20166  331          NOASSERTION   2026-06-06T00:47:52Z
-langflow-ai/langflow            149351  9207   930          MIT           2026-06-07T01:04:29Z
-infiniflow/ragflow              82097   9464   3310         Apache-2.0    2026-06-05T13:59:26Z
-Mintplex-Labs/anything-llm      61201   6645   327          MIT           2026-06-06T20:10:04Z
-FlowiseAI/Flowise               53399   24498  894          NOASSERTION   2026-06-05T03:41:08Z
-run-llama/llama_index           49975   7525   435          MIT           2026-06-04T16:59:44Z
-deepset-ai/haystack             25476   2831   120          Apache-2.0    2026-06-05T14:24:07Z
-Future-House/paper-qa           8648    878    135          Apache-2.0    2026-06-05T22:33:21Z
-simplefoc/Arduino-FOC           2859    708    74           MIT           2026-05-29T09:33:10Z
-python-control/python-control   2031    457    105          BSD-3-Clause  2026-04-15T15:22:51Z
-do-mpc/do-mpc                   1403    218    93           LGPL-3.0      2025-10-31T09:44:17Z
-OpenModelica/OpenModelica       1321    377    2232         NOASSERTION   2026-06-07T11:57:57Z
-JuliaControl/ControlSystems.jl  578     91     42           NOASSERTION   2026-05-18T10:11:45Z
+langgenius/dify                 145203  22845  753          NOASSERTION   2026-06-14T14:35:41Z
+open-webui/open-webui           141519  20336  469          NOASSERTION   2026-06-13T13:19:10Z
+langflow-ai/langflow            149666  9267   950          MIT           2026-06-14T01:06:51Z
+infiniflow/ragflow              82718   9544   3280         Apache-2.0    2026-06-13T13:37:31Z
+Mintplex-Labs/anything-llm      61586   6705   338          MIT           2026-06-14T23:22:48Z
+FlowiseAI/Flowise               53573   24511  922          NOASSERTION   2026-06-10T07:32:39Z
+run-llama/llama_index           50123   7561   454          MIT           2026-06-12T19:29:18Z
+deepset-ai/haystack             25567   2853   137          Apache-2.0    2026-06-12T15:45:23Z
+Future-House/paper-qa           8699    882    137          Apache-2.0    2026-06-11T18:43:29Z
+simplefoc/Arduino-FOC           2865    710    77           MIT           2026-06-11T08:25:34Z
+python-control/python-control   2031    457    103          BSD-3-Clause  2026-06-09T19:53:03Z
+do-mpc/do-mpc                   1406    219    93           LGPL-3.0      2025-10-31T09:44:17Z
+OpenModelica/OpenModelica       1320    379    2240         NOASSERTION   2026-06-12T21:57:05Z
+JuliaControl/ControlSystems.jl  578     91     44           NOASSERTION   2026-06-09T04:05:22Z
 ```
 
 ### Generic RAG and Agent Platforms
@@ -682,7 +685,7 @@ External control/domain sources:
 - ST Community motor-control forum: https://community.st.com/
 - Reddit r/ControlTheory: https://www.reddit.com/r/ControlTheory/
 
-Sampled community search themes on 2026-06-08: MathWorks
+Sampled community search themes from the 2026-06-08 qualitative pass: MathWorks
 `sliding mode control Simulink`, `PMSM FOC Simulink`, and MathWorks Motor
 Control Blockset examples; TI E2E and ST Community `PMSM FOC sensorless flux
 observer`; SimpleFOC `current loop`, `motor parameters`, and unstable FOC

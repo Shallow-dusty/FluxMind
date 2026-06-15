@@ -1,6 +1,6 @@
 # FluxMind Architecture
 
-Last updated: 2026-06-08
+Last updated: 2026-06-15
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -31,16 +31,16 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 
 - `app.py`: Streamlit UI, bilingual labels, PDF selection/upload controls, chat
   rendering, browser-translation guard, and local no-key job panel.
-- `api.py`: FastAPI request contract, token verification, metadata-only API
-  access audit and local rate-limit middleware, non-blocking retrieval warmup,
-  `/health` process liveness, and `/ready` retrieval readiness.
+- `api.py`: FastAPI request contract, constant-time token verification,
+  metadata-only API access audit and local rate-limit middleware, non-blocking
+  retrieval warmup, `/health` process liveness, and `/ready` retrieval readiness.
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
   reasoning-aware streaming, answer modes, generated-answer inspection
   metadata, and numbered citation validation.
 - `src/ingestion.py`: PDF discovery, upload name safety, PyMuPDF extraction,
   best-effort uploaded-PDF bibliographic extraction, PDF layout structure
   marker extraction, chunking, FAISS persistence, active paper selection, and
-  paper metadata refresh.
+  hardened manifest/active-selection runtime-state handling.
 - `src/metadata.py`: local JSON corpus metadata registry for selectable papers,
   bibliographic enrichment, checksums, active/indexed state, chunk counts,
   parse/index error fields, and SQLite current-state mirrors for paper and chunk
@@ -61,7 +61,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/jobs.py`: local JSONL job records, SQLite current-state and
   idempotency-claim mirrors, immediate runner, in-process background queue, and
   explicit durable worker loop for mock image generation, development-only
-  Python/Octave execution, and selected-PDF index rebuilds.
+  Python/Octave execution, selected-PDF index rebuilds, and tolerant JSONL
+  fallback recovery.
 - `src/evaluation.py`: offline RAG fixture evaluation, recorded answer
   key-term coverage, provider-error fixture checks, and citation validation
   helpers.
@@ -83,8 +84,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - FAISS local storage is simple and fast, but it is not yet a multi-user vector
   platform. Metadata, ownership, and indexing jobs should move into explicit
   storage layers before public platform use.
-- Code execution and image generation must remain provider-backed services.
-  They should not run inside the UI process or the synchronous `/query` path.
+- Code execution and image generation must remain provider-neutral job-backed
+  services. They should not run inside the UI process or the synchronous
+  `/query` path.
 - Real external provider activation is intentionally disabled until keys,
   accounts, licenses, or sandbox infrastructure are configured. Feature
   development should still proceed behind provider-neutral interfaces, local
@@ -98,18 +100,21 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 
 ## Next Architecture Step
 
-The next implementation step should split long-running work into explicit jobs:
+The long-running work boundary now exists locally. The next architecture step is
+not another process-local queue; it is moving the proven job/storage contracts
+behind production-grade metadata, object storage, and distributed worker state:
 
 ```text
 API request
-  -> create job row
-  -> worker executes parse/index/generate/run
-  -> artifacts stored by URI
-  -> UI polls or subscribes to job status
+  -> durable metadata database row
+  -> distributed worker lease/claim
+  -> provider or sandbox executes parse/index/generate/run
+  -> artifacts stored by URI in object storage
+  -> UI/API polls or subscribes to job status
 ```
 
 The first job boundary now exists as a local runner plus an in-process
-background queue:
+background queue and explicit local durable worker:
 
 ```text
 API request
@@ -275,6 +280,11 @@ flag, indexed status, chunk count, and parse/index error slots.
 The local JSON stores write through same-directory temporary files and atomic
 replace so concurrent local readers do not observe empty or partial JSON during
 metadata refreshes.
+The curated library manifest and active-paper selection loaders treat malformed
+runtime JSON as recoverable local state, constrain selections to project-local
+selectable PDFs, drop stale/duplicate entries, and write active-paper selection
+through atomic replace. The main corpus registry remains an operator-visible
+state file; it is not silently overwritten when corrupted.
 `metadata/corpus_profiles.json` stores reusable no-key local corpus profiles:
 named active-paper selections that can be listed, updated, and reactivated
 without copying PDFs or editing runtime files by hand. Chunk records include
@@ -466,6 +476,8 @@ only shows the delete button when the same config flag is enabled.
 `q` filters, and the Streamlit admin panel exposes the same event viewer for
 provider-failure, query-usage, retrieval-trace, code-execution, API-access, and
 upload-scan inspection plus retention-delete events without reading raw JSONL.
+Malformed runtime-event JSONL lines are skipped with warnings so one bad history
+line does not break the admin/event viewer path.
 Admin status also summarizes recent code execution events by code,
 status, backend, policy violations, output/artifact truncations, exported
 artifact bytes, failure rate, duration, and advisory alert codes.

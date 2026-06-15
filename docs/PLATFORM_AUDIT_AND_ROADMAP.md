@@ -56,8 +56,8 @@ coverage report --fail-under=88           pass, 88% total branch coverage
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-health_check.py HTTPS endpoints            08:21 snapshot, UI/API 200
-health_check.py SSH runtime                08:21 snapshot, services active, active_papers=11, chunks=800, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            08:32 snapshot, UI/API 200
+health_check.py SSH runtime                08:32 snapshot, services active, active_papers=11, chunks=800, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
@@ -146,7 +146,10 @@ storage state. Corpus/profile JSON writes now use atomic replace to avoid
 transient empty reads during concurrent metadata refreshes. `PUT
 /corpus/active` persists active/deactivated paper selection
 without direct runtime-file edits; an index rebuild is still required to make
-FAISS exactly match a changed selection. Admin status now reports index freshness
+FAISS exactly match a changed selection. Manifest and active-selection runtime
+JSON reads are tolerant of malformed local state, active selections are
+constrained to selectable project-local PDFs, and active-selection writes use
+atomic replace. Admin status now reports index freshness
 by comparing active paper source paths with chunk metadata source paths, so stale
 or missing index state is visible through the API. The same admin status reports
 future metadata database/object-storage readiness without SSH or exposing
@@ -652,9 +655,10 @@ blocked on product decisions.
 
 ## Near-Term Implementation Plan
 
-1. Treat `4f27651` as the current pushed/deployed no-key baseline and keep
-   `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after any
-   future release or live-state verification pass.
+1. Treat `4f27651` as the current pushed/deployed application-code baseline and
+   keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
+   any future release or live-state verification pass. Repo documentation commits
+   may be newer than the deployed application-code baseline.
 2. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend
    them when a new status or drift class is found.
 3. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 08:21 CST
+Snapshot time: 2026-06-15 08:32 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,13 +13,11 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   4f27651 fix: exclude coverage data from deploy sync
-Current remote status          main...origin/main up to date before this deployment-record refresh
-Current worktree               deployment-record refresh pending in docs/status files and tests; no runtime files tracked
-Last clean local/origin state  4f27651 fix: exclude coverage data from deploy sync
-Divergence at clean boundary   ahead 0, behind 0
-Deployed source baseline       4f27651 fix: exclude coverage data from deploy sync
-Deployment record follow-up    this docs refresh after 2026-06-15 08:21 live verification
+Verified repo baseline         3b8ecd7 docs: record runtime hardening deployment
+Remote status at verification  main...origin/main up to date before this docs refresh
+Current docs refresh scope     docs/status/test-guard updates only; no application-code changes
+Last deployed app baseline     4f27651 fix: exclude coverage data from deploy sync
+Live verification follow-up    read-only checks refreshed on 2026-06-15 08:32 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -52,7 +50,7 @@ The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
 This formerly in-progress local work is now committed, pushed to `origin/main`
-through `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
+through application baseline `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
@@ -430,10 +428,32 @@ authenticated /corpus/status smoke                                     pass; pap
                                                                         index=fresh
 ```
 
+Documentation sweep on 2026-06-15 08:32 CST:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+git status --short --branch                                             main...origin/main clean at
+                                                                        3b8ecd7 before docs edits
+.venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
+                                                                        returned 200
+.venv/bin/python scripts/health_check.py --ssh-host ...                pass; services active,
+                                                                        active_papers=11,
+                                                                        chunk_metadata_rows=800,
+                                                                        index fresh
+authenticated /corpus/status smoke                                     pass; papers=11, active=11,
+                                                                        indexed=11, chunks=800,
+                                                                        index=fresh
+GitHub API competitor snapshot                                         refreshed for market doc
+scope                                                                  docs/status/test guards only;
+                                                                        deployed app code remains
+                                                                        4f27651
+```
+
 ## Latest Deployment Snapshot
 
 The latest live deployment snapshot was refreshed after guarded deploy and
-post-restart verification on 2026-06-15 08:21 CST in
+post-restart verification plus read-only recheck on 2026-06-15 08:32 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
@@ -477,6 +497,8 @@ Disk                /dev/vda3 40G total, 21G free, 46% used
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
   the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
   deploy-exclude slices are verified, committed, pushed to `origin/main` through
-  `4f27651`, deployed to Trace-Twin, and post-restart verified.
+  application baseline `4f27651`, deployed to Trace-Twin, and post-restart
+  verified. Documentation commits may be newer than the deployed application-code
+  baseline.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.
