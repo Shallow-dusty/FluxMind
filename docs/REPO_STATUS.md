@@ -53,7 +53,7 @@ This formerly in-progress local work is now committed, pushed to `origin/main`
 through application baseline `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
-50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
+65-question no-LLM retrieval gate: 25 answer cases, 25 recorded answers, and 40
 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
 implementation and code-generation report exports, plus the first local Python
@@ -287,11 +287,11 @@ Command                                                                 Result
                                                                         /tmp/fluxmind-storage-schema-cli.json
 .venv/bin/python scripts/storage_schema.py --format markdown --output.. pass, Markdown at
                                                                         /tmp/fluxmind-storage-schema-cli.md
-.venv/bin/python scripts/evaluate_rag.py                               pass, 20 answer cases,
-                                                                        30 retrieval-only cases,
-                                                                        4 code-output cases,
-                                                                        6 PDF structure cases,
-                                                                        20 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                               pass, 25 answer cases,
+                                                                        40 retrieval-only cases,
+                                                                        6 code-output cases,
+                                                                        9 PDF structure cases,
+                                                                        25 recorded answers
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...        pass, no-secret JSON report
                                                                         at /tmp/fluxmind-eval-report-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...         pass, no-secret manifest at

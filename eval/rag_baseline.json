@@ -332,6 +332,88 @@
         "running",
         "succeeded"
       ]
+    },
+    {
+      "id": "python-asmo-error-envelope-summary",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,position_error_rad,speed_error_rpm', '0.0,0.08,22', '0.1,0.04,12', '0.2,0.01,3']\nPath('asmo_error_envelope.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('asmo_report.txt').write_text('adaptive-gain SMO precise compensation eval: position and speed error envelope', encoding='utf-8')\nprint('fluxmind-asmo-error-envelope asmo_error_envelope.csv asmo_report.txt')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-asmo-error-envelope",
+        "asmo_error_envelope.csv",
+        "asmo_report.txt"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "asmo_error_envelope.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 60,
+          "contains": "time_s,position_error_rad,speed_error_rpm"
+        },
+        {
+          "title": "asmo_report.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 40,
+          "contains": "adaptive-gain SMO precise compensation eval"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "python-mras-flux-linkage-summary",
+      "language": "python",
+      "execution_mode": "local_job",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nPath('mras_flux_summary.txt').write_text('MRAS flux linkage observer eval: adaptive rotor flux estimate and speed fluctuation summary', encoding='utf-8')\nPath('mras_flux_trace.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>MRAS flux linkage trace</text></svg>', encoding='utf-8')\nprint('fluxmind-mras-flux-linkage mras_flux_summary.txt mras_flux_trace.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-mras-flux-linkage",
+        "mras_flux_summary.txt",
+        "mras_flux_trace.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "mras_flux_summary.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 50,
+          "contains": "MRAS flux linkage observer eval"
+        },
+        {
+          "title": "mras_flux_trace.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 50,
+          "contains": "MRAS flux linkage trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_job_status": "succeeded",
+      "expected_job_metadata": {
+        "kind": "code_execution",
+        "attempts": "1"
+      },
+      "expected_job_log_statuses": [
+        "running",
+        "succeeded"
+      ]
     }
   ],
   "pdf_structure_cases": [
@@ -376,6 +458,27 @@
       "page": 8,
       "kind": "figure",
       "contains": "Block diagram of SMO based on PLL"
+    },
+    {
+      "id": "structure-asmo-alpha-beta-model",
+      "source_path": "papers/library/liu-2023-adaptive-gain-smo-pmsm.pdf",
+      "page": 3,
+      "kind": "equation",
+      "contains": "The mathematical model of a PMSM in the"
+    },
+    {
+      "id": "structure-super-twisting-observer-diagram",
+      "source_path": "papers/library/zhao-2021-super-twisting-smo-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "Block diagram of the improved super-twisting SMO"
+    },
+    {
+      "id": "structure-mras-parallel-diagram",
+      "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+      "page": 3,
+      "kind": "figure",
+      "contains": "Parallel MRAS structure diagram"
     }
   ],
   "cases": [
@@ -910,6 +1013,141 @@
       "minimum_answer_term_coverage": 0.75,
       "live_required_answer_terms": ["MATLAB", "Octave", "state", "plot"],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "adaptive-gain-smo-compensation-checklist",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "precise compensation", "sensorless control"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode", "paper_to_code"],
+      "question": "What checklist should FluxMind use before recommending an adaptive-gain SMO with precise compensation?",
+      "expected_refs": [
+        {
+          "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "source_path": "papers/library/liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "An Adaptive-Gain Sliding Mode Observer with Precise Compensation for Sensorless Control of PMSM"
+        },
+        {
+          "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "source_path": "papers/library/liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "constant sliding-mode gain cannot cope with the chattering suppression ability at low speed"
+        }
+      ],
+      "fixture_answer": "An ASMO checklist should cite the adaptive-gain precise-compensation scope [1] and the constant-gain low-speed chattering limitation [2].",
+      "recorded_answer": "Before recommending an adaptive-gain SMO, FluxMind should ask for speed range, expected chattering level, whether a continuous switching function is used, stability-margin assumptions, delay compensation, and validation plots. The source frames the method as an adaptive-gain SMO with precise compensation [1] and motivates it by the constant-gain tradeoff between low-speed chattering and high-speed stability [2].",
+      "required_answer_terms": ["adaptive-gain", "chattering", "compensation", "stability"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["adaptive", "chattering", "compensation", "speed"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "super-twisting-smo-disturbance-tracking",
+      "answer_mode": "literature_review",
+      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "parameter disturbance", "sensorless control"],
+      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "question": "When should a super-twisting SMO be considered for PMSM sensorless control with parameter disturbances?",
+      "expected_refs": [
+        {
+          "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
+          "source_path": "papers/library/zhao-2021-super-twisting-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "track parameter disturbances online"
+        },
+        {
+          "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
+          "source_path": "papers/library/zhao-2021-super-twisting-smo-pmsm.pdf",
+          "page": 3,
+          "snippet": "only one super-twisting sliding mode observer is designed"
+        }
+      ],
+      "fixture_answer": "The answer should cite online disturbance tracking [1] and the single-observer simplification claim [2].",
+      "recorded_answer": "A super-twisting SMO path is most relevant when the PMSM sensorless-control problem includes parameter disturbances, chattering pressure, and a need to estimate rotor position and speed without adding multiple observers. The cited paper states that the observer can track parameter disturbances online [1] and emphasizes using one super-twisting SMO to estimate position, speed, and disturbances [2].",
+      "required_answer_terms": ["super-twisting", "parameter disturbances", "position", "speed"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["super", "disturbance", "position", "speed"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "sta-smo-adaptive-parameter-mismatch",
+      "answer_mode": "explanation",
+      "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "adaptive parameters", "parameter mismatch"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "failure_mode"],
+      "question": "How should FluxMind explain the role of adaptive parameter estimation in an STA-SMO for IPMSM?",
+      "expected_refs": [
+        {
+          "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "source_path": "papers/library/liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "page": 1,
+          "snippet": "parameter mismatches are considered"
+        },
+        {
+          "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "source_path": "papers/library/liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "page": 3,
+          "snippet": "adaptive parameter estimation controller (APEC) in conjunction with a sliding mode observer"
+        }
+      ],
+      "fixture_answer": "The explanation should tie parameter-mismatch motivation [1] to the APEC plus STA-SMO architecture [2].",
+      "recorded_answer": "FluxMind should explain adaptive parameter estimation as a way to keep IPMSM sensorless estimates robust when resistance or inductance mismatch would distort back-EMF estimation. The source explicitly considers parameter mismatches [1] and combines an adaptive parameter estimation controller with an STA-SMO to reduce chattering and improve observation accuracy [2].",
+      "required_answer_terms": ["adaptive parameter", "STA-SMO", "parameter mismatch", "back-EMF"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["adaptive", "parameter", "mismatch", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "switching-function-boundary-layer-selection",
+      "answer_mode": "derivation",
+      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "chattering"],
+      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "question": "What tradeoff should be preserved when translating SMO switching-function choices into code?",
+      "expected_refs": [
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "If the boundary layer is narrow the approaching speed of the sliding-mode motion increases"
+        },
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "reduces the robustness of the control system"
+        }
+      ],
+      "fixture_answer": "A code translation should preserve the narrow-boundary speed/chattering tradeoff [1] and the wide-boundary robustness tradeoff [2].",
+      "recorded_answer": "When translating SMO switching functions into code, preserve the boundary-layer tradeoff: a narrow boundary can increase the approaching speed but increase chattering and harmonic distortion [1], while a wider boundary suppresses chattering but can reduce robustness [2]. The code report should therefore expose the shape coefficient or boundary setting instead of hiding it as a magic constant.",
+      "required_answer_terms": ["boundary", "chattering", "robustness", "shape coefficient"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["boundary", "chattering", "robust", "switching"],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "mras-flux-linkage-adaptation-card",
+      "answer_mode": "implementation",
+      "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "sensorless control"],
+      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "question": "What should FluxMind ask when evaluating an MRAS flux-linkage observer for PMSM control?",
+      "expected_refs": [
+        {
+          "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "parameter-adaptive flux linkage model using MRAS"
+        },
+        {
+          "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "rotor flux linkage value identified by the MRAS is fed into the nonlinear flux linkage model"
+        }
+      ],
+      "fixture_answer": "The intake should cite the MRAS adaptive flux-linkage model [1] and the feedback path into the nonlinear flux-linkage model [2].",
+      "recorded_answer": "For an MRAS flux-linkage observer, FluxMind should ask which parameter is being identified, whether rotor flux linkage changes with temperature or current, how the identified flux value feeds the nonlinear observer, and what low-speed or load-mutation evidence exists. The source introduces a parameter-adaptive flux-linkage model using MRAS [1] and feeds the identified rotor flux linkage into the nonlinear flux-linkage model [2].",
+      "required_answer_terms": ["MRAS", "flux linkage", "parameter", "nonlinear observer"],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": ["MRAS", "flux", "parameter", "observer"],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "retrieval_only_cases": [
@@ -1330,6 +1568,146 @@
           "source_path": "papers/library/nguyen-2021-chattering-attenuated-tsmc.pdf",
           "page": 3,
           "snippet": "comparative simulation studies"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-asmo-precise-compensation-title",
+      "question": "Retrieve the adaptive-gain SMO with precise compensation source for PMSM sensorless control.",
+      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "precise compensation", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "source_path": "papers/library/liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "An Adaptive-Gain Sliding Mode Observer with Precise Compensation for Sensorless Control of PMSM"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-asmo-constant-gain-limitation",
+      "question": "Retrieve the ASMO paper's constant-gain limitation for low-speed chattering and high-speed stability.",
+      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "chattering", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "source_path": "papers/library/liu-2023-adaptive-gain-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "constant sliding-mode gain cannot cope with the chattering suppression ability at low speed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-super-twisting-disturbance-tracking",
+      "question": "Retrieve the super-twisting SMO claim about online parameter-disturbance tracking.",
+      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "parameter disturbance", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
+          "source_path": "papers/library/zhao-2021-super-twisting-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "track parameter disturbances online"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-super-twisting-single-observer",
+      "question": "Retrieve the super-twisting SMO passage about using one observer instead of multiple observers.",
+      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "observer simplification", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
+          "source_path": "papers/library/zhao-2021-super-twisting-smo-pmsm.pdf",
+          "page": 3,
+          "snippet": "only one super-twisting sliding mode observer is designed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sta-smo-parameter-mismatches",
+      "question": "Retrieve the STA-SMO source passage where parameter mismatches are considered.",
+      "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "parameter mismatch", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "source_path": "papers/library/liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "page": 1,
+          "snippet": "parameter mismatches are considered"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-sta-smo-apec-architecture",
+      "question": "Retrieve the STA-SMO paper's adaptive parameter estimation controller architecture.",
+      "topic_tags": ["IPMSM", "sliding mode observer", "adaptive parameters", "parameter mismatch", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "source_path": "papers/library/liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
+          "page": 3,
+          "snippet": "adaptive parameter estimation controller (APEC) in conjunction with a sliding mode observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-switching-boundary-layer-narrow",
+      "question": "Retrieve the SMO switching-function passage about narrow boundary-layer effects.",
+      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "expected_refs": [
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "If the boundary layer is narrow the approaching speed of the sliding-mode motion increases"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-switching-boundary-layer-wide",
+      "question": "Retrieve the SMO switching-function passage about wide boundary-layer robustness tradeoffs.",
+      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "failure_mode"],
+      "expected_refs": [
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 2,
+          "snippet": "reduces the robustness of the control system"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-mras-flux-linkage-model",
+      "question": "Retrieve the MRAS parameter-adaptive flux linkage model source passage.",
+      "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "retrieval-only"],
+      "eval_lanes": ["retrieval"],
+      "expected_refs": [
+        {
+          "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "parameter-adaptive flux linkage model using MRAS"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-mras-feeds-nonlinear-flux-model",
+      "question": "Retrieve the passage where MRAS-identified rotor flux linkage feeds the nonlinear flux-linkage model.",
+      "topic_tags": ["PMSM", "flux linkage", "MRAS", "nonlinear observer", "retrieval-only"],
+      "eval_lanes": ["retrieval", "paper_to_code"],
+      "expected_refs": [
+        {
+          "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "source_path": "papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "rotor flux linkage value identified by the MRAS is fed into the nonlinear flux linkage model"
         }
       ]
     }

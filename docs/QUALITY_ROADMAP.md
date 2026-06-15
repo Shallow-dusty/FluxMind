@@ -47,23 +47,23 @@ Target       Status
 -----------  ---------------------------------------------------------------
 self_use     met by the current no-key/local baseline
 small_group  gap: corpus size and eval breadth remain; live retrieval evidence
-             is now 50/50 passing in the latest deployment run
+             is now 65/65 passing in the latest deployment run
 community    gap: mainly corpus size, live answer evidence, and coverage depth
 ```
 
-Latest measured quality snapshot on 2026-06-15 09:23 CST:
+Latest measured quality snapshot on 2026-06-15 09:38 CST:
 
 ```text
 Metric                         Current  Small-group target  Gap
 -----------------------------  -------  ------------------  ---
 seed_paper_count               11       30                  19
-answer_case_count              20       40                  20
-retrieval_only_case_count      30       60                  30
-retrieval_eval_question_count  50       100                 50
-recorded_answer_count          20       40                  20
-live_retrieval_result_count    50       50                  0
-code_output_case_count         4        8                   4
-pdf_structure_case_count       6        15                  9
+answer_case_count              25       40                  15
+retrieval_only_case_count      40       60                  20
+retrieval_eval_question_count  65       100                 35
+recorded_answer_count          25       40                  15
+live_retrieval_result_count    65       50                  0
+code_output_case_count         6        8                   2
+pdf_structure_case_count       9        15                  6
 topic_group_count              4        4                   0
 ```
 

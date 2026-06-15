@@ -46,13 +46,13 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 328 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py  pass, 20 answer cases, 30 retrieval-only
-                                             cases, 4 code-output cases,
-                                             6 PDF structure cases,
-                                             20 recorded answers
+.venv/bin/python scripts/evaluate_rag.py  pass, 25 answer cases, 40 retrieval-only
+                                             cases, 6 code-output cases,
+                                             9 PDF structure cases,
+                                             25 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
@@ -100,10 +100,10 @@ Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
-baseline now has 20 domain-trust answer cases, 20 recorded answers, and 30
-retrieval-only cases for 50 total no-LLM retrieval questions, plus four local
-Python code-output cases (two job-backed) and six seeded PDF
-equation/table/figure structure cases. The baseline gates 64 expected source/page refs, 59 topic tags,
+baseline now has 25 domain-trust answer cases, 25 recorded answers, and 40
+retrieval-only cases for 65 total no-LLM retrieval questions, plus six local
+Python code-output cases (three job-backed) and nine seeded PDF
+equation/table/figure structure cases. The baseline gates 84 expected source/page refs, 70 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports, code-output case/language/template/execution-mode/pass
@@ -112,8 +112,9 @@ that expected PDF sources/pages contain their configured snippets, checks
 retrieval-only source/page anchors without answer fixtures, checks recorded
 answers for citation validity plus deterministic key-term coverage thresholds,
 verifies that local Python code-output fixtures produce expected stdout plus
-plot/text artifacts, including the reusable `smc_reaching_law` execution
-template and one job-backed local execution path, and verifies that
+plot/text artifacts, including the reusable `smc_reaching_law` and
+`pmsm_current_step` execution templates plus job-backed local execution paths,
+and verifies that
 representative PDF pages still expose equation/table/figure markers for
 paper-to-code work.
 Retrieval now uses a local hybrid path: FAISS

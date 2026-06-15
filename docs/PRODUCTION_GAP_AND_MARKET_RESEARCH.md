@@ -43,13 +43,13 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    328 passed, 2 known warnings
+pytest                                    332 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
-offline RAG eval                          20 answer cases, 30 retrieval-only
-                                          cases, 4 code-output cases,
-                                          6 PDF structure cases,
-                                          20 recorded answers
+offline RAG eval                          25 answer cases, 40 retrieval-only
+                                          cases, 6 code-output cases,
+                                          9 PDF structure cases,
+                                          25 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
@@ -493,31 +493,31 @@ Order  Lane                                      Why first
 - Expand the curated corpus from 11 papers to 30-50 high-quality papers.
 - Add topic tags and a control-engineering ontology: SMC, FOC, PMSM, SMO,
   observers, flux estimation, chattering, discretization, parameter tuning.
-- Create 50 retrieval-only eval questions and 20 recorded-answer eval cases.
+- Create at least 60 retrieval-only eval questions and 40 recorded-answer eval cases for the small-group bar.
 - Add equation/table/figure extraction acceptance tests for representative PDFs.
 - Add code-output evals where Python/Octave examples must run and produce plots.
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
 
-Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 20
-offline/recorded answer cases and 30 retrieval-only cases, for 50 total no-LLM
-retrieval questions. The baseline gates 64 source/page refs and 59 topic tags
+Current progress on 2026-06-15: the no-key baseline has advanced from 5 to 25
+offline/recorded answer cases and 40 retrieval-only cases, for 65 total no-LLM
+retrieval questions. The baseline gates 84 source/page refs and 70 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
-three local Python code-output gates that verify expected stdout plus plot/text
+six local Python code-output gates that verify expected stdout plus plot/text
 artifacts in a temporary artifact store, including reusable execution-template
-coverage plus one local job-backed execution path. The evaluator also has six
+coverage plus three local job-backed execution paths. The evaluator also has nine
 seeded PDF structure gates for equation/table/figure markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
 anchors as a Markdown handoff report. `POST /query/report` now adds a local
 paper-to-code handoff for implementation and code-generation reports, including
 source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
-IDs, and validation checklist fields. The 20 recorded-answer target, 50
-retrieval-question target, first equation/table/figure extraction acceptance
-cases, first paper-to-code export shape, and first local Python code-output
-gates are now met; the next content-scale milestone is corpus growth from 11 bundled
-seed papers toward the 30-50 curated-paper target plus richer PDF layout extraction,
-broader Octave, and additional job-attached code-output evals. The 2026-06-15 seed
+IDs, and validation checklist fields. The self-use target is met; the small-group
+target still needs corpus growth from 11 bundled seed papers toward 30 curated
+papers, plus 15 more answer/recorded-answer cases, 20 more retrieval-only cases,
+35 more total retrieval questions, 2 more code-output cases, and 6 more PDF
+structure cases. Broader Octave execution remains deferred until an Octave binary
+is available in CI/runtime. The 2026-06-15 seed
 library expansion adds adaptive-gain SMO, super-twisting SMO, switching-function
 comparison, adaptive-parameter IPMSM, and MRAS flux-linkage observer coverage.
 

@@ -92,21 +92,21 @@ BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
 metadata-only retrieval trace events/admin summaries/metrics and local
 retrieval-quality advisory alerts,
-retrieval-only source/page cases, four local Python code-output artifact cases
-(two of them job-backed) across the `smc_reaching_law` and `pmsm_current_step`
-templates, six seeded PDF equation/table/figure structure extraction acceptance
-cases, optional JSON eval report export, and aggregate eval-set regression gates
-implemented. The baseline now has a 20-case domain-trust intermediate gate with
-20 recorded answers plus 30 retrieval-only cases for 50 total no-LLM retrieval
-questions. It gates 64 expected source/page refs, topic-tag coverage,
+retrieval-only source/page cases, six local Python code-output artifact cases
+(three of them job-backed) across the `smc_reaching_law` and `pmsm_current_step`
+templates plus paper-specific local fixtures, nine seeded PDF equation/table/figure
+structure extraction acceptance cases, optional JSON eval report export, and
+aggregate eval-set regression gates implemented. The baseline now has a 25-case
+domain-trust intermediate gate with 25 recorded answers plus 40 retrieval-only
+cases for 65 total no-LLM retrieval questions. It gates 84 expected source/page refs, topic-tag coverage,
 ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
 equation fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports; external/service reranking plus richer PDF layout
 extraction and broader Octave *execution* eval (blocked on an Octave binary in
 CI/runtime) remain planned.
 
-- `eval/rag_baseline.json` contains a 20-case control-engineering answer
-  evaluation set plus 30 retrieval-only source/page cases, with a small domain
+- `eval/rag_baseline.json` contains a 25-case control-engineering answer
+  evaluation set plus 40 retrieval-only source/page cases, with a small domain
   ontology for SMC, PMSM/FOC, observer/estimation, and implementation-trust
   groups.
 - Answer cases record expected source papers/pages, fixture snippets, recorded
