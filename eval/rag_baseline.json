@@ -496,6 +496,148 @@
         "running",
         "succeeded"
       ]
+    },
+    {
+      "id": "python-paper-to-code-smdo-envelope",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,disturbance_estimate,compensation_voltage', '0.0,0.00,0.00', '0.1,0.24,0.18', '0.2,0.31,0.23']\nPath('smdo_envelope.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('paper_to_code_smdo_report.txt').write_text('paper-to-code SMDO report: source refs, disturbance observer assumption, feedforward compensation, plot validation', encoding='utf-8')\nPath('smdo_trace.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>SMDO paper-to-code trace</text></svg>', encoding='utf-8')\nprint('fluxmind-paper-to-code-smdo smdo_envelope.csv paper_to_code_smdo_report.txt smdo_trace.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-paper-to-code-smdo",
+        "smdo_envelope.csv",
+        "paper_to_code_smdo_report.txt",
+        "smdo_trace.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "smdo_envelope.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 80,
+          "contains": "time_s,disturbance_estimate,compensation_voltage"
+        },
+        {
+          "title": "paper_to_code_smdo_report.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 80,
+          "contains": "paper-to-code SMDO report"
+        },
+        {
+          "title": "smdo_trace.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 60,
+          "contains": "SMDO paper-to-code trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "python-paper-to-code-leso-prescribed-performance",
+      "language": "python",
+      "execution_mode": "local_job",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,tracking_error,performance_bound,leso_estimate', '0.0,0.42,0.50,0.00', '0.1,0.18,0.31,0.21', '0.2,0.05,0.18,0.27']\nPath('leso_prescribed_performance.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('leso_prescribed_report.txt').write_text('paper-to-code LESO prescribed-performance report: error envelope, observer estimate, finite-time sliding surface', encoding='utf-8')\nPath('leso_prescribed_trace.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>LESO prescribed performance trace</text></svg>', encoding='utf-8')\nprint('fluxmind-paper-to-code-leso leso_prescribed_performance.csv leso_prescribed_report.txt leso_prescribed_trace.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-paper-to-code-leso",
+        "leso_prescribed_performance.csv",
+        "leso_prescribed_report.txt",
+        "leso_prescribed_trace.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "leso_prescribed_performance.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 90,
+          "contains": "time_s,tracking_error,performance_bound,leso_estimate"
+        },
+        {
+          "title": "leso_prescribed_report.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 80,
+          "contains": "paper-to-code LESO prescribed-performance report"
+        },
+        {
+          "title": "leso_prescribed_trace.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 60,
+          "contains": "LESO prescribed performance trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_job_status": "succeeded",
+      "expected_job_metadata": {
+        "kind": "code_execution",
+        "attempts": "1"
+      },
+      "expected_job_log_statuses": [
+        "running",
+        "succeeded"
+      ]
+    },
+    {
+      "id": "python-paper-to-code-smpc-current-loop",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,iq_ref,iq_pred,sliding_surface', '0.0,3.0,0.0,3.0', '0.1,3.0,2.4,0.6', '0.2,3.0,2.9,0.1']\nPath('smpc_current_loop.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('smpc_current_loop_report.txt').write_text('paper-to-code SMPC current-loop report: model predictive current, sliding surface, q-axis tracking plot', encoding='utf-8')\nPath('smpc_current_loop.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>SMPC current-loop trace</text></svg>', encoding='utf-8')\nprint('fluxmind-paper-to-code-smpc smpc_current_loop.csv smpc_current_loop_report.txt smpc_current_loop.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-paper-to-code-smpc",
+        "smpc_current_loop.csv",
+        "smpc_current_loop_report.txt",
+        "smpc_current_loop.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "smpc_current_loop.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 80,
+          "contains": "time_s,iq_ref,iq_pred,sliding_surface"
+        },
+        {
+          "title": "smpc_current_loop_report.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 80,
+          "contains": "paper-to-code SMPC current-loop report"
+        },
+        {
+          "title": "smpc_current_loop.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 60,
+          "contains": "SMPC current-loop trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
     }
   ],
   "pdf_structure_cases": [
@@ -610,6 +752,13 @@
       "page": 7,
       "kind": "table",
       "contains": "The sliding mode reaching law parameters"
+    },
+    {
+      "id": "structure-zhang-dsmo-disturbance-algorithm",
+      "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+      "page": 8,
+      "kind": "algorithm",
+      "contains": "Algorithm 1 Disturbance Estimation Based on Sliding Mode Observer"
     }
   ],
   "cases": [
@@ -1578,6 +1727,388 @@
         "validation"
       ],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "integrated-smc-dob-lpf-control-scope",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "disturbance observer",
+        "low-pass filter",
+        "speed regulation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode",
+        "paper_to_code"
+      ],
+      "question": "How should FluxMind frame an integrated SMC plus disturbance-observer and low-pass-filter speed regulator for PMSM drives?",
+      "expected_refs": [
+        {
+          "source": "tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "source_path": "papers/library/tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "page": 1,
+          "snippet": "Integrated Sliding Mode Control for Permanent Magnet Synchronous Motor Drives Based on Second-Order Disturbance Observer and Low-Pass Filter"
+        },
+        {
+          "source": "tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "source_path": "papers/library/tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "page": 1,
+          "snippet": "improved control strategy"
+        }
+      ],
+      "fixture_answer": "The implementation framing should cite the integrated SMC/DOB/LPF paper scope [1] and its improved-control motivation [2].",
+      "recorded_answer": "FluxMind should frame this as an integrated speed-regulation design, not as a standalone SMC block. The paper scope is an integrated sliding-mode controller with a second-order disturbance observer and low-pass filter [1], and the motivation is an improved control strategy for PMSM speed regulation [2].",
+      "required_answer_terms": [
+        "integrated",
+        "disturbance observer",
+        "low-pass filter",
+        "speed"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "integrated",
+        "observer",
+        "filter",
+        "speed"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "second-order-adaptive-smo-sensorless-check",
+      "answer_mode": "explanation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "super twisting",
+        "position-sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
+      "question": "What should FluxMind verify before using a second-order adaptive SMO result for PMSM sensorless control?",
+      "expected_refs": [
+        {
+          "source": "yao-2023-second-order-adaptive-smo-pmsm.pdf",
+          "source_path": "papers/library/yao-2023-second-order-adaptive-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "Study on a Second-Order Adaptive Sliding-Mode Observer Control Algorithm for the Sensorless Permanent Magnet Synchronous Motor"
+        },
+        {
+          "source": "yao-2023-second-order-adaptive-smo-pmsm.pdf",
+          "source_path": "papers/library/yao-2023-second-order-adaptive-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "second-order adaptive sliding-mode observer algorithm is more suitable for the position-sensorless control of a PMSM"
+        }
+      ],
+      "fixture_answer": "The check should cite the second-order adaptive SMO paper scope [1] and the position-sensorless suitability claim [2].",
+      "recorded_answer": "FluxMind should verify that the motor case is actually position-sensorless, that the observer gains and super-twisting assumptions match the reported setup, and that speed/position estimation is the target. The source is a second-order adaptive sliding-mode observer control algorithm for sensorless PMSM control [1] and explicitly frames it as suitable for position-sensorless PMSM control [2].",
+      "required_answer_terms": [
+        "second-order",
+        "sensorless",
+        "observer",
+        "position"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "second-order",
+        "sensorless",
+        "observer",
+        "position"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "fast-terminal-smpc-reaching-law",
+      "answer_mode": "derivation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "model predictive control",
+        "reaching law",
+        "speed regulation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
+      "question": "What derivation boundary should FluxMind keep when summarizing fast terminal sliding-mode predictive speed control for PMSM drives?",
+      "expected_refs": [
+        {
+          "source": "kong-2024-fast-terminal-smpc-pmsm.pdf",
+          "source_path": "papers/library/kong-2024-fast-terminal-smpc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Fast Terminal Sliding-Mode Predictive Speed Controller for Permanent-Magnet Synchronous Motor Drive Systems"
+        },
+        {
+          "source": "kong-2024-fast-terminal-smpc-pmsm.pdf",
+          "source_path": "papers/library/kong-2024-fast-terminal-smpc-pmsm.pdf",
+          "page": 1,
+          "snippet": "predefined sliding-mode reaching law"
+        }
+      ],
+      "fixture_answer": "The derivation should cite the predictive speed-controller scope [1] and the predefined reaching-law boundary [2].",
+      "recorded_answer": "FluxMind should keep the derivation tied to the predictive speed-controller structure and the declared sliding surface/reaching-law assumptions. The paper is specifically about a fast terminal sliding-mode predictive speed controller for PMSM drives [1], and its sliding state follows a predefined sliding-mode reaching law [2].",
+      "required_answer_terms": [
+        "predictive",
+        "speed",
+        "reaching law",
+        "sliding"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "predictive",
+        "speed",
+        "reaching",
+        "sliding"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "model-free-gsta-disturbance-observer",
+      "answer_mode": "literature_review",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "super twisting",
+        "terminal sliding mode control",
+        "disturbance observer"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code",
+        "failure_mode"
+      ],
+      "question": "What should FluxMind surface when comparing model-free generalized super-twisting FTSMC against observer-assisted PMSM controllers?",
+      "expected_refs": [
+        {
+          "source": "ma-2025-model-free-gsta-ftsmc-pmsm.pdf",
+          "source_path": "papers/library/ma-2025-model-free-gsta-ftsmc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Model-Free Generalized Super-Twisting Fast Terminal Sliding Mode Control for Permanent Magnet Synchronous Motors"
+        },
+        {
+          "source": "ma-2025-model-free-gsta-ftsmc-pmsm.pdf",
+          "source_path": "papers/library/ma-2025-model-free-gsta-ftsmc-pmsm.pdf",
+          "page": 1,
+          "snippet": "extended sliding mode disturbance observer"
+        }
+      ],
+      "fixture_answer": "The comparison should cite the model-free GSTA/FTSMC controller scope [1] and its extended sliding-mode disturbance observer [2].",
+      "recorded_answer": "FluxMind should surface that this is a model-free generalized super-twisting fast terminal sliding-mode controller, then separate the terminal sliding surface, ultra-local model assumptions, and observer compensation path. The paper title anchors the controller family [1], and it also uses an extended sliding-mode disturbance observer [2].",
+      "required_answer_terms": [
+        "model-free",
+        "super-twisting",
+        "terminal",
+        "observer"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "model-free",
+        "super",
+        "terminal",
+        "observer"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "fractional-super-twisting-smdo-speed-control",
+      "answer_mode": "literature_review",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "sliding mode disturbance observer",
+        "fractional-order control",
+        "chattering"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
+      "question": "How should FluxMind explain the tradeoff in fractional-order super-twisting SMDO speed control for PMSM drives?",
+      "expected_refs": [
+        {
+          "source": "ullah-2024-fractional-super-twisting-smdo-pmsm.pdf",
+          "source_path": "papers/library/ullah-2024-fractional-super-twisting-smdo-pmsm.pdf",
+          "page": 1,
+          "snippet": "Variable-Gain Fractional-Order Super-Twisting Sliding-Mode Control"
+        },
+        {
+          "source": "ullah-2024-fractional-super-twisting-smdo-pmsm.pdf",
+          "source_path": "papers/library/ullah-2024-fractional-super-twisting-smdo-pmsm.pdf",
+          "page": 1,
+          "snippet": "sliding-mode control method to mitigate chattering"
+        }
+      ],
+      "fixture_answer": "The explanation should cite the variable-gain fractional super-twisting SMC scope [1] and the chattering-mitigation motivation [2].",
+      "recorded_answer": "FluxMind should explain that the method adds fractional-order and variable-gain super-twisting structure to a PMSM speed controller, so the promise is robustness and chattering mitigation while the risk is extra tuning complexity. The source names the variable-gain fractional-order super-twisting sliding-mode control family [1] and states that sliding-mode control is used to mitigate chattering [2].",
+      "required_answer_terms": [
+        "fractional",
+        "super-twisting",
+        "chattering",
+        "tuning"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "fractional",
+        "super",
+        "chattering",
+        "tuning"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "iftsm-adaptive-reaching-law-disturbance",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "terminal sliding mode control",
+        "adaptive reaching law",
+        "disturbance rejection"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "failure_mode"
+      ],
+      "question": "What implementation notes should FluxMind require for an IFTSM controller with a novel adaptive reaching law?",
+      "expected_refs": [
+        {
+          "source": "hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "source_path": "papers/library/hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "Research on Speed Control of Permanent Magnet Synchronous Motor Based on Improved Fast Terminal Sliding Mode with Adaptive Control Law"
+        },
+        {
+          "source": "hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "source_path": "papers/library/hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "improved fast terminal sliding mode (IFTSM) surface with a novel adaptive reaching law (NARL) is proposed"
+        }
+      ],
+      "fixture_answer": "The implementation note should cite the IFTSM/adaptive-control paper scope [1] and the IFTSM plus NARL design claim [2].",
+      "recorded_answer": "FluxMind should require the IFTSM surface definition, adaptive reaching-law parameters, disturbance assumptions, finite-time convergence claim, and validation load cases before turning this into code. The paper is about PMSM speed control with improved fast terminal sliding mode and adaptive control law [1], and it proposes an IFTSM surface with a novel adaptive reaching law [2].",
+      "required_answer_terms": [
+        "IFTSM",
+        "adaptive",
+        "reaching law",
+        "disturbance"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "adaptive",
+        "reaching",
+        "disturbance",
+        "terminal"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "ceso-composite-smc-anti-interference",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "extended state observer",
+        "anti-interference",
+        "speed loop"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code",
+        "failure_mode"
+      ],
+      "question": "What anti-interference details should FluxMind preserve for a CESO-based composite SMC PMSM speed loop?",
+      "expected_refs": [
+        {
+          "source": "xu-2025-ceso-composite-smc-pmsm.pdf",
+          "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Cascaded Extended State Observer-Based Composite Sliding-Mode Controller for a PMSM Speed-Loop Anti-Interference Control Strategy"
+        },
+        {
+          "source": "xu-2025-ceso-composite-smc-pmsm.pdf",
+          "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "cascaded extended state observer (CESO) with a special cascade structure is proposed"
+        }
+      ],
+      "fixture_answer": "The handoff should cite the CESO composite-SMC speed-loop scope [1] and the special cascade-observer structure [2].",
+      "recorded_answer": "FluxMind should preserve the speed-loop target, composite sliding-mode controller, CESO delay/observer assumption, periodic-disturbance handling, and experimental anti-interference evidence. The paper scope is a cascaded extended-state-observer composite SMC strategy for a PMSM speed loop [1], and it proposes a CESO with a special cascade structure [2].",
+      "required_answer_terms": [
+        "CESO",
+        "speed loop",
+        "anti-interference",
+        "observer"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "CESO",
+        "speed",
+        "interference",
+        "observer"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "smpc-model-predictive-current-paper-to-code",
+      "answer_mode": "code_generation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "model predictive current",
+        "current loop",
+        "paper-to-code"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "code_generation",
+        "paper_to_code"
+      ],
+      "question": "What should a paper-to-code scaffold preserve for sliding-mode speed control based on model predictive current?",
+      "expected_refs": [
+        {
+          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "page": 1,
+          "snippet": "Sliding Mode Speed Control for PMSM Based on Model Predictive Current"
+        },
+        {
+          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "page": 1,
+          "snippet": "model predictive current"
+        }
+      ],
+      "fixture_answer": "The scaffold should cite the sliding-mode/model-predictive-current paper scope [1] and preserve the model predictive current boundary [2].",
+      "recorded_answer": "A paper-to-code scaffold should preserve the speed-loop objective, the sliding surface, the model predictive current step, motor parameters, current-loop constraints, and generated q-axis tracking plots. The source anchors the method as sliding-mode speed control for PMSM based on model predictive current [1] and uses the model predictive current boundary directly [2].",
+      "required_answer_terms": [
+        "paper-to-code",
+        "predictive current",
+        "sliding surface",
+        "plots"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "paper",
+        "predictive",
+        "current",
+        "plot"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "retrieval_only_cases": [
@@ -2414,6 +2945,156 @@
           "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
           "page": 1,
           "snippet": "Comparative simulations via Matlab/Simulink 2018 are conducted"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-prescribed-performance-leso-scope",
+      "question": "Retrieve the prescribed-performance global nonsingular fast terminal SMC and LESO scope statement.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "terminal sliding mode control",
+        "linear extended state observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
+      "expected_refs": [
+        {
+          "source": "yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "source_path": "papers/library/yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "page": 1,
+          "snippet": "Prescribed Performance Global Non-Singular Fast Terminal Sliding Mode Control of PMSM Based on Linear Extended State Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ismo-antidisturbance-compensator",
+      "question": "Retrieve the improved sliding mode disturbance observer feed-forward compensator statement.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "anti-disturbance",
+        "fuzzy control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "du-2023-ismo-antidisturbance-pmsm.pdf",
+          "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+          "page": 1,
+          "snippet": "improved sliding mode disturbance observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-frontiers-smo-pll-chattering",
+      "question": "Retrieve the Frontiers SMO statement about reducing chattering with a PLL-based observer.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "PLL",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "liu-2022-frontiers-smo-sensorless-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-frontiers-smo-sensorless-pmsm.pdf",
+          "page": 1,
+          "snippet": "reduce the chattering caused by the discontinuity"
+        },
+        {
+          "source": "liu-2022-frontiers-smo-sensorless-pmsm.pdf",
+          "source_path": "papers/library/liu-2022-frontiers-smo-sensorless-pmsm.pdf",
+          "page": 1,
+          "snippet": "phase-locked loop (PLL)"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-frontiers-piecewise-power-smo-chattering",
+      "question": "Retrieve the Frontiers piecewise-power SMO chattering-suppression scope.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "chattering suppression",
+        "piecewise power function",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "source_path": "papers/library/li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "piecewise power function"
+        },
+        {
+          "source": "li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "source_path": "papers/library/li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "permanent magnet synchronous motor"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-integrated-smc-dob-lpf-low-pass",
+      "question": "Retrieve the integrated SMC paper title and low-pass-filter anchor.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "disturbance observer",
+        "low-pass filter",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "source_path": "papers/library/tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+          "page": 1,
+          "snippet": "low-pass filter"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ceso-special-cascade-structure",
+      "question": "Retrieve the CESO special cascade-structure statement for PMSM speed-loop anti-interference control.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "extended state observer",
+        "anti-interference",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "xu-2025-ceso-composite-smc-pmsm.pdf",
+          "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "cascaded extended state observer (CESO) with a special cascade structure is proposed"
         }
       ]
     }

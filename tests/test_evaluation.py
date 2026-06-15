@@ -521,7 +521,8 @@ def test_default_quality_maturity_targets_mark_self_use_met_and_future_gaps():
     by_id = {target["id"]: target for target in targets}
     assert by_id["self_use"]["ok"]
     assert by_id["small_group"]["status"] == "gap"
-    assert "seed_paper_count" in by_id["small_group"]["missing_metrics"]
+    assert "live_retrieval_result_count" in by_id["small_group"]["missing_metrics"]
+    assert "seed_paper_count" not in by_id["small_group"]["missing_metrics"]
     assert by_id["community"]["status"] == "gap"
     assert "live_answer_result_count" in by_id["community"]["missing_metrics"]
 
