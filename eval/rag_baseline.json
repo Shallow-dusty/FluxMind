@@ -627,6 +627,20 @@
           "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
         }
       ],
+      "live_expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
+        },
+        {
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
+          "page": 11,
+          "snippet": "Figure 6a shows the current plots versus time"
+        }
+      ],
       "fixture_answer": "The code-validation plan should cite the PMSM SMO context before asking for simulated currents, estimated flux, and plot artifacts [1].",
       "recorded_answer": "A Python or Octave SMO validation plan should define measured-current inputs, voltage inputs, motor parameters, observer gains, estimated flux or back-EMF outputs, and plots for current, estimation error, and switching signal. The runnable code should cite the PMSM sliding-mode observer context before claiming sensorless validity [1].",
       "required_answer_terms": ["Python", "Octave", "plots", "observer"],
@@ -733,6 +747,20 @@
           "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
           "page": 3,
           "snippet": "design of the SMO algorithm is generally based on the mathematical model in the two-phase stationary coordinate system"
+        }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "page": 3,
+          "snippet": "design of the SMO algorithm is generally based on the mathematical model in the two-phase stationary coordinate system"
+        },
+        {
+          "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
+          "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+          "page": 4,
+          "snippet": "The differences between actual and observed currents"
         }
       ],
       "fixture_answer": "A derivation should cite the two-phase stationary-coordinate SMO model before extracting voltages, currents, rotor angle, inductances, resistance, and flux terms [1].",

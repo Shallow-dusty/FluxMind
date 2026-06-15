@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 08:48 CST
+Last live check: 2026-06-15 09:23 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -94,6 +94,18 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Quality-gate sync and live retrieval evaluation were refreshed on 2026-06-15
+09:23 CST. After syncing the local quality-roadmap/eval-report changes to
+`/opt/fluxmind` without `--restart`, the server-local command
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
+--json-report /tmp/fluxmind-live-quality-report.json` passed. It scored all 50
+live retrieval cases as OK, with regression gates `24/24` OK, and wrote a
+no-secret quality report showing `self_use=met`, `small_group=gap`, and
+`community=gap`. The small-group live-retrieval metric is now met; remaining
+small-group gaps are corpus size, answer/retrieval eval breadth, recorded-answer
+count, code-output cases, and PDF-structure cases. No service restart was
+required for this eval/script sync.
 
 Read-only live checks and a no-restart documentation sync were refreshed on
 2026-06-15 08:48 CST. After pushing docs refresh `20d75e5`, `.venv/bin/python

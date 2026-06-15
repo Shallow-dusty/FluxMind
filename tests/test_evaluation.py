@@ -1059,6 +1059,56 @@ def test_regression_gates_score_live_results_when_supplied():
     }
 
 
+def test_live_scoring_can_use_explicit_live_expected_refs():
+    case = {
+        "id": "live-alternative-source",
+        "expected_refs": [
+            {"source": "offline.pdf", "source_path": "papers/library/offline.pdf", "page": 1},
+        ],
+        "live_expected_refs": [
+            {"source": "offline.pdf", "source_path": "papers/library/offline.pdf", "page": 1},
+            {"source": "live.pdf", "source_path": "papers/library/live.pdf", "page": 2},
+        ],
+        "live_required_answer_terms": ["observer"],
+        "minimum_live_answer_term_coverage": 1.0,
+    }
+
+    answer_result = evaluate_live_query_payload(
+        case,
+        {
+            "request_id": "req-live-alternative",
+            "result": {
+                "answer": "Observer answer [1].",
+                "citation_validation": {"ok": True},
+                "context_refs": [
+                    {"source_path": "papers/library/live.pdf", "page": 2},
+                ],
+            },
+        },
+    )
+    retrieval_result = evaluate_live_retrieval_payload(
+        case,
+        {
+            "request_id": "req-live-retrieval-alternative",
+            "retrieval": {
+                "ok": True,
+                "context_count": 1,
+                "context_refs": [
+                    {"source_path": "papers/library/live.pdf", "page": 2},
+                ],
+                "missing_source_page_refs": [],
+            },
+        },
+    )
+
+    assert answer_result.ok
+    assert answer_result.expected_context_coverage == 0.5
+    assert answer_result.matched_expected_source_paths == ["papers/library/live.pdf"]
+    assert retrieval_result.ok
+    assert retrieval_result.expected_context_coverage == 0.5
+    assert retrieval_result.missing_expected_source_paths == ["papers/library/offline.pdf"]
+
+
 def test_recorded_answer_gate_rejects_missing_terms_and_citations():
     result = evaluate_recorded_answer(
         {

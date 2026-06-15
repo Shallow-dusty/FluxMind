@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 328 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 332 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 20 answer cases and
@@ -33,6 +33,8 @@ Command                                                               Result
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   09:23 snapshot, 50/50 live retrieval
+                                                                      cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched

@@ -415,10 +415,11 @@ def minimum_term_coverage_for_case(case: dict[str, Any], *, live: bool = False) 
     return float(case.get("minimum_answer_term_coverage", 1.0))
 
 
-def expected_source_paths(case: dict[str, Any]) -> list[str]:
+def expected_source_paths(case: dict[str, Any], *, live: bool = False) -> list[str]:
     """Return expected source paths from an eval case."""
+    refs = case.get("live_expected_refs") if live and case.get("live_expected_refs") else case.get("expected_refs", [])
     paths = []
-    for ref in case.get("expected_refs", []):
+    for ref in refs:
         paths.append(ref.get("source_path", f"papers/library/{ref['source']}"))
     return paths
 
@@ -455,7 +456,7 @@ def evaluate_live_query_payload(
         for ref in result.get("context_refs", [])
         if ref.get("source_path")
     }
-    expected_paths = expected_source_paths(case)
+    expected_paths = expected_source_paths(case, live=True)
     matched_paths = sorted(set(expected_paths) & context_paths)
     missing_paths = sorted(set(expected_paths) - context_paths)
     expected_coverage = len(matched_paths) / len(expected_paths) if expected_paths else 1.0
@@ -515,7 +516,7 @@ def evaluate_live_retrieval_payload(
         for ref in context_refs
         if ref.get("source_path")
     }
-    expected_paths = expected_source_paths(case)
+    expected_paths = expected_source_paths(case, live=True)
     matched_paths = sorted(set(expected_paths) & context_paths)
     missing_paths = sorted(set(expected_paths) - context_paths)
     expected_coverage = len(matched_paths) / len(expected_paths) if expected_paths else 1.0
@@ -643,7 +644,7 @@ def evaluate_live_config(
                     expected_context_coverage=0.0,
                     answer_term_coverage=0.0,
                     matched_expected_source_paths=[],
-                    missing_expected_source_paths=expected_source_paths(case),
+                    missing_expected_source_paths=expected_source_paths(case, live=True),
                     matched_terms=[],
                     missing_terms=required_terms_for_case(case, live=True),
                     message=f"request_failed code={error.code} message={error.message}",
@@ -687,7 +688,7 @@ def evaluate_live_retrieval_config(
                     context_count=0,
                     expected_context_coverage=0.0,
                     matched_expected_source_paths=[],
-                    missing_expected_source_paths=expected_source_paths(case),
+                    missing_expected_source_paths=expected_source_paths(case, live=True),
                     missing_source_page_refs=[],
                     message=f"request_failed code={error.code} message={error.message}",
                 )
