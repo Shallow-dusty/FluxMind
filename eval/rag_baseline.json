@@ -851,6 +851,20 @@
           "snippet": "Persistent research gaps are identified in hardware validation"
         }
       ],
+      "live_expected_refs": [
+        {
+          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "page": 21,
+          "snippet": "NSMC controller exhibits superior tracking performance"
+        },
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 3,
+          "snippet": "parameter adjustment of the PI controller used is very time-consuming"
+        }
+      ],
       "fixture_answer": "An implementation answer should turn the PMSM SMC review's hardware-validation and real-time tuning gaps into a deployment checklist [1].",
       "recorded_answer": "A PMSM SMC implementation checklist should verify sensor and sampling assumptions, switching or higher-order SMC behavior, disturbance robustness, hardware validation, energy-efficiency measurement, and real-time tuning before deployment [1]. It should also record operating envelopes and failure cases so controller claims are not limited to simulation.",
       "required_answer_terms": ["implementation", "hardware validation", "real-time tuning", "robustness"],
