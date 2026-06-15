@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-15 04:23 CST
+Last live check: 2026-06-15 08:21 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,8 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last pushed source baseline before this deployment record: `391ac7f`
-(`test: harden coverage and expand seed corpus`). `/opt/fluxmind` is not a
+Last pushed source baseline before this deployment record: `4f27651`
+(`fix: exclude coverage data from deploy sync`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash.
 
@@ -94,27 +94,30 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
+Live checks refreshed on 2026-06-15 08:21 CST after pushing `main` through
+`4f27651`, deploying the runtime-state parsing hardening and the `.coverage`
+deploy-sync exclude with `.venv/bin/python scripts/deploy_sync.py --apply
+--restart`. The deploy sync excludes `.env`, `.coverage`, `.cache/`, `venv/`,
+`models/`, `metadata/`, `jobs/`, `artifacts/`, `papers/`, and `faiss_index/`, so
+the runtime corpus/index state is preserved while source/docs/test changes are
+synced. The one `.coverage` file copied during the previous deploy was removed
+from `/opt/fluxmind`, and a follow-up SSH check confirmed `coverage_absent`.
+
+Post-restart public HTTPS UI/API health passed. The SSH runtime gate passed with
+UI/API/worker/cloudflared/docker active, ports `18501` and `18502` listening,
+local `/health` OK, `active_papers=11`, `faiss_index_bytes=1228845`,
+`chunk_metadata_rows=800`, `chunk_metadata_sources=11`, `index_fresh=True`,
+Docker execution still `configured=False available=False reason=not_configured`,
+local storage available, and retrieval/admin smokes passing. An authenticated
+`/corpus/status` smoke returned `papers=11`, `active=11`, `indexed=11`,
+`chunks=800`, and `index=fresh`; all three systemd services reported `active`.
+
 Live checks refreshed on 2026-06-15 04:23 CST after pushing `main` through
 `391ac7f`, syncing the curated `papers/library/` seed corpus without deleting
 runtime uploads/state, activating all 11 library papers through authenticated
 `PUT /corpus/active`, and rebuilding the FAISS index through async job
 `8c4f1995a02a`. The rebuild succeeded with `paper_count=11` and
-`chunk_count=800`. A guarded source deploy then ran
-`.venv/bin/python scripts/deploy_sync.py --apply --restart`; the deploy sync
-still excluded `.env`, `.cache/`, `venv/`, `models/`, `metadata/`, `jobs/`,
-`artifacts/`, `papers/`, and `faiss_index/`, so the runtime corpus/index state
-was preserved while source/docs/test changes were synced.
-
-Post-restart public HTTPS UI/API health passed. The first SSH health gate hit
-the normal API bind window immediately after restart; a rerun passed with
-UI/API/worker/cloudflared/docker active, ports `18501` and `18502` listening,
-local `/health` OK, `/ready` ready, `active_papers=11`,
-`faiss_index_bytes=1228845`, `chunk_metadata_rows=800`,
-`chunk_metadata_sources=11`, `index_fresh=True`, Docker execution still
-`configured=False available=False reason=not_configured`, local storage
-available, and retrieval/admin smokes passing. An authenticated retrieval smoke
-for `MRAS flux linkage observer PMSM` returned `ok=true` with the first context
-from `papers/library/zhu-2024-mras-flux-linkage-observer-pmsm.pdf`.
+`chunk_count=800`.
 
 Live checks refreshed on 2026-06-15 03:15 CST after pushing `main` through
 `3cfa426` and deploying with `.venv/bin/python scripts/deploy_sync.py --apply

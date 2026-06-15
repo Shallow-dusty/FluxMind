@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-15 04:23 CST
+Snapshot time: 2026-06-15 08:21 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,13 +13,13 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Current HEAD                   391ac7f test: harden coverage and expand seed corpus
-Current remote status          main...origin/main up to date before this corpus/deployment-record refresh
-Current worktree               corpus/deployment-record refresh pending in docs/status files and tests; no runtime files tracked
-Last clean local/origin state  391ac7f test: harden coverage and expand seed corpus
+Current HEAD                   4f27651 fix: exclude coverage data from deploy sync
+Current remote status          main...origin/main up to date before this deployment-record refresh
+Current worktree               deployment-record refresh pending in docs/status files and tests; no runtime files tracked
+Last clean local/origin state  4f27651 fix: exclude coverage data from deploy sync
 Divergence at clean boundary   ahead 0, behind 0
-Deployed source baseline       391ac7f test: harden coverage and expand seed corpus
-Deployment record follow-up    this docs refresh after 2026-06-15 04:23 live verification
+Deployed source baseline       4f27651 fix: exclude coverage data from deploy sync
+Deployment record follow-up    this docs refresh after 2026-06-15 08:21 live verification
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -52,7 +52,7 @@ The documentation cleanup and completion snapshot are included in `a51a060`; the
 deployment record follow-up is included in `32fca21`.
 
 This formerly in-progress local work is now committed, pushed to `origin/main`
-through `391ac7f`, deployed to Trace-Twin with the guarded sync/restart path,
+through `4f27651`, deployed to Trace-Twin with the guarded sync/restart path,
 and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
 50-question no-LLM retrieval gate: 20 answer cases, 20 recorded answers, and 30
@@ -405,18 +405,45 @@ scope                                                                  local tes
                                                                         service deploy required
 ```
 
+Runtime-state hardening deployment on 2026-06-15 08:21 CST:
+
+```text
+Command                                                                 Result
+----------------------------------------------------------------------  ------
+git rev-parse --short HEAD / origin/main                               both 4f27651
+.venv/bin/python -m pytest                                             pass, 328 tests, 2 warnings
+.venv/bin/python -m coverage run -m pytest &&
+.venv/bin/python -m coverage report --fail-under=88                    pass, 88% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                               pass, all offline RAG/eval gates
+.venv/bin/python scripts/health_check.py                               pass, local/docs/runtime anchors
+.venv/bin/python scripts/deploy_sync.py --apply --restart              synced source to /opt/fluxmind and
+                                                                        restarted API/UI/worker; .coverage
+                                                                        excluded
+ssh ... test ! -e /opt/fluxmind/.coverage                              pass, coverage_absent
+.venv/bin/python scripts/health_check.py --url ...                     pass; public HTTPS UI/API
+                                                                        returned 200
+.venv/bin/python scripts/health_check.py --ssh-host ...                pass; services active, active_papers=11,
+                                                                        chunk_metadata_rows=800,
+                                                                        index fresh, retrieval/admin smokes OK
+authenticated /corpus/status smoke                                     pass; papers=11, active=11,
+                                                                        indexed=11, chunks=800,
+                                                                        index=fresh
+```
+
 ## Latest Deployment Snapshot
 
 The latest live deployment snapshot was refreshed after guarded deploy and
-post-restart verification on 2026-06-15 04:23 CST in
+post-restart verification on 2026-06-15 08:21 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
 retrieval-alerts/storage-schema work above plus the API startup readiness,
-import-latency fixes, coverage gate, and 11-paper seed corpus are now synced or
-rebuilt on Trace-Twin through the current source/runtime boundary. External
+import-latency fixes, coverage gate, 11-paper seed corpus, API token comparison
+hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
+exclude are now synced or rebuilt on Trace-Twin through the current
+source/runtime boundary. External
 providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.
@@ -448,8 +475,8 @@ Disk                /dev/vda3 40G total, 21G free, 46% used
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
-  the eval-breadth plus coverage/corpus-hardening slice is verified, committed,
-  pushed to `origin/main` through `391ac7f`, deployed to Trace-Twin, and
-  post-restart verified.
+  the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
+  deploy-exclude slices are verified, committed, pushed to `origin/main` through
+  `4f27651`, deployed to Trace-Twin, and post-restart verified.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.

@@ -29,9 +29,9 @@ Current local git state at this research pass:
 ```text
 Branch          main
 Remote status   main...origin/main up to date before this deployment-record refresh
-HEAD            391ac7f test: harden coverage and expand seed corpus
+HEAD            4f27651 fix: exclude coverage data from deploy sync
 Worktree        deployment-record/docs refresh pending; source/runtime baseline deployed
-Diff hygiene    git diff --check passed on 2026-06-15 04:23 CST
+Diff hygiene    git diff --check passed on 2026-06-15 08:21 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -49,9 +49,9 @@ offline RAG eval                          20 answer cases, 30 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  04:23 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          04:23 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                04:23 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  08:21 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          08:21 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                08:21 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
