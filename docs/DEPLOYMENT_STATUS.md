@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 01:09 CST
+Last live check: 2026-06-17 01:33 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `c7ecbf6`
-(`feat: add local product RBAC guard`).
-Last deployed source/docs/health sync: `3c85999`
-(`docs: document local product RBAC guard`).
+Last deployed implementation update: `645be5d`
+(`feat: add local product registry management`).
+Last deployed source/docs/health sync: `b05c28d`
+(`docs: document product registry management`).
 
 ```
 Host          Trace-Twin
@@ -99,9 +99,10 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local product-RBAC-guard deploy was refreshed on 2026-06-17 01:09 CST after
-pushing `c7ecbf6` and `3c85999`. `.venv/bin/python scripts/deploy_sync.py
---apply --restart` synced source, docs, tests, and health-check changes to
+Local product-registry-management deploy was refreshed on 2026-06-17 01:33 CST
+after pushing `645be5d` and `b05c28d`. `.venv/bin/python
+scripts/deploy_sync.py --apply --restart` synced source, docs, tests, and
+health-check changes to
 `/opt/fluxmind`, then restarted `fluxmind-api.service`,
 `fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
 `active`. API startup completed after the normal model/import cold-start window.
@@ -137,11 +138,22 @@ either SQLite registry or the query quota/RBAC guards until
 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true`, and
 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` are deliberately set.
 
+Server-local product registry management anchors confirmed
+`admin_product_registry_create_workspace` and the
+`/admin/product-registry/*` route family in `api.py`,
+`render_product_registry_management` in `app.py`, and
+`list_workspace_summaries` in `src/product_registry.py`. An authenticated local
+API smoke of `/admin/product-registry/status` returned `backend=none`,
+`available=false`, and `reason=product_registry_not_configured`, which is the
+expected default production state. The operator management API/UI is installed
+for self-hosted SQLite-registry use, but it is not an external identity,
+payment, or production team-admin system.
+
 Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
 http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-product-rbac-live-report.json` passed 107/107 live
+/tmp/fluxmind-product-registry-management-live-report.json` passed 107/107 live
 retrieval cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-product-rbac-live-report.json` returned
+/tmp/fluxmind-product-registry-management-live-report.json` returned
 `local_foundation_ready=true`, `small_group_ready=true`,
 `community_ready=false`, and `live_retrieval_result_count=107`; this confirms
 the small-group quality lane only when explicit no-secret live report evidence

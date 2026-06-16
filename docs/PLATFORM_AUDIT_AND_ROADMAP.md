@@ -46,21 +46,21 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 416 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 420 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 12 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/provider-readiness/quality-readiness and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/provider-readiness/quality-readiness and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
-health_check.py HTTPS endpoints            01:09 snapshot, UI/API 200
-health_check.py SSH runtime                01:09 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            01:33 snapshot, UI/API 200
+health_check.py SSH runtime                01:33 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:
