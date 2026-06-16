@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import scripts.evaluate_rag as evaluate_rag_cli
 import scripts.platform_migration_preflight as platform_migration_preflight_cli
+import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
 import scripts.storage_schema as storage_schema_cli
@@ -236,6 +237,81 @@ def test_platform_migration_preflight_cli_reports_os_errors(monkeypatch, capsys)
 
     assert platform_migration_preflight_cli.main() == 2
     assert "error: cannot read target" in capsys.readouterr().err
+
+
+def test_platform_migration_rehearsal_cli_uses_temporary_staging(monkeypatch, capsys):
+    seen = {}
+
+    def fake_rehearsal(**kwargs):
+        seen.update(kwargs)
+        return {"rehearsal_ok": True, "staging_root_retained": True}
+
+    monkeypatch.setattr(platform_migration_rehearsal_cli, "run_storage_migration_rehearsal", fake_rehearsal)
+    monkeypatch.setattr("sys.argv", ["platform_migration_rehearsal.py", "--target-root", "/tmp/root"])
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output == {"rehearsal_ok": True, "staging_root_retained": False}
+    assert str(seen["project_root"]) == "/tmp/root"
+    assert seen["overwrite_staging"] is False
+    assert seen["include_runtime_dependencies"] is False
+
+
+def test_platform_migration_rehearsal_cli_retained_staging_can_fail(monkeypatch, capsys):
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "run_storage_migration_rehearsal",
+        lambda **kwargs: {"rehearsal_ok": False, "blockers": ["staging_root_not_empty"]},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["platform_migration_rehearsal.py", "--staging-root", "/tmp/stage", "--overwrite-staging"],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["blockers"] == ["staging_root_not_empty"]
+
+
+def test_platform_migration_rehearsal_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "rehearsal.md"
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "run_storage_migration_rehearsal",
+        lambda **kwargs: {"rehearsal_ok": True},
+    )
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "format_storage_migration_rehearsal_markdown",
+        lambda status: "# Rehearsal",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# Rehearsal\n"
+
+
+def test_platform_migration_rehearsal_cli_reports_os_errors(monkeypatch, capsys):
+    def fail_rehearsal(**kwargs):
+        raise OSError("cannot copy runtime")
+
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "run_storage_migration_rehearsal",
+        fail_rehearsal,
+    )
+    monkeypatch.setattr("sys.argv", ["platform_migration_rehearsal.py"])
+
+    assert platform_migration_rehearsal_cli.main() == 2
+    assert "error: cannot copy runtime" in capsys.readouterr().err
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):

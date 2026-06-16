@@ -166,7 +166,7 @@ def _storage_readiness_for_root(
     }
 
 
-def _runtime_groups_for_root(project_root: Path) -> tuple[RuntimeGroupSpec, ...]:
+def runtime_groups_for_root(project_root: Path) -> tuple[RuntimeGroupSpec, ...]:
     root = project_root.resolve()
     metadata_dir = root / "metadata"
     jobs_dir = root / "jobs"
@@ -542,7 +542,7 @@ def collect_platform_migration_preflight(
     root = project_root.resolve()
     runtime_manifest = collect_runtime_backup_manifest(
         project_root=root,
-        groups=_runtime_groups_for_root(root),
+        groups=runtime_groups_for_root(root),
         generated_at=generated_at,
     )
     restore_check = collect_runtime_restore_check(

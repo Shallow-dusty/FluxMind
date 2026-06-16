@@ -111,6 +111,7 @@ def main() -> int:
         "src/storage_manifest.py",
         "src/storage_schema.py",
         "src/platform_migration.py",
+        "src/storage_migration.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
@@ -118,6 +119,7 @@ def main() -> int:
         "scripts/runtime_manifest.py",
         "scripts/storage_schema.py",
         "scripts/platform_migration_preflight.py",
+        "scripts/platform_migration_rehearsal.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -198,6 +200,33 @@ def main() -> int:
         "--require-activation" in platform_migration_cli
         and "preflight_ok" in platform_migration_cli,
         "platform migration preflight CLI installed",
+        failures,
+    )
+    storage_migration_source = (PROJECT_ROOT / "src" / "storage_migration.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "run_storage_migration_rehearsal" in storage_migration_source
+        and "staged_restore_check" in storage_migration_source
+        and "staged_storage_schema" in storage_migration_source,
+        "storage migration rehearsal collector installed",
+        failures,
+    )
+    check(
+        "secrets_copied" in storage_migration_source
+        and "content_exported_in_report" in storage_migration_source
+        and "staging_root_inside_project" in storage_migration_source,
+        "storage migration rehearsal no-secret guards installed",
+        failures,
+    )
+    storage_migration_cli = (
+        PROJECT_ROOT / "scripts" / "platform_migration_rehearsal.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "--staging-root" in storage_migration_cli
+        and "--overwrite-staging" in storage_migration_cli
+        and "TemporaryDirectory" in storage_migration_cli,
+        "platform migration rehearsal CLI installed",
         failures,
     )
 
