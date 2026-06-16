@@ -270,9 +270,11 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 - The offline RAG baseline is deterministic and now covers 107 no-LLM retrieval
   questions plus 12 local Python code-output cases (four job-backed, across
   reusable templates and paper-specific examples) and 20 seeded PDF
-  equation/table/figure/algorithm structure cases, but the live answer QA set, richer PDF
-  layout extraction, and broader Octave *execution* eval (blocked on an Octave
-  binary in CI/runtime) are still narrow for broad control-engineering coverage.
+  equation/table/figure/algorithm structure cases, but the live answer QA set
+  still lacks enough passing live answer count/pass-rate/term-coverage evidence;
+  richer PDF layout extraction and broader Octave *execution* eval (blocked on
+  an Octave binary in CI/runtime) are also still narrow for broad
+  control-engineering coverage.
 - The local Python/Octave child-process providers are contract tests, while the
   Docker backend proves a no-key container path and execution policy preflight
   rejects obvious disallowed imports, shell/package-manager commands, absolute
@@ -328,8 +330,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Next Audit Actions
 
-1. Add live answer evaluation cases before claiming broad RAG quality beyond
-   the small-group retrieval bar.
+1. Add live answer evaluation cases with passing live answer pass-rate and
+   term-coverage evidence before claiming broad RAG quality beyond the
+   small-group retrieval bar.
 2. Use the production storage/distributed-worker readiness blockers and the
    object-storage manifest to choose the next real database/object-storage/
    job-store migration tests before moving runtime state out of local files.

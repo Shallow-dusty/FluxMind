@@ -127,7 +127,8 @@ paper-to-code work.
 `scripts/quality_readiness.py` now exposes the same staged target state as a
 no-secret preflight: local foundation passes from the source/eval baseline, live
 report evidence can be supplied explicitly, and the community target remains
-nonzero until the corpus/eval/live-answer gaps are closed.
+nonzero until the corpus/eval/live-answer count, pass-rate, and term-coverage
+gaps are closed.
 Retrieval now uses a local hybrid path: FAISS
 vector hits plus BM25-lite keyword matches from the indexed docstore, with
 dedupe, deterministic BM25-lite lexical reranking, optional no-key local

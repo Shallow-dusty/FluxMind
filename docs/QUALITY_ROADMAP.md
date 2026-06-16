@@ -1,6 +1,6 @@
 # FluxMind Quality Roadmap
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 For current repo state, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the health checks before making
@@ -29,6 +29,9 @@ the current metrics and target gaps under `quality_maturity`.
 `scripts/quality_readiness.py` is the no-secret preflight for reading those
 targets directly. It reports self-use, small-group, and community readiness from
 the baseline and can merge explicit live eval evidence with `--live-report`.
+Live reports contribute live retrieval/answer counts, live pass rates, and live
+answer term-coverage evidence; these quality checks are not inferred from prose
+status notes.
 
 ```text
 Stage        Product meaning                 Main bar
@@ -53,7 +56,9 @@ small_group  met: 30 curated papers, 107 no-LLM retrieval questions,
              42 recorded answers, 12 code-output cases, 20 PDF structure
              cases, and 107/107 live retrieval pass in the latest deployment run
 community    gap: corpus size, live answer evidence, and remaining
-             answer/retrieval/PDF coverage depth
+             answer/retrieval/PDF coverage depth; when live answer count is met,
+             community readiness also requires live answer pass rate and
+             term-coverage thresholds to pass
 ```
 
 Latest measured source-quality snapshot on 2026-06-16 17:25 CST:
@@ -80,7 +85,10 @@ host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
 the source/eval baseline. Without a supplied live report, it intentionally marks
 `small_group=gap` because live evidence is not inferred from prose docs; passing
 the deployed no-secret retrieval report with `--live-report` is the executable
-way to re-prove the small-group lane.
+way to re-prove the small-group lane. The same report path now carries live
+answer pass-rate and answer-term-coverage checks, so a future community report
+with enough live answer samples still fails readiness if the answers are not
+fully passing.
 
 ## Near-Term Quality Lane
 
@@ -92,7 +100,8 @@ Order  Work
 1      Choose whether the next milestone is community-quality evidence or the
        production storage/distributed-worker foundation.
 2      For community quality, expand from 30 toward 50 curated papers, 80
-       recorded answers, 180 retrieval questions, and live answer evidence.
+       recorded answers, 180 retrieval questions, and live answer evidence
+       with passing live answer rate and term coverage.
 3      For platform foundation, choose external metadata/object/job-store
        backends and run migration tests behind the existing no-secret readiness
        contracts.

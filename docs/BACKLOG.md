@@ -198,8 +198,10 @@ CI/runtime) remain planned.
   gaps for deployment records.
 - `scripts/quality_readiness.py` turns the same quality-maturity targets into a
   no-secret readiness preflight for self-use, small-group, and community
-  release gates. It exits nonzero under `--require-target community` until the
-  community corpus/eval/live-evidence gaps are closed.
+  release gates. It can merge explicit live eval reports for live retrieval
+  count/pass-rate and live answer count/pass-rate/term-coverage evidence. It
+  exits nonzero under `--require-target community` until the community
+  corpus/eval/live-evidence gaps and live answer quality thresholds are closed.
 - `eval/rag_baseline.json` includes aggregate `quality_gates` for minimum case
   count, retrieval-only case count, total retrieval-question count, expected
   source-ref count, provider fixture count, recorded-answer count/pass

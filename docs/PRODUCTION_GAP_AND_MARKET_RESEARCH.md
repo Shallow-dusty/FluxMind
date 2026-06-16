@@ -570,7 +570,8 @@ Order  Lane                                      Why first
 - Expand the curated corpus from 30 papers toward 50 high-quality papers.
 - Add topic tags and a control-engineering ontology: SMC, FOC, PMSM, SMO,
   observers, flux estimation, chattering, discretization, parameter tuning.
-- Create live answer eval cases and broaden recorded/retrieval cases toward the
+- Create live answer eval cases with passing live answer pass-rate and
+  term-coverage evidence, and broaden recorded/retrieval cases toward the
   community bar.
 - Add equation/table/figure/algorithm extraction acceptance tests for representative PDFs.
 - Add code-output evals where Python/Octave examples must run and produce plots.
@@ -594,7 +595,7 @@ source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
 IDs, and validation checklist fields. The self-use and small-group targets are
 met in the latest deployed live retrieval report; the community target still
 needs corpus growth toward 50 papers, 80 recorded answers, 180 retrieval
-questions, 30 PDF structure cases, and live answer
+questions, 30 PDF structure cases, and live answer count/pass-rate/term-coverage
 evidence. Broader Octave
 execution remains deferred until an Octave binary
 is available in CI/runtime. The 2026-06-15 and 2026-06-16 seed-library
@@ -658,7 +659,7 @@ owned without reading local JSON/SQLite files by hand.
   are all configured and verified.
 - Keep `scripts/quality_readiness.py --require-target community` failing until
   the community-quality corpus, eval breadth, PDF structure, and live-answer
-  evidence gaps are closed.
+  count/pass-rate/term-coverage gaps are closed.
 
 Success criterion: generated code can run in a controlled environment, and every
 expensive or risky operation is observable and attributable.

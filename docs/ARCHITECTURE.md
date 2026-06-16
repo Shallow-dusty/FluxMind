@@ -261,10 +261,11 @@ result summary as no-secret JSON for CI or deployment evidence.
 `scripts/quality_readiness.py` is the small wrapper for reading that eval
 baseline as staged readiness. By default it proves the local source-quality
 foundation; when supplied with `--live-report`, it merges the no-secret live
-retrieval/live answer counts from an eval JSON report before deciding whether
-the small-group or community targets are met. `--require-target community`
-stays nonzero until the community bar has enough curated papers, answer cases,
-retrieval questions, PDF structure cases, and live evidence.
+retrieval/live answer counts, pass rates, and live answer term-coverage metrics
+from an eval JSON report before deciding whether the small-group or community
+targets are met. `--require-target community` stays nonzero until the community
+bar has enough curated papers, answer cases, retrieval questions, PDF structure
+cases, and passing live answer evidence.
 
 For retrieval-only checks, `src.chain.retrieve_with_metadata()` returns
 retrieved context refs, source/page completeness, and the citation guard without
