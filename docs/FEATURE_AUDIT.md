@@ -1,6 +1,6 @@
 # FluxMind Feature Audit
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 This document inventories the currently implemented FluxMind feature surface and
 the evidence that checks it. It is a no-secret audit document: do not copy API
@@ -31,7 +31,7 @@ Command                                                               Result
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/provider-readiness/quality-readiness/
                                                                       API-key-registry/product-registry/
-                                                                      readiness/log-noise anchors
+                                                                      product-quota/readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
                                                                       active_keys=0, secrets_exported=false
@@ -44,7 +44,8 @@ Command                                                               Result
                                                                       staged restore/schema checks pass
 .venv/bin/python scripts/product_readiness.py --format markdown      pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
-                                                                      identity/quota/billing blockers
+                                                                      identity/quota/billing blockers and
+                                                                      product-quota-guard advisory
 .venv/bin/python scripts/product_readiness.py --require-activation   pass, exits 1 because activation_ready=false
 .venv/bin/python scripts/provider_readiness.py --format markdown     pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
@@ -56,14 +57,14 @@ Command                                                               Result
 .venv/bin/python scripts/quality_readiness.py --require-target...    pass, exits 1 because community_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   00:13 snapshot, 107/107 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   00:37 snapshot, 107/107 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   00:10 snapshot, HTTPS UI/API health 200
-curl https://api-smy.hyper-dusty.cloud/health                        00:10 snapshot, HTTPS API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  00:10 snapshot, live runtime green,
+.venv/bin/python scripts/health_check.py --url ...                   00:39 snapshot, HTTPS UI/API health 200
+curl https://api-smy.hyper-dusty.cloud/health                        00:39 snapshot, HTTPS API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  00:39 snapshot, live runtime green,
                                                                       active_papers=30, chunks=1934
 ```
 

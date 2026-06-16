@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -46,21 +46,21 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 387 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 412 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 12 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/provider-readiness/quality-readiness and repo/roadmap drift checks
-storage_schema.py local preflight          pass, ok=true, 8 stores, 0 problems
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/provider-readiness/quality-readiness and repo/roadmap drift checks
+storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false
+product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota guard advisory when disabled
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
-health_check.py HTTPS endpoints            14:17 snapshot, UI/API 200
-health_check.py SSH runtime                14:17 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            00:39 snapshot, UI/API 200
+health_check.py SSH runtime                00:39 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:

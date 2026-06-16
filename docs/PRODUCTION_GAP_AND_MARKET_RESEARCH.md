@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-17 00:13 CST
+Last updated: 2026-06-17 00:39 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      refreshed on 2026-06-17 00:13 CST; re-run before deploy claims
+                      refreshed on 2026-06-17 00:39 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -36,11 +36,11 @@ Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation c130778 feat: add local product quota guard
-Current docs/health    c130778 feat: add local product quota guard
-Status note     this docs-status refresh follows local product quota guard implementation; live deployment refresh remains in docs/DEPLOYMENT_STATUS.md
+Current docs/health    efe2143 docs: document product quota guard
+Status note     local product quota guard is implemented, documented, pushed, deployed, and live-verified; production flag remains off by default
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local product quota guard, product-readiness linkage, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-17 00:33 CST
+Diff hygiene    git diff --check passed on 2026-06-17 00:33 CST before deployment-record edits
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -64,16 +64,17 @@ product_registry.py status                pass, backend=none, available=false,
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
-                                          identity/quota/billing/quota-guard blockers
+                                          identity/quota/billing blockers and
+                                          product-quota-guard disabled advisory
 provider_readiness.py                     pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           provider/MATLAB blockers
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
                                           corpus/eval/live-evidence gaps
-HTTPS UI                                  00:10 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          00:10 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                00:10 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  00:39 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          00:39 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                00:39 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
@@ -85,7 +86,9 @@ Remote API-key registry                    backend=none, available=false; local 
 Remote product registry                    backend=none, available=false; local SQLite
                                           user/workspace/quota/usage/billing ledger
                                           implemented but not activated
-Remote live retrieval eval                 00:13 snapshot: 107/107 passed; quality
+Remote product quota guard                 installed in API/product-registry/admin metric,
+                                          but enabled=false by default
+Remote live retrieval eval                 00:37 snapshot: 107/107 passed; quality
                                           readiness small_group=true with live report,
                                           community=false with measured gaps
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured

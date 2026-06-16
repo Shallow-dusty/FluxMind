@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 00:13 CST
+Last live check: 2026-06-17 00:39 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `c41ea94`
-(`feat: add local product registry`).
-Last deployed source/docs/health sync: `c41ea94`
-(`feat: add local product registry`).
+Last deployed implementation update: `c130778`
+(`feat: add local product quota guard`).
+Last deployed source/docs/health sync: `efe2143`
+(`docs: document product quota guard`).
 
 ```
 Host          Trace-Twin
@@ -99,8 +99,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local product-registry deploy was refreshed on 2026-06-17 00:10 CST after
-pushing `bce3ae5` and `c41ea94`. `.venv/bin/python scripts/deploy_sync.py
+Local product-quota-guard deploy was refreshed on 2026-06-17 00:39 CST after
+pushing `c130778` and `efe2143`. `.venv/bin/python scripts/deploy_sync.py
 --apply --restart` synced source, docs, tests, and health-check changes to
 `/opt/fluxmind`, then restarted `fluxmind-api.service`,
 `fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
@@ -111,14 +111,38 @@ The follow-up health gates passed with public HTTPS UI 200 at
 `https://api-smy.hyper-dusty.cloud/health`, services active, ports `18501` and
 `18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
 `chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
-`index_fresh=True`. The default SSH health check passed. Server-local
-`scripts/api_key_registry.py status --format markdown` returned `backend=none`,
-`available=false`, `active_keys=0`, and `secrets_exported=false`.
-Server-local `scripts/product_registry.py status --format markdown` returned
-`backend=none`, `available=false`, `users=0`, `workspaces=0`, and
+`index_fresh=True`. The default SSH health check passed.
+
+Server-local `scripts/product_readiness.py --format markdown` returned
+`local_foundation_ready=true`, `activation_ready=false`,
+`identity_quotas_billing_enabled=false`, `product_registry_available=false`,
+`product_quota_guard_enabled=false`, and expected activation blockers for
+multi-user identity, API-key lifecycle, quota store, billing provider, and
+billing attribution. `product_quota_guard_disabled` is an advisory in the
+default production config. Server-local code anchors confirmed
+`enforce_product_quota` in `api.py`, `quota_decision` in
+`src/product_registry.py`, and `fluxmind_product_quota_guard_enabled` in
+`src/admin.py`.
+
+Server-local `scripts/api_key_registry.py status --format markdown` returned
+`backend=none`, `available=false`, `active_keys=0`, and
+`secrets_exported=false`. Server-local `scripts/product_registry.py status
+--format markdown` returned `backend=none`, `available=false`, `users=0`,
+`workspaces=0`, `quota_limits=0`, `usage_events=0`, `billing_accounts=0`, and
 `secrets_exported=false`. Production does not activate either SQLite registry
-until `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` or
-`FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` is deliberately set.
+or the query quota guard until `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`,
+`FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`, `FLUXMIND_QUOTA_STORE_BACKEND=sqlite`,
+and `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` are deliberately set.
+
+Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
+http://127.0.0.1:18502 --json-report
+/tmp/fluxmind-product-quota-guard-live-report.json` passed 107/107 live
+retrieval cases. Re-running `scripts/quality_readiness.py --live-report
+/tmp/fluxmind-product-quota-guard-live-report.json` returned
+`local_foundation_ready=true`, `small_group_ready=true`,
+`community_ready=false`, and `live_retrieval_result_count=107`; this confirms
+the small-group quality lane only when explicit no-secret live report evidence
+is supplied. Community remains a measured gap.
 
 Server-local `scripts/storage_schema.py --format markdown` returned `ok=true`,
 `store_count=9`, `problem_count=0`, and optional `api_key_registry_sqlite` and
@@ -127,21 +151,6 @@ returned `storage_schemas.store_count=9`, `problem_count=0`, both registry
 store names in the store list, and `content_scanned=false`; no token values,
 token hashes, owner IDs, prompts, answers, source paths, or runtime file
 contents were exported.
-
-Server-local `scripts/product_readiness.py --format markdown` returned
-`local_foundation_ready=true`, `activation_ready=false`,
-`identity_quotas_billing_enabled=false`, `product_registry_available=false`,
-and expected activation blockers for multi-user identity, API-key lifecycle,
-quota store, billing provider, and billing attribution. Server-local
-`venv/bin/python scripts/evaluate_rag.py --retrieval-url
-http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-product-registry-live-report.json` passed 107/107 live retrieval
-cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-product-registry-live-report.json` returned
-`local_foundation_ready=true`, `small_group_ready=true`,
-`community_ready=false`, and `live_retrieval_result_count=107`; this confirms
-the small-group quality lane only when explicit no-secret live report evidence
-is supplied. Community remains a measured gap.
 
 Local API-key registry deploy was refreshed on 2026-06-16 23:36 CST after
 pushing `6ad6dbc`, `8f9db56`, `ea1c508`, and `207ba7a`. That earlier slice

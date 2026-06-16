@@ -152,11 +152,11 @@ def main() -> int:
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Current implementation commit  c130778 feat: add local product quota guard" in repo_status
-        and "Current docs/health sync       c130778 feat: add local product quota guard" in repo_status
+        and "Current docs/health sync       efe2143 docs: document product quota guard" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:13 CST"
+        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:37 CST"
         in repo_status
-        and "Latest deploy follow-up        bce3ae5/c41ea94 synced with restart on 2026-06-17 00:10 CST"
+        and "Latest deploy follow-up        c130778/efe2143 synced with restart and live-checked on 2026-06-17 00:39 CST"
         in repo_status,
         "repo status records current source and deployed baselines",
         failures,
