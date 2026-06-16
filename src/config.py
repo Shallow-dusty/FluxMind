@@ -55,6 +55,13 @@ OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "")
 OBJECT_STORAGE_ENDPOINT = os.getenv("OBJECT_STORAGE_ENDPOINT", "")
 OBJECT_STORAGE_REGION = os.getenv("OBJECT_STORAGE_REGION", "")
 
+# Distributed worker readiness. Local SQLite/JSONL remains the active job store;
+# external job-store configuration is reported as a no-secret readiness contract
+# until a deliberate migration activates a distributed backend.
+DISTRIBUTED_JOB_STORE_BACKEND = os.getenv("DISTRIBUTED_JOB_STORE_BACKEND", "local").strip().lower()
+DISTRIBUTED_JOB_STORE_URL = os.getenv("DISTRIBUTED_JOB_STORE_URL", "")
+DISTRIBUTED_JOB_QUEUE_NAME = os.getenv("DISTRIBUTED_JOB_QUEUE_NAME", "fluxmind-jobs").strip()
+
 # Optional local cost estimation. These rates are no-secret configuration used
 # only for admin estimates; FluxMind does not connect to external billing.
 QUERY_COST_PROVIDER = os.getenv("QUERY_COST_PROVIDER", "").strip()

@@ -196,6 +196,7 @@ def main() -> int:
     check("download_admin_metrics" in app_source and "format_admin_metrics" in app_source, "Streamlit metrics download installed", failures)
     check("status_execution_policy" in app_source and "code_execution_allowed_imports" in app_source, "Streamlit execution policy status installed", failures)
     check("status_storage" in app_source and "storage_readiness" in app_source, "Streamlit storage readiness panel installed", failures)
+    check("distributed_job_store" in app_source, "Streamlit distributed job-store readiness panel installed", failures)
     check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
     check("status_storage_schemas" in app_source and "storage_schemas" in app_source, "Streamlit storage schema panel installed", failures)
     check("status_platform_readiness" in app_source and "platform_readiness" in app_source, "Streamlit platform readiness panel installed", failures)
@@ -382,6 +383,7 @@ def main() -> int:
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
     check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
+    check("distributed_job_store_status" in admin_source and "external_job_store_configured" in admin_source, "admin distributed job-store readiness installed", failures)
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
     storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
     storage_schema_cli = (PROJECT_ROOT / "scripts" / "storage_schema.py").read_text(encoding="utf-8")
@@ -584,6 +586,7 @@ def main() -> int:
             "grep -q 'status_storage' /opt/fluxmind/app.py; "
             "grep -q 'status_storage_inventory' /opt/fluxmind/app.py; "
             "grep -q 'storage_readiness' /opt/fluxmind/app.py; "
+            "grep -q 'distributed_job_store' /opt/fluxmind/app.py; "
             "grep -q 'artifact_metadata' /opt/fluxmind/app.py; "
             "grep -q 'artifact_search' /opt/fluxmind/app.py; "
             "grep -q 'enqueue_local_octave' /opt/fluxmind/app.py; "
@@ -734,6 +737,7 @@ def main() -> int:
             "grep -q 'code_execution_events' /opt/fluxmind/src/admin.py; "
             "grep -q 'policy_violations' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_readiness_status' /opt/fluxmind/src/admin.py; "
+            "grep -q 'distributed_job_store_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'storage_inventory_status' /opt/fluxmind/src/admin.py; "
             "grep -q 'content_scanned' /opt/fluxmind/src/admin.py; "
             "grep -q 'external_storage_configured' /opt/fluxmind/src/admin.py; "
@@ -811,6 +815,10 @@ def main() -> int:
             "if 'available' not in metadata_storage or 'available' not in object_storage:\n"
             "    raise SystemExit('admin status missing storage readiness')\n"
             "print(f'storage_readiness=metadata_backend={metadata_storage.get(\"backend\")} metadata_available={metadata_storage.get(\"available\")} object_backend={object_storage.get(\"backend\")} object_available={object_storage.get(\"available\")} external_configured={storage_readiness.get(\"external_storage_configured\")}')\n"
+            "distributed_job_store = admin_status.get('config', {}).get('distributed_job_store', {})\n"
+            "if 'available' not in distributed_job_store or 'external_job_store_configured' not in distributed_job_store:\n"
+            "    raise SystemExit('admin status missing distributed job-store readiness')\n"
+            "print(f'distributed_job_store=backend={distributed_job_store.get(\"backend\")} available={distributed_job_store.get(\"available\")} external_configured={distributed_job_store.get(\"external_job_store_configured\")}')\n"
             "sample_chunks = api_get('/corpus/chunks?limit=1').get('chunks', [])\n"
             "if sample_chunks:\n"
             "    sample = sample_chunks[0]\n"

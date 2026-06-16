@@ -83,8 +83,9 @@ Order  Work
        production storage/distributed-worker foundation.
 2      For community quality, expand from 30 toward 50 curated papers, 80
        recorded answers, 180 retrieval questions, and live answer evidence.
-3      For platform foundation, migrate metadata/object/job state behind a
-       durable backend while preserving the no-secret local contracts.
+3      For platform foundation, choose external metadata/object/job-store
+       backends and run migration tests behind the existing no-secret readiness
+       contracts.
 4      Keep running live /query/retrieve before trusting live /query/inspect
        answers.
 5      Add PDF structure cases only when the source paper has useful equation,

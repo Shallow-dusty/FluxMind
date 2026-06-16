@@ -10,6 +10,7 @@ from src.admin import (
     format_admin_metrics,
     format_admin_status_report,
     format_corpus_profile_status_report,
+    distributed_job_store_status,
     platform_readiness_status,
     summarize_code_execution_alerts,
     summarize_job_alerts,
@@ -217,6 +218,11 @@ def test_platform_readiness_status_reports_local_blockers_without_secrets():
                 "expired_leases": 0,
             },
         },
+        distributed_job_store={
+            "backend": "local",
+            "configured": False,
+            "available": True,
+        },
     )
 
     assert status["overall_ready"] is False
@@ -229,6 +235,8 @@ def test_platform_readiness_status_reports_local_blockers_without_secrets():
         "distributed_job_store_not_configured",
     ]
     assert status["distributed_workers"]["checks"]["local_worker_bridge_ready"] is True
+    assert status["distributed_workers"]["checks"]["distributed_job_store_backend"] == "local"
+    assert status["distributed_workers"]["checks"]["distributed_job_store_external_ready"] is False
     assert "secret" not in str(status).casefold()
     assert "source_path" not in str(status).casefold()
 
@@ -271,6 +279,11 @@ def test_platform_readiness_status_accepts_configured_external_targets():
                 "expired_leases": 0,
             },
         },
+        distributed_job_store={
+            "backend": "redis",
+            "configured": True,
+            "available": True,
+        },
     )
 
     assert status["overall_ready"] is True
@@ -278,6 +291,44 @@ def test_platform_readiness_status_accepts_configured_external_targets():
     assert status["distributed_workers"]["ready"] is True
     assert status["storage_migration"]["blockers"] == []
     assert status["distributed_workers"]["blockers"] == []
+    assert status["distributed_workers"]["checks"]["distributed_job_store_external_ready"] is True
+
+
+def test_distributed_job_store_status_reports_external_config_without_secrets():
+    status = distributed_job_store_status(
+        backend="redis",
+        store_url="redis://:secret@example.test:6379/0",
+        queue_name="fluxmind-prod",
+    )
+
+    assert status == {
+        "backend": "redis",
+        "configured": True,
+        "available": True,
+        "reason": "configured_not_connected",
+        "store_url_configured": True,
+        "queue_name_configured": True,
+        "external_job_store_configured": True,
+        "external_job_store_available": True,
+    }
+    assert "secret" not in str(status)
+    assert "example.test" not in str(status)
+    assert "fluxmind-prod" not in str(status)
+
+
+def test_distributed_job_store_status_rejects_incomplete_external_config():
+    status = distributed_job_store_status(
+        backend="postgres",
+        store_url="",
+        queue_name="fluxmind-jobs",
+    )
+
+    assert status["configured"] is False
+    assert status["available"] is False
+    assert status["reason"] == "store_url_or_queue_name_missing"
+    assert status["store_url_configured"] is False
+    assert status["queue_name_configured"] is True
+    assert status["external_job_store_configured"] is False
 
 
 def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
@@ -789,6 +840,9 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["config"]["storage_readiness"]["object_storage"]["available"] is True
     assert status["config"]["storage_readiness"]["object_storage"]["bucket_configured"] is False
     assert status["config"]["storage_readiness"]["external_storage_configured"] is False
+    assert status["config"]["distributed_job_store"]["backend"] == "local"
+    assert status["config"]["distributed_job_store"]["available"] is True
+    assert status["config"]["distributed_job_store"]["external_job_store_configured"] is False
     assert status["storage_schemas"]["ok"] is True
     assert status["storage_schemas"]["store_count"] == 2
     assert status["storage_schemas"]["problem_count"] == 0
@@ -803,6 +857,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "production_metadata_database_not_configured" in status["platform_readiness"]["storage_migration"]["blockers"]
     assert "production_object_storage_not_configured" in status["platform_readiness"]["storage_migration"]["blockers"]
     assert status["platform_readiness"]["distributed_workers"]["checks"]["local_worker_bridge_ready"] is True
+    assert status["platform_readiness"]["distributed_workers"]["checks"]["distributed_job_store_backend"] == "local"
+    assert status["platform_readiness"]["distributed_workers"]["checks"]["distributed_job_store_external_ready"] is False
     assert "distributed_job_store_not_configured" in status["platform_readiness"]["distributed_workers"]["blockers"]
     assert all("path" in item for item in status["runtime_dirs"])
 
@@ -896,6 +952,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert 'fluxmind_query_usage_duration_ms{stat="max"} 42' in metrics
     assert "fluxmind_storage_schema_ok 1" in metrics
     assert "fluxmind_storage_schema_problem_total 0" in metrics
+    assert "fluxmind_distributed_job_store_external_configured 0" in metrics
+    assert 'fluxmind_distributed_job_store_available{backend="local"} 1' in metrics
     assert 'fluxmind_storage_schema_store_ok{store="corpus_metadata_sqlite"} 1' in metrics
     assert "fluxmind_platform_readiness_overall_ready 0" in metrics
     assert "fluxmind_platform_storage_migration_ready 0" in metrics

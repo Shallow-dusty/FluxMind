@@ -595,6 +595,7 @@ def render_admin_status() -> None:
     upload_scans = status["upload_scans"]
     config = status["config"]
     storage_readiness = config.get("storage_readiness", {})
+    distributed_job_store = config.get("distributed_job_store", {})
 
     st.caption(text["status_jobs"])
     st.json(
@@ -707,6 +708,7 @@ def render_admin_status() -> None:
         {
             "metadata": storage_readiness.get("metadata", {}),
             "object_storage": storage_readiness.get("object_storage", {}),
+            "distributed_job_store": distributed_job_store,
             "external_storage_configured": storage_readiness.get("external_storage_configured", False),
             "external_storage_available": storage_readiness.get("external_storage_available", False),
         }

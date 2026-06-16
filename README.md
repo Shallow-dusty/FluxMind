@@ -328,6 +328,10 @@ Before an in-process worker starts a queued job, it claims the record with
 SQLite/JSONL state. Expired queued leases can be reclaimed, giving future
 distributed workers a concrete local lease contract without enabling external
 worker infrastructure yet.
+Admin readiness reports the future distributed job-store target separately from
+metadata storage through `DISTRIBUTED_JOB_STORE_BACKEND`,
+`DISTRIBUTED_JOB_STORE_URL`, and `DISTRIBUTED_JOB_QUEUE_NAME`, exposing only
+configured/available booleans and reason codes.
 Admin status/report also expose metadata-only local job-health advisory alerts
 for recent failed jobs, dead-lettered jobs, expired queued deadlines, and
 expired worker leases. `JOB_ALERT_FAILED_MIN_EVENTS` and
@@ -465,8 +469,8 @@ The same admin status/report/metrics/UI surfaces now include a no-secret
 `platform_readiness` summary for production storage migration and distributed
 worker acceptance. It reports only booleans, counts, and blocker codes: the
 current local runtime has clean schema/inventory and a clean local worker bridge,
-but remains blocked on external metadata database, object storage, and
-distributed job-store configuration.
+but remains blocked on external metadata database, object storage, and the
+separately configured distributed job-store target.
 Generated mock diagrams can use local SVG templates for generic engineering
 diagrams, sliding-mode observers, PMSM control loops, and paper-figure redrafts.
 Diagram and execution outputs include no-key metadata such as prompt, style,

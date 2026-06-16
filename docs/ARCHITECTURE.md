@@ -100,9 +100,12 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 
 ## Next Architecture Step
 
-The long-running work boundary now exists locally. The next architecture step is
-not another process-local queue; it is moving the proven job/storage contracts
-behind production-grade metadata, object storage, and distributed worker state:
+The long-running work boundary now exists locally. The production foundation now
+has explicit no-secret readiness targets for metadata storage, object storage,
+and the distributed job store, but activation still requires choosing and
+testing the real external backends. The next architecture step is not another
+process-local queue; it is moving the proven job/storage contracts behind
+production-grade metadata, object storage, and distributed worker state:
 
 ```text
 API request
@@ -340,7 +343,11 @@ worker acceptance. It deliberately reports only blocker codes, booleans, and
 counts. In the current local runtime the schema/inventory and local worker
 bridge checks pass, while production activation remains blocked until external
 metadata database, object storage, and distributed job-store targets are
-configured.
+configured. The distributed worker target is reported separately from metadata
+storage through `DISTRIBUTED_JOB_STORE_BACKEND`,
+`DISTRIBUTED_JOB_STORE_URL`, and `DISTRIBUTED_JOB_QUEUE_NAME`; admin status only
+returns backend, configured/available booleans, and reason codes, never the
+store URL or queue name.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`

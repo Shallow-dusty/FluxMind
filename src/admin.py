@@ -34,6 +34,9 @@ from src.config import (
     CORPUS_METADATA_FILE,
     CORPUS_PROFILES_FILE,
     DATABASE_URL,
+    DISTRIBUTED_JOB_QUEUE_NAME,
+    DISTRIBUTED_JOB_STORE_BACKEND,
+    DISTRIBUTED_JOB_STORE_URL,
     DOCKER_EXECUTION_IMAGE,
     EMBEDDING_MODEL,
     FAISS_INDEX_DIR,
@@ -699,6 +702,57 @@ def _storage_component_external_ready(component: dict[str, Any]) -> bool:
     )
 
 
+def distributed_job_store_status(
+    *,
+    backend: str,
+    store_url: str,
+    queue_name: str,
+) -> dict[str, Any]:
+    """Return no-secret readiness for future distributed worker job storage."""
+    backend = (backend or "local").strip().lower()
+    url_configured = bool((store_url or "").strip())
+    queue_configured = bool((queue_name or "").strip())
+
+    if backend == "local":
+        status = {
+            "backend": "local",
+            "configured": False,
+            "available": True,
+            "reason": "local_job_store_active",
+            "store_url_configured": False,
+            "queue_name_configured": queue_configured,
+        }
+    elif backend in {"postgres", "postgresql", "redis", "external"}:
+        configured = url_configured and queue_configured
+        status = {
+            "backend": backend,
+            "configured": configured,
+            "available": configured,
+            "reason": "configured_not_connected"
+            if configured
+            else "store_url_or_queue_name_missing",
+            "store_url_configured": url_configured,
+            "queue_name_configured": queue_configured,
+        }
+    else:
+        status = {
+            "backend": backend,
+            "configured": backend != "local",
+            "available": False,
+            "reason": "unsupported_job_store_backend",
+            "store_url_configured": url_configured,
+            "queue_name_configured": queue_configured,
+        }
+
+    status["external_job_store_configured"] = (
+        status["backend"] != "local" and bool(status["configured"])
+    )
+    status["external_job_store_available"] = (
+        status["backend"] != "local" and bool(status["available"])
+    )
+    return status
+
+
 def _has_keys(data: dict[str, Any], keys: set[str]) -> bool:
     return keys.issubset(set(data))
 
@@ -709,12 +763,18 @@ def platform_readiness_status(
     storage_schemas: dict[str, Any],
     storage: dict[str, Any],
     jobs: dict[str, Any],
+    distributed_job_store: dict[str, Any],
 ) -> dict[str, Any]:
     """Return no-secret acceptance status for production storage and workers."""
     metadata_storage = storage_readiness.get("metadata", {})
     object_storage = storage_readiness.get("object_storage", {})
     metadata_external_ready = _storage_component_external_ready(metadata_storage)
     object_external_ready = _storage_component_external_ready(object_storage)
+    distributed_job_store_external_ready = (
+        str(distributed_job_store.get("backend", "local")).lower() != "local"
+        and bool(distributed_job_store.get("configured"))
+        and bool(distributed_job_store.get("available"))
+    )
     schema_ok = bool(storage_schemas.get("ok"))
     schema_problem_count = _dict_int(storage_schemas, "problem_count")
     storage_inventory_ready = storage.get("mode") == "local" and bool(storage.get("groups"))
@@ -773,7 +833,7 @@ def platform_readiness_status(
         worker_blockers.append("worker_lease_contract_missing")
     if not queue_health_clean:
         worker_blockers.append("queue_or_worker_lease_health_not_clean")
-    if not metadata_external_ready:
+    if not distributed_job_store_external_ready:
         worker_blockers.append("distributed_job_store_not_configured")
 
     storage_ready = not storage_blockers
@@ -809,7 +869,10 @@ def platform_readiness_status(
                 "queue_health_contract_ready": queue_contract_ready,
                 "worker_lease_contract_ready": lease_contract_ready,
                 "queue_health_clean": queue_health_clean,
-                "distributed_job_store_configured": metadata_external_ready,
+                "distributed_job_store_backend": distributed_job_store.get("backend", "local"),
+                "distributed_job_store_configured": bool(distributed_job_store.get("configured")),
+                "distributed_job_store_available": bool(distributed_job_store.get("available")),
+                "distributed_job_store_external_ready": distributed_job_store_external_ready,
             },
         },
     }
@@ -921,6 +984,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Storage blockers: {', '.join(platform_readiness.get('storage_migration', {}).get('blockers', [])) or 'none'}",
             f"- Distributed workers ready: {_format_bool(platform_readiness.get('distributed_workers', {}).get('ready', False))}",
             f"- Worker blockers: {', '.join(platform_readiness.get('distributed_workers', {}).get('blockers', [])) or 'none'}",
+            f"- Distributed job store backend: {platform_readiness.get('distributed_workers', {}).get('checks', {}).get('distributed_job_store_backend', 'local')}",
+            f"- Distributed job store external ready: {_format_bool(platform_readiness.get('distributed_workers', {}).get('checks', {}).get('distributed_job_store_external_ready', False))}",
             "",
             "## Provider Failures",
             "",
@@ -1178,6 +1243,10 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Object storage backend: {config.get('storage_readiness', {}).get('object_storage', {}).get('backend', '')}",
             f"- Object storage available: {_format_bool(config.get('storage_readiness', {}).get('object_storage', {}).get('available', False))}",
             f"- Object storage reason: {config.get('storage_readiness', {}).get('object_storage', {}).get('reason', '')}",
+            f"- Distributed job store backend: {config.get('distributed_job_store', {}).get('backend', '')}",
+            f"- Distributed job store configured: {_format_bool(config.get('distributed_job_store', {}).get('configured', False))}",
+            f"- Distributed job store available: {_format_bool(config.get('distributed_job_store', {}).get('available', False))}",
+            f"- Distributed job store reason: {config.get('distributed_job_store', {}).get('reason', '')}",
             f"- Code execution backend: {config.get('code_execution_backend', '')}",
             f"- Code execution policy: {config.get('code_execution_policy', '')}",
             f"- Code execution max stdout bytes: {config.get('code_execution_max_stdout_bytes', 0)}",
@@ -1261,6 +1330,7 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     storage_readiness = config.get("storage_readiness", {})
     metadata_storage = storage_readiness.get("metadata", {})
     object_storage = storage_readiness.get("object_storage", {})
+    distributed_job_store = config.get("distributed_job_store", {})
     docker_execution = config.get("docker_execution", {})
     platform_storage = platform_readiness.get("storage_migration", {})
     platform_workers = platform_readiness.get("distributed_workers", {})
@@ -1593,6 +1663,22 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     emit("fluxmind_retention_delete_enabled", config.get("retention_delete_enabled", False), "Whether guarded local retention delete is enabled.")
     emit("fluxmind_storage_external_configured", storage_readiness.get("external_storage_configured", False), "Whether external storage is configured.")
     emit("fluxmind_storage_external_available", storage_readiness.get("external_storage_available", False), "Whether configured external storage is available.")
+    emit(
+        "fluxmind_distributed_job_store_external_configured",
+        distributed_job_store.get("external_job_store_configured", False),
+        "Whether an external distributed job store is configured.",
+    )
+    emit(
+        "fluxmind_distributed_job_store_external_available",
+        distributed_job_store.get("external_job_store_available", False),
+        "Whether a configured external distributed job store is available.",
+    )
+    emit(
+        "fluxmind_distributed_job_store_available",
+        distributed_job_store.get("available", False),
+        "Whether the configured job store readiness target is available.",
+        labels={"backend": distributed_job_store.get("backend", "unknown")},
+    )
     emit(
         "fluxmind_metadata_storage_available",
         metadata_storage.get("available", False),
@@ -2364,6 +2450,11 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         object_endpoint=OBJECT_STORAGE_ENDPOINT,
         object_region=OBJECT_STORAGE_REGION,
     )
+    distributed_job_store = distributed_job_store_status(
+        backend=DISTRIBUTED_JOB_STORE_BACKEND,
+        store_url=DISTRIBUTED_JOB_STORE_URL,
+        queue_name=DISTRIBUTED_JOB_QUEUE_NAME,
+    )
     jobs_for_platform_readiness = {
         "storage": {
             "jsonl_exists": JOBS_FILE.exists(),
@@ -2379,6 +2470,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         storage_schemas=storage_schemas_status,
         storage=storage_status,
         jobs=jobs_for_platform_readiness,
+        distributed_job_store=distributed_job_store,
     )
 
     return AdminStatus(
@@ -2676,6 +2768,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 if item.strip()
             ],
             "storage_readiness": storage_readiness,
+            "distributed_job_store": distributed_job_store,
             "docker_execution": docker_execution_status(
                 configured_backend=CODE_EXECUTION_BACKEND,
                 image=DOCKER_EXECUTION_IMAGE,

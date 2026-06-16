@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 14:17 CST
+Snapshot time: 2026-06-16 14:36 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,9 +14,11 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Verified source/eval baseline  d80c083 test: tighten FluxMind small-group quality gates
-Remote status at verification  main...origin/main up to date before this status refresh
-Current docs refresh scope     small-group quality completion status and docs guard refresh
+Current implementation base    8191656 docs: refresh FluxMind sync status
+Remote status at verification  main...origin/main up to date before this implementation pass
+Current refresh scope          distributed job-store readiness foundation and docs guard refresh
 Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates
+Last deployed docs sync base   8191656 docs: refresh FluxMind sync status
 Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
@@ -33,6 +35,8 @@ Jobs/workers         durable leases, explicit local worker loop, systemd worker
                      unit, retries, deadlines, cancellation metadata
 Corpus/storage       metadata profiles, paper/chunk SQLite mirrors, runtime
                      backup manifest, storage readiness/inventory
+Platform readiness   separate metadata/object/job-store readiness targets,
+                     blocker codes, and no-secret metrics/report fields
 Admin/product shell  status/report endpoints, retention preview, runtime
                      events, query usage/cost visibility
 Artifacts/images     artifact metadata mirror/integrity, local SVG diagram
@@ -48,9 +52,33 @@ verification evidence was recorded in `32fca21`. The current small-group quality
 source/eval baseline is `d80c083`, with the main corpus/eval expansion in
 `e069873` and the live retrieval recalibration in `cc705dc`.
 
-This formerly in-progress local work is now committed, pushed to `origin/main`
-through source/eval baseline `d80c083`, deployed to Trace-Twin with the guarded sync/restart path,
-and verified after the API readiness window. It expands the deterministic
+Current local verification on 2026-06-16 14:36 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest -q                               pass, 334 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 334 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                    pass, 40 answer cases, 60 retrieval-only
+                                                            cases, 11 code-output cases,
+                                                            17 PDF structure cases,
+                                                            40 recorded answers
+.venv/bin/python scripts/health_check.py                    pass, including distributed job-store
+                                                            readiness anchors
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
+git diff --check                                            pass
+Admin status smoke                                          distributed_job_store backend=local,
+                                                            available=true,
+                                                            external_configured=false;
+                                                            local worker bridge ready=true,
+                                                            distributed_job_store_not_configured
+                                                            remains the expected external blocker
+```
+
+The earlier small-group quality work is committed, pushed to `origin/main`
+through source/eval baseline `d80c083`, deployed to Trace-Twin with the guarded
+sync/restart path, and verified after the API readiness window. It expands the deterministic
 RAG baseline from answer-only checks into a
 100-question no-LLM retrieval gate: 40 answer cases, 40 recorded answers, and
 60 retrieval-only source/page cases with topic, lane, and ontology coverage gates.

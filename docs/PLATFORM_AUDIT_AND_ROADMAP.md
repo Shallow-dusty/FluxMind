@@ -70,7 +70,8 @@ No-key local platform     strong: WP0-WP6 baseline implemented and tested
 Operational visibility    strong for local runtime; no-secret reports available
 RAG quality coverage      small-group retrieval bar met; broad live answer QA remains open
 Execution/artifacts       good contract baseline; not production sandboxed
-Storage/queue durability  local SQLite/JSONL bridge only; not distributed
+Storage/queue durability  local SQLite/JSONL bridge plus explicit external
+                          job-store readiness target; not distributed yet
 Product maturity          pre-platform: no accounts, quotas, billing, teams
 Frontend maturity         demo/personal workflow; Streamlit remains limiting
 ```
@@ -161,7 +162,8 @@ a CLI preflight with JSON/Markdown output. Admin status/report, Streamlit, and
 metrics now also expose a no-secret `platform_readiness` summary for production
 storage migration and distributed worker acceptance: local schema/inventory and
 the local worker bridge are clean, while external metadata database, object
-storage, and distributed job-store targets remain explicit blockers. The
+storage, and the separately configured distributed job-store target remain
+explicit blockers. The
 no-secret runtime manifest can also be checked
 against a target runtime root through the CLI or authenticated API without
 copying, deleting, or restoring files. This is still a local
@@ -668,9 +670,11 @@ blocked on product decisions.
 4. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
 5. Use the local `platform_readiness` blockers to choose and test the production
-   metadata database, object storage, and distributed job-store backend, then
-   extend the local restart-recovery/lease/worker-service bridge into a
-   distributed worker/storage foundation and extend the local metrics export
+   metadata database, object storage, and distributed job-store backend. The
+   readiness surface already has separate metadata, object, and job-store
+   targets; the remaining work is backend selection, migration tests, and live
+   activation. Then extend the local restart-recovery/lease/worker-service bridge
+   into a distributed worker/storage runtime and extend the local metrics export
    into production scrape/tracing/alert routing plus deeper abuse controls
    before enabling real
    external image generation or hosted code execution providers.

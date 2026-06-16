@@ -219,8 +219,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   production sandbox evidence still needs live Docker enablement, antivirus or
   sandbox-backed upload scanning, deeper abuse controls, and production
   metrics/traces beyond the local export baseline.
-- Runtime storage and queue state are local SQLite/JSONL/filesystem bridges, not
-  a distributed production database or object store.
+- Runtime storage and queue state are local SQLite/JSONL/filesystem bridges.
+  Admin readiness now has separate external metadata, object-storage, and
+  distributed job-store targets, but no production database, object store, or
+  distributed queue has been activated.
 - The bundled seed corpus has been expanded to 30 open-access papers, and the
   next content milestone is a curated 50+ paper library with richer
   topic coverage and more PDF-layout acceptance cases.
@@ -234,7 +236,7 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 1. Add live answer evaluation cases before claiming broad RAG quality beyond
    the small-group retrieval bar.
 2. Use the production storage/distributed-worker readiness blockers to choose
-   the next real database/object-storage/queue migration tests before moving
+   the next real database/object-storage/job-store migration tests before moving
    runtime state out of local files.
 3. Add live sandbox and abuse-policy tests before enabling Docker, Cloudflare Sandbox, or any
    MATLAB-compatible hosted execution path.

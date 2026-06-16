@@ -32,15 +32,18 @@ coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
 constant-time API token comparison, tolerant runtime JSON/JSONL state parsing,
 atomic active-paper selection writes, and a `.coverage` deploy-sync exclude.
-The eval report also carries staged quality-maturity targets for self-use,
-small-group, and community readiness; self-use and small-group are now met, so
-corpus/eval growth can be tracked before
-new platform features are prioritized.
+The platform-readiness foundation now also separates distributed job-store
+readiness from metadata database readiness through `DISTRIBUTED_JOB_STORE_*`
+configuration and no-secret admin/report/metrics fields. The eval report also
+carries staged quality-maturity targets for self-use, small-group, and community
+readiness; self-use and small-group are now met, so corpus/eval growth can be
+tracked before new platform features are prioritized.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
-distributed worker/storage, and production database/object storage. Those remain
-planned, intentionally disabled, or decision-gated.
+external distributed worker/storage activation, and production database/object
+storage migration tests. Those remain planned, intentionally disabled, or
+decision-gated.
 
 ## WP0: Stabilize Current Production
 
@@ -731,7 +734,8 @@ are made
   estimated tokens otherwise; external billing remains disabled.
 - Still planned: production durable storage dashboards beyond the local
   inventory/readiness/platform-readiness view, real production storage and
-  distributed worker migration tests after backend choice, identity-backed
+  distributed worker migration tests after backend choice, external job-store
+  activation behind the existing readiness target, identity-backed
   deletion/audit controls, billing attribution, production scrape/alert routing
   beyond the local metrics text, and user/workspace admin once identity exists.
 

@@ -548,11 +548,13 @@ implementation questions and receive traceable, executable outputs.
 - Use the current `platform_readiness` blocker summary as the local acceptance
   gate for the storage/queue backend choice; it already confirms clean local
   schema/inventory and local worker-bridge contracts while flagging missing
-  external metadata database, object storage, and distributed job-store targets.
+  external metadata database, object storage, and the separately configured
+  distributed job-store target.
 - Promote the current local API ownership metadata into versioned production
   schemas once storage/backend ownership is selected.
 - Extend local idempotent job submission plus bounded dead-letter/retry policy
-  into the future distributed worker queue.
+  into the future distributed worker queue after the job-store backend is chosen
+  and migration-tested.
 
 Success criterion: runtime state can be backed up, restored, migrated, and
 owned without reading local JSON/SQLite files by hand.
