@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 02:59 CST
+Last live check: 2026-06-17 03:14 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,16 +9,16 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last verified source/eval update before this deployment record: `95f1760`
-(`test: add octave-aware code-output eval`), building on the `9b1cbc5`
-community-quality eval baseline. `/opt/fluxmind` is not a
-git checkout, so the live deployment should be treated as a synchronized source
-tree rather than a deployed commit hash. Repo documentation commits may be newer
-than this application-code baseline.
-Last deployed implementation update: `95f1760`
-(`test: add octave-aware code-output eval`).
-Last deployed source/docs/health sync: `e4da2e9`
-(`docs: document octave-aware eval status`).
+Last verified source/eval update before this deployment record: `bb9cb76`
+(`test: expand PDF structure eval gate`), building on the `95f1760`
+Octave-aware code-output eval update and the `9b1cbc5` community-quality eval
+baseline. `/opt/fluxmind` is not a git checkout, so the live deployment should
+be treated as a synchronized source tree rather than a deployed commit hash. Repo
+documentation commits may be newer than this application-code baseline.
+Last deployed implementation/eval update: `bb9cb76`
+(`test: expand PDF structure eval gate`).
+Last deployed source/docs/health sync: `0aa1919`
+(`docs: document PDF structure gate expansion`).
 
 ```
 Host          Trace-Twin
@@ -100,11 +100,11 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Octave-aware code-output eval status was refreshed on 2026-06-17 02:59 CST
-after pushing `95f1760` and `e4da2e9`. `.venv/bin/python
-scripts/deploy_sync.py --apply` synced source, docs, tests, and health-check
-changes to `/opt/fluxmind` without restarting services, because the active
-UI/API/worker runtime path did not change.
+PDF-structure eval status was refreshed on 2026-06-17 03:14 CST after pushing
+`bb9cb76` and `0aa1919`. `.venv/bin/python scripts/deploy_sync.py --apply`
+synced README, docs, `eval/rag_baseline.json`, and `scripts/health_check.py` to
+`/opt/fluxmind` without restarting services, because the active UI/API/worker
+runtime path did not change.
 
 The follow-up health gates passed with public HTTPS UI 200 at
 `https://smy.hyper-dusty.cloud/`, public API health 200 at
@@ -118,21 +118,22 @@ scripts/health_check.py` passed, and local
 
 Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
 http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-live-octave-eval-report.json` passed 107/107 live retrieval
+/tmp/fluxmind-live-pdf30-eval-report.json` passed 107/107 live retrieval
 results and all regression gates. The report metrics include
 `answer_case_count=42`, `retrieval_only_case_count=65`,
 `retrieval_eval_question_count=107`, `recorded_answer_count=42`,
-`code_output_case_count=13`, `pdf_structure_case_count=20`,
+`code_output_case_count=13`, `pdf_structure_case_count=30`,
 `live_retrieval_result_count=107`, `live_retrieval_pass_rate=1.0`, and
 `seed_paper_count=30`. The Octave-compatible
-`octave-pmsm-current-decay-template` case passed through the expected
+`octave-pmsm-current-decay-template` case still passed through the expected
 `runtime_unavailable` path on the current host.
 
 Server-local `venv/bin/python scripts/quality_readiness.py --live-report
-/tmp/fluxmind-live-octave-eval-report.json --format markdown` returned
+/tmp/fluxmind-live-pdf30-eval-report.json --format markdown` returned
 `local_foundation_ready=true`, `small_group_ready=true`, and
 `community_ready=false`. Community remains blocked on corpus/eval breadth and
-live-answer evidence, not on the 13-case code-output gate.
+live-answer evidence, not on the 13-case code-output gate or the 30-case
+PDF-structure gate.
 
 Server-local `scripts/product_readiness.py --format markdown` returned
 `local_foundation_ready=true`, `activation_ready=false`,
@@ -251,7 +252,7 @@ passed with the local FAISS index non-empty and `active_papers=30`.
 Server-local
 `venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
 --json-report /tmp/fluxmind-live-octave-eval-report.json` passed all 107 live
-retrieval cases, with `minimum_live_retrieval_pass_rate=1.00`. The current
+retrieval cases, with `minimum_live_retrieval_pass_rate=1.00`. The older
 report metrics are `answer_case_count=42`, `retrieval_only_case_count=65`,
 `retrieval_eval_question_count=107`, `recorded_answer_count=42`,
 `code_output_case_count=13`, `pdf_structure_case_count=20`,
@@ -260,10 +261,10 @@ checks with bounded timeouts passed after the sync:
 `https://api-smy.hyper-dusty.cloud/health` returned `{"status":"ok"}` and
 `https://smy.hyper-dusty.cloud/` returned 200.
 
-Current community gaps remain: corpus growth toward 50 papers, 80 answer cases,
-80 recorded answers, 100 retrieval-only cases, 180 total retrieval questions,
-30 PDF structure cases, and live answer evidence. The 13-case code-output gate
-and 100-case live retrieval target are now met.
+At that time, community gaps remained: corpus growth toward 50 papers, 80 answer
+cases, 80 recorded answers, 100 retrieval-only cases, 180 total retrieval
+questions, 30 PDF structure cases, and live answer evidence. The 13-case
+code-output gate and 100-case live retrieval target were already met.
 
 Production readiness foundation deploy was refreshed on 2026-06-16 14:42 CST
 after pushing `18200f6`.

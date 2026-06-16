@@ -142,11 +142,12 @@ filenames, buckets, endpoints, credentials, `.env`, or file contents, plus
 JSON against a local/staged runtime tree. The verifier returns only safe
 group/token/hash/count differences. The live deployment has the CLI and health
 anchors installed, but still keeps external object storage disabled.
-The latest local PDF structure eval gate source commit is `bb9cb76`
-(`test: expand PDF structure eval gate`). It raises the aggregate PDF
-structure regression gate to 30 seeded equation/table/figure/algorithm cases
-using local paper fixtures only, so the community PDF-structure count target is
-no longer an open blocker.
+The latest PDF structure eval gate source/docs/health sync deployed to
+`/opt/fluxmind` is `0aa1919` (`docs: document PDF structure gate expansion`),
+with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
+gate`). It raises the aggregate PDF structure regression gate to 30 seeded
+equation/table/figure/algorithm cases using local paper fixtures only, so the
+community PDF-structure count target is no longer an open blocker.
 
 Current local verification on 2026-06-17 03:11 CST:
 
