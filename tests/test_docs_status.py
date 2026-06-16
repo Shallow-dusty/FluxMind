@@ -8,11 +8,17 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  45e4cc6 feat: verify object storage migration manifests" in text
-    assert "Current docs/health sync       517756f docs: document object manifest verifier" in text
+    assert "Current implementation commit  fa512df fix: tolerate partial live quality result objects" in text
+    assert "Current docs/health sync       35338d2 docs: clarify live answer quality readiness" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:14 CST" in text
-    assert "Latest deploy follow-up        45e4cc6/517756f synced with restart and live-checked on 2026-06-17 02:14 CST" in text
+    assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
+    assert "Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST" in text
+    assert "`177dd4e` (`feat: gate quality readiness on live answer metrics`)" in text
+    assert "`35338d2` (`docs: clarify live answer quality readiness`)" in text
+    assert "`fa512df` (`fix: tolerate partial live quality result objects`)" in text
+    assert "live answer count/pass-rate/term-coverage gates" in text
+    assert "live_retrieval_pass_rate=1.0" in text
+    assert "live_answer_result_count=0" in text
     assert "local product registry source/docs/health sync deployed to" in text
     assert "`c41ea94` (`feat: add local product registry`)" in text
     assert "`efe2143` (`docs: document product quota guard`)" in text
@@ -49,6 +55,7 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "HEAD          a51a060" not in text
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
+    assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
 
 
 def test_roadmap_near_term_plan_starts_from_deployed_baseline():

@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 02:14 CST
+Last live check: 2026-06-17 02:37 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,11 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `45e4cc6`
-(`feat: verify object storage migration manifests`).
-Last deployed source/docs/health sync: `517756f`
-(`docs: document object manifest verifier`).
+Last deployed implementation update: `fa512df`
+(`fix: tolerate partial live quality result objects`), after feature commit
+`177dd4e` (`feat: gate quality readiness on live answer metrics`).
+Last deployed source/docs/health sync: `35338d2`
+(`docs: clarify live answer quality readiness`).
 
 ```
 Host          Trace-Twin
@@ -99,8 +100,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local object-manifest-verifier deploy was refreshed on 2026-06-17 02:14 CST
-after pushing `45e4cc6` and `517756f`. `.venv/bin/python
+Live-answer-quality-readiness deploy was refreshed on 2026-06-17 02:37 CST
+after pushing `177dd4e`, `35338d2`, and `fa512df`. `.venv/bin/python
 scripts/deploy_sync.py --apply --restart` synced source, docs, tests, and
 health-check changes to
 `/opt/fluxmind`, then restarted `fluxmind-api.service`,
@@ -167,15 +168,22 @@ returned `ok=true`, `checked_objects=19`, `missing_objects=0`,
 `bucket_exported=false`, and `secrets_exported=false`. This is local/staged
 object-manifest verification, not live external object storage activation.
 
-Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
-http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-object-verifier-live-report.json` passed 107/107 live
-retrieval cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-object-verifier-live-report.json` returned
-`local_foundation_ready=true`, `small_group_ready=true`,
-`community_ready=false`; its metrics reported `live_retrieval_result_count=107`.
-This confirms the small-group quality lane only when explicit no-secret live
-report evidence is supplied. Community remains a measured gap.
+Server-local quality-readiness anchors confirmed `live_answer_pass_rate`,
+`average_live_answer_term_coverage`, and `minimum_live_retrieval_pass_rate` in
+`src/quality_readiness.py`. `venv/bin/python scripts/evaluate_rag.py
+--retrieval-url http://127.0.0.1:18502 --json-report
+/tmp/fluxmind-live-quality-readiness-report.json` passed 107/107 live retrieval
+cases. Re-running `scripts/quality_readiness.py --live-report
+/tmp/fluxmind-live-quality-readiness-report.json --require-target small_group`
+returned `local_foundation_ready=true`, `small_group_ready=true`,
+`community_ready=false`, `live_retrieval_result_count=107`,
+`live_retrieval_pass_rate=1.0`, `live_answer_result_count=0`,
+`live_answer_pass_rate=n/a`, and `live_answer_term_coverage=n/a`, then exited
+0. Re-running with `--require-target community` exited 1 as expected. This
+confirms the small-group quality lane only when explicit no-secret live report
+evidence is supplied; community remains a measured gap until live answer count,
+pass-rate, and term-coverage evidence are present alongside the broader corpus
+and eval targets.
 
 Server-local `scripts/storage_schema.py --format markdown` returned `ok=true`,
 `store_count=9`, `problem_count=0`, and optional `api_key_registry_sqlite` and
@@ -843,7 +851,7 @@ product readiness       present in /opt/fluxmind/src/product_readiness.py and /o
 local API key registry  present in /opt/fluxmind/src/api_keys.py and /opt/fluxmind/scripts/api_key_registry.py; SSH smoke on 2026-06-17 00:10 CST returned backend=none available=false active_keys=0 secrets_exported=false; storage_schema.py returned ok=true store_count=9 problem_count=0 and optional api_key_registry_sqlite ok=true; authenticated admin status returned store_count=9 and api_key_registry_sqlite present; production default remains disabled, so product_readiness still reports api_key_lifecycle_not_configured until FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite is deliberately enabled
 local product registry  present in /opt/fluxmind/src/product_registry.py and /opt/fluxmind/scripts/product_registry.py; SSH smoke on 2026-06-17 00:10 CST returned backend=none available=false users=0 workspaces=0 secrets_exported=false; storage_schema.py returned ok=true store_count=9 problem_count=0 and optional product_registry_sqlite ok=true; authenticated admin status returned store_count=9 and product_registry_sqlite present; production default remains disabled, so no multi-user identity, quota, usage, or billing-attribution runtime is activated until FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite is deliberately enabled
 provider readiness      present in /opt/fluxmind/src/provider_readiness.py and /opt/fluxmind/scripts/provider_readiness.py; SSH smoke on 2026-06-16 19:51 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[external_providers_disabled,external_image_provider_not_configured,hosted_execution_provider_not_configured,matlab_backend_not_configured,provider_quota_guard_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned provider_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_provider_* and still omit api_key/owner_id
-quality readiness       present in /opt/fluxmind/src/quality_readiness.py and /opt/fluxmind/scripts/quality_readiness.py; SSH smoke on 2026-06-17 00:13 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true, default small_group_ready=false without live evidence, community_ready=false, and --require-target community exited 1 as expected; server-local evaluate_rag --retrieval-url wrote /tmp/fluxmind-product-registry-live-report.json with 107/107 live retrieval pass, and quality_readiness.py --live-report then returned small_group_ready=true, community_ready=false
+quality readiness       present in /opt/fluxmind/src/quality_readiness.py and /opt/fluxmind/scripts/quality_readiness.py; SSH smoke on 2026-06-17 02:37 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true, default small_group_ready=false without live evidence, community_ready=false, and --require-target community exited 1 as expected; server-local evaluate_rag --retrieval-url wrote /tmp/fluxmind-live-quality-readiness-report.json with 107/107 live retrieval pass, and quality_readiness.py --live-report returned small_group_ready=true, community_ready=false, live_retrieval_pass_rate=1.0, live_answer_result_count=0, live answer quality n/a; live answer count/pass-rate/term-coverage gates are installed but not yet satisfied for community readiness
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3

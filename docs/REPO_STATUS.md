@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 02:14 CST
+Snapshot time: 2026-06-17 02:37 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,14 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  45e4cc6 feat: verify object storage migration manifests
-Current docs/health sync       517756f docs: document object manifest verifier
-Remote status at verification  main == origin/main at 517756f before this deployment-record refresh
-Current refresh scope          object manifest verifier implemented, pushed, deployed, live-verified, and documented
+Current implementation commit  fa512df fix: tolerate partial live quality result objects
+Current docs/health sync       35338d2 docs: clarify live answer quality readiness
+Remote status at verification  main == origin/main at fa512df before this deployment-record refresh
+Current refresh scope          live answer quality readiness gates implemented, pushed, deployed, live-verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   517756f docs: document object manifest verifier
-Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:14 CST
-Latest deploy follow-up        45e4cc6/517756f synced with restart and live-checked on 2026-06-17 02:14 CST
+Last deployed docs sync base   35338d2 docs: clarify live answer quality readiness
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST
+Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -31,9 +31,10 @@ pushed to `origin/main`. Their main contents are:
 ```text
 Area                 Main contents
 -------------------  ---------------------------------------------------------
-RAG/eval             live retrieval gates, aggregate regression gates,
-                     recorded-answer checks, JSON eval reports, staged
-                     quality-readiness preflight
+RAG/eval             live retrieval gates, live answer quality readiness
+                     gates, aggregate regression gates, recorded-answer
+                     checks, JSON eval reports, staged quality-readiness
+                     preflight
 Jobs/workers         durable leases, explicit local worker loop, systemd worker
                      unit, retries, deadlines, cancellation metadata
 Corpus/storage       metadata profiles, paper/chunk SQLite mirrors, runtime
@@ -69,10 +70,13 @@ provider-readiness source/docs sync deployed to `/opt/fluxmind` is `0deea23`
 (`docs: record provider readiness status`), with implementation commit
 `938e918` (`feat: add provider readiness preflight`).
 The latest quality-readiness source/docs sync deployed to `/opt/fluxmind` is
-`8b433be` (`docs: record quality readiness status`), with implementation commit
-`850f7f8` (`feat: add quality readiness preflight`). It adds a no-secret
-CLI/module for self-use, small-group, and community maturity checks, including
-explicit `--live-report` evidence merging and `--require-target` failure gates.
+`35338d2` (`docs: clarify live answer quality readiness`), with implementation
+commits `177dd4e` (`feat: gate quality readiness on live answer metrics`) and
+`fa512df` (`fix: tolerate partial live quality result objects`). It keeps the
+no-secret CLI/module for self-use, small-group, and community maturity checks,
+and now merges explicit `--live-report` evidence for live retrieval count/pass
+rate and live answer count/pass-rate/term-coverage gates before readiness can
+pass.
 The latest local API-key registry source/docs/health sync deployed to
 `/opt/fluxmind` is `207ba7a` (`fix: extend remote health timeout`), with
 implementation commit `6ad6dbc` (`feat: add local API key registry`),
@@ -130,19 +134,20 @@ JSON against a local/staged runtime tree. The verifier returns only safe
 group/token/hash/count differences. The live deployment has the CLI and health
 anchors installed, but still keeps external object storage disabled.
 
-Current local verification on 2026-06-17 02:10 CST:
+Current local verification on 2026-06-17 02:34 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest                                  pass, 430 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 430 tests, 2 known warnings
+.venv/bin/python -m pytest                                  pass, 432 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 432 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 92%,
                                                             src/provider_readiness.py at 93%,
                                                             src/storage_migration.py at 86%,
-                                                            src/quality_readiness.py at 88%,
+                                                            src/quality_readiness.py at 86%,
+                                                            src/evaluation.py at 88%,
                                                             scripts/platform_migration_rehearsal.py at 97%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
@@ -152,6 +157,7 @@ Command                                                     Result
                                                             migration-preflight,
                                                             migration-rehearsal, and
                                                             product/provider/quality-readiness,
+                                                            quality live-threshold anchors,
                                                             API-key registry, product registry,
                                                             product quota guard, and product
                                                             RBAC guard plus product registry
@@ -274,7 +280,10 @@ Remote quality live-report smoke                            server-local evaluat
                                                             report with 107/107 live retrieval;
                                                             quality_readiness.py --live-report
                                                             returned small_group_ready=true,
-                                                            community_ready=false;
+                                                            community_ready=false,
+                                                            live_retrieval_pass_rate=1.0,
+                                                            live_answer_result_count=0,
+                                                            live answer quality n/a;
                                                             --require-target small_group
                                                             exited 0 and
                                                             --require-target community exited 1
