@@ -53,7 +53,7 @@ coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 13 code-output cases,
-                                          20 PDF structure cases,
+                                          30 PDF structure cases,
                                           42 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier anchors
 storage_schema.py                         pass, ok=true, 9 stores, 0 problems
@@ -588,7 +588,7 @@ in a temporary artifact store, including reusable execution-template coverage,
 paper-specific examples, four local Python job-backed execution paths, and an
 Octave-compatible PMSM current-decay case with structured runtime-unavailable
 fallback when no `octave` binary is installed.
-The evaluator also has 20 seeded PDF structure gates for
+The evaluator also has 30 seeded PDF structure gates for
 equation/table/figure/algorithm markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
 anchors as a Markdown handoff report. `POST /query/report` now adds a local
@@ -597,8 +597,8 @@ source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
 IDs, and validation checklist fields. The self-use and small-group targets are
 met in the latest deployed live retrieval report; the community target still
 needs corpus growth toward 50 papers, 80 recorded answers, 180 retrieval
-questions, 30 PDF structure cases, and live answer count/pass-rate/term-coverage
-evidence. Broader Octave
+questions, and live answer count/pass-rate/term-coverage evidence. The 30-case
+PDF structure target is now met. Broader Octave
 execution remains deferred until an Octave binary
 is available in CI/runtime. The 2026-06-15 and 2026-06-16 seed-library
 expansions add adaptive-gain SMO, super-twisting SMO, switching-function
@@ -660,7 +660,7 @@ owned without reading local JSON/SQLite files by hand.
   selected sandbox, MATLAB path, external provider switch, and quota/cost guard
   are all configured and verified.
 - Keep `scripts/quality_readiness.py --require-target community` failing until
-  the community-quality corpus, eval breadth, PDF structure, and live-answer
+  the community-quality corpus, answer/retrieval breadth, and live-answer
   count/pass-rate/term-coverage gaps are closed.
 
 Success criterion: generated code can run in a controlled environment, and every

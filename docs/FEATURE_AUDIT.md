@@ -22,7 +22,7 @@ Command                                                               Result
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
-                                                                      20 PDF structure cases,
+                                                                      30 PDF structure cases,
                                                                       42 recorded answers
 .venv/bin/python scripts/health_check.py                             pass, local/docs/query-latency/query-alert/
                                                                       provider-alert/job-alert/API-access-audit/
@@ -270,11 +270,12 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 - The offline RAG baseline is deterministic and now covers 107 no-LLM retrieval
   questions plus 13 local code-output cases (12 Python, one Octave-compatible
   runtime-aware case; four Python cases are job-backed, across reusable
-  templates and paper-specific examples) and 20 seeded PDF
+  templates and paper-specific examples) and 30 seeded PDF
   equation/table/figure/algorithm structure cases, but the live answer QA set
   still lacks enough passing live answer count/pass-rate/term-coverage evidence;
-  richer PDF layout extraction and broader real Octave execution coverage remain
-  narrow until an `octave` binary is installed in CI/runtime.
+  richer PDF layout extraction remains a future quality lane, and broader real
+  Octave execution coverage remains narrow until an `octave` binary is installed
+  in CI/runtime.
 - The local Python/Octave child-process providers are contract tests, while the
   Docker backend proves a no-key container path and execution policy preflight
   rejects obvious disallowed imports, shell/package-manager commands, absolute

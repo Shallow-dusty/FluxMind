@@ -51,7 +51,7 @@ Gate                                      Result
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
-                                             20 PDF structure cases,
+                                             30 PDF structure cases,
                                              42 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier/provider-readiness/quality-readiness and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
@@ -111,7 +111,7 @@ fixtures, generated-answer inspection metadata, and selectable answer modes. The
 baseline now has 42 small-group answer cases, 42 recorded answers, and 65
 retrieval-only cases for 107 total no-LLM retrieval questions, plus 13 local
 code-output cases (12 Python, one Octave-compatible runtime-aware case; four
-Python cases are job-backed) and 20 seeded PDF
+Python cases are job-backed) and 30 seeded PDF
 equation/table/figure/algorithm structure cases. The baseline gates 145 expected source/page refs, 111 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and

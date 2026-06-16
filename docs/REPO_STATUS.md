@@ -142,8 +142,13 @@ filenames, buckets, endpoints, credentials, `.env`, or file contents, plus
 JSON against a local/staged runtime tree. The verifier returns only safe
 group/token/hash/count differences. The live deployment has the CLI and health
 anchors installed, but still keeps external object storage disabled.
+The latest local PDF structure eval gate source commit is `bb9cb76`
+(`test: expand PDF structure eval gate`). It raises the aggregate PDF
+structure regression gate to 30 seeded equation/table/figure/algorithm cases
+using local paper fixtures only, so the community PDF-structure count target is
+no longer an open blocker.
 
-Current local verification on 2026-06-17 02:52 CST:
+Current local verification on 2026-06-17 03:11 CST:
 
 ```text
 Command                                                     Result
@@ -160,7 +165,7 @@ Command                                                     Result
                                                             scripts/platform_migration_rehearsal.py at 97%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 13 code-output cases,
-                                                            20 PDF structure cases,
+                                                            30 PDF structure cases,
                                                             42 recorded answers
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
                                                             migration-preflight,
@@ -215,6 +220,11 @@ Command                                                     Result
                                                             self_use=met, small_group=false
                                                             without supplied live report,
                                                             community=false with measured gaps
+.venv/bin/python scripts/quality_readiness.py                pass with /tmp/fluxmind-pdf30-eval-report.json:
+  --live-report /tmp/fluxmind-pdf30-eval-report.json         pdf_structure_case_count=30,
+  --format markdown                                          small_group=false because the local
+                                                            report has no live retrieval evidence;
+                                                            community=false without a PDF blocker
 .venv/bin/python scripts/quality_readiness.py                pass, --require-target community
   --require-target community                                exits 1 because community_ready=false
 git diff --check                                            pass

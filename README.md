@@ -201,7 +201,7 @@ docs/demo-script.md                    Chinese demo script and defense Q&A
 
 The local research baseline is usable. The remaining path is dependency-driven:
 
-1. Expand community-quality evidence: more curated papers, recorded answers, retrieval questions, PDF structure cases, and live answer count/pass-rate/term-coverage evidence.
+1. Expand community-quality evidence: more curated papers, recorded answers, retrieval questions, and live answer count/pass-rate/term-coverage evidence. The current PDF structure target is met; add more PDF cases when new source anchors are useful.
 2. Finish production state foundations: metadata database, object storage, distributed job-store backend, migrations, backups, and restore drills.
 3. Harden execution and observability: sandbox decision, abuse controls, production metrics/traces/alerts, cost attribution.
 4. Add external product identity: identity-backed API keys, external quotas, billing/payment, team workflows, and audit controls.
@@ -396,7 +396,7 @@ docs/demo-script.md                    中文演示脚本和答辩问答
 
 当前本地研究基线已经可用，后续按依赖关系推进：
 
-1. 扩展社区质量证据：更多精选论文、recorded answers、retrieval questions、PDF structure cases，以及 live answer 数量、通过率和术语覆盖证据。
+1. 扩展社区质量证据：更多精选论文、recorded answers、retrieval questions，以及 live answer 数量、通过率和术语覆盖证据。当前 PDF structure 目标已达到；后续只在出现有价值的新源码锚点时继续增加 PDF cases。
 2. 完成生产状态基础：metadata database、object storage、distributed job-store、迁移、备份和恢复演练。
 3. 强化执行安全和观测：sandbox 方案、滥用控制、生产 metrics/traces/alerts、成本归因。
 4. 建立外部产品身份层：identity-backed API key、外部 quota、billing/payment、team workflow 和审计控制。

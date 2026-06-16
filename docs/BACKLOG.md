@@ -126,7 +126,7 @@ retrieval-quality advisory alerts,
 retrieval-only source/page cases, 13 local code-output artifact cases
 (12 Python, one Octave-compatible runtime-aware case; four Python cases are
 job-backed) across reusable execution templates plus
-paper-specific local fixtures, 20 seeded PDF equation/table/figure/algorithm
+paper-specific local fixtures, 30 seeded PDF equation/table/figure/algorithm
 structure extraction acceptance cases, optional JSON eval report export, and
 aggregate eval-set regression gates implemented. The baseline now has a 42-case
 small-group quality gate with 42 recorded answers plus 65 retrieval-only cases

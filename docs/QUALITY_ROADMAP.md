@@ -53,10 +53,10 @@ Target       Status
 -----------  ---------------------------------------------------------------
 self_use     met by the current no-key/local baseline
 small_group  met: 30 curated papers, 107 no-LLM retrieval questions,
-             42 recorded answers, 13 code-output cases, 20 PDF structure
+             42 recorded answers, 13 code-output cases, 30 PDF structure
              cases, and 107/107 live retrieval pass in the latest deployment run
-community    gap: corpus size, live answer evidence, and remaining
-             answer/retrieval/PDF coverage depth; when live answer count is met,
+community    gap: corpus size, answer/retrieval breadth, and live answer
+             evidence; when live answer count is met,
              community readiness also requires live answer pass rate and
              term-coverage thresholds to pass
 ```
@@ -73,7 +73,7 @@ retrieval_eval_question_count  107      100                 0
 recorded_answer_count          42       40                  0
 live_retrieval_result_count    107      50                  0
 code_output_case_count         13       8                   0
-pdf_structure_case_count       20       15                  0
+pdf_structure_case_count       30       15                  0
 topic_group_count              4        4                   0
 ```
 
@@ -101,7 +101,9 @@ Order  Work
        production storage/distributed-worker foundation.
 2      For community quality, expand from 30 toward 50 curated papers, 80
        recorded answers, 180 retrieval questions, and live answer evidence
-       with passing live answer rate and term coverage.
+       with passing live answer rate and term coverage. The 30-case PDF
+       structure target is now met; add more only when new source anchors are
+       useful.
 3      For platform foundation, choose external metadata/object/job-store
        backends and run migration tests behind the existing no-secret readiness
        contracts.
