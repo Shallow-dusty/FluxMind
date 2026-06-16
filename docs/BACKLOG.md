@@ -322,6 +322,10 @@ durable multi-user database/object storage migration remains planned
   requires `--staging-root`, existing staging data requires
   `--overwrite-staging`, and runtime dependency groups such as models are skipped
   unless `--include-runtime-dependencies` is supplied.
+- The same rehearsal can emit an opaque object-storage migration manifest with
+  `--include-object-manifest`: object keys, SHA-256 hashes, byte counts, group
+  names, and source-path tokens are included, while source paths, filenames,
+  bucket names, endpoints, credentials, `.env`, and file contents are excluded.
 - `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
   the local state trees that source deploys exclude, with file counts, byte
   totals, and SHA-256 hashes for known metadata/job/API-key-registry/index files
@@ -754,6 +758,11 @@ identity-backed quotas, and external billing disabled until decisions are made
   staged restore against the no-secret manifest, then verify staged storage
   schema. Reports still exclude runtime contents, job payloads, `.env`, external
   URLs, bucket names, queue names, and credentials.
+- `scripts/platform_migration_rehearsal.py --include-object-manifest` adds the
+  object-storage pre-upload manifest for the staged tree. It proves object key,
+  hash, byte-count, and group coverage locally without connecting to object
+  storage or leaking source paths, filenames, buckets, endpoints, credentials,
+  or contents.
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
   access audit, owner metadata, rate-limit configuration, local API-key registry,
@@ -892,6 +901,9 @@ Acceptance:
 - Production storage and distributed-worker blockers are visible in
   API/report/metrics/UI surfaces without connecting to external services or
   exposing runtime contents.
+- Object-storage upload manifests can be generated from a migration rehearsal
+  without activating external storage or exposing source paths, filenames,
+  buckets, endpoints, credentials, or runtime contents.
 - Local retention candidates can be previewed without deleting files or reading
   raw runtime directories by hand.
 - Local retention candidates can be deleted only through the explicit guarded

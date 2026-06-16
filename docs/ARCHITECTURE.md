@@ -409,7 +409,13 @@ source manifest and passes local storage-schema checks. The CLI
 `scripts/platform_migration_rehearsal.py` uses a temporary staging directory by
 default and deletes it after reporting; retained staging requires an explicit
 `--staging-root`, and clearing an existing staging root requires
-`--overwrite-staging`. Reports expose only group counts, byte totals, status
+`--overwrite-staging`. The same rehearsal can generate an opaque object-storage
+migration manifest with `--include-object-manifest`: it records group names,
+content hashes, byte counts, source-path tokens, and deterministic object keys,
+but does not export source paths, filenames, buckets, endpoints, credentials, or
+file contents. This prepares object-storage migration validation without
+activating an external object store.
+Reports expose only group counts, byte totals, status
 codes, and blocker codes; `.env` is never copied, runtime dependencies such as
 models are skipped unless `--include-runtime-dependencies` is supplied, and
 staging roots inside the source project are rejected.

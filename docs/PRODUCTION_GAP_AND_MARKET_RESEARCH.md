@@ -175,7 +175,12 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         operator management for workspace/member/quota/
                         billing-attribution metadata is available through
                         `/admin/product-registry/*` and the Streamlit admin
-                        panel when the SQLite backend is enabled.
+                        panel when the SQLite backend is enabled. Local
+                        migration rehearsal can now emit an opaque
+                        object-storage manifest with deterministic object keys,
+                        hashes, byte counts, group names, and path tokens
+                        without exposing source paths, filenames, buckets,
+                        endpoints, credentials, or contents.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,
@@ -596,7 +601,8 @@ implementation questions and receive traceable, executable outputs.
 - Migrate corpus, chunks, jobs, artifacts, query events, and eval reports behind
   versioned schemas.
 - Extend the current no-secret manifest and dry-run verifier into migration
-  tests, backup/restore drills, retention policy, and restore docs.
+  tests, opaque object-storage manifests, backup/restore drills, retention
+  policy, and restore docs.
 - Use the current `platform_readiness` blocker summary as the local acceptance
   gate for the storage/queue backend choice; it already confirms clean local
   schema/inventory and local worker-bridge contracts while flagging missing

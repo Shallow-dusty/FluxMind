@@ -56,6 +56,7 @@ Jobs                       local durable JSONL + SQLite job state, worker servic
 Admin/status               no-secret status, events, metrics, retention preview
 API keys                   optional local SQLite registry with hashed tokens only
 Product registry           optional local users/workspaces/RBAC/quotas/billing ledger, admin API/UI, query quota guard, and write-path RBAC guard
+Migration readiness        local restore rehearsal and opaque object-storage manifest
 Readiness gates            quality, platform, product, provider, migration checks
 ```
 
@@ -87,6 +88,7 @@ optional hashed API-key registry
 optional product registry SQLite ledger
 local product registry admin API/UI
 optional query quota and local RBAC guards
+local migration rehearsal and object manifest
 ```
 
 External databases, object storage, distributed queues, external image providers, hosted sandboxes, real MATLAB integration, identity, quotas, and billing are not enabled by default. They are represented by provider-neutral interfaces, configuration flags, readiness reports, and blocker codes until intentionally activated.
@@ -128,6 +130,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
 python scripts/api_key_registry.py status --format markdown
 python scripts/product_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown
@@ -246,6 +249,7 @@ Job 系统                  本地 durable JSONL + SQLite 状态和 worker 服�
 管理面                    no-secret status、events、metrics、retention preview
 API key                   可选本地 SQLite registry，只持久化 token hash
 Product registry          可选本地 user/workspace/RBAC/quota/billing ledger、admin API/UI、query quota guard 与写路径 RBAC guard
+迁移准备                  本地 restore rehearsal 与 opaque object-storage manifest
 Readiness 门禁            quality、platform、product、provider、migration 检查
 ```
 
@@ -277,6 +281,7 @@ runtime events JSONL
 可选 product registry SQLite ledger
 本地 product registry admin API/UI
 可选 query quota 与本地 RBAC guard
+本地 migration rehearsal 与 object manifest
 ```
 
 外部数据库、object storage、分布式队列、外部图像 provider、托管 sandbox、真实 MATLAB、身份、配额和计费默认不启用。项目通过 provider-neutral 接口、配置开关、readiness 报告和 blocker code 表示这些边界，直到它们被明确激活和验证。
@@ -318,6 +323,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
 python scripts/api_key_registry.py status --format markdown
 python scripts/product_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown

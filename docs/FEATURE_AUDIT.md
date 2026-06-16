@@ -44,6 +44,9 @@ Command                                                               Result
                                                                       external-backend blockers
 .venv/bin/python scripts/platform_migration_rehearsal.py --format... pass, rehearsal_ok=true,
                                                                       staged restore/schema checks pass
+.venv/bin/python scripts/platform_migration_rehearsal.py
+  --include-object-manifest --format...                              pass, opaque object manifest
+                                                                      without paths, buckets, or contents
 .venv/bin/python scripts/product_readiness.py --format markdown      pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
                                                                       identity/quota/billing blockers and
@@ -284,8 +287,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   distributed job-store targets, but no production database, object store, or
   distributed queue has been activated. The new migration preflight proves local
   evidence and external blocker reporting. The migration rehearsal now proves a
-  local staged runtime copy plus restore/schema verification, not live external
-  database or object-storage migration.
+  local staged runtime copy plus restore/schema verification and can emit an
+  opaque object-storage migration manifest for staged files without source
+  paths, filenames, buckets, endpoints, credentials, or contents. It is still
+  not live external database or object-storage migration.
 - Productization readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, and the local API-key lifecycle
   registry is implemented with hash-only storage and API auth integration. The
@@ -319,9 +324,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 1. Add live answer evaluation cases before claiming broad RAG quality beyond
    the small-group retrieval bar.
-2. Use the production storage/distributed-worker readiness blockers to choose
-   the next real database/object-storage/job-store migration tests before moving
-   runtime state out of local files.
+2. Use the production storage/distributed-worker readiness blockers and the
+   object-storage manifest to choose the next real database/object-storage/
+   job-store migration tests before moving runtime state out of local files.
 3. Add live sandbox and abuse-policy tests before enabling Docker, Cloudflare Sandbox, or any
    MATLAB-compatible hosted execution path.
 4. Add identity/workspace/ownership tests before exposing private corpora,

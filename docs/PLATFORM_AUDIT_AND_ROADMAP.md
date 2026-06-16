@@ -182,6 +182,11 @@ adds a local staged migration drill: copy required runtime groups into a staging
 root, run the restore verifier against the staged tree, then run staged storage
 schema checks. The default staging root is temporary and deleted after reporting;
 retained staging and overwrite are explicit flags, and reports remain no-secret.
+With `--include-object-manifest`, the same rehearsal also emits an opaque
+object-storage migration manifest for staged files: deterministic object keys,
+SHA-256 hashes, byte counts, group names, and source-path tokens are available
+without exporting source paths, filenames, buckets, endpoints, credentials, or
+contents.
 The no-secret runtime manifest can also be checked against a target runtime root
 through the CLI or authenticated API without copying, deleting, or restoring
 files. This is still a local
@@ -709,8 +714,8 @@ or payment administration.
    source of truth for platformization work.
 5. Use `scripts/platform_migration_preflight.py` plus the local
    `platform_readiness` blockers, then `scripts/platform_migration_rehearsal.py`
-   for local staged-copy evidence, to choose and test the production metadata
-  database, object storage, and distributed job-store backend. The readiness
+   for local staged-copy and opaque object-manifest evidence, to choose and test
+   the production metadata database, object storage, and distributed job-store backend. The readiness
   surface already has separate metadata, object, and job-store targets; the
   remaining work is backend selection, external migration execution, and live
   activation. Then extend the local restart-recovery/lease/worker-service bridge
