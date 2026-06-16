@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import scripts.evaluate_rag as evaluate_rag_cli
+import scripts.platform_migration_preflight as platform_migration_preflight_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
 import scripts.storage_schema as storage_schema_cli
@@ -163,6 +164,78 @@ def test_storage_schema_cli_returns_nonzero_for_drift(monkeypatch, capsys):
 
     assert storage_schema_cli.main() == 1
     assert json.loads(capsys.readouterr().out) == {"ok": False}
+
+
+def test_platform_migration_preflight_cli_default_allows_local_preflight(monkeypatch, capsys):
+    monkeypatch.setattr(
+        platform_migration_preflight_cli,
+        "collect_platform_migration_preflight",
+        lambda project_root: {"preflight_ok": True, "activation_ready": False},
+    )
+    monkeypatch.setattr("sys.argv", ["platform_migration_preflight.py", "--target-root", "/tmp/root"])
+
+    assert platform_migration_preflight_cli.main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "activation_ready": False,
+        "preflight_ok": True,
+    }
+
+
+def test_platform_migration_preflight_cli_can_require_activation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        platform_migration_preflight_cli,
+        "collect_platform_migration_preflight",
+        lambda project_root: {"preflight_ok": True, "activation_ready": False},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["platform_migration_preflight.py", "--target-root", "/tmp/root", "--require-activation"],
+    )
+
+    assert platform_migration_preflight_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["activation_ready"] is False
+
+
+def test_platform_migration_preflight_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "preflight.md"
+    monkeypatch.setattr(
+        platform_migration_preflight_cli,
+        "collect_platform_migration_preflight",
+        lambda project_root: {"preflight_ok": True, "activation_ready": True},
+    )
+    monkeypatch.setattr(
+        platform_migration_preflight_cli,
+        "format_platform_migration_preflight_markdown",
+        lambda status: "# Preflight",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_preflight.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert platform_migration_preflight_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# Preflight\n"
+
+
+def test_platform_migration_preflight_cli_reports_os_errors(monkeypatch, capsys):
+    def fail_collect(*, project_root):
+        raise OSError("cannot read target")
+
+    monkeypatch.setattr(
+        platform_migration_preflight_cli,
+        "collect_platform_migration_preflight",
+        fail_collect,
+    )
+    monkeypatch.setattr("sys.argv", ["platform_migration_preflight.py"])
+
+    assert platform_migration_preflight_cli.main() == 2
+    assert "error: cannot read target" in capsys.readouterr().err
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):

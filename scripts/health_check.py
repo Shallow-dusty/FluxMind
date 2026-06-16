@@ -110,12 +110,14 @@ def main() -> int:
         "src/metadata.py",
         "src/storage_manifest.py",
         "src/storage_schema.py",
+        "src/platform_migration.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
         "scripts/evaluate_rag.py",
         "scripts/runtime_manifest.py",
         "scripts/storage_schema.py",
+        "scripts/platform_migration_preflight.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -173,6 +175,31 @@ def main() -> int:
     check("GET    /admin/runtime-manifest" in feature_audit, "feature audit records runtime manifest route", failures)
     check("POST   /admin/runtime-manifest/restore-check" in feature_audit, "feature audit records runtime restore-check route", failures)
     check("Product platform layer        incomplete" in feature_audit, "feature audit records platform gap", failures)
+    platform_migration_source = (PROJECT_ROOT / "src" / "platform_migration.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "collect_platform_migration_preflight" in platform_migration_source
+        and "activation_ready" in platform_migration_source,
+        "platform migration preflight collector installed",
+        failures,
+    )
+    check(
+        "format_platform_migration_preflight_markdown" in platform_migration_source
+        and "content_exported" in platform_migration_source
+        and "secrets_exported" in platform_migration_source,
+        "platform migration preflight no-secret markdown installed",
+        failures,
+    )
+    platform_migration_cli = (
+        PROJECT_ROOT / "scripts" / "platform_migration_preflight.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "--require-activation" in platform_migration_cli
+        and "preflight_ok" in platform_migration_cli,
+        "platform migration preflight CLI installed",
+        failures,
+    )
 
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
