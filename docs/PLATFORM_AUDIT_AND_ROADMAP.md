@@ -682,9 +682,8 @@ blocked on product decisions.
    met, so the next decision is community-quality evidence versus production
    storage/distributed-worker hardening.
 2. Treat `9b1cbc5` as the current source/eval quality baseline and `850f7f8`
-   as the current local implementation baseline. The last recorded deployed
-   application baseline remains the provider-readiness source sync until the
-   next guarded deploy.
+   as the current deployed implementation baseline after the quality-readiness
+   source sync.
    Keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.

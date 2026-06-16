@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 19:51 CST
+Last live check: 2026-06-16 20:47 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `938e918`
-(`feat: add provider readiness preflight`).
-Last deployed source/docs sync: `0deea23`
-(`docs: record provider readiness status`).
+Last deployed implementation update: `850f7f8`
+(`feat: add quality readiness preflight`).
+Last deployed source/docs sync: `8b433be`
+(`docs: record quality readiness status`).
 
 ```
 Host          Trace-Twin
@@ -98,6 +98,33 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Quality-readiness deploy was refreshed on 2026-06-16 20:47 CST after pushing
+`850f7f8` and `8b433be`. `.venv/bin/python scripts/deploy_sync.py --apply
+--restart` synced source, docs, tests, and health-check changes to
+`/opt/fluxmind`, then restarted `fluxmind-api.service`,
+`fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
+`active`.
+
+The follow-up health gate passed with public HTTPS UI 200 at
+`https://smy.hyper-dusty.cloud/`, public API health 200 at
+`https://api-smy.hyper-dusty.cloud/health`, services active, ports `18501` and
+`18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
+`chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
+`index_fresh=True`. Server-local `venv/bin/python scripts/quality_readiness.py
+--format json` returned `local_foundation_ready=true`, `small_group_ready=false`
+without supplied live evidence, and `community_ready=false`; `--require-target
+community` exited 1 as expected. Server-local
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url
+http://127.0.0.1:18502 --json-report
+/tmp/fluxmind-quality-readiness-live-report.json` passed 107/107 live retrieval
+cases. Re-running `scripts/quality_readiness.py --live-report
+/tmp/fluxmind-quality-readiness-live-report.json` then returned
+`local_foundation_ready=true`, `small_group_ready=true`,
+`community_ready=false`, and `live_retrieval_result_count=107`;
+`--require-target small_group` exited 0 and `--require-target community` exited
+1. This confirms the small-group quality lane only when explicit no-secret live
+report evidence is supplied; community remains a measured gap.
 
 Provider-readiness deploy was refreshed on 2026-06-16 19:51 CST after pushing
 `938e918` and `0deea23`. `.venv/bin/python scripts/deploy_sync.py --apply
@@ -750,6 +777,7 @@ platform migration preflight present in /opt/fluxmind/src/platform_migration.py 
 runtime migration rehearsal present in /opt/fluxmind/src/storage_migration.py and /opt/fluxmind/scripts/platform_migration_rehearsal.py; SSH smoke on 2026-06-16 18:34 CST returned rehearsal_ok=true copied_files=19 restore_check_ok=true staged_storage_schema_ok=true blockers=none
 product readiness       present in /opt/fluxmind/src/product_readiness.py and /opt/fluxmind/scripts/product_readiness.py; SSH smoke on 2026-06-16 19:08 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[multi_user_identity_not_configured,api_key_lifecycle_not_configured,identity_quota_store_not_configured,billing_provider_not_configured,billing_attribution_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned product_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_product_* and still omit api_key/owner_id
 provider readiness      present in /opt/fluxmind/src/provider_readiness.py and /opt/fluxmind/scripts/provider_readiness.py; SSH smoke on 2026-06-16 19:51 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[external_providers_disabled,external_image_provider_not_configured,hosted_execution_provider_not_configured,matlab_backend_not_configured,provider_quota_guard_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned provider_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_provider_* and still omit api_key/owner_id
+quality readiness       present in /opt/fluxmind/src/quality_readiness.py and /opt/fluxmind/scripts/quality_readiness.py; SSH smoke on 2026-06-16 20:47 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true, default small_group_ready=false without live evidence, community_ready=false, and --require-target community exited 1 as expected; server-local evaluate_rag --retrieval-url wrote /tmp/fluxmind-quality-readiness-live-report.json with 107/107 live retrieval pass, and quality_readiness.py --live-report then returned small_group_ready=true, community_ready=false, --require-target small_group exited 0, --require-target community exited 1
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
@@ -884,6 +912,14 @@ ssh -o BatchMode=yes root@100.100.233.26 \
 
 ssh -o BatchMode=yes root@100.100.233.26 \
   'cd /opt/fluxmind && venv/bin/python scripts/provider_readiness.py --format markdown'
+
+ssh -o BatchMode=yes root@100.100.233.26 \
+  'cd /opt/fluxmind && venv/bin/python scripts/quality_readiness.py --format markdown'
+
+ssh -o BatchMode=yes root@100.100.233.26 \
+  'cd /opt/fluxmind &&
+   venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502 --json-report /tmp/fluxmind-quality-readiness-live-report.json &&
+   venv/bin/python scripts/quality_readiness.py --live-report /tmp/fluxmind-quality-readiness-live-report.json --require-target small_group'
 
 ssh -o BatchMode=yes root@100.100.233.26 \
   'systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service fluxmind-worker.service docker.service;

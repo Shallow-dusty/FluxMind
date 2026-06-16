@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      run on 2026-06-16; re-run before deploy claims
+                      refreshed on 2026-06-16 20:47 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -36,7 +36,7 @@ Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation 850f7f8 feat: add quality readiness preflight
-Status note     this docs-status refresh follows local quality-readiness implementation
+Status note     this docs-status refresh follows quality-readiness deployment verification
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      quality-readiness CLI/module, tests, health anchors, docs refresh
 Diff hygiene    git diff --check passed on 2026-06-16 20:39 CST

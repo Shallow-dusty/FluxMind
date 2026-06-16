@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 20:39 CST
+Snapshot time: 2026-06-16 20:47 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -16,12 +16,12 @@ Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  850f7f8 feat: add quality readiness preflight
 Implementation base            c05a7fd docs: record provider readiness deployment
-Remote status at verification  quality-readiness commits pending push before deployment
-Current refresh scope          quality-readiness local status refresh
+Remote status at verification  origin/main includes 8b433be after quality-readiness push
+Current refresh scope          quality-readiness deployment record refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   c05a7fd docs: record provider readiness deployment
+Last deployed docs sync base   8b433be docs: record quality readiness status
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
-Latest deploy follow-up        938e918/0deea23 synced with restart on 2026-06-16 19:51 CST
+Latest deploy follow-up        850f7f8/8b433be synced with restart on 2026-06-16 20:47 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -67,11 +67,11 @@ The latest product-readiness source/docs sync deployed to `/opt/fluxmind` is
 provider-readiness source/docs sync deployed to `/opt/fluxmind` is `0deea23`
 (`docs: record provider readiness status`), with implementation commit
 `938e918` (`feat: add provider readiness preflight`).
-The latest quality-readiness local implementation is `850f7f8`
-(`feat: add quality readiness preflight`). It adds a no-secret CLI/module for
-self-use, small-group, and community maturity checks, including explicit
-`--live-report` evidence merging and `--require-target` failure gates. It is
-not yet recorded as deployed in this snapshot.
+The latest quality-readiness source/docs sync deployed to `/opt/fluxmind` is
+`8b433be` (`docs: record quality readiness status`), with implementation commit
+`850f7f8` (`feat: add quality readiness preflight`). It adds a no-secret
+CLI/module for self-use, small-group, and community maturity checks, including
+explicit `--live-report` evidence merging and `--require-target` failure gates.
 
 Current local verification on 2026-06-16 20:39 CST:
 
@@ -159,6 +159,22 @@ Remote provider readiness smoke                             `/opt/fluxmind/venv/
                                                             admin metrics include
                                                             fluxmind_provider_* and omit
                                                             api_key/owner_id
+Remote quality readiness smoke                              `/opt/fluxmind/venv/bin/python
+                                                            scripts/quality_readiness.py`
+                                                            returned local_foundation_ready=true,
+                                                            small_group_ready=false without
+                                                            live report evidence,
+                                                            community_ready=false;
+                                                            --require-target community exited 1
+Remote quality live-report smoke                            server-local evaluate_rag.py
+                                                            --retrieval-url wrote a no-secret
+                                                            report with 107/107 live retrieval;
+                                                            quality_readiness.py --live-report
+                                                            returned small_group_ready=true,
+                                                            community_ready=false;
+                                                            --require-target small_group
+                                                            exited 0 and
+                                                            --require-target community exited 1
 ```
 
 The earlier small-group quality work was deployed and live-verified through the
