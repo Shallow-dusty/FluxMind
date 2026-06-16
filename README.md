@@ -1,85 +1,102 @@
 # FluxMind
 
-**Control-theory research copilot for Sliding Mode Control, PMSM drives, and flux-linkage estimation.**
+**A paper-grounded control-engineering copilot for Sliding Mode Control, PMSM drives, observers, and flux-linkage estimation.**
 
-FluxMind is a RAG-based research assistant for reading control-engineering papers, checking source-backed claims, generating paper-to-code handoffs, and running local no-key development workflows. The current deployed baseline is designed for personal and small-group research use, with explicit readiness surfaces for later production storage, distributed jobs, identity, quotas, billing, and provider activation.
+FluxMind turns a curated research corpus into traceable answers, retrieval diagnostics, paper-to-code handoffs, executable local examples, and no-secret operational evidence. It is currently a deployed small-group research baseline, not a fully activated SaaS platform.
 
-Languages: [English](#english) | [中文](#中文)
+[English](#english) | [中文](#中文)
 
 ---
 
 ## English
 
-### Current Status
+### Why FluxMind Exists
+
+Generic document chat is easy to build and hard to trust. FluxMind is narrower:
+
+- It focuses on control-engineering papers and implementation workflows.
+- It keeps answers tied to numbered source chunks and source/page evidence.
+- It exposes retrieval diagnostics so failures can be inspected before trusting generated text.
+- It can turn paper context into implementation notes, validation checklists, local plots, and artifacts.
+- It keeps production-risky systems behind explicit readiness checks instead of silently enabling them.
+
+The result is a research workspace for moving from "what does this paper claim?" to "what can I verify, run, export, and revisit?"
+
+### Current Snapshot
 
 ```text
-Project number                 11.FluxMind
-Current maturity               small-group research baseline
-Deployment                     live on Trace-Twin, UI/API/worker services active
-Quality gate                   30 papers, 107 live retrieval questions, 42 recorded answers
-Runtime model                  no-key/local platform foundation with guarded external readiness
-Production platformization     not activated yet
+Project index       11.FluxMind
+Primary domain      SMC, PMSM/FOC, observers, flux estimation, control implementation
+Current maturity    small-group research baseline
+Deployment          Trace-Twin, independent UI/API/worker systemd services
+Corpus baseline     30 curated papers, fresh FAISS index, 1934 chunks
+Eval baseline       42 recorded answers, 107 live retrieval questions
+Runtime stance      no-key/local by default; external activation is explicit
 ```
 
-- AI-Prism formal project number: `11`
-- Active workspace directory: `11.FluxMind/`
-- Previous temporary index `80` has been retired; the pre-formal snapshot is kept under `90.Archive/11-FluxMind-PreFormal/`.
 - Public UI: `https://smy.hyper-dusty.cloud/`
-- Public API health: `https://api-smy.hyper-dusty.cloud/health`
+- API health: `https://api-smy.hyper-dusty.cloud/health`
+- Active workspace directory: `11.FluxMind/`
+- Previous temporary index `80` has been retired; the archived pre-formal snapshot lives under `90.Archive/11-FluxMind-PreFormal/`.
 
-### What It Does
+Live deployment facts are mutable. Before making deployment claims, refresh [docs/DEPLOYMENT_STATUS.md](docs/DEPLOYMENT_STATUS.md).
 
-FluxMind helps a control researcher move from paper reading to implementation evidence:
-
-- **Paper-grounded Q&A** with numbered citations and source/page checks.
-- **Retrieval diagnostics** through no-LLM `/query/retrieve` and citation inspection.
-- **Corpus management** for curated library papers, uploaded PDFs, active selections, and reusable corpus profiles.
-- **Paper-to-code handoffs** with assumptions, source references, validation checklists, and local artifacts.
-- **Local execution workflows** for Python and Octave-compatible control examples.
-- **Artifact tracking** for generated plots, files, and mock diagrams with stable IDs and checksums.
-- **Local API key lifecycle** through an optional SQLite registry that stores token hashes only.
-- **No-secret admin status** for jobs, corpus state, storage schema, runtime events, metrics, retention preview, and platform readiness.
-
-### Current Architecture
+### Core Capabilities
 
 ```text
-Streamlit UI / FastAPI
-        |
-        v
-Shared RAG core
-        |
-        +--> hybrid retrieval: FAISS vectors + metadata/docstore keyword signals
-        +--> deterministic BM25-lite reranking, optional local CrossEncoder
-        +--> numbered citation guard and source/page validation
-        |
-        v
-Local no-key platform layer
-        |
-        +--> jobs: JSONL history + SQLite current-state mirror
-        +--> corpus metadata: JSON + SQLite mirrors
-        +--> artifacts: filesystem + SQLite registry
-        +--> API keys: optional SQLite registry with hashed tokens
-        +--> runtime events: metadata-only JSONL observability
+Capability                 What is implemented
+-------------------------  -----------------------------------------------------
+Paper-grounded Q&A         RAG answers with source/page context and citation guard
+Retrieval diagnostics      no-LLM /query/retrieve and /query/inspect inspection
+Corpus control             library PDFs, uploads, active set, reusable profiles
+Paper-to-code reports      assumptions, parameters, source refs, code, artifacts
+Local execution            Python and Octave-compatible control examples
+Artifacts                  generated plots/files/diagrams with IDs and checksums
+Jobs                       local durable JSONL + SQLite job state, worker service
+Admin/status               no-secret status, events, metrics, retention preview
+API keys                   optional local SQLite registry with hashed tokens only
+Readiness gates            quality, platform, product, provider, migration checks
 ```
 
-External production components are intentionally **not** enabled by default. Metadata database, object storage, and distributed job-store targets are exposed as readiness configuration and blocker codes, not as active migrations.
-Identity, quotas, billing, and commercial activation follow the same boundary:
-local owner metadata, access audit, rate-limit configuration, cost estimates, and
-the optional hashed-token API key registry are visible through product-readiness
-checks, while external image, hosted execution, MATLAB, and provider quota/cost
-blockers are visible through provider-readiness checks. Real accounts, quota
-stores, billing, and external provider systems remain disabled.
+### Architecture
+
+```text
+Streamlit UI                         FastAPI
+     |                                  |
+     +---------------+------------------+
+                     |
+                     v
+              shared RAG core
+                     |
+       +-------------+-------------+
+       |                           |
+       v                           v
+hybrid retrieval              answer/report layer
+FAISS + keyword               citation guard
+BM25-lite rerank              source/page evidence
+optional local reranker       paper-to-code exports
+       |
+       v
+local no-key platform layer
+jobs JSONL/SQLite
+corpus JSON/SQLite
+artifact SQLite/filesystem
+runtime events JSONL
+optional hashed API-key registry
+```
+
+External databases, object storage, distributed queues, external image providers, hosted sandboxes, real MATLAB integration, identity, quotas, and billing are not enabled by default. They are represented by provider-neutral interfaces, configuration flags, readiness reports, and blocker codes until intentionally activated.
 
 ### Quick Start
 
-Use the existing `.venv` in this checkout when present:
+Use the existing virtual environment if this checkout already has one:
 
 ```bash
 source .venv/bin/activate
 pip install -r requirements-dev.txt
 ```
 
-For a fresh clone:
+Fresh clone:
 
 ```bash
 git clone https://github.com/Shallow-dusty/FluxMind.git
@@ -90,7 +107,7 @@ pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
-Run the UI and API:
+Run the three local processes:
 
 ```bash
 streamlit run app.py
@@ -100,7 +117,7 @@ python scripts/run_job_worker.py --loop --max-jobs 5
 
 ### Verification
 
-Core local gates:
+Local gates:
 
 ```bash
 python -m pytest
@@ -115,21 +132,22 @@ python scripts/provider_readiness.py --format markdown
 python scripts/quality_readiness.py --format markdown
 ```
 
-Deployment and live checks:
+Deployment checks:
 
 ```bash
 python scripts/deploy_sync.py
 python scripts/deploy_sync.py --apply --restart
 python scripts/health_check.py --ssh-host root@100.100.233.26
-python scripts/health_check.py --url https://smy.hyper-dusty.cloud/
-curl -fsS https://api-smy.hyper-dusty.cloud/health
+python scripts/health_check.py \
+  --url https://smy.hyper-dusty.cloud/ \
+  --url https://api-smy.hyper-dusty.cloud/health
 ```
 
-`scripts/deploy_sync.py` excludes runtime state such as `.env`, models, metadata, jobs, artifacts, uploaded papers, and FAISS indexes. The production host `/opt/fluxmind` is a synchronized source tree, not a git checkout.
+`scripts/deploy_sync.py` excludes runtime state such as `.env`, models, metadata, jobs, artifacts, uploaded papers, and FAISS indexes. The production directory `/opt/fluxmind` is a synchronized source tree, not a git checkout.
 
 ### Configuration Boundary
 
-Important no-key/local defaults:
+Important defaults:
 
 ```text
 METADATA_STORAGE_BACKEND=local
@@ -147,113 +165,113 @@ FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-External providers, hosted sandboxes, real MATLAB integration, identity, quotas,
-billing, production database/object storage, and distributed job-store
-activation remain disabled until their runtime boundaries are implemented and
-verified. Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local
-hashed-token registry, but it is still not a multi-user identity, quota, or
-billing system. `scripts/product_readiness.py` reports the current local
-foundation and the remaining identity/quota/billing blocker codes without
-enabling those systems. `scripts/provider_readiness.py` reports the matching external image
-provider, hosted sandbox, MATLAB backend, and provider quota-guard activation
-blockers while preserving the same no-secret boundary.
-`scripts/quality_readiness.py` reports the self-use, small-group, and community
-quality target gaps from the eval baseline and can merge explicit no-secret live
-eval reports with `--live-report`.
+Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry, but that registry is not a full identity, workspace, quota, or billing system. Product and provider activation must pass their readiness gates before being treated as production-ready.
 
-### Documentation
+### Documentation Map
 
-The README is only the project entrypoint. Detailed status and design facts live in owner documents:
+README is the GitHub entrypoint. Detailed facts live in owner documents:
 
 ```text
 docs/README.md                         reading order and source-of-truth map
-docs/REPO_STATUS.md                    git/worktree snapshot and local verification
-docs/DEPLOYMENT_STATUS.md              live deployment snapshot and refresh commands
-docs/ARCHITECTURE.md                   runtime boundaries and module architecture
+docs/REPO_STATUS.md                    git/worktree snapshot and verification
+docs/DEPLOYMENT_STATUS.md              live deployment snapshot and commands
+docs/ARCHITECTURE.md                   runtime boundaries and module design
 docs/BACKLOG.md                        work packages and acceptance criteria
-docs/QUALITY_ROADMAP.md                self-use, small-group, and community quality gates
-docs/FEATURE_AUDIT.md                  implemented features, routes, and remaining gaps
-docs/PLATFORM_AUDIT_AND_ROADMAP.md     platform roadmap and open decisions
+docs/QUALITY_ROADMAP.md                self-use, small-group, community gates
+docs/FEATURE_AUDIT.md                  implemented surface and remaining gaps
+docs/PLATFORM_AUDIT_AND_ROADMAP.md     platform audit and open decisions
 docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md production gap and staged roadmap
-docs/demo-script.md                    demo script and defense Q&A
+docs/demo-script.md                    Chinese demo script and defense Q&A
 ```
 
 ### Roadmap
 
-The completed baseline covers no-key/local research use. Remaining work is staged by dependency:
+The local research baseline is usable. The remaining path is dependency-driven:
 
-1. Community-quality expansion: 50+ curated papers, 80 recorded answers, 180 retrieval questions, and live answer evidence.
-2. Production state foundation: external metadata database, object storage, distributed job-store backend, migration tests, and backup/restore drills.
-3. Execution safety and observability: live sandbox decision, abuse policy, production metrics, tracing, and alert routing.
-4. Identity and commercialization: users, workspaces, identity-backed API keys, quotas, billing, and audit controls.
-5. Product frontend/API split: replace the demo-oriented Streamlit surface with a maintainable product UI.
+1. Expand community-quality evidence: more curated papers, recorded answers, retrieval questions, PDF structure cases, and live answer evidence.
+2. Finish production state foundations: metadata database, object storage, distributed job-store backend, migrations, backups, and restore drills.
+3. Harden execution and observability: sandbox decision, abuse controls, production metrics/traces/alerts, cost attribution.
+4. Add product identity: users, workspaces, identity-backed API keys, quotas, billing, and audit controls.
+5. Replace or wrap the demo-oriented Streamlit surface with a maintainable product UI.
 
 ---
 
 ## 中文
 
+### FluxMind 是什么
+
+FluxMind 是面向控制理论研究的论文工作台，重点覆盖滑模控制、PMSM/FOC、观测器、磁链估计和控制实现。它不是泛用 PDF 聊天框，而是把论文证据、检索诊断、实现交接、本地执行和运行状态检查串在一起。
+
+它解决的问题是：从“论文说了什么”走到“哪些来源能证明、哪些代码能跑、哪些输出能复现、哪些状态能审计”。
+
 ### 当前状态
 
 ```text
-项目编号                     11.FluxMind
-当前成熟度                   小组研究可用基线
-部署状态                     已部署在 Trace-Twin，UI/API/worker 服务可用
-质量门槛                     30 篇论文、107 个 live retrieval 问题、42 个 recorded answers
-运行时形态                   no-key/local 平台基础，外部能力只做 readiness
-完整生产平台化               尚未激活
+项目编号           11.FluxMind
+核心领域           SMC、PMSM/FOC、观测器、磁链估计、控制实现
+当前成熟度         小组研究可用基线
+部署形态           Trace-Twin，独立 UI/API/worker systemd 服务
+语料基线           30 篇精选论文，FAISS index fresh，1934 个 chunks
+评测基线           42 个 recorded answers，107 个 live retrieval questions
+运行时边界         默认 no-key/local，外部能力必须显式激活
 ```
 
-- AI-Prism 正式项目编号：`11`
-- 当前工作区目录：`11.FluxMind/`
-- 临时编号 `80` 已退役；迁移前快照保留在 `90.Archive/11-FluxMind-PreFormal/`。
 - 公开 UI：`https://smy.hyper-dusty.cloud/`
-- 公开 API 健康检查：`https://api-smy.hyper-dusty.cloud/health`
+- API 健康检查：`https://api-smy.hyper-dusty.cloud/health`
+- 当前工作区目录：`11.FluxMind/`
+- 临时编号 `80` 已退役；迁移前归档在 `90.Archive/11-FluxMind-PreFormal/`。
 
-### 项目能做什么
+部署状态会变化。需要对外汇报前，先刷新 [docs/DEPLOYMENT_STATUS.md](docs/DEPLOYMENT_STATUS.md)。
 
-FluxMind 面向控制理论研究，把“读论文、查证据、转实现”串成一个可验证流程：
-
-- **基于论文的问答**：回答带编号引用，并检查来源页。
-- **检索诊断**：通过 `/query/retrieve` 和 `/query/inspect` 检查上下文与引用质量。
-- **语料管理**：支持内置论文库、上传 PDF、激活论文集合、可复用 corpus profile。
-- **Paper-to-code 交接**：输出假设、参数边界、来源引用、验证清单和本地 artifact。
-- **本地代码执行**：支持 Python 和 Octave-compatible 控制工程示例。
-- **Artifact 管理**：生成图、文件、mock diagram，记录稳定 ID、校验和与元数据。
-- **本地 API key 生命周期**：可选 SQLite registry，只持久化 token hash。
-- **No-secret 管理面**：展示 job、corpus、storage schema、runtime events、metrics、retention preview 和 platform readiness。
-
-### 当前架构
+### 已有能力
 
 ```text
-Streamlit UI / FastAPI
-        |
-        v
-共享 RAG 核心
-        |
-        +--> hybrid retrieval: FAISS 向量 + metadata/docstore 关键词信号
-        +--> 确定性 BM25-lite rerank，可选本地 CrossEncoder
-        +--> 编号引用校验和来源页检查
-        |
-        v
-本地 no-key 平台层
-        |
-        +--> jobs: JSONL 历史 + SQLite 当前态镜像
-        +--> corpus metadata: JSON + SQLite 镜像
-        +--> artifacts: 文件系统 + SQLite registry
-        +--> API keys: 可选 SQLite registry，只存 token hash
-        +--> runtime events: 仅元数据 JSONL 观测层
+能力                      当前实现
+------------------------  -----------------------------------------------------
+论文证据问答              RAG 回答，带来源页和编号引用校验
+检索诊断                  no-LLM /query/retrieve 和 /query/inspect
+语料控制                  内置论文库、上传 PDF、激活集合、corpus profile
+Paper-to-code 报告        假设、参数、来源引用、代码、artifact 和验证清单
+本地执行                  Python 与 Octave-compatible 控制工程示例
+Artifact 管理             生成图、文件、diagram，带稳定 ID 和 checksum
+Job 系统                  本地 durable JSONL + SQLite 状态和 worker 服务
+管理面                    no-secret status、events、metrics、retention preview
+API key                   可选本地 SQLite registry，只持久化 token hash
+Readiness 门禁            quality、platform、product、provider、migration 检查
 ```
 
-外部生产组件默认**不启用**。Metadata database、object storage、distributed job-store 目前只通过配置、readiness 和 blocker code 暴露，不代表已经迁移或激活。
-身份、配额、计费和商业化激活也遵循同一边界：本地 owner metadata、访问审计、
-rate-limit 配置、成本估算和可选 hashed-token API key registry 会通过
-product-readiness 检查暴露；外部图像、托管执行、MATLAB 和 provider quota/cost
-blocker 会通过 provider-readiness 检查暴露。真实账号、quota store、计费和外部
-provider 系统仍保持禁用。
+### 架构概览
+
+```text
+Streamlit UI                         FastAPI
+     |                                  |
+     +---------------+------------------+
+                     |
+                     v
+                共享 RAG 核心
+                     |
+       +-------------+-------------+
+       |                           |
+       v                           v
+hybrid retrieval              answer/report layer
+FAISS + keyword               citation guard
+BM25-lite rerank              source/page evidence
+可选本地 reranker             paper-to-code exports
+       |
+       v
+本地 no-key 平台层
+jobs JSONL/SQLite
+corpus JSON/SQLite
+artifact SQLite/filesystem
+runtime events JSONL
+可选 hashed API-key registry
+```
+
+外部数据库、object storage、分布式队列、外部图像 provider、托管 sandbox、真实 MATLAB、身份、配额和计费默认不启用。项目通过 provider-neutral 接口、配置开关、readiness 报告和 blocker code 表示这些边界，直到它们被明确激活和验证。
 
 ### 快速启动
 
-当前 checkout 优先使用已有 `.venv`：
+已有 checkout 优先使用 `.venv`：
 
 ```bash
 source .venv/bin/activate
@@ -271,7 +289,7 @@ pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
-运行 UI、API 和本地 worker：
+运行三个本地进程：
 
 ```bash
 streamlit run app.py
@@ -281,7 +299,7 @@ python scripts/run_job_worker.py --loop --max-jobs 5
 
 ### 验证命令
 
-本地核心门禁：
+本地门禁：
 
 ```bash
 python -m pytest
@@ -296,21 +314,22 @@ python scripts/provider_readiness.py --format markdown
 python scripts/quality_readiness.py --format markdown
 ```
 
-部署与 live 检查：
+部署检查：
 
 ```bash
 python scripts/deploy_sync.py
 python scripts/deploy_sync.py --apply --restart
 python scripts/health_check.py --ssh-host root@100.100.233.26
-python scripts/health_check.py --url https://smy.hyper-dusty.cloud/
-curl -fsS https://api-smy.hyper-dusty.cloud/health
+python scripts/health_check.py \
+  --url https://smy.hyper-dusty.cloud/ \
+  --url https://api-smy.hyper-dusty.cloud/health
 ```
 
-`scripts/deploy_sync.py` 会排除 `.env`、模型、metadata、jobs、artifacts、上传论文和 FAISS index 等运行时状态。生产目录 `/opt/fluxmind` 是同步后的源码树，不是 git checkout。
+`scripts/deploy_sync.py` 会排除 `.env`、models、metadata、jobs、artifacts、上传论文和 FAISS index 等运行时状态。生产目录 `/opt/fluxmind` 是同步后的源码树，不是 git checkout。
 
 ### 配置边界
 
-关键 no-key/local 默认值：
+关键默认值：
 
 ```text
 METADATA_STORAGE_BACKEND=local
@@ -328,33 +347,31 @@ FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token registry，但它仍不是多用户身份、quota 或 billing 系统。`scripts/product_readiness.py` 会报告当前本地基础和剩余 identity/quota/billing blocker code，但不会启用这些系统。
-`scripts/provider_readiness.py` 会报告外部图像 provider、托管 sandbox、MATLAB backend 和 provider quota guard 的 activation blocker，同样不暴露 secret，也不会启用外部调用。
-`scripts/quality_readiness.py` 会报告 self-use、small-group、community 质量目标缺口，并可通过 `--live-report` 合并显式传入的 no-secret live eval report。
+设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry，但它不是完整的身份、workspace、quota 或 billing 系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
 
-### 文档入口
+### 文档地图
 
-README 只是 GitHub 入口页。详细状态、架构和计划由以下 owner 文档维护：
+README 是 GitHub 入口页，详细事实由 owner 文档维护：
 
 ```text
 docs/README.md                         阅读顺序和事实归属图
-docs/REPO_STATUS.md                    git/worktree 快照和本地验证
+docs/REPO_STATUS.md                    git/worktree 快照和验证记录
 docs/DEPLOYMENT_STATUS.md              live 部署快照和刷新命令
-docs/ARCHITECTURE.md                   运行时边界和模块架构
+docs/ARCHITECTURE.md                   运行时边界和模块设计
 docs/BACKLOG.md                        工作包和验收标准
-docs/QUALITY_ROADMAP.md                self-use / small-group / community 质量门槛
-docs/FEATURE_AUDIT.md                  已实现功能、API route 和剩余缺口
-docs/PLATFORM_AUDIT_AND_ROADMAP.md     平台路线图和开放决策
+docs/QUALITY_ROADMAP.md                self-use / small-group / community 门槛
+docs/FEATURE_AUDIT.md                  已实现功能和剩余缺口
+docs/PLATFORM_AUDIT_AND_ROADMAP.md     平台审计和开放决策
 docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md 生产缺口和分阶段路线
-docs/demo-script.md                    演示脚本和答辩问答
+docs/demo-script.md                    中文演示脚本和答辩问答
 ```
 
 ### 后续路线
 
-已完成的是 no-key/local 研究基线。剩余工作按依赖关系推进：
+当前本地研究基线已经可用，后续按依赖关系推进：
 
-1. 社区质量扩展：50+ 篇精选论文、80 个 recorded answers、180 个 retrieval questions、live answer evidence。
-2. 生产状态基础：外部 metadata database、object storage、distributed job-store、迁移测试、备份恢复演练。
-3. 执行安全和观测：live sandbox 方案、滥用策略、生产 metrics、tracing、alert routing。
-4. 身份和商业化：用户、workspace、identity-backed API key、quota、billing、审计控制。
-5. 产品前端/API split：用可维护的正式产品 UI 替代 demo-oriented Streamlit 表面。
+1. 扩展社区质量证据：更多精选论文、recorded answers、retrieval questions、PDF structure cases 和 live answer evidence。
+2. 完成生产状态基础：metadata database、object storage、distributed job-store、迁移、备份和恢复演练。
+3. 强化执行安全和观测：sandbox 方案、滥用控制、生产 metrics/traces/alerts、成本归因。
+4. 建立产品身份层：用户、workspace、identity-backed API key、quota、billing 和审计控制。
+5. 替换或包裹 demo-oriented Streamlit，形成可维护的正式产品 UI。
