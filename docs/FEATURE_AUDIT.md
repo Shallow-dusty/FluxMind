@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 420 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 424 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       12 code-output cases,
@@ -33,6 +33,7 @@ Command                                                               Result
                                                                       API-key-registry/product-registry/
                                                                       product-quota/product-RBAC/
                                                                       product-registry-management/
+                                                                      object-storage-manifest/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
@@ -62,14 +63,14 @@ Command                                                               Result
 .venv/bin/python scripts/quality_readiness.py --require-target...    pass, exits 1 because community_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   01:32 snapshot, 107/107 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   01:52 snapshot, 107/107 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   01:33 snapshot, HTTPS UI/API health 200
-curl https://api-smy.hyper-dusty.cloud/health                        01:33 snapshot, HTTPS API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  01:33 snapshot, live runtime green,
+.venv/bin/python scripts/health_check.py --url ...                   01:52 snapshot, HTTPS UI/API health 200
+curl https://api-smy.hyper-dusty.cloud/health                        01:52 snapshot, HTTPS API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  01:52 snapshot, live runtime green,
                                                                       active_papers=30, chunks=1934
 ```
 

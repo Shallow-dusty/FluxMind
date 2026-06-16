@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 01:35 CST
+Snapshot time: 2026-06-17 01:52 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,14 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  645be5d feat: add local product registry management
-Current docs/health sync       b05c28d docs: document product registry management
-Remote status at verification  main == origin/main at b05c28d before this deployment-record refresh
-Current refresh scope          product registry management deployed, live-verified, and documented
+Current implementation commit  4e8a12a feat: add object storage migration manifest
+Current docs/health sync       52817a9 docs: document object migration manifest
+Remote status at verification  main == origin/main at 52817a9 before this deployment-record refresh
+Current refresh scope          object storage migration manifest deployed, live-verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   b05c28d docs: document product registry management
-Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:32 CST
-Latest deploy follow-up        645be5d/b05c28d synced with restart and live-checked on 2026-06-17 01:33 CST
+Last deployed docs sync base   52817a9 docs: document object migration manifest
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:52 CST
+Latest deploy follow-up        4e8a12a/52817a9 synced with restart and live-checked on 2026-06-17 01:52 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -117,15 +117,24 @@ billing-attribution, and permission-check metadata when the SQLite registry is
 deliberately enabled. The live deployment has the management API/UI code and
 health anchors installed, but keeps `FLUXMIND_PRODUCT_REGISTRY_BACKEND=none` by
 default, so no external identity, payment, or production tenancy is activated.
+The latest object-storage migration manifest source/docs/health sync deployed
+to `/opt/fluxmind` is `52817a9` (`docs: document object migration manifest`),
+with implementation commit `4e8a12a` (`feat: add object storage migration manifest`). It adds an opt-in
+`scripts/platform_migration_rehearsal.py --include-object-manifest` path that
+turns a staged local runtime rehearsal into opaque object keys, SHA-256 hashes,
+byte counts, group names, and path tokens without exporting source paths,
+filenames, buckets, endpoints, credentials, `.env`, or file contents. The live
+deployment has the CLI and health anchors installed, but still keeps external
+object storage disabled.
 
-Current local verification on 2026-06-17 01:35 CST:
+Current local verification on 2026-06-17 01:50 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 420 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 420 tests, 2 known warnings
-.venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
+.venv/bin/python -m pytest -q                               pass, 424 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 424 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 92%,
                                                             src/provider_readiness.py at 93%,
@@ -143,7 +152,13 @@ Command                                                     Result
                                                             API-key registry, product registry,
                                                             product quota guard, and product
                                                             RBAC guard plus product registry
-                                                            management anchors
+                                                            management/object-storage-manifest
+                                                            anchors
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, rehearsal_ok=true,
+  --include-object-manifest --format json                    object_manifest_ready=true,
+                                                            objects=9, unique=8,
+                                                            paths/filenames/bucket/secrets
+                                                            exported=false
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status          pass, backend=none, available=false,
   --format markdown                                          active_keys=0, secrets_exported=false
@@ -293,6 +308,16 @@ Remote product registry management smoke                    `/opt/fluxmind/api.p
                                                             returned backend=none,
                                                             available=false,
                                                             reason=product_registry_not_configured
+Remote object manifest smoke                                `/opt/fluxmind/venv/bin/python
+                                                            scripts/platform_migration_rehearsal.py
+                                                            --include-object-manifest`
+                                                            returned rehearsal_ok=true,
+                                                            object_manifest_ready=true,
+                                                            objects=19, unique=18,
+                                                            source_paths_exported=false,
+                                                            filenames_exported=false,
+                                                            bucket_exported=false,
+                                                            secrets_exported=false
 Remote storage-schema smoke                                 `/opt/fluxmind/venv/bin/python
                                                             scripts/storage_schema.py`
                                                             returned ok=true, store_count=9,
@@ -732,10 +757,10 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after syncing `645be5d` and
-`b05c28d` with restart, then running SSH, public HTTPS, product-readiness,
-product-registry, product-quota/RBAC-guard/product-registry-management anchors,
-and live retrieval checks on 2026-06-17 01:33 CST in
+The latest live deployment snapshot was refreshed after syncing `4e8a12a` and
+`52817a9` with restart, then running SSH, public HTTPS, product-readiness,
+product-registry, product-quota/RBAC-guard/product-registry-management/object-manifest
+anchors, and live retrieval checks on 2026-06-17 01:52 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/product-RBAC-guard/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
@@ -779,6 +804,8 @@ Migration preflight preflight_ok=true; activation_ready=false; local_blockers=no
                     object storage, and distributed job-store targets
 Migration rehearsal rehearsal_ok=true; copied_files=19; restore_check_ok=true;
                     staged_storage_schema_ok=true; blockers=none
+Object manifest     rehearsal_ok=true; objects=19; unique=18;
+                    source_paths/filenames/bucket/secrets exported=false
 Docker execution    configured=False available=False reason=not_configured
 Disk                /dev/vda3 40G total, 24G free, 36% used
 ```
@@ -795,7 +822,7 @@ Disk                /dev/vda3 40G total, 24G free, 36% used
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
   the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
   deploy-exclude slices are verified, committed, pushed to `origin/main` through
-  application baseline `645be5d` plus docs/health sync `b05c28d`, deployed to
+  application baseline `4e8a12a` plus docs/health sync `52817a9`, deployed to
   Trace-Twin, and post-restart verified. The deployed API-key and product
   registry backends plus product quota/RBAC guards remain disabled by default;
   enabling the SQLite registries and the query quota/RBAC guards is an explicit

@@ -151,12 +151,12 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  645be5d feat: add local product registry management" in repo_status
-        and "Current docs/health sync       b05c28d docs: document product registry management" in repo_status
+        and "Current implementation commit  4e8a12a feat: add object storage migration manifest" in repo_status
+        and "Current docs/health sync       52817a9 docs: document object migration manifest" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:32 CST"
+        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:52 CST"
         in repo_status
-        and "Latest deploy follow-up        645be5d/b05c28d synced with restart and live-checked on 2026-06-17 01:33 CST"
+        and "Latest deploy follow-up        4e8a12a/52817a9 synced with restart and live-checked on 2026-06-17 01:52 CST"
         in repo_status,
         "repo status records current source and deployed baselines",
         failures,

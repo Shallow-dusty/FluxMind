@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-17 01:35 CST
+Last updated: 2026-06-17 01:52 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      refreshed on 2026-06-17 01:33 CST; re-run before deploy claims
+                      refreshed on 2026-06-17 01:52 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -35,12 +35,12 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 645be5d feat: add local product registry management
-Current docs/health    b05c28d docs: document product registry management
-Status note     local product registry management API/UI is implemented, documented, pushed, deployed, and live-verified; production backend remains none by default
+Current implementation 4e8a12a feat: add object storage migration manifest
+Current docs/health    52817a9 docs: document object migration manifest
+Status note     object-storage migration manifest is implemented, documented, pushed, deployed, and live-verified; external object storage remains disabled by default
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Work scope      local product registry management API/UI, RBAC-protected admin writes, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-17 01:35 CST before deployment-record edits
+Work scope      opaque object manifest for local migration rehearsal, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed on 2026-06-17 01:50 CST before deployment-record edits
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -48,20 +48,25 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    420 passed, 2 known warnings
-coverage                                  88% total branch coverage over api,
+pytest                                    424 passed, 2 known warnings
+coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest anchors
 storage_schema.py                         pass, ok=true, 9 stores, 0 problems
 api_key_registry.py status                pass, backend=none, available=false,
                                           active_keys=0, secrets_exported=false
 product_registry.py status                pass, backend=none, available=false,
                                           workspaces=0, secrets_exported=false
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+object manifest smoke                     pass, rehearsal_ok=true,
+                                          object_manifest_ready=true,
+                                          objects=9, unique=8,
+                                          paths/filenames/bucket/secrets
+                                          exported=false
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           identity/quota/billing blockers and
@@ -72,9 +77,9 @@ provider_readiness.py                     pass, local_foundation_ready=true,
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
                                           corpus/eval/live-evidence gaps
-HTTPS UI                                  01:33 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          01:33 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                01:33 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  01:52 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          01:52 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                01:52 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
@@ -93,7 +98,11 @@ Remote product RBAC guard                  installed in API/product-registry/adm
 Remote product registry management         installed in API/UI/product-registry summaries;
                                           /admin/product-registry/status route ok,
                                           backend=none by default
-Remote live retrieval eval                 01:32 snapshot: 107/107 passed; quality
+Remote object manifest                     installed in storage_migration/rehearsal CLI;
+                                          live smoke objects=19, unique=18,
+                                          source_paths/filenames/bucket/secrets
+                                          exported=false
+Remote live retrieval eval                 01:52 snapshot: 107/107 passed; quality
                                           readiness small_group=true with live report,
                                           community=false with measured gaps
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
