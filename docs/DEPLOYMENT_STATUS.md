@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 18:13 CST
+Last live check: 2026-06-16 18:34 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -16,8 +16,8 @@ tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
 Last deployed implementation update: `8a4a76f`
 (`feat: add platform migration preflight`).
-Last deployed source/docs sync: `d2774a6`
-(`docs: record platform migration preflight`).
+Last deployed source/docs sync: `dc2b71a`
+(`docs: record runtime migration rehearsal`).
 
 ```
 Host          Trace-Twin
@@ -725,6 +725,7 @@ admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/sr
 admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; authenticated admin smoke returned metadata_backend=local metadata_available=true object_backend=local object_available=true external_storage_configured=false
 admin job-store readiness present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; SSH health on 2026-06-16 14:42 CST returned distributed_job_store backend=local available=true external_configured=false
 platform migration preflight present in /opt/fluxmind/src/platform_migration.py and /opt/fluxmind/scripts/platform_migration_preflight.py; SSH smoke on 2026-06-16 18:13 CST returned preflight_ok=true activation_ready=false local_blockers=none activation_blockers=[production_metadata_database_not_configured,production_object_storage_not_configured,distributed_job_store_not_configured]
+runtime migration rehearsal present in /opt/fluxmind/src/storage_migration.py and /opt/fluxmind/scripts/platform_migration_rehearsal.py; SSH smoke on 2026-06-16 18:34 CST returned rehearsal_ok=true copied_files=19 restore_check_ok=true staged_storage_schema_ok=true blockers=none
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3

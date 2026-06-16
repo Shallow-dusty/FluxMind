@@ -55,8 +55,9 @@ retrieval baseline was built from the `d80c083` / `cc705dc` quality run. The
 current source/eval quality baseline is `9b1cbc5`, and its expanded
 107-question retrieval set has now passed against the live deployment.
 The latest platform-migration source/docs sync deployed to `/opt/fluxmind` is
-`d2774a6` (`docs: record platform migration preflight`), with implementation
-commit `8a4a76f` (`feat: add platform migration preflight`).
+`dc2b71a` (`docs: record runtime migration rehearsal`), with implementation
+commits `8a4a76f` (`feat: add platform migration preflight`) and `366c1e7`
+(`feat: add runtime migration rehearsal`).
 
 Current local verification on 2026-06-16 18:31 CST:
 
@@ -553,6 +554,8 @@ Job-store readiness local job store available; external job store configured fal
 Migration preflight preflight_ok=true; activation_ready=false; local_blockers=none;
                     activation blockers are the expected external metadata DB,
                     object storage, and distributed job-store targets
+Migration rehearsal rehearsal_ok=true; copied_files=19; restore_check_ok=true;
+                    staged_storage_schema_ok=true; blockers=none
 Docker execution    configured=False available=False reason=not_configured
 Disk                /dev/vda3 40G total, 24G free, 36% used
 ```
