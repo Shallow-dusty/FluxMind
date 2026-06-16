@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 01:52 CST
+Snapshot time: 2026-06-17 02:14 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,14 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  4e8a12a feat: add object storage migration manifest
-Current docs/health sync       52817a9 docs: document object migration manifest
-Remote status at verification  main == origin/main at 52817a9 before this deployment-record refresh
-Current refresh scope          object storage migration manifest deployed, live-verified, and documented
+Current implementation commit  45e4cc6 feat: verify object storage migration manifests
+Current docs/health sync       517756f docs: document object manifest verifier
+Remote status at verification  main == origin/main at 517756f before this deployment-record refresh
+Current refresh scope          object manifest verifier implemented, pushed, deployed, live-verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   52817a9 docs: document object migration manifest
-Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:52 CST
-Latest deploy follow-up        4e8a12a/52817a9 synced with restart and live-checked on 2026-06-17 01:52 CST
+Last deployed docs sync base   517756f docs: document object manifest verifier
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:14 CST
+Latest deploy follow-up        45e4cc6/517756f synced with restart and live-checked on 2026-06-17 02:14 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -117,30 +117,33 @@ billing-attribution, and permission-check metadata when the SQLite registry is
 deliberately enabled. The live deployment has the management API/UI code and
 health anchors installed, but keeps `FLUXMIND_PRODUCT_REGISTRY_BACKEND=none` by
 default, so no external identity, payment, or production tenancy is activated.
-The latest object-storage migration manifest source/docs/health sync deployed
-to `/opt/fluxmind` is `52817a9` (`docs: document object migration manifest`),
-with implementation commit `4e8a12a` (`feat: add object storage migration manifest`). It adds an opt-in
+The latest object-storage migration manifest verifier source/docs/health sync
+deployed to `/opt/fluxmind` is `517756f`
+(`docs: document object manifest verifier`), with implementation commit
+`45e4cc6` (`feat: verify object storage migration manifests`). It adds an opt-in
 `scripts/platform_migration_rehearsal.py --include-object-manifest` path that
 turns a staged local runtime rehearsal into opaque object keys, SHA-256 hashes,
 byte counts, group names, and path tokens without exporting source paths,
-filenames, buckets, endpoints, credentials, `.env`, or file contents. The live
-deployment has the CLI and health anchors installed, but still keeps external
-object storage disabled.
+filenames, buckets, endpoints, credentials, `.env`, or file contents, plus
+`--verify-object-manifest` to check that opaque manifest or the full rehearsal
+JSON against a local/staged runtime tree. The verifier returns only safe
+group/token/hash/count differences. The live deployment has the CLI and health
+anchors installed, but still keeps external object storage disabled.
 
-Current local verification on 2026-06-17 01:50 CST:
+Current local verification on 2026-06-17 02:10 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 424 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 424 tests, 2 known warnings
-.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python -m pytest                                  pass, 430 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 430 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 92%,
                                                             src/provider_readiness.py at 93%,
-                                                            src/storage_migration.py at 94%,
+                                                            src/storage_migration.py at 86%,
                                                             src/quality_readiness.py at 88%,
-                                                            scripts/quality_readiness.py at 85%
+                                                            scripts/platform_migration_rehearsal.py at 97%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
                                                             20 PDF structure cases,
@@ -153,10 +156,15 @@ Command                                                     Result
                                                             product quota guard, and product
                                                             RBAC guard plus product registry
                                                             management/object-storage-manifest
-                                                            anchors
+                                                            and object-manifest-verifier anchors
 .venv/bin/python scripts/platform_migration_rehearsal.py    pass, rehearsal_ok=true,
   --include-object-manifest --format json                    object_manifest_ready=true,
                                                             objects=9, unique=8,
+                                                            paths/filenames/bucket/secrets
+                                                            exported=false
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, ok=true, checked=9,
+  --verify-object-manifest /tmp/... --format json            missing=0, mismatched=0, extra=0,
+                                                            manifest_errors=0,
                                                             paths/filenames/bucket/secrets
                                                             exported=false
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 9 stores, 0 problems
@@ -757,10 +765,11 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after syncing `4e8a12a` and
-`52817a9` with restart, then running SSH, public HTTPS, product-readiness,
+The latest live deployment snapshot was refreshed after syncing `45e4cc6` and
+`517756f` with restart, then running SSH, public HTTPS, product-readiness,
 product-registry, product-quota/RBAC-guard/product-registry-management/object-manifest
-anchors, and live retrieval checks on 2026-06-17 01:52 CST in
+and object-manifest-verifier anchors, and live retrieval checks on
+2026-06-17 02:14 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/product-RBAC-guard/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
@@ -806,6 +815,8 @@ Migration rehearsal rehearsal_ok=true; copied_files=19; restore_check_ok=true;
                     staged_storage_schema_ok=true; blockers=none
 Object manifest     rehearsal_ok=true; objects=19; unique=18;
                     source_paths/filenames/bucket/secrets exported=false
+Object verify       ok=true; checked=19; missing=0; mismatched=0; extra=0;
+                    source_paths/filenames/bucket/secrets exported=false
 Docker execution    configured=False available=False reason=not_configured
 Disk                /dev/vda3 40G total, 24G free, 36% used
 ```
@@ -820,11 +831,12 @@ Disk                /dev/vda3 40G total, 24G free, 36% used
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
-  the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
-  deploy-exclude slices are verified, committed, pushed to `origin/main` through
-  application baseline `4e8a12a` plus docs/health sync `52817a9`, deployed to
-  Trace-Twin, and post-restart verified. The deployed API-key and product
-  registry backends plus product quota/RBAC guards remain disabled by default;
+  object-manifest/object-manifest-verifier/eval-breadth,
+  coverage/corpus-hardening, runtime-state-hardening, and deploy-exclude slices
+  are verified, committed, pushed to `origin/main` through application baseline
+  `45e4cc6` plus docs/health sync `517756f`, deployed to Trace-Twin, and
+  post-restart verified. The deployed API-key and product registry backends
+  plus product quota/RBAC guards remain disabled by default;
   enabling the SQLite registries and the query quota/RBAC guards is an explicit
   operational choice, not an automatic production activation.
 - Deployment facts should not be inferred from git state alone because

@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 01:52 CST
+Last live check: 2026-06-17 02:14 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `4e8a12a`
-(`feat: add object storage migration manifest`).
-Last deployed source/docs/health sync: `52817a9`
-(`docs: document object migration manifest`).
+Last deployed implementation update: `45e4cc6`
+(`feat: verify object storage migration manifests`).
+Last deployed source/docs/health sync: `517756f`
+(`docs: document object manifest verifier`).
 
 ```
 Host          Trace-Twin
@@ -99,8 +99,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local object-storage-manifest deploy was refreshed on 2026-06-17 01:52 CST
-after pushing `4e8a12a` and `52817a9`. `.venv/bin/python
+Local object-manifest-verifier deploy was refreshed on 2026-06-17 02:14 CST
+after pushing `45e4cc6` and `517756f`. `.venv/bin/python
 scripts/deploy_sync.py --apply --restart` synced source, docs, tests, and
 health-check changes to
 `/opt/fluxmind`, then restarted `fluxmind-api.service`,
@@ -150,26 +150,32 @@ for self-hosted SQLite-registry use, but it is not an external identity,
 payment, or production team-admin system.
 
 Server-local object-manifest anchors confirmed
-`collect_object_storage_migration_manifest` in `src/storage_migration.py` and
-`--include-object-manifest` / `--object-key-prefix` in
+`collect_object_storage_migration_manifest` and
+`verify_object_storage_migration_manifest` in `src/storage_migration.py`, plus
+`--include-object-manifest`, `--object-key-prefix`, and
+`--verify-object-manifest` in
 `scripts/platform_migration_rehearsal.py`. A server-local smoke of
 `venv/bin/python scripts/platform_migration_rehearsal.py
 --include-object-manifest --format json` returned `rehearsal_ok=true`,
 `object_manifest_ready=true`, `object_count=19`, `unique_object_count=18`,
 `source_paths_exported=false`, `filenames_exported=false`,
-`bucket_exported=false`, and `secrets_exported=false`. This is an object-storage
-migration manifest for local rehearsal output, not live external object storage
-activation.
+`bucket_exported=false`, and `secrets_exported=false`. A follow-up
+`--verify-object-manifest /tmp/fluxmind-object-manifest-verify-live.json` smoke
+returned `ok=true`, `checked_objects=19`, `missing_objects=0`,
+`mismatched_objects=0`, `extra_objects=0`, `manifest_errors=[]`,
+`source_paths_exported=false`, `filenames_exported=false`,
+`bucket_exported=false`, and `secrets_exported=false`. This is local/staged
+object-manifest verification, not live external object storage activation.
 
 Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
 http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-object-manifest-live-report.json` passed 107/107 live
+/tmp/fluxmind-object-verifier-live-report.json` passed 107/107 live
 retrieval cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-object-manifest-live-report.json` returned
+/tmp/fluxmind-object-verifier-live-report.json` returned
 `local_foundation_ready=true`, `small_group_ready=true`,
-`community_ready=false`, and `live_retrieval_result_count=107`; this confirms
-the small-group quality lane only when explicit no-secret live report evidence
-is supplied. Community remains a measured gap.
+`community_ready=false`; its metrics reported `live_retrieval_result_count=107`.
+This confirms the small-group quality lane only when explicit no-secret live
+report evidence is supplied. Community remains a measured gap.
 
 Server-local `scripts/storage_schema.py --format markdown` returned `ok=true`,
 `store_count=9`, `problem_count=0`, and optional `api_key_registry_sqlite` and

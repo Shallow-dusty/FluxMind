@@ -61,8 +61,8 @@ provider_readiness.py local preflight      pass, local_foundation_ready=true, ac
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
 platform_migration_rehearsal object manifest pass, rehearsal_ok=true, objects=9, unique=8, no paths/filenames/bucket/secrets exported
 platform_migration_rehearsal object verify pass, ok=true, checked=9, 0 missing/mismatched/extra, no paths/filenames/bucket/secrets exported
-health_check.py HTTPS endpoints            01:52 snapshot, UI/API 200
-health_check.py SSH runtime                01:52 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            02:14 snapshot, UI/API 200
+health_check.py SSH runtime                02:14 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:

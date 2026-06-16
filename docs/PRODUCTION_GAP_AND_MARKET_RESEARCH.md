@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-17 02:07 CST
+Last updated: 2026-06-17 02:14 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      refreshed on 2026-06-17 01:52 CST; re-run before deploy claims
+                      refreshed on 2026-06-17 02:14 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -36,8 +36,8 @@ Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation 45e4cc6 feat: verify object storage migration manifests
-Current docs/health    pending docs sync for object manifest verifier
-Status note     object-storage migration manifest generation and local verification are implemented; external object storage remains disabled by default
+Current docs/health    517756f docs: document object manifest verifier
+Status note     object-storage migration manifest generation and local verification are implemented, documented, pushed, deployed, and live-verified; external object storage remains disabled by default
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      opaque object manifest verifier for local/staged rehearsal output, tests, health anchors, docs refresh
 Diff hygiene    git diff --check passed for implementation files on 2026-06-17 02:06 CST
@@ -81,9 +81,9 @@ provider_readiness.py                     pass, local_foundation_ready=true,
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
                                           corpus/eval/live-evidence gaps
-HTTPS UI                                  01:52 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          01:52 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                01:52 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  02:14 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          02:14 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                02:14 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
@@ -106,7 +106,12 @@ Remote object manifest                     installed in storage_migration/rehear
                                           live smoke objects=19, unique=18,
                                           source_paths/filenames/bucket/secrets
                                           exported=false
-Remote live retrieval eval                 01:52 snapshot: 107/107 passed; quality
+Remote object manifest verify              installed in storage_migration/rehearsal CLI;
+                                          live smoke ok=true, checked=19,
+                                          missing=0, mismatched=0, extra=0,
+                                          source_paths/filenames/bucket/secrets
+                                          exported=false
+Remote live retrieval eval                 02:14 snapshot: 107/107 passed; quality
                                           readiness small_group=true with live report,
                                           community=false with measured gaps
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
