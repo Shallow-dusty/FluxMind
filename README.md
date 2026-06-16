@@ -61,6 +61,10 @@ Local no-key platform layer
 ```
 
 External production components are intentionally **not** enabled by default. Metadata database, object storage, and distributed job-store targets are exposed as readiness configuration and blocker codes, not as active migrations.
+Identity, quotas, billing, and commercial activation follow the same boundary:
+local owner metadata, access audit, rate-limit configuration, and cost estimates
+are visible through product-readiness checks, while real account and billing
+systems remain disabled.
 
 ### Quick Start
 
@@ -101,6 +105,7 @@ python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
+python scripts/product_readiness.py --format markdown
 ```
 
 Deployment and live checks:
@@ -126,9 +131,15 @@ DISTRIBUTED_JOB_STORE_BACKEND=local
 CODE_EXECUTION_BACKEND=local
 CODE_EXECUTION_POLICY=local-safe-v1
 RETENTION_DELETE_ENABLED=false
+IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-External providers, hosted sandboxes, real MATLAB integration, identity, quotas, billing, production database/object storage, and distributed job-store activation remain disabled until their runtime boundaries are implemented and verified.
+External providers, hosted sandboxes, real MATLAB integration, identity, quotas,
+billing, production database/object storage, and distributed job-store
+activation remain disabled until their runtime boundaries are implemented and
+verified. `scripts/product_readiness.py` reports the current local foundation
+and the remaining identity/quota/billing blocker codes without enabling those
+systems.
 
 ### Documentation
 
@@ -212,6 +223,9 @@ Streamlit UI / FastAPI
 ```
 
 外部生产组件默认**不启用**。Metadata database、object storage、distributed job-store 目前只通过配置、readiness 和 blocker code 暴露，不代表已经迁移或激活。
+身份、配额、计费和商业化激活也遵循同一边界：本地 owner metadata、访问审计、
+rate-limit 配置和成本估算会通过 product-readiness 检查暴露，但真实账号和计费
+系统仍保持禁用。
 
 ### 快速启动
 
@@ -252,6 +266,7 @@ python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
+python scripts/product_readiness.py --format markdown
 ```
 
 部署与 live 检查：
@@ -277,9 +292,10 @@ DISTRIBUTED_JOB_STORE_BACKEND=local
 CODE_EXECUTION_BACKEND=local
 CODE_EXECUTION_POLICY=local-safe-v1
 RETENTION_DELETE_ENABLED=false
+IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。
+真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。`scripts/product_readiness.py` 会报告当前本地基础和剩余 identity/quota/billing blocker code，但不会启用这些系统。
 
 ### 文档入口
 

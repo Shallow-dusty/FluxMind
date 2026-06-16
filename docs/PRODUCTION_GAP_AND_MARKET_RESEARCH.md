@@ -131,7 +131,9 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         expose production storage and distributed-worker
                         readiness blockers without connecting to external
                         services. Jobs and generated artifacts now carry local
-                        owner metadata.
+                        owner metadata. Product-readiness checks now expose the
+                        local identity/quota/billing foundation and activation
+                        blockers without enabling account or billing systems.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,
@@ -139,7 +141,8 @@ Gap to production       Relational metadata store, object storage, vector DB or
                         policies.
 
 Priority                High. Identity, quotas, billing, and durable workers all
-                        depend on this boundary.
+                        depend on this boundary; the product-readiness preflight
+                        is now the gate before real activation.
 ```
 
 ```text

@@ -24,9 +24,10 @@ WP3 job system        complete for local durable worker bridge and lease model
 WP4 image/diagrams    complete for provider-neutral no-key SVG/artifact flow
 WP5 code execution    complete for local Python/Octave-compatible dev providers
 WP6 product shell     complete for local no-secret admin/reporting foundation
+                     plus product-readiness preflight
 ```
 
-Current hardening progress on 2026-06-16: the automated suite has 332 passing
+Current hardening progress on 2026-06-16: the automated suite has 371 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
@@ -39,7 +40,9 @@ preflight now composes local storage-schema evidence, no-secret runtime backup
 manifest, restore dry-run, and read-only local job-store contract checks into a
 single CLI gate. A local migration rehearsal now stages required runtime state
 into a temporary or explicit staging root, then verifies restore-check and
-schema integrity before any external backend is activated. The eval report also
+schema integrity before any external backend is activated. The product shell now
+also has a no-secret product-readiness preflight that separates local foundations
+from real identity, quota, and billing activation. The eval report also
 carries staged quality-maturity targets for self-use, small-group, and community
 readiness; self-use and small-group are now met, so corpus/eval growth can be
 tracked before new platform features are prioritized.
@@ -675,6 +678,12 @@ are made
   staged restore against the no-secret manifest, then verify staged storage
   schema. Reports still exclude runtime contents, job payloads, `.env`, external
   URLs, bucket names, queue names, and credentials.
+- `scripts/product_readiness.py` gives identity/quota/billing productization a
+  no-secret CLI gate. Default mode passes when local foundations such as API
+  access audit, owner metadata, rate-limit configuration, and cost-estimation
+  surfaces are present; `--require-activation` fails until identity provider,
+  API-key registry, quota store, billing provider, and billing attribution
+  targets are configured.
 - Admin status/report, metrics, and the Streamlit status panel display a
   no-secret `platform_readiness` summary for production storage migration and
   distributed worker acceptance. It reports only booleans, counts, and blocker
@@ -760,12 +769,15 @@ are made
   `QUERY_COST_COMPLETION_USD_PER_1M`. When rates are configured, FluxMind
   estimates USD query cost from provider token counts when available and rough
   estimated tokens otherwise; external billing remains disabled.
+- Admin status/report, metrics, and the Streamlit status panel expose the same
+  no-secret product-readiness summary. It reports `local_foundation_ready=true`
+  in the default local runtime and keeps `activation_ready=false` until product
+  activation blockers are cleared.
 - Still planned: production durable storage dashboards beyond the local
   inventory/readiness/platform-readiness and local rehearsal views, real
   production storage and distributed worker migration execution after backend
   choice, external job-store activation behind the existing readiness target,
-  identity-backed
-  deletion/audit controls, billing attribution, production scrape/alert routing
+  identity-backed deletion/audit controls, billing attribution, production scrape/alert routing
   beyond the local metrics text, and user/workspace admin once identity exists.
 
 Acceptance:

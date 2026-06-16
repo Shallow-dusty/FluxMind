@@ -78,6 +78,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `scripts/platform_migration_rehearsal.py`: local runtime migration rehearsal
   that stages required runtime state, then verifies restore and schema checks
   without exposing contents.
+- `src/product_readiness.py` and `scripts/product_readiness.py`: no-secret
+  productization readiness check for identity, API-key lifecycle, quotas, and
+  billing activation. It reports local foundation checks and blocker codes
+  without exposing token values, owner IDs, billing credentials, or provider
+  secrets.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -372,6 +377,17 @@ default and deletes it after reporting; retained staging requires an explicit
 codes, and blocker codes; `.env` is never copied, runtime dependencies such as
 models are skipped unless `--include-runtime-dependencies` is supplied, and
 staging roots inside the source project are rejected.
+`src.product_readiness` adds the equivalent no-secret productization check for
+identity, API-key lifecycle, quota-store, and billing-provider readiness. It
+separates `local_foundation_ready` from `activation_ready`: the current local
+foundation can pass through API access audit, owner metadata, local rate-limit
+configuration, and query-cost estimation surfaces, while activation remains
+blocked until identity, API-key registry, quota-store, billing-provider, and
+billing-attribution targets are configured. The CLI
+`scripts/product_readiness.py` exits successfully for local foundation readiness
+and exits nonzero under `--require-activation` until those product activation
+blockers are cleared. Reports expose only booleans, safe backend names, counts,
+and blocker codes.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`
@@ -480,11 +496,12 @@ configured per-1M-token rates, recent query duration average/max from
 `query_usage` events, metadata-only retrieval trace summaries,
 retrieval-quality advisory alerts, query latency advisory alerts,
 provider-failure advisory alerts, job-health advisory alerts
-for failed/dead-lettered jobs and expired queue/lease state, plus explicit
-disabled switches for external providers and identity/quotas/billing. The
+for failed/dead-lettered jobs and expired queue/lease state, product-readiness
+local foundation and activation blockers, plus explicit disabled switches for
+external providers and identity/quotas/billing. The
 Streamlit sidebar renders the same status,
 including durable storage readiness, storage inventory, query-cost pricing
-status, platform-readiness status, query usage and latency status, API access audit status, upload-scan
+status, platform-readiness and product-readiness status, query usage and latency status, API access audit status, upload-scan
 status, local rate-limit status, and local metadata/object storage paths, so common
 operational questions do not require SSH or raw filesystem inspection.
 `GET /admin/status/report` renders the same snapshot as a Markdown operations

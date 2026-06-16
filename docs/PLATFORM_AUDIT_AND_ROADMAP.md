@@ -46,7 +46,7 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 334 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 371 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
@@ -56,6 +56,7 @@ coverage report --fail-under=88           pass, 88% total branch coverage
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false
 health_check.py HTTPS endpoints            14:17 snapshot, UI/API 200
 health_check.py SSH runtime                14:17 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
@@ -73,6 +74,7 @@ Execution/artifacts       good contract baseline; not production sandboxed
 Storage/queue durability  local SQLite/JSONL bridge plus explicit external
                           job-store readiness target; not distributed yet
 Product maturity          pre-platform: no accounts, quotas, billing, teams
+                          but local product-readiness blockers are explicit
 Frontend maturity         demo/personal workflow; Streamlit remains limiting
 ```
 
@@ -604,9 +606,10 @@ Reference: https://developers.cloudflare.com/sandbox/
 
 ### Phase 5: Productization
 
-Status: planned. Build local/admin foundations first. Public identity,
-API-key lifecycle, quotas, and billing remain disabled until those product and
-operational decisions are made.
+Status: partial local foundation. Public identity, API-key lifecycle, quotas,
+and billing remain disabled until those product and operational decisions are
+made, but FluxMind now exposes a no-secret product-readiness preflight and admin
+surface for the remaining blockers.
 
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.
@@ -623,12 +626,12 @@ upstream response, optional configured query-cost estimates, runtime-directory,
 durable storage readiness, public model, job/artifact owner summaries,
 metadata-only API access audit summaries, local API rate-limit status,
 metadata-only retrieval trace summaries, no-secret storage-schema readiness,
-no-secret platform-readiness blockers, no-secret metrics text export, and
-disabled-provider/product switch state
+no-secret platform-readiness blockers, no-secret product-readiness blockers,
+no-secret metrics text export, and disabled-provider/product switch state
 without exposing API keys, storage
 credentials, or requiring real identity/billing systems. The Streamlit status
 panel now renders the same storage readiness, local metadata/object storage
-paths, platform-readiness status, API access audit/rate-limit status, metrics download, and no-secret
+paths, platform-readiness status, product-readiness status, API access audit/rate-limit status, metrics download, and no-secret
 pricing status directly for dashboard use. The runtime
 manifest and restore-check API/CLI/UI provide no-secret backup and dry-run
 verification evidence for local runtime state. `GET /admin/status/report` and

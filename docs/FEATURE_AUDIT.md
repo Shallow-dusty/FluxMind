@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 334 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 371 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
@@ -36,6 +36,10 @@ Command                                                               Result
                                                                       external-backend blockers
 .venv/bin/python scripts/platform_migration_rehearsal.py --format... pass, rehearsal_ok=true,
                                                                       staged restore/schema checks pass
+.venv/bin/python scripts/product_readiness.py --format markdown      pass, local_foundation_ready=true,
+                                                                      activation_ready=false with expected
+                                                                      identity/quota/billing blockers
+.venv/bin/python scripts/product_readiness.py --require-activation   pass, exits 1 because activation_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
 server-local evaluate_rag.py --retrieval-url ... --json-report ...   17:39 snapshot, 107/107 live retrieval
@@ -95,8 +99,11 @@ Mock diagram generation       verified      local SVG templates and artifact cap
                                             provider activation remains disabled.
 Deployment and health gates   verified      guarded deploy sync, local health, HTTPS health, and SSH
                                             health are present. Live facts must still be refreshed.
-Product platform layer        incomplete    accounts, teams, quotas, billing, identity-backed
-                                            ownership, and a real frontend are not implemented.
+Product platform layer        incomplete    local product-readiness CLI/admin/report/metrics/UI
+                                            surface now separates local foundations from real
+                                            identity/quota/billing activation. Accounts, teams,
+                                            quotas, billing, identity-backed ownership, and a real
+                                            frontend are not implemented.
 ```
 
 ## API Route Coverage
@@ -236,6 +243,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   evidence and external blocker reporting. The migration rehearsal now proves a
   local staged runtime copy plus restore/schema verification, not live external
   database or object-storage migration.
+- Productization readiness now has a no-secret CLI/admin/report/metrics/UI
+  surface. The current local foundation passes, but activation remains blocked
+  on real identity provider, API-key lifecycle, quota store, billing provider,
+  and billing attribution decisions.
 - The bundled seed corpus has been expanded to 30 open-access papers, and the
   next content milestone is a curated 50+ paper library with richer
   topic coverage and more PDF-layout acceptance cases.

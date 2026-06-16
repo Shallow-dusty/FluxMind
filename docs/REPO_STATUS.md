@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 17:25 CST
+Snapshot time: 2026-06-16 18:58 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,10 +14,10 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  9b1cbc5 test: expand FluxMind community quality eval
+Current implementation commit  e2dc1e3 feat: add product readiness preflight
 Implementation base            8191656 docs: refresh FluxMind sync status
 Remote status at verification  origin/main includes 8b81c57 after quality/docs push
-Current refresh scope          community-quality eval expansion plus docs guard refresh
+Current refresh scope          product-readiness preflight plus docs guard refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   current docs tree synced with deploy_sync --apply
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
@@ -40,7 +40,8 @@ Corpus/storage       metadata profiles, paper/chunk SQLite mirrors, runtime
 Platform readiness   separate metadata/object/job-store readiness targets,
                      blocker codes, and no-secret metrics/report fields
 Admin/product shell  status/report endpoints, retention preview, runtime
-                     events, query usage/cost visibility
+                     events, query usage/cost visibility, product-readiness
+                     blocker surface
 Artifacts/images     artifact metadata mirror/integrity, local SVG diagram
                      templates, stable artifact downloads
 Execution            local Python/Octave provider hardening, templates,
@@ -58,23 +59,28 @@ The latest platform-migration source/docs sync deployed to `/opt/fluxmind` is
 `dc2b71a` (`docs: record runtime migration rehearsal`), with implementation
 commits `8a4a76f` (`feat: add platform migration preflight`) and `366c1e7`
 (`feat: add runtime migration rehearsal`).
+The latest local implementation commit is `e2dc1e3` (`feat: add product
+readiness preflight`), which has not yet been recorded as a deployed live
+baseline in `docs/DEPLOYMENT_STATUS.md`.
 
-Current local verification on 2026-06-16 18:31 CST:
+Current local verification on 2026-06-16 18:58 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 363 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 363 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 371 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 371 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
-.venv/bin/python -m coverage report --sort=cover            pass, src/storage_migration.py at 94%
+.venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
+                                                            src/storage_migration.py at 94%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
                                                             20 PDF structure cases,
                                                             42 recorded answers
-.venv/bin/python scripts/health_check.py                    pass, including distributed job-store
-                                                            migration-preflight, and
-                                                            migration-rehearsal anchors
+.venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
+                                                            migration-preflight,
+                                                            migration-rehearsal, and
+                                                            product-readiness anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
                                                             activation_ready=false with expected
@@ -85,6 +91,12 @@ Command                                                     Result
                                                             restore_check_ok=true,
                                                             staged_storage_schema_ok=true,
                                                             blockers=none
+.venv/bin/python scripts/product_readiness.py                pass, local_foundation_ready=true,
+                                                            activation_ready=false with expected
+                                                            identity/quota/billing blockers
+.venv/bin/python scripts/product_readiness.py                pass, --require-activation exits 1:
+  --require-activation                                      local_foundation_ready=true but
+                                                            activation_ready=false
 git diff --check                                            pass
 Admin status smoke                                          distributed_job_store backend=local,
                                                             available=true,
@@ -92,6 +104,11 @@ Admin status smoke                                          distributed_job_stor
                                                             local worker bridge ready=true,
                                                             distributed_job_store_not_configured
                                                             remains the expected external blocker
+Product readiness smoke                                     local_foundation_ready=true,
+                                                            activation_ready=false,
+                                                            blockers include identity provider,
+                                                            key lifecycle, quota store, billing
+                                                            provider, and billing attribution
 ```
 
 The earlier small-group quality work was deployed and live-verified through the
