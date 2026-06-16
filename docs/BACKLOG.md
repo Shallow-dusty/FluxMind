@@ -34,10 +34,13 @@ constant-time API token comparison, tolerant runtime JSON/JSONL state parsing,
 atomic active-paper selection writes, and a `.coverage` deploy-sync exclude.
 The platform-readiness foundation now also separates distributed job-store
 readiness from metadata database readiness through `DISTRIBUTED_JOB_STORE_*`
-configuration and no-secret admin/report/metrics fields. The eval report also
-carries staged quality-maturity targets for self-use, small-group, and community
-readiness; self-use and small-group are now met, so corpus/eval growth can be
-tracked before new platform features are prioritized.
+configuration and no-secret admin/report/metrics fields. A production migration
+preflight now composes local storage-schema evidence, no-secret runtime backup
+manifest, restore dry-run, and read-only local job-store contract checks into a
+single CLI gate. The eval report also carries staged quality-maturity targets
+for self-use, small-group, and community readiness; self-use and small-group are
+now met, so corpus/eval growth can be tracked before new platform features are
+prioritized.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
@@ -278,6 +281,12 @@ durable multi-user database/object storage migration remains planned
 - `scripts/storage_schema.py` runs the same no-secret schema readiness check from
   the CLI with JSON/Markdown output, `--target-root`, and a nonzero exit code
   when drift is detected.
+- `scripts/platform_migration_preflight.py` composes the schema check, runtime
+  manifest, restore dry-run, local durable job-store contract, storage readiness,
+  distributed job-store readiness, and platform blocker summary into one
+  no-secret CLI. Default mode fails only when local migration evidence is
+  incomplete; `--require-activation` also fails until external metadata
+  database, object storage, and distributed job-store targets are configured.
 - `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
   the local state trees that source deploys exclude, with file counts, byte
   totals, and SHA-256 hashes for known metadata/job/index files without
@@ -647,6 +656,11 @@ are made
   stored content or identifiers.
 - `scripts/storage_schema.py` gives the same storage-schema check a CLI preflight
   path for local or target-root use.
+- `scripts/platform_migration_preflight.py` gives production storage/worker
+  migration a single no-secret CLI gate. It reports `preflight_ok` for local
+  evidence and `activation_ready` for configured external backends, keeping
+  external URLs, buckets, queue names, credentials, job payloads, and runtime
+  contents out of the output.
 - Admin status/report, metrics, and the Streamlit status panel display a
   no-secret `platform_readiness` summary for production storage migration and
   distributed worker acceptance. It reports only booleans, counts, and blocker

@@ -99,6 +99,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/platform_migration_preflight.py --format markdown
 ```
 
 Deployment and live checks:
@@ -248,6 +249,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/platform_migration_preflight.py --format markdown
 ```
 
 部署与 live 检查：

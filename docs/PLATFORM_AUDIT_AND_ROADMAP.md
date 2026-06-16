@@ -163,8 +163,12 @@ metrics now also expose a no-secret `platform_readiness` summary for production
 storage migration and distributed worker acceptance: local schema/inventory and
 the local worker bridge are clean, while external metadata database, object
 storage, and the separately configured distributed job-store target remain
-explicit blockers. The
-no-secret runtime manifest can also be checked
+explicit blockers. `scripts/platform_migration_preflight.py` now combines that
+schema readiness, the runtime manifest, restore dry-run, local durable job-store
+contract, and external backend blocker split into one no-secret CLI gate. The
+default command validates local migration evidence; `--require-activation`
+fails until real external metadata database, object storage, and distributed
+job-store targets are configured. The no-secret runtime manifest can also be checked
 against a target runtime root through the CLI or authenticated API without
 copying, deleting, or restoring files. This is still a local
 baseline, not the final multi-user database. Reusable local corpus profiles now
@@ -670,10 +674,11 @@ blocked on product decisions.
    them when a new status or drift class is found.
 4. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
-5. Use the local `platform_readiness` blockers to choose and test the production
-   metadata database, object storage, and distributed job-store backend. The
-   readiness surface already has separate metadata, object, and job-store
-   targets; the remaining work is backend selection, migration tests, and live
+5. Use `scripts/platform_migration_preflight.py` plus the local
+   `platform_readiness` blockers to choose and test the production metadata
+   database, object storage, and distributed job-store backend. The readiness
+   surface already has separate metadata, object, and job-store targets; the
+   remaining work is backend selection, real migration execution, and live
    activation. Then extend the local restart-recovery/lease/worker-service bridge
    into a distributed worker/storage runtime and extend the local metrics export
    into production scrape/tracing/alert routing plus deeper abuse controls

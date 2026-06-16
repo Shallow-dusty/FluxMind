@@ -31,6 +31,9 @@ Command                                                               Result
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
+.venv/bin/python scripts/platform_migration_preflight.py --format... pass, preflight_ok=true,
+                                                                      activation_ready=false with expected
+                                                                      external-backend blockers
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
 server-local evaluate_rag.py --retrieval-url ... --json-report ...   17:39 snapshot, 107/107 live retrieval
@@ -178,7 +181,9 @@ Providers               tests/test_providers.py covers mock diagrams, Python/Oct
 Storage metadata        tests/test_metadata.py, tests/test_storage_manifest.py, and
                         tests/test_storage_schema.py cover corpus, chunks, profiles,
                         atomic writes, no-secret runtime manifests, restore dry-run
-                        checks, storage-schema drift checks, and the storage-schema CLI
+                        checks, storage-schema drift checks, and the storage-schema CLI.
+                        tests/test_platform_migration.py covers the composed no-secret
+                        production migration preflight and activation blocker split
 UI guardrails           tests/test_translation_guard.py and tests/test_streaming.py cover browser
                         translation guards, runtime restore-check UI anchors, and streaming error handling
 Deployment hygiene      tests/test_deploy_sync.py, tests/test_health_check.py, and
@@ -222,7 +227,8 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 - Runtime storage and queue state are local SQLite/JSONL/filesystem bridges.
   Admin readiness now has separate external metadata, object-storage, and
   distributed job-store targets, but no production database, object store, or
-  distributed queue has been activated.
+  distributed queue has been activated. The new migration preflight proves local
+  evidence and external blocker reporting, not a live data migration.
 - The bundled seed corpus has been expanded to 30 open-access papers, and the
   next content milestone is a curated 50+ paper library with richer
   topic coverage and more PDF-layout acceptance cases.

@@ -72,6 +72,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `scripts/health_check.py`: local, HTTP, and SSH runtime checks.
 - `scripts/storage_schema.py`: no-secret local storage-schema preflight with JSON
   or Markdown output and nonzero exit on drift.
+- `scripts/platform_migration_preflight.py`: no-secret production migration
+  preflight that separates local migration evidence from external activation
+  readiness.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -348,6 +351,14 @@ storage through `DISTRIBUTED_JOB_STORE_BACKEND`,
 `DISTRIBUTED_JOB_STORE_URL`, and `DISTRIBUTED_JOB_QUEUE_NAME`; admin status only
 returns backend, configured/available booleans, and reason codes, never the
 store URL or queue name.
+`src.platform_migration` composes the schema inventory, runtime backup manifest,
+restore dry-run, read-only local job-store contract, storage readiness, and
+distributed job-store readiness into a production migration preflight. The CLI
+`scripts/platform_migration_preflight.py` returns success when local migration
+evidence is complete, and `--require-activation` makes the command fail until
+external metadata database, object storage, and distributed job-store targets are
+configured. The output keeps the same no-secret boundary: no runtime contents,
+job payloads, external URLs, bucket names, queue names, or credentials.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`

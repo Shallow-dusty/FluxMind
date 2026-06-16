@@ -55,21 +55,26 @@ retrieval baseline was built from the `d80c083` / `cc705dc` quality run. The
 current source/eval quality baseline is `9b1cbc5`, and its expanded
 107-question retrieval set has now passed against the live deployment.
 
-Current local verification on 2026-06-16 17:25 CST:
+Current local verification on 2026-06-16 18:02 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 334 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 334 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 345 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 345 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
                                                             20 PDF structure cases,
                                                             42 recorded answers
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store
-                                                            readiness anchors
+                                                            and migration-preflight anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
+.venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
+                                                            activation_ready=false with expected
+                                                            external-backend blockers
+.venv/bin/python scripts/platform_migration_preflight.py     pass, --require-activation exits 1:
+  --require-activation                                      preflight_ok=true but activation_ready=false
 git diff --check                                            pass
 Admin status smoke                                          distributed_job_store backend=local,
                                                             available=true,
