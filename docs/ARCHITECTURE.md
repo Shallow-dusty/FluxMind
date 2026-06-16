@@ -83,11 +83,16 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   key lifecycle registry. It persists token hashes only, returns raw tokens once
   on create, supports list/verify/revoke, and can back FastAPI auth when
   `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
+- `src/product_registry.py` and `scripts/product_registry.py`: optional local
+  SQLite user/workspace/quota/usage/billing-attribution ledger. It gives
+  product-readiness a no-secret local contract for product identity state without
+  connecting to an external identity provider or payment processor.
 - `src/product_readiness.py` and `scripts/product_readiness.py`: no-secret
   productization readiness check for identity, API-key lifecycle, quotas, and
-  billing activation. It can verify the local SQLite key registry when enabled
-  and reports local foundation checks and blocker codes without exposing token
-  values, owner IDs, billing credentials, or provider secrets.
+  billing activation. It can verify the local SQLite key registry and product
+  registry when enabled and reports local foundation checks and blocker codes
+  without exposing token values, owner IDs, billing credentials, or provider
+  secrets.
 - `src/provider_readiness.py` and `scripts/provider_readiness.py`: no-secret
   external provider activation readiness check for real image providers, hosted
   execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
@@ -118,10 +123,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   development should still proceed behind provider-neutral interfaces, local
   mocks, fixtures, and explicit runtime flags. This includes image generation,
   hosted code execution, real MATLAB integration, multi-user accounts, quotas,
-  and billing. Local API key lifecycle can be enabled through the SQLite registry,
-  but it is not identity-backed tenancy, quotas, or billing. The
-  provider-readiness and product-readiness checks make the disabled state
-  explicit as blocker codes; they do not activate providers.
+  and billing. Local API key lifecycle and the local product ledger can be enabled
+  through SQLite registries, but they are not external identity, payment, or
+  distributed quota systems. The provider-readiness and product-readiness checks
+  make the disabled state explicit as blocker codes; they do not activate
+  providers.
 - `LocalPythonExecutionProvider` is a development provider only. It proves the
   execution request/result contract; `DockerExecutionProvider` is the local
   isolated backend, while hosted/distributed production execution still needs a
@@ -369,7 +375,7 @@ known-file existence flags; it does not read or return runtime file contents.
 `src.storage_schema` provides the matching local storage-schema inventory for
 future migration work. Admin status/report, Streamlit, and metrics expose schema
 version, JSON/JSONL shape, and expected SQLite table/column presence for corpus,
-chunk, job, artifact, API-key registry, and runtime-event stores without
+chunk, job, artifact, API-key registry, product registry, and runtime-event stores without
 returning row contents, prompts, answers, filenames, owner IDs, request IDs,
 source paths, token values, or runtime file contents. `scripts/storage_schema.py`
 exposes the same check for local or target-root preflight use and exits nonzero
@@ -408,8 +414,11 @@ identity, API-key lifecycle, quota-store, and billing-provider readiness. It
 separates `local_foundation_ready` from `activation_ready`: the current local
 foundation can pass through API access audit, owner metadata, local rate-limit
 configuration, query-cost estimation surfaces, and the optional local hashed-key
-registry, while activation remains blocked until identity, quota-store,
-billing-provider, and billing-attribution targets are configured. The CLI
+registry. When the optional local product registry is enabled, local-registry
+identity, SQLite quota store, and local-ledger billing attribution can also be
+verified without external accounts. Activation remains blocked until the chosen
+identity, quota-store, billing-provider, and billing-attribution targets are
+configured. The CLI
 `scripts/product_readiness.py` exits successfully for local foundation readiness
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,

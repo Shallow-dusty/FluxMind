@@ -23,6 +23,7 @@ from src.config import (
     METADATA_DIR,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
+    PRODUCT_REGISTRY_FILE,
     RUNTIME_EVENTS_FILE,
 )
 
@@ -149,6 +150,7 @@ def default_runtime_groups() -> tuple[RuntimeGroupSpec, ...]:
                 RuntimeFileSpec("corpus_sqlite", CORPUS_METADATA_DB_FILE),
                 RuntimeFileSpec("chunks_sqlite", CHUNK_METADATA_DB_FILE),
                 RuntimeFileSpec("api_key_registry_sqlite", API_KEY_REGISTRY_FILE),
+                RuntimeFileSpec("product_registry_sqlite", PRODUCT_REGISTRY_FILE),
                 RuntimeFileSpec("runtime_events_jsonl", RUNTIME_EVENTS_FILE),
             ),
         ),

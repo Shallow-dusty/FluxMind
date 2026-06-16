@@ -1,6 +1,7 @@
 import json
 
 from src.api_keys import LocalApiKeyRegistry
+from src.product_registry import LocalProductRegistry
 from src.product_readiness import (
     collect_product_readiness,
     format_product_readiness_markdown,
@@ -99,6 +100,82 @@ def test_product_readiness_checks_local_sqlite_api_key_registry(tmp_path, monkey
     assert "api_key_registry_unavailable" not in status["blockers"]["activation"]
     assert "identity_quota_store_not_configured" in status["blockers"]["activation"]
     assert token not in payload
+
+
+def test_product_readiness_can_use_local_product_registry(tmp_path, monkeypatch):
+    api_key_path = tmp_path / "api_keys.sqlite3"
+    product_registry_path = tmp_path / "product_registry.sqlite3"
+    LocalApiKeyRegistry(api_key_path).create_key(owner_id="lab-product")
+    product_registry = LocalProductRegistry(product_registry_path)
+    workspace = product_registry.create_workspace(
+        workspace_id="lab-workspace",
+        owner_user_id="lab-owner",
+    )
+    product_registry.set_quota(
+        workspace_id=workspace.workspace_id,
+        metric="requests",
+        limit_value=100,
+        window_s=3600,
+    )
+    product_registry.set_billing_account(workspace_id=workspace.workspace_id)
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", api_key_path)
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", product_registry_path)
+
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_token_configured=True,
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=True,
+        api_rate_limit_max_requests=120,
+        api_rate_limit_window_s=60,
+        query_cost_provider="lab-model",
+        query_cost_prompt_usd_per_1m="0.10",
+        query_cost_completion_usd_per_1m="0.20",
+        identity_provider="local-registry",
+        api_key_registry_backend="sqlite",
+        quota_store_backend="sqlite",
+        billing_provider="local-ledger",
+        billing_attribution_enabled=True,
+        identity_quotas_billing_enabled=True,
+        product_registry_backend="sqlite",
+    )
+
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    assert status["local_foundation_ready"] is True
+    assert status["activation_ready"] is True
+    assert status["blockers"]["activation"] == []
+    assert status["summary"]["product_registry_available"] is True
+    assert status["summary"]["workspace_identity_available"] is True
+    assert status["summary"]["quota_store_available"] is True
+    assert status["summary"]["billing_ledger_available"] is True
+    assert status["checks"]["identity_provider"]["backend"] == "local-registry"
+    assert status["checks"]["identity_provider"]["workspace_count"] == 1
+    assert status["checks"]["quota_store"]["quota_limit_count"] == 1
+    assert status["checks"]["billing_provider"]["billing_account_count"] == 1
+    assert "hunter2" not in payload
+
+
+def test_product_readiness_blocks_local_product_registry_when_unavailable(tmp_path, monkeypatch):
+    bad_path = tmp_path / "product_registry.sqlite3"
+    bad_path.write_text("not sqlite", encoding="utf-8")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", bad_path)
+
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=True,
+        api_rate_limit_max_requests=120,
+        api_rate_limit_window_s=60,
+        identity_provider="local-registry",
+        quota_store_backend="sqlite",
+        billing_provider="local-ledger",
+        billing_attribution_enabled=True,
+        product_registry_backend="sqlite",
+    )
+
+    assert "identity_provider_unavailable" in status["blockers"]["activation"]
+    assert "quota_store_unavailable" in status["blockers"]["activation"]
+    assert "billing_provider_unavailable" in status["blockers"]["activation"]
 
 
 def test_product_readiness_sanitizes_secret_like_backend_values():

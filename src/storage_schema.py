@@ -20,6 +20,7 @@ from src.config import (
     CORPUS_METADATA_FILE,
     CORPUS_PROFILES_FILE,
     JOBS_DB_FILE,
+    PRODUCT_REGISTRY_FILE,
     RUNTIME_EVENTS_FILE,
 )
 
@@ -149,6 +150,41 @@ API_KEY_COLUMNS = (
     "use_count",
 )
 
+PRODUCT_USER_COLUMNS = ("user_id", "label", "status", "created_at", "updated_at")
+PRODUCT_WORKSPACE_COLUMNS = (
+    "workspace_id",
+    "label",
+    "owner_user_id",
+    "status",
+    "created_at",
+    "updated_at",
+)
+PRODUCT_WORKSPACE_MEMBER_COLUMNS = (
+    "workspace_id",
+    "user_id",
+    "role",
+    "status",
+    "created_at",
+    "updated_at",
+)
+PRODUCT_QUOTA_COLUMNS = ("workspace_id", "metric", "limit_value", "window_s", "updated_at")
+PRODUCT_USAGE_COLUMNS = (
+    "event_id",
+    "workspace_id",
+    "user_id",
+    "metric",
+    "amount",
+    "source",
+    "created_at",
+)
+PRODUCT_BILLING_COLUMNS = (
+    "workspace_id",
+    "billing_mode",
+    "status",
+    "attribution_enabled",
+    "updated_at",
+)
+
 RUNTIME_EVENT_FIELDS = ("event_id", "kind", "code", "message", "created_at", "metadata")
 
 
@@ -194,6 +230,18 @@ def default_sqlite_store_specs() -> tuple[SqliteStoreSpec, ...]:
             "api_key_registry_sqlite",
             API_KEY_REGISTRY_FILE,
             (SqliteTableSpec("api_keys", API_KEY_COLUMNS),),
+        ),
+        SqliteStoreSpec(
+            "product_registry_sqlite",
+            PRODUCT_REGISTRY_FILE,
+            (
+                SqliteTableSpec("product_users", PRODUCT_USER_COLUMNS),
+                SqliteTableSpec("workspaces", PRODUCT_WORKSPACE_COLUMNS),
+                SqliteTableSpec("workspace_members", PRODUCT_WORKSPACE_MEMBER_COLUMNS),
+                SqliteTableSpec("quota_limits", PRODUCT_QUOTA_COLUMNS),
+                SqliteTableSpec("usage_events", PRODUCT_USAGE_COLUMNS),
+                SqliteTableSpec("billing_accounts", PRODUCT_BILLING_COLUMNS),
+            ),
         ),
     )
 
@@ -477,6 +525,18 @@ def storage_schema_status_for_root(project_root: Path) -> dict[str, Any]:
                 "api_key_registry_sqlite",
                 metadata_dir / "api_keys.sqlite3",
                 (SqliteTableSpec("api_keys", API_KEY_COLUMNS),),
+            ),
+            SqliteStoreSpec(
+                "product_registry_sqlite",
+                metadata_dir / "product_registry.sqlite3",
+                (
+                    SqliteTableSpec("product_users", PRODUCT_USER_COLUMNS),
+                    SqliteTableSpec("workspaces", PRODUCT_WORKSPACE_COLUMNS),
+                    SqliteTableSpec("workspace_members", PRODUCT_WORKSPACE_MEMBER_COLUMNS),
+                    SqliteTableSpec("quota_limits", PRODUCT_QUOTA_COLUMNS),
+                    SqliteTableSpec("usage_events", PRODUCT_USAGE_COLUMNS),
+                    SqliteTableSpec("billing_accounts", PRODUCT_BILLING_COLUMNS),
+                ),
             ),
         ),
     )

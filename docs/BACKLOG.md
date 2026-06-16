@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress on 2026-06-16: the automated suite has 399 passing
+Current hardening progress on 2026-06-16: the automated suite has 407 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
@@ -52,13 +52,17 @@ readiness. `scripts/quality_readiness.py` now turns those targets into a
 no-secret preflight that can merge explicit live eval reports; self-use and the
 latest live-verified small-group lane are met, while community remains a measured
 gap before broader release work.
-The current product-shell slice also adds an optional local SQLite API key
-registry with hash-only token storage, create/list/verify/revoke CLI support,
-FastAPI auth integration, storage-schema coverage, and runtime-manifest coverage.
+The current product-shell slice also adds optional local SQLite API key and
+product registries. The API-key registry stores token hashes only and supports
+create/list/verify/revoke plus FastAPI auth integration. The product registry
+stores local users, workspaces, quota limits, usage events, and billing
+attribution records for no-secret readiness checks. Both are covered by
+storage-schema, runtime-manifest, admin-inventory, CLI, and unit tests.
 
 The incomplete scope is production platformization: real external providers,
-hosted sandboxes, MATLAB licensing, multi-user identity, identity-backed quotas,
-billing, external distributed worker/storage activation, and production
+hosted sandboxes, MATLAB licensing, external identity providers,
+identity-backed quotas, external billing/payment providers, external distributed
+worker/storage activation, and production
 database/object-storage migration tests. Those remain planned, intentionally
 disabled, or decision-gated.
 
@@ -668,9 +672,9 @@ local API rate-limit status, local job/provider/query/retrieval/code advisory al
 metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
 inventory dashboard plus no-secret runtime backup manifest, restore dry-run
-verifier, local API-key lifecycle registry, and provider-readiness preflight
-implemented; keep public identity, identity-backed quotas, and billing disabled
-until decisions are made
+verifier, local API-key lifecycle registry, local product registry, and
+provider-readiness preflight implemented; keep external identity providers,
+identity-backed quotas, and external billing disabled until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
 - Add users, private corpora, identity-backed API keys, quotas, and share/export flows.
@@ -699,6 +703,10 @@ until decisions are made
 - FastAPI auth can accept tokens from the local registry when
   `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`; this is local API authentication,
   not multi-user tenancy, quota enforcement, or billing.
+- `scripts/product_registry.py` manages the local SQLite users/workspaces/quota
+  limits/usage/billing-attribution ledger. It supports status, bootstrap-local,
+  set-quota, record-usage, and list-workspaces while keeping provider secrets,
+  payment credentials, prompts, answers, and runtime file contents out of output.
 - `scripts/platform_migration_preflight.py` gives production storage/worker
   migration a single no-secret CLI gate. It reports `preflight_ok` for local
   evidence and `activation_ready` for configured external backends, keeping
@@ -712,9 +720,9 @@ until decisions are made
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
   access audit, owner metadata, rate-limit configuration, local API-key registry,
-  and cost-estimation surfaces are present; `--require-activation` still fails
-  until identity provider, quota store, billing provider, and billing
-  attribution targets are configured.
+  local product registry, and cost-estimation surfaces are present;
+  `--require-activation` still fails until the chosen identity provider, quota
+  store, billing provider, and billing-attribution targets are configured.
 - `scripts/provider_readiness.py` gives external image providers, hosted
   execution, MATLAB backend/licensing, and provider quota/cost guards the same
   no-secret CLI gate. Default mode passes when local provider foundations are

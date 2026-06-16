@@ -1160,6 +1160,7 @@ def test_storage_inventory_status_reports_local_counts_without_content(tmp_path,
     monkeypatch.setattr("src.admin.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
     monkeypatch.setattr("src.admin.CHUNK_METADATA_DB_FILE", metadata_dir / "chunks.sqlite3")
     monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
+    monkeypatch.setattr("src.admin.PRODUCT_REGISTRY_FILE", metadata_dir / "product_registry.sqlite3")
     monkeypatch.setattr("src.admin.JOBS_FILE", jobs_dir / "jobs.jsonl")
     monkeypatch.setattr("src.admin.JOBS_DB_FILE", jobs_dir / "jobs.sqlite3")
     monkeypatch.setattr("src.admin.ACTIVE_PAPERS_FILE", index_dir / "active_papers.json")
@@ -1181,7 +1182,7 @@ def test_storage_inventory_status_reports_local_counts_without_content(tmp_path,
     assert {
         item["name"]
         for item in groups["metadata"]["known_files"]
-    } >= {"corpus_json", "api_key_registry_sqlite", "runtime_events_jsonl"}
+    } >= {"corpus_json", "api_key_registry_sqlite", "product_registry_sqlite", "runtime_events_jsonl"}
     assert groups["uploads"]["files"] == 1
     assert groups["faiss_index"]["bytes"] == 5
 

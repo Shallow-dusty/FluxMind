@@ -114,6 +114,7 @@ def main() -> int:
         "src/platform_migration.py",
         "src/storage_migration.py",
         "src/product_readiness.py",
+        "src/product_registry.py",
         "src/provider_readiness.py",
         "src/quality_readiness.py",
         "src/evaluation.py",
@@ -125,6 +126,7 @@ def main() -> int:
         "scripts/platform_migration_preflight.py",
         "scripts/platform_migration_rehearsal.py",
         "scripts/product_readiness.py",
+        "scripts/product_registry.py",
         "scripts/provider_readiness.py",
         "scripts/quality_readiness.py",
         "scripts/api_key_registry.py",
@@ -292,6 +294,33 @@ def main() -> int:
         "local API key registry CLI installed",
         failures,
     )
+    product_registry_source = (PROJECT_ROOT / "src" / "product_registry.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "LocalProductRegistry" in product_registry_source
+        and "product_users" in product_registry_source
+        and "quota_limits" in product_registry_source
+        and "billing_accounts" in product_registry_source,
+        "local product registry installed",
+        failures,
+    )
+    check(
+        "secrets_exported" in product_registry_source
+        and "product_registry_backend_status" in product_registry_source,
+        "local product registry no-secret status installed",
+        failures,
+    )
+    product_registry_cli = (PROJECT_ROOT / "scripts" / "product_registry.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "bootstrap-local" in product_registry_cli
+        and "record-usage" in product_registry_cli
+        and "set-quota" in product_registry_cli,
+        "local product registry CLI installed",
+        failures,
+    )
     provider_readiness_source = (PROJECT_ROOT / "src" / "provider_readiness.py").read_text(
         encoding="utf-8"
     )
@@ -399,6 +428,12 @@ def main() -> int:
         "API_KEY_REGISTRY_FILE" in storage_manifest_source
         and "api_key_registry_sqlite" in storage_manifest_source,
         "runtime manifest includes API key registry state",
+        failures,
+    )
+    check(
+        "PRODUCT_REGISTRY_FILE" in storage_manifest_source
+        and "product_registry_sqlite" in storage_manifest_source,
+        "runtime manifest includes product registry state",
         failures,
     )
     check("/admin/runtime-manifest/restore-check" in api_source and "collect_runtime_restore_check" in api_source, "admin runtime restore-check route installed", failures)
@@ -566,6 +601,7 @@ def main() -> int:
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
     check("API_KEY_REGISTRY_FILE" in admin_source and "api_key_registry_sqlite" in admin_source, "admin storage inventory includes API key registry state", failures)
+    check("PRODUCT_REGISTRY_FILE" in admin_source and "product_registry_sqlite" in admin_source, "admin storage inventory includes product registry state", failures)
     check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
     check("distributed_job_store_status" in admin_source and "external_job_store_configured" in admin_source, "admin distributed job-store readiness installed", failures)
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
@@ -577,6 +613,7 @@ def main() -> int:
     storage_schema_cli = (PROJECT_ROOT / "scripts" / "storage_schema.py").read_text(encoding="utf-8")
     check("STORAGE_SCHEMA_VERSION" in storage_schema_source and "missing_required_columns" in storage_schema_source, "storage schema drift checks installed", failures)
     check("API_KEY_COLUMNS" in storage_schema_source and "api_key_registry_sqlite" in storage_schema_source, "API key registry storage schema installed", failures)
+    check("PRODUCT_USER_COLUMNS" in storage_schema_source and "product_registry_sqlite" in storage_schema_source, "product registry storage schema installed", failures)
     check("storage_schema_status_for_root" in storage_schema_cli and "format_storage_schema_markdown" in storage_schema_cli, "storage schema CLI installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
@@ -826,16 +863,23 @@ def main() -> int:
             "test -f /opt/fluxmind/src/admin.py; "
             "test -f /opt/fluxmind/src/runtime.py; "
             "test -f /opt/fluxmind/src/api_keys.py; "
+            "test -f /opt/fluxmind/src/product_registry.py; "
             "grep -q 'LocalApiKeyRegistry' /opt/fluxmind/src/api_keys.py; "
             "grep -q 'token_hash' /opt/fluxmind/src/api_keys.py; "
             "grep -q 'api_key_registry_backend_status' /opt/fluxmind/src/api_keys.py; "
+            "grep -q 'LocalProductRegistry' /opt/fluxmind/src/product_registry.py; "
+            "grep -q 'product_registry_backend_status' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'verify_configured_api_key_token' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_configured' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/admin.py; "
+            "grep -q 'product_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
+            "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
+            "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
             "grep -q 'create' /opt/fluxmind/scripts/api_key_registry.py; "
             "grep -q 'revoke' /opt/fluxmind/scripts/api_key_registry.py; "
+            "grep -q 'bootstrap-local' /opt/fluxmind/scripts/product_registry.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
             "grep -q 'CorpusProfileStore' /opt/fluxmind/src/metadata.py; "
             "grep -q 'atomic_write_json' /opt/fluxmind/src/metadata.py; "

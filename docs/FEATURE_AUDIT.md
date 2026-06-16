@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 399 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 407 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
@@ -30,11 +30,13 @@ Command                                                               Result
                                                                       retention-delete/metrics-export/retrieval-trace/
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/provider-readiness/quality-readiness/
-                                                                      API-key-registry/
+                                                                      API-key-registry/product-registry/
                                                                       readiness/log-noise anchors
-.venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 8 stores, 0 problems
+.venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
                                                                       active_keys=0, secrets_exported=false
+.venv/bin/python scripts/product_registry.py status --format...      pass, backend=none, available=false,
+                                                                      workspaces=0, secrets_exported=false
 .venv/bin/python scripts/platform_migration_preflight.py --format... pass, preflight_ok=true,
                                                                       activation_ready=false with expected
                                                                       external-backend blockers
@@ -120,9 +122,11 @@ Product platform layer        incomplete    local product-readiness CLI/admin/re
                                             surface now separates local foundations from real
                                             identity/quota/billing activation. Local API-key
                                             lifecycle is implemented through a hash-only SQLite
-                                            registry. Accounts, teams, quotas, billing,
-                                            identity-backed ownership, and a real frontend are not
-                                            implemented.
+                                            registry. Local users/workspaces/quota limits/usage/
+                                            billing attribution are implemented through an optional
+                                            SQLite product registry. External identity providers,
+                                            identity-backed quotas, external billing/payment, and
+                                            a real frontend are not implemented.
 ```
 
 ## API Route Coverage
@@ -264,9 +268,12 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   database or object-storage migration.
 - Productization readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, and the local API-key lifecycle
-  registry is implemented with hash-only storage and API auth integration.
-  Activation still remains blocked on real identity provider, quota store,
-  billing provider, billing attribution, and identity-backed tenancy decisions.
+  registry is implemented with hash-only storage and API auth integration. The
+  local product registry now covers users, workspaces, quota limits, usage events,
+  and billing attribution as a SQLite ledger for readiness checks. Activation
+  still remains blocked on real external identity provider, identity-backed quota
+  enforcement, external billing/payment provider, and tenancy decisions when
+  those are required for production.
 - Provider activation readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, but activation remains blocked
   on real external image provider configuration, hosted execution provider

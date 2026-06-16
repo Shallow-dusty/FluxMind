@@ -8,6 +8,7 @@ from typing import Any
 from src import config
 from src.api_keys import api_key_registry_backend_status
 from src.costs import query_pricing_status
+from src.product_registry import product_registry_backend_status
 
 
 PRODUCT_READINESS_SCHEMA_VERSION = 1
@@ -18,6 +19,7 @@ SUPPORTED_IDENTITY_PROVIDERS = {
     "authentik",
     "clerk",
     "external",
+    "local-registry",
     "oauth2",
     "oidc",
     "supabase",
@@ -25,7 +27,7 @@ SUPPORTED_IDENTITY_PROVIDERS = {
 }
 SUPPORTED_API_KEY_REGISTRIES = {"external", "postgres", "postgresql", "sqlite"}
 SUPPORTED_QUOTA_STORES = {"external", "postgres", "postgresql", "redis", "sqlite"}
-SUPPORTED_BILLING_PROVIDERS = {"external", "lemonsqueezy", "paddle", "stripe"}
+SUPPORTED_BILLING_PROVIDERS = {"external", "lemonsqueezy", "paddle", "stripe", "local-ledger"}
 
 
 def _utc_now() -> str:
@@ -90,6 +92,7 @@ def collect_product_readiness(
     billing_provider: str | None = None,
     billing_attribution_enabled: bool | None = None,
     identity_quotas_billing_enabled: bool | None = None,
+    product_registry_backend: str | None = None,
     owner_metadata_supported: bool = True,
 ) -> dict[str, Any]:
     """Collect productization readiness without exposing secrets or identities."""
@@ -144,6 +147,13 @@ def collect_product_readiness(
     )
     pricing_rates_valid = pricing["reason"] != "invalid_rate"
     rate_limit_configured = rate_limit_max > 0 and rate_limit_window > 0
+    product_registry = product_registry_backend_status(
+        backend=(
+            product_registry_backend
+            if product_registry_backend is not None
+            else config.PRODUCT_REGISTRY_BACKEND
+        )
+    )
 
     identity = _backend_status(
         value=identity_provider if identity_provider is not None else config.IDENTITY_PROVIDER,
@@ -151,6 +161,19 @@ def collect_product_readiness(
         missing_reason="identity_provider_not_configured",
         unsupported_reason="unsupported_identity_provider",
     )
+    if identity["backend"] == "local-registry":
+        identity.update(
+            {
+                "available": bool(product_registry.get("available", False)),
+                "reason": (
+                    "available"
+                    if product_registry.get("available", False)
+                    else "product_registry_unavailable"
+                ),
+                "user_count": product_registry.get("user_count", 0),
+                "workspace_count": product_registry.get("workspace_count", 0),
+            }
+        )
     api_key_registry = _backend_status(
         value=(
             api_key_registry_backend
@@ -179,12 +202,38 @@ def collect_product_readiness(
         missing_reason="quota_store_not_configured",
         unsupported_reason="unsupported_quota_store",
     )
+    if quota_store["backend"] == "sqlite":
+        quota_store.update(
+            {
+                "available": bool(product_registry.get("available", False)),
+                "reason": (
+                    "available"
+                    if product_registry.get("available", False)
+                    else "product_registry_unavailable"
+                ),
+                "quota_limit_count": product_registry.get("quota_limit_count", 0),
+                "usage_event_count": product_registry.get("usage_event_count", 0),
+            }
+        )
     billing = _backend_status(
         value=billing_provider if billing_provider is not None else config.BILLING_PROVIDER,
         supported=SUPPORTED_BILLING_PROVIDERS,
         missing_reason="billing_provider_not_configured",
         unsupported_reason="unsupported_billing_provider",
     )
+    if billing["backend"] == "local-ledger":
+        billing.update(
+            {
+                "available": bool(product_registry.get("available", False)),
+                "reason": (
+                    "available"
+                    if product_registry.get("available", False)
+                    else "product_registry_unavailable"
+                ),
+                "billing_account_count": product_registry.get("billing_account_count", 0),
+                "billing_attribution_count": product_registry.get("billing_attribution_count", 0),
+            }
+        )
 
     local_blockers: list[str] = []
     if not audit_enabled:
@@ -201,6 +250,8 @@ def collect_product_readiness(
         activation_blockers.append("multi_user_identity_not_configured")
     elif not identity["supported"]:
         activation_blockers.append("identity_provider_unsupported")
+    elif not identity["available"]:
+        activation_blockers.append("identity_provider_unavailable")
     if not api_key_registry["configured"]:
         activation_blockers.append("api_key_lifecycle_not_configured")
     elif not api_key_registry["supported"]:
@@ -211,10 +262,14 @@ def collect_product_readiness(
         activation_blockers.append("identity_quota_store_not_configured")
     elif not quota_store["supported"]:
         activation_blockers.append("quota_store_unsupported")
+    elif quota_store["backend"] == "sqlite" and not quota_store["available"]:
+        activation_blockers.append("quota_store_unavailable")
     if not billing["configured"]:
         activation_blockers.append("billing_provider_not_configured")
     elif not billing["supported"]:
         activation_blockers.append("billing_provider_unsupported")
+    elif billing["backend"] == "local-ledger" and not billing["available"]:
+        activation_blockers.append("billing_provider_unavailable")
     if not billing_attribution:
         activation_blockers.append("billing_attribution_not_enabled")
 
@@ -250,6 +305,10 @@ def collect_product_readiness(
             "query_cost_estimation_available": True,
             "query_cost_pricing_configured": bool(pricing["configured"]),
             "api_key_lifecycle_available": bool(api_key_registry["available"]),
+            "product_registry_available": bool(product_registry["available"]),
+            "workspace_identity_available": bool(identity["available"]),
+            "quota_store_available": bool(quota_store["available"]),
+            "billing_ledger_available": bool(billing["available"]),
             "external_billing_enabled": False,
             "identity_quotas_billing_enabled": product_enabled,
         },
@@ -282,6 +341,7 @@ def collect_product_readiness(
                 "external_billing_enabled": False,
             },
             "identity_provider": identity,
+            "product_registry": product_registry,
             "api_key_registry": api_key_registry,
             "quota_store": quota_store,
             "billing_provider": billing,
@@ -297,7 +357,7 @@ def collect_product_readiness(
         "advisories": advisories,
         "notes": [
             "Local owner fields, audit events, rate limits, and cost estimates are readiness foundations only.",
-            "Activation still requires real identity, API-key lifecycle, quota store, and billing provider boundaries.",
+            "Local product registry can satisfy local workspace, quota, and billing-attribution contracts but is not an external identity or payment provider.",
         ],
     }
 
@@ -332,11 +392,13 @@ def format_product_readiness_markdown(status: dict[str, Any]) -> str:
         f"- Local rate limit configured: {_format_bool(summary.get('local_rate_limit_configured', False))}",
         f"- Owner metadata supported: {_format_bool(summary.get('owner_metadata_supported', False))}",
         f"- Query cost pricing configured: {_format_bool(summary.get('query_cost_pricing_configured', False))}",
+        f"- Product registry available: {_format_bool(summary.get('product_registry_available', False))}",
         f"- External billing enabled: {_format_bool(summary.get('external_billing_enabled', False))}",
         "",
         "## Activation Targets",
         "",
         f"- Identity provider: {checks.get('identity_provider', {}).get('backend', '')} ({checks.get('identity_provider', {}).get('reason', '')})",
+        f"- Product registry: {checks.get('product_registry', {}).get('backend', '')} ({checks.get('product_registry', {}).get('reason', '')})",
         f"- API key registry: {checks.get('api_key_registry', {}).get('backend', '')} ({checks.get('api_key_registry', {}).get('reason', '')})",
         f"- Quota store: {checks.get('quota_store', {}).get('backend', '')} ({checks.get('quota_store', {}).get('reason', '')})",
         f"- Billing provider: {checks.get('billing_provider', {}).get('backend', '')} ({checks.get('billing_provider', {}).get('reason', '')})",

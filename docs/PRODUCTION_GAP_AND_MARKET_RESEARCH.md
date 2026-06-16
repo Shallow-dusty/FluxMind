@@ -48,17 +48,19 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    399 passed, 2 known warnings
+pytest                                    407 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry anchors
-storage_schema.py                         pass, ok=true, 8 stores, 0 problems
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry anchors
+storage_schema.py                         pass, ok=true, 9 stores, 0 problems
 api_key_registry.py status                pass, backend=none, available=false,
                                           active_keys=0, secrets_exported=false
+product_registry.py status                pass, backend=none, available=false,
+                                          workspaces=0, secrets_exported=false
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
@@ -148,8 +150,10 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         services. Jobs and generated artifacts now carry local
                         owner metadata. Product-readiness checks now expose the
                         local identity/quota/billing foundation, including the
-                        hash-only local API-key registry, and activation blockers
-                        without enabling account or billing systems.
+                        hash-only local API-key registry plus a local product
+                        registry for users, workspaces, quota limits, usage, and
+                        billing attribution, with activation blockers for
+                        external systems.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,
@@ -508,8 +512,9 @@ Order  Lane                                      Why first
 3      Durable jobs/distributed worker control    Enables indexing/execution scale
 4      Observability and cost attribution         Needed before paid providers
 5      Isolated execution sandbox                 Needed before public code runs
-6      Identity/workspaces/quotas                 Local API keys exist; identity
-                                                  needs storage/job ownership
+6      Identity/workspaces/quotas                 Local registries exist; external
+                                                  identity/payment needs storage
+                                                  and ownership decisions
 7      Frontend/API split                         Avoids overbuilding Streamlit
 8      Provider activation/billing                Only after trust and control
 ```

@@ -11,6 +11,12 @@ from src.storage_schema import (
     JOB_COLUMNS,
     JOB_IDEMPOTENCY_COLUMNS,
     PAPER_COLUMNS,
+    PRODUCT_BILLING_COLUMNS,
+    PRODUCT_QUOTA_COLUMNS,
+    PRODUCT_USAGE_COLUMNS,
+    PRODUCT_USER_COLUMNS,
+    PRODUCT_WORKSPACE_COLUMNS,
+    PRODUCT_WORKSPACE_MEMBER_COLUMNS,
     RUNTIME_EVENT_FIELDS,
     JsonStoreSpec,
     JsonlStoreSpec,
@@ -209,18 +215,27 @@ def test_storage_schema_for_root_and_markdown_cover_all_store_kinds(tmp_path: Pa
     _create_table(jobs / "jobs.sqlite3", "job_idempotency", JOB_IDEMPOTENCY_COLUMNS)
     _create_table(artifacts / "artifacts.sqlite3", "artifacts", ARTIFACT_COLUMNS)
     _create_table(metadata / "api_keys.sqlite3", "api_keys", API_KEY_COLUMNS)
+    product_db = metadata / "product_registry.sqlite3"
+    _create_table(product_db, "product_users", PRODUCT_USER_COLUMNS)
+    _create_table(product_db, "workspaces", PRODUCT_WORKSPACE_COLUMNS)
+    _create_table(product_db, "workspace_members", PRODUCT_WORKSPACE_MEMBER_COLUMNS)
+    _create_table(product_db, "quota_limits", PRODUCT_QUOTA_COLUMNS)
+    _create_table(product_db, "usage_events", PRODUCT_USAGE_COLUMNS)
+    _create_table(product_db, "billing_accounts", PRODUCT_BILLING_COLUMNS)
 
     status = storage_schema_status_for_root(tmp_path)
     markdown = format_storage_schema_markdown(status)
 
     assert status["ok"] is True
-    assert status["store_count"] == 8
+    assert status["store_count"] == 9
     assert "kind=json" in markdown
     assert "kind=jsonl" in markdown
     assert "kind=sqlite" in markdown
     assert "sampled_events=1" in markdown
     assert "table job_idempotency" in markdown
     assert "table api_keys" in markdown
+    assert "table product_users" in markdown
+    assert "table billing_accounts" in markdown
     assert str(tmp_path) not in markdown
 
 

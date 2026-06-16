@@ -10,6 +10,7 @@ import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
 import scripts.provider_readiness as provider_readiness_cli
 import scripts.quality_readiness as quality_readiness_cli
 import scripts.product_readiness as product_readiness_cli
+import scripts.product_registry as product_registry_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
 import scripts.storage_schema as storage_schema_cli
@@ -244,6 +245,79 @@ def test_api_key_registry_cli_reports_sqlite_errors(monkeypatch, tmp_path, capsy
 
     assert api_key_registry_cli.main() == 2
     assert "error:" in capsys.readouterr().err
+
+
+def test_product_registry_cli_bootstrap_usage_and_markdown(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "product_registry.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "bootstrap-local",
+            "--user-id",
+            "lab-cli",
+            "--workspace-id",
+            "lab-workspace",
+        ],
+    )
+
+    assert product_registry_cli.main() == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["workspace"]["workspace_id"] == "lab-workspace"
+    assert created["workspace"]["owner_user_id"] == "lab-cli"
+    assert created["secrets_exported"] is False
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "record-usage",
+            "--workspace-id",
+            "lab-workspace",
+            "--user-id",
+            "lab-cli",
+            "--metric",
+            "requests",
+            "--amount",
+            "2",
+            "--format",
+            "markdown",
+        ],
+    )
+
+    assert product_registry_cli.main() == 0
+    markdown = capsys.readouterr().out
+    assert "# FluxMind Product Registry" in markdown
+    assert "Amount: 2" in markdown
+    assert "Secrets exported: false" in markdown
+
+
+def test_product_registry_cli_status_output_file(monkeypatch, tmp_path):
+    db_path = tmp_path / "product_registry.sqlite3"
+    output_path = tmp_path / "product-registry.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+            "status",
+        ],
+    )
+
+    assert product_registry_cli.main() == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# FluxMind Product Registry" in markdown
+    assert "Available: true" in markdown
+    assert "Secrets exported: false" in markdown
 
 
 def test_storage_schema_cli_outputs_markdown(monkeypatch, tmp_path):
