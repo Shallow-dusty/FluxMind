@@ -143,6 +143,7 @@ I18N = {
         "status_storage_inventory": "本地存储盘点",
         "status_storage_schemas": "本地存储模式",
         "status_platform_readiness": "平台化就绪状态",
+        "status_product_readiness": "产品化就绪状态",
         "status_runtime_manifest": "运行时备份清单",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
@@ -284,6 +285,7 @@ I18N = {
         "status_storage_inventory": "Local storage inventory",
         "status_storage_schemas": "Local storage schemas",
         "status_platform_readiness": "Platform readiness",
+        "status_product_readiness": "Product readiness",
         "status_runtime_manifest": "Runtime backup manifest",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
@@ -596,6 +598,7 @@ def render_admin_status() -> None:
     config = status["config"]
     storage_readiness = config.get("storage_readiness", {})
     distributed_job_store = config.get("distributed_job_store", {})
+    product_readiness = config.get("product_readiness", {})
 
     st.caption(text["status_jobs"])
     st.json(
@@ -719,6 +722,19 @@ def render_admin_status() -> None:
     st.json(storage_schemas)
     st.caption(text["status_platform_readiness"])
     st.json(platform_readiness)
+    st.caption(text["status_product_readiness"])
+    st.json(
+        {
+            "local_foundation_ready": product_readiness.get("local_foundation_ready", False),
+            "activation_ready": product_readiness.get("activation_ready", False),
+            "identity_quotas_billing_enabled": product_readiness.get("identity_quotas_billing_enabled", False),
+            "summary": product_readiness.get("summary", {}),
+            "blockers": product_readiness.get("blockers", {}),
+            "advisories": product_readiness.get("advisories", []),
+            "content_exported": product_readiness.get("content_exported", False),
+            "secrets_exported": product_readiness.get("secrets_exported", False),
+        }
+    )
     runtime_manifest = collect_runtime_backup_manifest()
     st.caption(text["status_runtime_manifest"])
     st.json(

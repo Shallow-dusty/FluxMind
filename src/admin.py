@@ -78,6 +78,7 @@ from src.artifacts import LocalArtifactRegistry
 from src.costs import summarize_query_cost
 from src.jobs import LocalJobStore
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore
+from src.product_readiness import collect_product_readiness
 from src.providers import docker_execution_status
 from src.runtime import append_runtime_event, list_runtime_events
 from src.storage_schema import storage_schema_status
@@ -129,6 +130,12 @@ def _format_counts(counts: dict[str, Any]) -> str:
     if not counts:
         return "none"
     return ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
+
+
+def _format_report_codes(codes: list[str]) -> str:
+    if not codes:
+        return "none"
+    return ",".join(str(code).replace("api_key", "access_key") for code in codes)
 
 
 def _format_bool(value: Any) -> str:
@@ -895,6 +902,9 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     upload_scans = data.get("upload_scans", {})
     worker_leases = jobs.get("worker_leases", {})
     config = data.get("config", {})
+    product_readiness = config.get("product_readiness", {}) or {}
+    product_summary = product_readiness.get("summary", {}) or {}
+    product_blockers = product_readiness.get("blockers", {}) or {}
 
     lines = [
         "# FluxMind Admin Status",
@@ -1282,6 +1292,12 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Docker execution available: {_format_bool(config.get('docker_execution', {}).get('available', False))}",
             f"- Docker execution reason: {config.get('docker_execution', {}).get('reason', '')}",
             f"- Identity/quotas/billing enabled: {_format_bool(config.get('identity_quotas_billing_enabled', False))}",
+            f"- Product local foundation ready: {_format_bool(product_readiness.get('local_foundation_ready', False))}",
+            f"- Product activation ready: {_format_bool(product_readiness.get('activation_ready', False))}",
+            f"- Product single API token configured: {_format_bool(product_summary.get('single_api_token_configured', False))}",
+            f"- Product query cost pricing configured: {_format_bool(product_summary.get('query_cost_pricing_configured', False))}",
+            f"- Product local blockers: {_format_report_codes(product_blockers.get('local_foundation', []))}",
+            f"- Product activation blockers: {_format_report_codes(product_blockers.get('activation', []))}",
             "",
         ]
     )
@@ -1327,6 +1343,8 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     api_access = data.get("api_access", {})
     upload_scans = data.get("upload_scans", {})
     config = data.get("config", {})
+    product_readiness = config.get("product_readiness", {}) or {}
+    product_summary = product_readiness.get("summary", {}) or {}
     storage_readiness = config.get("storage_readiness", {})
     metadata_storage = storage_readiness.get("metadata", {})
     object_storage = storage_readiness.get("object_storage", {})
@@ -1695,6 +1713,26 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     emit("fluxmind_docker_execution_available", docker_execution.get("available", False), "Whether Docker execution is available to the runtime user.")
     emit("fluxmind_external_providers_enabled", config.get("external_providers_enabled", False), "Whether external providers are enabled.")
     emit("fluxmind_identity_quotas_billing_enabled", config.get("identity_quotas_billing_enabled", False), "Whether identity, quotas, and billing are enabled.")
+    emit(
+        "fluxmind_product_local_foundation_ready",
+        product_readiness.get("local_foundation_ready", False),
+        "Whether local no-secret productization foundations are ready.",
+    )
+    emit(
+        "fluxmind_product_activation_ready",
+        product_readiness.get("activation_ready", False),
+        "Whether configured identity, quota, and billing activation targets are ready.",
+    )
+    emit(
+        "fluxmind_product_activation_blockers_total",
+        len((product_readiness.get("blockers", {}) or {}).get("activation", [])),
+        "Current product activation blocker count.",
+    )
+    emit(
+        "fluxmind_product_single_api_token_configured",
+        product_summary.get("single_api_token_configured", False),
+        "Whether the legacy single shared API token is configured.",
+    )
 
     lines.append("# EOF")
     return "\n".join(lines) + "\n"
@@ -2472,6 +2510,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         jobs=jobs_for_platform_readiness,
         distributed_job_store=distributed_job_store,
     )
+    product_readiness = collect_product_readiness()
 
     return AdminStatus(
         runtime_dirs=[
@@ -2773,7 +2812,11 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 configured_backend=CODE_EXECUTION_BACKEND,
                 image=DOCKER_EXECUTION_IMAGE,
             ),
+            "product_readiness": product_readiness,
             "external_providers_enabled": False,
-            "identity_quotas_billing_enabled": False,
+            "identity_quotas_billing_enabled": product_readiness.get(
+                "identity_quotas_billing_enabled",
+                False,
+            ),
         },
     )

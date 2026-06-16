@@ -85,6 +85,26 @@ API_ACCESS_AUDIT_ENABLED = _env_flag("API_ACCESS_AUDIT_ENABLED", "true")
 API_RATE_LIMIT_ENABLED = _env_flag("API_RATE_LIMIT_ENABLED", "false")
 API_RATE_LIMIT_MAX_REQUESTS = int(os.getenv("API_RATE_LIMIT_MAX_REQUESTS", "300"))
 API_RATE_LIMIT_WINDOW_S = int(os.getenv("API_RATE_LIMIT_WINDOW_S", "60"))
+
+# Productization readiness. These values are no-secret configuration signals
+# for future identity, quota, and billing activation; the current local runtime
+# remains no-key/no-account unless explicitly changed by later implementation.
+FLUXMIND_API_TOKEN_CONFIGURED = bool(os.getenv("FLUXMIND_API_TOKEN", "").strip())
+IDENTITY_PROVIDER = os.getenv("FLUXMIND_IDENTITY_PROVIDER", os.getenv("IDENTITY_PROVIDER", "none")).strip()
+API_KEY_REGISTRY_BACKEND = os.getenv(
+    "FLUXMIND_API_KEY_REGISTRY_BACKEND",
+    os.getenv("API_KEY_REGISTRY_BACKEND", "none"),
+).strip()
+QUOTA_STORE_BACKEND = os.getenv(
+    "FLUXMIND_QUOTA_STORE_BACKEND",
+    os.getenv("QUOTA_STORE_BACKEND", "none"),
+).strip()
+BILLING_PROVIDER = os.getenv(
+    "FLUXMIND_BILLING_PROVIDER",
+    os.getenv("BILLING_PROVIDER", "none"),
+).strip()
+BILLING_ATTRIBUTION_ENABLED = _env_flag("FLUXMIND_BILLING_ATTRIBUTION_ENABLED", "false")
+IDENTITY_QUOTAS_BILLING_ENABLED = _env_flag("IDENTITY_QUOTAS_BILLING_ENABLED", "false")
 UPLOAD_SCAN_ENABLED = _env_flag("UPLOAD_SCAN_ENABLED", "true")
 UPLOAD_SCAN_REJECT_ENCRYPTED = _env_flag("UPLOAD_SCAN_REJECT_ENCRYPTED", "true")
 UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT = _env_flag("UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT", "true")

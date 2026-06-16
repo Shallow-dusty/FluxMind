@@ -1,0 +1,132 @@
+import json
+
+from src.product_readiness import (
+    collect_product_readiness,
+    format_product_readiness_markdown,
+)
+
+
+def test_product_readiness_reports_local_foundation_without_activation():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_token_configured=False,
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=False,
+        api_rate_limit_max_requests=300,
+        api_rate_limit_window_s=60,
+        query_cost_provider="",
+        query_cost_prompt_usd_per_1m="0",
+        query_cost_completion_usd_per_1m="0",
+        identity_provider="none",
+        api_key_registry_backend="none",
+        quota_store_backend="none",
+        billing_provider="none",
+        billing_attribution_enabled=False,
+        identity_quotas_billing_enabled=False,
+    )
+
+    assert status["mode"] == "product_readiness"
+    assert status["local_foundation_ready"] is True
+    assert status["activation_ready"] is False
+    assert status["content_exported"] is False
+    assert status["secrets_exported"] is False
+    assert status["connectivity_checked"] is False
+    assert status["blockers"]["local_foundation"] == []
+    assert "multi_user_identity_not_configured" in status["blockers"]["activation"]
+    assert "api_key_lifecycle_not_configured" in status["blockers"]["activation"]
+    assert "identity_quota_store_not_configured" in status["blockers"]["activation"]
+    assert "billing_provider_not_configured" in status["blockers"]["activation"]
+    assert "billing_attribution_not_enabled" in status["blockers"]["activation"]
+    assert "single_api_token_not_configured" in status["advisories"]
+    assert "local_rate_limit_disabled" in status["advisories"]
+    assert status["summary"]["owner_metadata_supported"] is True
+
+
+def test_product_readiness_can_report_activation_ready_without_secrets():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_token_configured=True,
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=True,
+        api_rate_limit_max_requests=120,
+        api_rate_limit_window_s=60,
+        query_cost_provider="lab-model",
+        query_cost_prompt_usd_per_1m="0.10",
+        query_cost_completion_usd_per_1m="0.20",
+        identity_provider="oidc",
+        api_key_registry_backend="postgres",
+        quota_store_backend="redis",
+        billing_provider="stripe",
+        billing_attribution_enabled=True,
+        identity_quotas_billing_enabled=True,
+    )
+
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    assert status["local_foundation_ready"] is True
+    assert status["activation_ready"] is True
+    assert status["identity_quotas_billing_enabled"] is True
+    assert status["blockers"]["activation"] == []
+    assert status["checks"]["identity_provider"]["backend"] == "oidc"
+    assert status["checks"]["billing_provider"]["backend"] == "stripe"
+    assert "api_key" in payload
+    assert "hunter2" not in payload
+
+
+def test_product_readiness_sanitizes_secret_like_backend_values():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_access_audit_enabled=True,
+        api_rate_limit_max_requests=300,
+        api_rate_limit_window_s=60,
+        identity_provider="oidc:hunter2@example.test",
+        api_key_registry_backend="postgres://hunter2@example.test/db",
+        quota_store_backend="redis://:hunter2@example.test/0",
+        billing_provider="stripe:hunter2",
+        billing_attribution_enabled=True,
+    )
+
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    assert "identity_provider_unsupported" in status["blockers"]["activation"]
+    assert "api_key_registry_unsupported" in status["blockers"]["activation"]
+    assert "quota_store_unsupported" in status["blockers"]["activation"]
+    assert "billing_provider_unsupported" in status["blockers"]["activation"]
+    assert "hunter2" not in payload
+    assert "example.test" not in payload
+    assert status["checks"]["identity_provider"]["backend"] == "custom"
+
+
+def test_product_readiness_blocks_invalid_local_foundation():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_access_audit_enabled=False,
+        api_rate_limit_max_requests=0,
+        api_rate_limit_window_s=0,
+        query_cost_prompt_usd_per_1m="bad-rate",
+        query_cost_completion_usd_per_1m="0",
+        owner_metadata_supported=False,
+    )
+
+    assert status["local_foundation_ready"] is False
+    assert "api_access_audit_disabled" in status["blockers"]["local_foundation"]
+    assert "local_rate_limit_config_invalid" in status["blockers"]["local_foundation"]
+    assert "owner_metadata_contract_missing" in status["blockers"]["local_foundation"]
+    assert "query_cost_rates_invalid" in status["blockers"]["local_foundation"]
+
+
+def test_format_product_readiness_markdown_is_no_secret():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_token_configured=True,
+        identity_provider="oidc:hunter2@example.test",
+        api_key_registry_backend="postgres://hunter2@example.test/db",
+        quota_store_backend="redis://:hunter2@example.test/0",
+        billing_provider="stripe:hunter2",
+    )
+
+    markdown = format_product_readiness_markdown(status)
+
+    assert "# FluxMind Product Readiness" in markdown
+    assert "Local foundation ready:" in markdown
+    assert "Activation ready:" in markdown
+    assert "hunter2" not in markdown
+    assert "example.test" not in markdown

@@ -112,6 +112,7 @@ def main() -> int:
         "src/storage_schema.py",
         "src/platform_migration.py",
         "src/storage_migration.py",
+        "src/product_readiness.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
@@ -120,6 +121,7 @@ def main() -> int:
         "scripts/storage_schema.py",
         "scripts/platform_migration_preflight.py",
         "scripts/platform_migration_rehearsal.py",
+        "scripts/product_readiness.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -229,6 +231,32 @@ def main() -> int:
         "platform migration rehearsal CLI installed",
         failures,
     )
+    product_readiness_source = (PROJECT_ROOT / "src" / "product_readiness.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "collect_product_readiness" in product_readiness_source
+        and "multi_user_identity_not_configured" in product_readiness_source
+        and "billing_provider_not_configured" in product_readiness_source,
+        "product readiness collector installed",
+        failures,
+    )
+    check(
+        "format_product_readiness_markdown" in product_readiness_source
+        and "secrets_exported" in product_readiness_source
+        and "content_exported" in product_readiness_source,
+        "product readiness no-secret markdown installed",
+        failures,
+    )
+    product_readiness_cli = (PROJECT_ROOT / "scripts" / "product_readiness.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "--require-activation" in product_readiness_cli
+        and "local_foundation_ready" in product_readiness_cli,
+        "product readiness CLI installed",
+        failures,
+    )
 
     app_source = (PROJECT_ROOT / "app.py").read_text(encoding="utf-8")
     check("st.write_stream" not in app_source, "chat stream avoids st.write_stream", failures)
@@ -257,6 +285,7 @@ def main() -> int:
     check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
     check("status_storage_schemas" in app_source and "storage_schemas" in app_source, "Streamlit storage schema panel installed", failures)
     check("status_platform_readiness" in app_source and "platform_readiness" in app_source, "Streamlit platform readiness panel installed", failures)
+    check("status_product_readiness" in app_source and "product_readiness" in app_source, "Streamlit product readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
@@ -442,6 +471,8 @@ def main() -> int:
     check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
     check("distributed_job_store_status" in admin_source and "external_job_store_configured" in admin_source, "admin distributed job-store readiness installed", failures)
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
+    check("collect_product_readiness" in admin_source and "product_readiness" in admin_source, "admin product readiness installed", failures)
+    check("fluxmind_product_local_foundation_ready" in admin_source and "fluxmind_product_activation_ready" in admin_source, "admin product readiness metrics installed", failures)
     storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
     storage_schema_cli = (PROJECT_ROOT / "scripts" / "storage_schema.py").read_text(encoding="utf-8")
     check("STORAGE_SCHEMA_VERSION" in storage_schema_source and "missing_required_columns" in storage_schema_source, "storage schema drift checks installed", failures)

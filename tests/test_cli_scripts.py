@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import scripts.evaluate_rag as evaluate_rag_cli
 import scripts.platform_migration_preflight as platform_migration_preflight_cli
 import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
+import scripts.product_readiness as product_readiness_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
 import scripts.storage_schema as storage_schema_cli
@@ -312,6 +313,60 @@ def test_platform_migration_rehearsal_cli_reports_os_errors(monkeypatch, capsys)
 
     assert platform_migration_rehearsal_cli.main() == 2
     assert "error: cannot copy runtime" in capsys.readouterr().err
+
+
+def test_product_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        product_readiness_cli,
+        "collect_product_readiness",
+        lambda: {"local_foundation_ready": True, "activation_ready": False},
+    )
+    monkeypatch.setattr("sys.argv", ["product_readiness.py"])
+
+    assert product_readiness_cli.main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "activation_ready": False,
+        "local_foundation_ready": True,
+    }
+
+
+def test_product_readiness_cli_can_require_activation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        product_readiness_cli,
+        "collect_product_readiness",
+        lambda: {"local_foundation_ready": True, "activation_ready": False},
+    )
+    monkeypatch.setattr("sys.argv", ["product_readiness.py", "--require-activation"])
+
+    assert product_readiness_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["activation_ready"] is False
+
+
+def test_product_readiness_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "product.md"
+    monkeypatch.setattr(
+        product_readiness_cli,
+        "collect_product_readiness",
+        lambda: {"local_foundation_ready": True, "activation_ready": True},
+    )
+    monkeypatch.setattr(
+        product_readiness_cli,
+        "format_product_readiness_markdown",
+        lambda status: "# Product",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_readiness.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert product_readiness_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# Product\n"
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):
