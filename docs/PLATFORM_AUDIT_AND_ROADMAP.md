@@ -53,10 +53,10 @@ coverage report --fail-under=88           pass, 88% total branch coverage
                                              cases, 12 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/provider-readiness/quality-readiness and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/provider-readiness/quality-readiness and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota guard advisory when disabled
+product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
 health_check.py HTTPS endpoints            00:39 snapshot, UI/API 200
@@ -75,9 +75,9 @@ RAG quality coverage      small-group retrieval bar met; broad live answer QA re
 Execution/artifacts       good contract baseline; not production sandboxed
 Storage/queue durability  local SQLite/JSONL bridge plus explicit external
                           job-store readiness target; not distributed yet
-Product maturity          pre-platform: local API-key/product registries and
-                          optional query quota guard exist; external
-                          identity/payment and teams disabled
+Product maturity          pre-platform: local API-key/product registries plus
+                          optional query quota and workspace-role guards exist;
+                          external identity/payment and teams disabled
 Frontend maturity         demo/personal workflow; Streamlit remains limiting
 ```
 
@@ -614,12 +614,14 @@ Reference: https://developers.cloudflare.com/sandbox/
 ### Phase 5: Productization
 
 Status: partial local foundation. Local API-key lifecycle is implemented through
-a hash-only SQLite registry, and local user/workspace/quota/usage/billing
+a hash-only SQLite registry, and local user/workspace/RBAC/quota/usage/billing
 attribution state is implemented through a separate SQLite product registry.
 The local product registry can also enforce request quotas on `/query*` routes
-when the quota guard is explicitly enabled. Public identity providers, external
-identity-backed quota infrastructure, external billing, and team workflows
-remain disabled until those product and operational decisions are made.
+when the quota guard is explicitly enabled, and workspace-role permissions on
+query/job/corpus/admin write paths when the RBAC guard is explicitly enabled.
+Public identity providers, external identity-backed quota infrastructure,
+external billing, and team workflows remain disabled until those product and
+operational decisions are made.
 FluxMind exposes no-secret product-readiness and provider-readiness preflights
 plus admin surfaces for the remaining blockers.
 

@@ -158,13 +158,15 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         readiness blockers without connecting to external
                         services. Jobs and generated artifacts now carry local
                         owner metadata. Product-readiness checks now expose the
-                        local identity/quota/billing foundation, including the
+                        local identity/RBAC/quota/billing foundation, including the
                         hash-only local API-key registry plus a local product
-                        registry for users, workspaces, quota limits, usage, and
-                        billing attribution. `/query*` routes can enforce local
-                        request quotas when the product quota guard is explicitly
-                        enabled, with activation blockers still reporting
-                        external systems.
+                        registry for users, workspaces, role permissions, quota
+                        limits, usage, and billing attribution. `/query*` routes
+                        can enforce local request quotas when the product quota
+                        guard is explicitly enabled, and query/job/corpus/admin
+                        write paths can enforce local workspace roles when the
+                        RBAC guard is explicitly enabled, with activation
+                        blockers still reporting external systems.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,
@@ -226,9 +228,10 @@ Product shell           Streamlit UI, FastAPI token boundary, public deployed
                         UI/API, admin/status/report panels with local owner
                         summaries.
 
-Gap to production       External user accounts, RBAC, external identity-backed
-                        API-key lifecycle, external billing/payment, share/export
-                        flows, real frontend, onboarding, team/lab workflows.
+Gap to production       External user accounts, production team/RBAC
+                        administration, external identity-backed API-key
+                        lifecycle, external billing/payment, share/export flows,
+                        real frontend, onboarding, team/lab workflows.
 
 Priority                Medium-high. Build after storage/job ownership is clear.
 ```
@@ -523,7 +526,7 @@ Order  Lane                                      Why first
 3      Durable jobs/distributed worker control    Enables indexing/execution scale
 4      Observability and cost attribution         Needed before paid providers
 5      Isolated execution sandbox                 Needed before public code runs
-6      Identity/workspaces/quotas                 Local registries exist; external
+6      Identity/workspaces/RBAC/quotas            Local registries/guards exist; external
                                                   identity/payment needs storage
                                                   and ownership decisions
 7      Frontend/API split                         Avoids overbuilding Streamlit
@@ -629,8 +632,8 @@ expensive or risky operation is observable and attributable.
 
 ### 90-120 Days: Product Shell
 
-- Introduce users, workspaces, corpora ownership, identity-backed API keys,
-  quotas, and admin roles.
+- Introduce external users, corpora ownership, identity-backed API keys,
+  production quotas, and team admin roles.
 - Replace or wrap Streamlit with a frontend that supports workspace navigation,
   artifact galleries, job timelines, citation inspection, and exports.
 - Add onboarding flows for: upload paper, ask paper-grounded question, generate

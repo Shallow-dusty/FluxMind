@@ -31,7 +31,7 @@ Command                                                               Result
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/provider-readiness/quality-readiness/
                                                                       API-key-registry/product-registry/
-                                                                      product-quota/readiness/log-noise anchors
+                                                                      product-quota/product-RBAC/readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
                                                                       active_keys=0, secrets_exported=false
@@ -45,7 +45,7 @@ Command                                                               Result
 .venv/bin/python scripts/product_readiness.py --format markdown      pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
                                                                       identity/quota/billing blockers and
-                                                                      product-quota-guard advisory
+                                                                      product-quota/product-RBAC guard advisories
 .venv/bin/python scripts/product_readiness.py --require-activation   pass, exits 1 because activation_ready=false
 .venv/bin/python scripts/provider_readiness.py --format markdown     pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
@@ -127,9 +127,13 @@ Product platform layer        incomplete    local product-readiness CLI/admin/re
                                             billing attribution are implemented through an optional
                                             SQLite product registry, and `/query*` routes can enforce
                                             local request quotas when the product quota guard is
-                                            explicitly enabled. External identity providers,
-                                            external billing/payment, RBAC, and a real frontend are
-                                            not implemented.
+                                            explicitly enabled. The same registry now supplies local
+                                            role checks: viewer/member/admin/owner memberships gate
+                                            query access, job submit/manage, and corpus/index/admin
+                                            destructive writes when the RBAC guard is explicitly
+                                            enabled. External identity providers, external
+                                            billing/payment, production team administration, and a
+                                            real frontend are not implemented.
 ```
 
 ## API Route Coverage
@@ -272,13 +276,16 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 - Productization readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, and the local API-key lifecycle
   registry is implemented with hash-only storage and API auth integration. The
-  local product registry now covers users, workspaces, quota limits, usage events,
-  and billing attribution as a SQLite ledger for readiness checks. FastAPI query
-  routes can also use that ledger as a local request quota guard when explicitly
-  enabled, returning `429` before model generation for over-limit work. Activation
-  still remains blocked on real external identity provider, identity-backed quota
-  enforcement, external billing/payment provider, and tenancy decisions when
-  those are required for production.
+  local product registry now covers users, workspaces, role permissions, quota
+  limits, usage events, and billing attribution as a SQLite ledger for readiness
+  checks. FastAPI query routes can also use that ledger as a local request quota
+  guard when explicitly enabled, returning `429` before model generation for
+  over-limit work. FastAPI query/job/corpus/admin write paths can enforce local
+  role permissions when the RBAC guard is explicitly enabled, returning `403`
+  before protected work starts. Activation still remains blocked on real
+  external identity provider, identity-backed quota enforcement, external
+  billing/payment provider, and tenancy decisions when those are required for
+  production.
 - Provider activation readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, but activation remains blocked
   on real external image provider configuration, hosted execution provider

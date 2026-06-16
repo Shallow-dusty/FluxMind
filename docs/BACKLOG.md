@@ -57,9 +57,10 @@ product registries. The API-key registry stores token hashes only and supports
 create/list/verify/revoke plus FastAPI auth integration. The product registry
 stores local users, workspaces, quota limits, usage events, and billing
 attribution records for no-secret readiness checks; when explicitly enabled, it
-also guards `/query*` routes with local request quotas and records metadata-only
-usage attribution. Both are covered by storage-schema, runtime-manifest,
-admin-inventory, CLI, and unit/API tests.
+also guards `/query*` routes with local request quotas, enforces local
+workspace-role permissions on query/job/corpus/admin write paths, and records
+metadata-only usage or RBAC denial attribution. Both are covered by
+storage-schema, runtime-manifest, admin-inventory, CLI, and unit/API tests.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, external identity providers,
@@ -675,12 +676,14 @@ metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
 inventory dashboard plus no-secret runtime backup manifest, restore dry-run
 verifier, local API-key lifecycle registry, local product registry, local
-product quota guard, and
+product quota guard, local product RBAC guard, and
 provider-readiness preflight implemented; keep external identity providers,
 identity-backed quotas, and external billing disabled until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
-- Add users, private corpora, identity-backed API keys, quotas, and share/export flows.
+- Add private corpora, external identity-backed API keys, external quotas, and
+  share/export flows after identity decisions are made. Local users/workspaces
+  and role guards already exist as the no-key contract.
 - Local corpus profiles let multiple named paper selections coexist without
   introducing accounts, permissions, or a public share model.
 - `GET /admin/status` exposes no-secret local runtime status for job counts,
@@ -706,10 +709,12 @@ identity-backed quotas, and external billing disabled until decisions are made
 - FastAPI auth can accept tokens from the local registry when
   `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`; this is local API authentication,
   not multi-user tenancy, quota enforcement, or billing.
-- `scripts/product_registry.py` manages the local SQLite users/workspaces/quota
+- `scripts/product_registry.py` manages the local SQLite users/workspaces/RBAC/quota
   limits/usage/billing-attribution ledger. It supports status, bootstrap-local,
-  set-quota, record-usage, and list-workspaces while keeping provider secrets,
-  payment credentials, prompts, answers, and runtime file contents out of output.
+  set-quota, record-usage, add-member, check-permission, and list-workspaces
+  while keeping provider secrets, payment credentials, prompts, answers, and
+  runtime file contents out of output. `check-permission` exits nonzero when a
+  local role does not satisfy the requested action.
 - FastAPI query routes can enforce the local product registry's `requests`
   quota when `IDENTITY_QUOTAS_BILLING_ENABLED=true`,
   `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`,
@@ -717,6 +722,14 @@ identity-backed quotas, and external billing disabled until decisions are made
   `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` are all set. Over-limit requests
   return `429` before model generation and record only metadata-only quota
   events.
+- FastAPI can enforce local product RBAC when
+  `IDENTITY_QUOTAS_BILLING_ENABLED=true`,
+  `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`, and
+  `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` are all set. Query routes require
+  active workspace membership, local job submit/manage routes allow
+  member/admin/owner, and corpus/index/admin destructive writes require
+  admin/owner. Denials return `403` before work starts and record only
+  metadata-only `product_rbac` events.
 - `scripts/platform_migration_preflight.py` gives production storage/worker
   migration a single no-secret CLI gate. It reports `preflight_ok` for local
   evidence and `activation_ready` for configured external backends, keeping
@@ -730,10 +743,11 @@ identity-backed quotas, and external billing disabled until decisions are made
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
   access audit, owner metadata, rate-limit configuration, local API-key registry,
-  local product registry, local product quota guard, and cost-estimation
+  local product registry, local product quota guard, local RBAC guard, and cost-estimation
   surfaces are present;
   `--require-activation` still fails until the chosen identity provider, quota
-  store, billing provider, and billing-attribution targets are configured.
+  store, billing provider, billing-attribution, quota-guard, and RBAC-guard
+  targets are configured.
 - `scripts/provider_readiness.py` gives external image providers, hosted
   execution, MATLAB backend/licensing, and provider quota/cost guards the same
   no-secret CLI gate. Default mode passes when local provider foundations are
@@ -841,8 +855,9 @@ identity-backed quotas, and external billing disabled until decisions are made
   inventory/readiness/platform-readiness and local rehearsal views, real
   production storage and distributed worker migration execution after backend
   choice, external job-store activation behind the existing readiness target,
-  identity-backed deletion/audit controls, billing attribution, production scrape/alert routing
-  beyond the local metrics text, and user/workspace admin once identity exists.
+  identity-backed deletion/audit controls, external billing/payment activation,
+  production scrape/alert routing beyond the local metrics text, and a real
+  product frontend/team admin once external identity exists.
 
 Acceptance:
 

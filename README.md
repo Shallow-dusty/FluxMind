@@ -55,7 +55,7 @@ Artifacts                  generated plots/files/diagrams with IDs and checksums
 Jobs                       local durable JSONL + SQLite job state, worker service
 Admin/status               no-secret status, events, metrics, retention preview
 API keys                   optional local SQLite registry with hashed tokens only
-Product registry           optional local users/workspaces/quotas/billing ledger and query quota guard
+Product registry           optional local users/workspaces/RBAC/quotas/billing ledger, query quota guard, and write-path RBAC guard
 Readiness gates            quality, platform, product, provider, migration checks
 ```
 
@@ -85,7 +85,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 optional hashed API-key registry
 optional product registry SQLite ledger
-optional query quota guard
+optional query quota and local RBAC guards
 ```
 
 External databases, object storage, distributed queues, external image providers, hosted sandboxes, real MATLAB integration, identity, quotas, and billing are not enabled by default. They are represented by provider-neutral interfaces, configuration flags, readiness reports, and blocker codes until intentionally activated.
@@ -168,10 +168,11 @@ RETENTION_DELETE_ENABLED=false
 FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
+FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/quotas/billing-attribution ledger. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. These local registries do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
+Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. These local registries do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
 
 ### Documentation Map
 
@@ -243,7 +244,7 @@ Artifact 管理             生成图、文件、diagram，带稳定 ID 和 chec
 Job 系统                  本地 durable JSONL + SQLite 状态和 worker 服务
 管理面                    no-secret status、events、metrics、retention preview
 API key                   可选本地 SQLite registry，只持久化 token hash
-Product registry          可选本地 user/workspace/quota/billing ledger 与 query quota guard
+Product registry          可选本地 user/workspace/RBAC/quota/billing ledger、query quota guard 与写路径 RBAC guard
 Readiness 门禁            quality、platform、product、provider、migration 检查
 ```
 
@@ -273,7 +274,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 可选 hashed API-key registry
 可选 product registry SQLite ledger
-可选 query quota guard
+可选 query quota 与本地 RBAC guard
 ```
 
 外部数据库、object storage、分布式队列、外部图像 provider、托管 sandbox、真实 MATLAB、身份、配额和计费默认不启用。项目通过 provider-neutral 接口、配置开关、readiness 报告和 blocker code 表示这些边界，直到它们被明确激活和验证。
@@ -356,10 +357,11 @@ RETENTION_DELETE_ENABLED=false
 FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
+FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/quota/billing-attribution ledger。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。这些本地 registry 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
+设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。这些本地 registry 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
 
 ### 文档地图
 

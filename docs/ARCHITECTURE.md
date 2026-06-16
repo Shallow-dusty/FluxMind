@@ -84,15 +84,16 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   on create, supports list/verify/revoke, and can back FastAPI auth when
   `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
 - `src/product_registry.py` and `scripts/product_registry.py`: optional local
-  SQLite user/workspace/quota/usage/billing-attribution ledger. It gives
-  product-readiness a no-secret local contract for product identity state without
-  connecting to an external identity provider or payment processor.
+  SQLite user/workspace/RBAC/quota/usage/billing-attribution ledger. It gives
+  product-readiness a no-secret local contract for product identity state, role
+  permissions, and usage attribution without connecting to an external identity
+  provider or payment processor.
 - `src/product_readiness.py` and `scripts/product_readiness.py`: no-secret
-  productization readiness check for identity, API-key lifecycle, quotas, and
-  billing activation. It can verify the local SQLite key registry and product
-  registry when enabled and reports local foundation checks and blocker codes
-  without exposing token values, owner IDs, billing credentials, or provider
-  secrets.
+  productization readiness check for identity, API-key lifecycle, RBAC, quotas,
+  and billing activation. It can verify the local SQLite key registry, product
+  registry, local quota guard, and local RBAC guard when enabled and reports
+  local foundation checks and blocker codes without exposing token values, owner
+  IDs, billing credentials, or provider secrets.
 - `src/provider_readiness.py` and `scripts/provider_readiness.py`: no-secret
   external provider activation readiness check for real image providers, hosted
   execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
@@ -415,15 +416,22 @@ separates `local_foundation_ready` from `activation_ready`: the current local
 foundation can pass through API access audit, owner metadata, local rate-limit
 configuration, query-cost estimation surfaces, and the optional local hashed-key
 registry. When the optional local product registry is enabled, local-registry
-identity, SQLite quota store, and local-ledger billing attribution can also be
-verified without external accounts. When `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED`
+identity, SQLite quota store, local RBAC, and local-ledger billing attribution
+can also be verified without external accounts. When
+`FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED`
 is explicitly enabled together with the local product registry and SQLite quota
 store, the FastAPI `/query`, `/query/inspect`, `/query/retrieve`, and
 `/query/report` paths resolve the local user/workspace, check the configured
 request quota, record a metadata-only usage event, and reject over-limit
-requests before calling the model provider. Activation remains blocked until the
-chosen identity, quota-store, billing-provider, billing-attribution, and runtime
-quota-guard targets are configured. The CLI
+requests before calling the model provider. When
+`FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED` is explicitly enabled together with the
+local product registry and local API-key ownership, query routes require an
+active workspace membership, local job submit/manage routes require
+member/admin/owner roles, and corpus/index/admin destructive writes require
+admin/owner roles. Denials return structured 403 responses and metadata-only
+`product_rbac` runtime events. Activation remains blocked until the chosen
+identity, quota-store, billing-provider, billing-attribution, runtime quota
+guard, and RBAC guard targets are configured. The CLI
 `scripts/product_readiness.py` exits successfully for local foundation readiness
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,
