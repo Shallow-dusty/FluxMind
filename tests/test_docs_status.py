@@ -8,15 +8,19 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  6ad6dbc feat: add local API key registry" in text
-    assert "Current docs/health head       207ba7a fix: extend remote health timeout" in text
+    assert "Current implementation commit  c41ea94 feat: add local product registry" in text
+    assert "Current docs/health sync       c41ea94 feat: add local product registry" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 23:36 CST" in text
-    assert "Latest deploy follow-up        6ad6dbc/8f9db56/ea1c508/207ba7a synced with restart on 2026-06-16 23:36 CST" in text
+    assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:13 CST" in text
+    assert "Latest deploy follow-up        bce3ae5/c41ea94 synced with restart on 2026-06-17 00:10 CST" in text
+    assert "local product registry source/docs/health sync deployed to" in text
+    assert "`c41ea94` (`feat: add local product registry`)" in text
     assert "local API-key registry source/docs/health sync deployed to" in text
     assert "`207ba7a` (`fix: extend remote health timeout`)" in text
     assert "`6ad6dbc` (`feat: add local API key registry`)" in text
+    assert "product_registry_sqlite ok=true" in text
     assert "api_key_registry_sqlite ok=true" in text
+    assert "Product registry    backend=none; available=false; workspaces=0; secrets_exported=false" in text
     assert "API key registry    backend=none; available=false; active_keys=0; secrets_exported=false" in text
     assert "latest platform-migration source/docs sync deployed to `/opt/fluxmind` is" in text
     assert "`dc2b71a` (`docs: record runtime migration rehearsal`)" in text

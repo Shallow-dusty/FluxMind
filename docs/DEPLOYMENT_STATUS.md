@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 23:36 CST
+Last live check: 2026-06-17 00:13 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `6ad6dbc`
-(`feat: add local API key registry`).
-Last deployed source/docs/health sync: `207ba7a`
-(`fix: extend remote health timeout`).
+Last deployed implementation update: `c41ea94`
+(`feat: add local product registry`).
+Last deployed source/docs/health sync: `c41ea94`
+(`feat: add local product registry`).
 
 ```
 Host          Trace-Twin
@@ -99,45 +99,54 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local API-key registry deploy was refreshed on 2026-06-16 23:36 CST after
-pushing `6ad6dbc`, `8f9db56`, `ea1c508`, and `207ba7a`. `.venv/bin/python
-scripts/deploy_sync.py --apply --restart` synced source, docs, tests, and
-health-check changes to `/opt/fluxmind`, then restarted
-`fluxmind-api.service`, `fluxmind-ui.service`, and
-`fluxmind-worker.service`; all three returned `active`.
+Local product-registry deploy was refreshed on 2026-06-17 00:10 CST after
+pushing `bce3ae5` and `c41ea94`. `.venv/bin/python scripts/deploy_sync.py
+--apply --restart` synced source, docs, tests, and health-check changes to
+`/opt/fluxmind`, then restarted `fluxmind-api.service`,
+`fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
+`active`. API startup completed after the normal model/import cold-start window.
 
 The follow-up health gates passed with public HTTPS UI 200 at
 `https://smy.hyper-dusty.cloud/`, public API health 200 at
 `https://api-smy.hyper-dusty.cloud/health`, services active, ports `18501` and
 `18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
 `chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
-`index_fresh=True`. The default SSH health check also passed after increasing
-the SSH command timeout floor to 180s for the expanded `/admin/status` and
-compound remote checks. Server-local `scripts/api_key_registry.py status
---format markdown` returned `backend=none`, `available=false`,
-`active_keys=0`, and `secrets_exported=false`; production does not activate the
-SQLite registry until `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` is deliberately
-set. Server-local `scripts/storage_schema.py --format markdown` returned
-`ok=true`, `store_count=8`, `problem_count=0`, and optional
-`api_key_registry_sqlite ok=true`. Authenticated admin status returned
-`storage_schemas.store_count=8`, `problem_count=0`, and
-`api_key_registry_sqlite` in the store list; `/admin/metrics` includes the fixed
-`api_key_registry_sqlite` schema-store label without exposing token values,
-token hashes, or owner IDs.
+`index_fresh=True`. The default SSH health check passed. Server-local
+`scripts/api_key_registry.py status --format markdown` returned `backend=none`,
+`available=false`, `active_keys=0`, and `secrets_exported=false`.
+Server-local `scripts/product_registry.py status --format markdown` returned
+`backend=none`, `available=false`, `users=0`, `workspaces=0`, and
+`secrets_exported=false`. Production does not activate either SQLite registry
+until `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` or
+`FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` is deliberately set.
 
-Server-local `scripts/product_readiness.py --format json` returned
-`local_foundation_ready=true`, `activation_ready=false`, and the expected
-`api_key_lifecycle_not_configured` blocker because the deployed registry backend
-remains `none`. Server-local `venv/bin/python scripts/evaluate_rag.py
---retrieval-url http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-api-key-registry-live-report.json` passed 107/107 live retrieval
+Server-local `scripts/storage_schema.py --format markdown` returned `ok=true`,
+`store_count=9`, `problem_count=0`, and optional `api_key_registry_sqlite` and
+`product_registry_sqlite` stores both `ok=true`. Authenticated admin status
+returned `storage_schemas.store_count=9`, `problem_count=0`, both registry
+store names in the store list, and `content_scanned=false`; no token values,
+token hashes, owner IDs, prompts, answers, source paths, or runtime file
+contents were exported.
+
+Server-local `scripts/product_readiness.py --format markdown` returned
+`local_foundation_ready=true`, `activation_ready=false`,
+`identity_quotas_billing_enabled=false`, `product_registry_available=false`,
+and expected activation blockers for multi-user identity, API-key lifecycle,
+quota store, billing provider, and billing attribution. Server-local
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url
+http://127.0.0.1:18502 --json-report
+/tmp/fluxmind-product-registry-live-report.json` passed 107/107 live retrieval
 cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-api-key-registry-live-report.json` then returned
+/tmp/fluxmind-product-registry-live-report.json` returned
 `local_foundation_ready=true`, `small_group_ready=true`,
-`community_ready=false`, and `live_retrieval_result_count=107`;
-`--require-target small_group` exited 0 and `--require-target community` exited
-1. This confirms the small-group quality lane only when explicit no-secret live
-report evidence is supplied; community remains a measured gap.
+`community_ready=false`, and `live_retrieval_result_count=107`; this confirms
+the small-group quality lane only when explicit no-secret live report evidence
+is supplied. Community remains a measured gap.
+
+Local API-key registry deploy was refreshed on 2026-06-16 23:36 CST after
+pushing `6ad6dbc`, `8f9db56`, `ea1c508`, and `207ba7a`. That earlier slice
+added the optional local SQLite API-key lifecycle registry and kept it disabled
+by default in production.
 
 Provider-readiness deploy was refreshed on 2026-06-16 19:51 CST after pushing
 `938e918` and `0deea23`. `.venv/bin/python scripts/deploy_sync.py --apply
@@ -788,10 +797,11 @@ admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind
 admin job-store readiness present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; SSH health on 2026-06-16 14:42 CST returned distributed_job_store backend=local available=true external_configured=false
 platform migration preflight present in /opt/fluxmind/src/platform_migration.py and /opt/fluxmind/scripts/platform_migration_preflight.py; SSH smoke on 2026-06-16 18:13 CST returned preflight_ok=true activation_ready=false local_blockers=none activation_blockers=[production_metadata_database_not_configured,production_object_storage_not_configured,distributed_job_store_not_configured]
 runtime migration rehearsal present in /opt/fluxmind/src/storage_migration.py and /opt/fluxmind/scripts/platform_migration_rehearsal.py; SSH smoke on 2026-06-16 18:34 CST returned rehearsal_ok=true copied_files=19 restore_check_ok=true staged_storage_schema_ok=true blockers=none
-product readiness       present in /opt/fluxmind/src/product_readiness.py and /opt/fluxmind/scripts/product_readiness.py; SSH smoke on 2026-06-16 23:36 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false; local API-key lifecycle code is implemented but deployed backend=none, so activation blockers still include [multi_user_identity_not_configured,api_key_lifecycle_not_configured,identity_quota_store_not_configured,billing_provider_not_configured,billing_attribution_not_enabled]; --require-activation exits 1 as expected; authenticated admin status returns product_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_product_* and still omit token values/token hashes/owner_id
-local API key registry  present in /opt/fluxmind/src/api_keys.py and /opt/fluxmind/scripts/api_key_registry.py; SSH smoke on 2026-06-16 23:36 CST returned backend=none available=false active_keys=0 secrets_exported=false; storage_schema.py returned ok=true store_count=8 problem_count=0 and optional api_key_registry_sqlite ok=true; authenticated admin status returned store_count=8 and api_key_registry_sqlite present; production default remains disabled, so product_readiness still reports api_key_lifecycle_not_configured until FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite is deliberately enabled
+product readiness       present in /opt/fluxmind/src/product_readiness.py and /opt/fluxmind/scripts/product_readiness.py; SSH smoke on 2026-06-17 00:10 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false; local API-key lifecycle and product-registry code are implemented but deployed backends remain none, so activation blockers still include [multi_user_identity_not_configured,api_key_lifecycle_not_configured,identity_quota_store_not_configured,billing_provider_not_configured,billing_attribution_not_enabled]; --require-activation exits 1 as expected; metrics include fluxmind_product_* and still omit token values/token hashes/owner_id
+local API key registry  present in /opt/fluxmind/src/api_keys.py and /opt/fluxmind/scripts/api_key_registry.py; SSH smoke on 2026-06-17 00:10 CST returned backend=none available=false active_keys=0 secrets_exported=false; storage_schema.py returned ok=true store_count=9 problem_count=0 and optional api_key_registry_sqlite ok=true; authenticated admin status returned store_count=9 and api_key_registry_sqlite present; production default remains disabled, so product_readiness still reports api_key_lifecycle_not_configured until FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite is deliberately enabled
+local product registry  present in /opt/fluxmind/src/product_registry.py and /opt/fluxmind/scripts/product_registry.py; SSH smoke on 2026-06-17 00:10 CST returned backend=none available=false users=0 workspaces=0 secrets_exported=false; storage_schema.py returned ok=true store_count=9 problem_count=0 and optional product_registry_sqlite ok=true; authenticated admin status returned store_count=9 and product_registry_sqlite present; production default remains disabled, so no multi-user identity, quota, usage, or billing-attribution runtime is activated until FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite is deliberately enabled
 provider readiness      present in /opt/fluxmind/src/provider_readiness.py and /opt/fluxmind/scripts/provider_readiness.py; SSH smoke on 2026-06-16 19:51 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[external_providers_disabled,external_image_provider_not_configured,hosted_execution_provider_not_configured,matlab_backend_not_configured,provider_quota_guard_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned provider_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_provider_* and still omit api_key/owner_id
-quality readiness       present in /opt/fluxmind/src/quality_readiness.py and /opt/fluxmind/scripts/quality_readiness.py; SSH smoke on 2026-06-16 23:36 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true, default small_group_ready=false without live evidence, community_ready=false, and --require-target community exited 1 as expected; server-local evaluate_rag --retrieval-url wrote /tmp/fluxmind-api-key-registry-live-report.json with 107/107 live retrieval pass, and quality_readiness.py --live-report then returned small_group_ready=true, community_ready=false, --require-target small_group exited 0, --require-target community exited 1
+quality readiness       present in /opt/fluxmind/src/quality_readiness.py and /opt/fluxmind/scripts/quality_readiness.py; SSH smoke on 2026-06-17 00:13 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true, default small_group_ready=false without live evidence, community_ready=false, and --require-target community exited 1 as expected; server-local evaluate_rag --retrieval-url wrote /tmp/fluxmind-product-registry-live-report.json with 107/107 live retrieval pass, and quality_readiness.py --live-report then returned small_group_ready=true, community_ready=false
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3

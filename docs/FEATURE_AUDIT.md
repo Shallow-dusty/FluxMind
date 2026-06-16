@@ -56,14 +56,14 @@ Command                                                               Result
 .venv/bin/python scripts/quality_readiness.py --require-target...    pass, exits 1 because community_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   23:36 snapshot, 107/107 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   00:13 snapshot, 107/107 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,
                                                                       manifest_errors=0, 0 missing/mismatched
-.venv/bin/python scripts/health_check.py --url ...                   23:36 snapshot, HTTPS UI 200
-curl https://api-smy.hyper-dusty.cloud/health                        23:36 snapshot, HTTPS API 200
-.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  23:36 snapshot, live runtime green,
+.venv/bin/python scripts/health_check.py --url ...                   00:10 snapshot, HTTPS UI/API health 200
+curl https://api-smy.hyper-dusty.cloud/health                        00:10 snapshot, HTTPS API 200
+.venv/bin/python scripts/health_check.py --ssh-host root@100.100...  00:10 snapshot, live runtime green,
                                                                       active_papers=30, chunks=1934
 ```
 

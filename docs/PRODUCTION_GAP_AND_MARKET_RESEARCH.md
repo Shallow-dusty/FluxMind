@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-16 23:36 CST
+Last updated: 2026-06-17 00:13 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      refreshed on 2026-06-16 23:36 CST; re-run before deploy claims
+                      refreshed on 2026-06-17 00:13 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -35,12 +35,12 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 6ad6dbc feat: add local API key registry
-Current docs/health    207ba7a fix: extend remote health timeout
-Status note     this docs-status refresh follows local API-key registry deployment verification
+Current implementation c41ea94 feat: add local product registry
+Current docs/health    c41ea94 feat: add local product registry
+Status note     this docs-status refresh follows local product registry deployment verification
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Work scope      local API-key registry, auth integration, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-16 23:16 CST
+Work scope      local product registry, product-readiness linkage, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed on 2026-06-17 00:06 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -71,9 +71,9 @@ provider_readiness.py                     pass, local_foundation_ready=true,
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
                                           corpus/eval/live-evidence gaps
-HTTPS UI                                  23:36 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          23:36 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                23:36 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  00:10 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          00:10 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                00:10 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
@@ -82,6 +82,12 @@ Remote chunk metadata                     chunk_metadata_rows=1934, sources=30
 Remote index freshness                     index_fresh=True
 Remote API-key registry                    backend=none, available=false; local SQLite
                                           registry implemented but not activated
+Remote product registry                    backend=none, available=false; local SQLite
+                                          user/workspace/quota/usage/billing ledger
+                                          implemented but not activated
+Remote live retrieval eval                 00:13 snapshot: 107/107 passed; quality
+                                          readiness small_group=true with live report,
+                                          community=false with measured gaps
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
 
