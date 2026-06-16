@@ -46,7 +46,7 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 412 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 416 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
@@ -59,8 +59,8 @@ runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked fil
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
-health_check.py HTTPS endpoints            00:39 snapshot, UI/API 200
-health_check.py SSH runtime                00:39 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
+health_check.py HTTPS endpoints            01:09 snapshot, UI/API 200
+health_check.py SSH runtime                01:09 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
 
 Current assessment:

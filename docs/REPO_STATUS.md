@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 00:39 CST
+Snapshot time: 2026-06-17 01:09 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,14 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  c130778 feat: add local product quota guard
-Current docs/health sync       efe2143 docs: document product quota guard
-Remote status at verification  main == origin/main at efe2143 before this deployment-record refresh
-Current refresh scope          product quota guard deployed, live-verified, and documented
+Current implementation commit  c7ecbf6 feat: add local product RBAC guard
+Current docs/health sync       3c85999 docs: document local product RBAC guard
+Remote status at verification  main == origin/main at 3c85999 before this deployment-record refresh
+Current refresh scope          product RBAC guard deployed, live-verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   efe2143 docs: document product quota guard
-Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:37 CST
-Latest deploy follow-up        c130778/efe2143 synced with restart and live-checked on 2026-06-17 00:39 CST
+Last deployed docs sync base   3c85999 docs: document local product RBAC guard
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:08 CST
+Latest deploy follow-up        c7ecbf6/3c85999 synced with restart and live-checked on 2026-06-17 01:09 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -100,14 +100,23 @@ SQLite quota store are explicitly enabled. The live deployment has the guard
 code and admin metric installed, but keeps `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED`
 false by default, so runtime quota enforcement is an explicit operational
 activation step rather than an automatic production change.
+The latest local product RBAC guard source/docs/health sync deployed to
+`/opt/fluxmind` is `3c85999` (`docs: document local product RBAC guard`), with
+implementation commit `c7ecbf6` (`feat: add local product RBAC guard`). It adds
+opt-in workspace role checks for query, job-submit, corpus-write, and
+admin-write actions when the local API-key registry, product registry,
+identity/quota/billing runtime, and `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true`
+are deliberately enabled. The live deployment has the RBAC guard code, CLI,
+runtime-event reporting, and admin metric installed, but keeps
+`FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false` by default.
 
-Current local verification on 2026-06-17 00:39 CST:
+Current local verification on 2026-06-17 01:09 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 412 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 412 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 416 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 416 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 92%,
@@ -124,7 +133,8 @@ Command                                                     Result
                                                             migration-rehearsal, and
                                                             product/provider/quality-readiness,
                                                             API-key registry, product registry,
-                                                            and product quota guard anchors
+                                                            product quota guard, and product
+                                                            RBAC guard anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status          pass, backend=none, available=false,
   --format markdown                                          active_keys=0, secrets_exported=false
@@ -182,6 +192,12 @@ Temporary SQLite product-registry smoke                     bootstrap workspace,
                                                             against an isolated temp registry;
                                                             status did not export secrets or
                                                             content
+Temporary SQLite product-RBAC smoke                         owner/admin/member/viewer role
+                                                            decisions passed against an isolated
+                                                            temp registry; viewer query was
+                                                            allowed, viewer job-submit and
+                                                            member corpus-write were denied
+                                                            with metadata-only reasons
 Product readiness temp-registry smoke                       enabling sqlite registry in an
                                                             isolated temp env cleared
                                                             api_key_lifecycle_not_configured;
@@ -239,13 +255,23 @@ Remote product registry smoke                               `/opt/fluxmind/venv/
                                                             scripts/product_registry.py status`
                                                             returned backend=none,
                                                             available=false, users=0,
-                                                            workspaces=0, secrets_exported=false
+                                                            workspaces=0, rbac_available=false,
+                                                            secrets_exported=false
 Remote product quota guard smoke                            `/opt/fluxmind/api.py`,
                                                             `/opt/fluxmind/src/product_registry.py`,
                                                             and `/opt/fluxmind/src/admin.py`
                                                             contain enforce_product_quota,
                                                             quota_decision, and
                                                             fluxmind_product_quota_guard_enabled;
+                                                            production flag remains false
+Remote product RBAC guard smoke                             `/opt/fluxmind/api.py`,
+                                                            `/opt/fluxmind/src/product_registry.py`,
+                                                            `/opt/fluxmind/src/admin.py`, and
+                                                            `/opt/fluxmind/scripts/product_registry.py`
+                                                            contain enforce_product_rbac,
+                                                            permission_decision,
+                                                            fluxmind_product_rbac_guard_enabled,
+                                                            and check-permission;
                                                             production flag remains false
 Remote storage-schema smoke                                 `/opt/fluxmind/venv/bin/python
                                                             scripts/storage_schema.py`
@@ -686,12 +712,12 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after syncing `c130778` and
-`efe2143` with restart, then running SSH, public HTTPS, product-readiness,
-product-registry, product-quota-guard anchor, and live retrieval checks on
-2026-06-17 00:39 CST in
+The latest live deployment snapshot was refreshed after syncing `c7ecbf6` and
+`3c85999` with restart, then running SSH, public HTTPS, product-readiness,
+product-registry, product-quota/RBAC-guard anchors, and live retrieval checks on
+2026-06-17 01:09 CST in
 `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
-job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/Docker-execution/execution-policy/
+job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/product-RBAC-guard/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
@@ -725,6 +751,7 @@ Storage schema      ok=true; store_count=9; problems=0; api_key_registry_sqlite 
 API key registry    backend=none; available=false; active_keys=0; secrets_exported=false
 Product registry    backend=none; available=false; workspaces=0; secrets_exported=false
 Product quota guard installed=true; enabled=false by default; admin metric present
+Product RBAC guard  installed=true; enabled=false by default; admin metric present
 Job-store readiness local job store available; external job store configured false
 Migration preflight preflight_ok=true; activation_ready=false; local_blockers=none;
                     activation blockers are the expected external metadata DB,
@@ -740,17 +767,17 @@ Disk                /dev/vda3 40G total, 24G free, 36% used
 - Runtime state remains git-ignored: `papers/`, `faiss_index/`, `artifacts/`,
   `jobs/`, `metadata/`, `.env`, virtual environments, caches, and bytecode.
 - The retrieval-eval/code-output/PDF-structure/report/runtime-restore/
-  job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/Docker-execution/
+  job-idempotency/retry-dead-letter/ownership/API-key-registry/product-registry/product-quota-guard/product-RBAC-guard/Docker-execution/
   execution-policy/execution-observability/output-limits/artifact-limits/
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
   the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
   deploy-exclude slices are verified, committed, pushed to `origin/main` through
-  application baseline `c130778` plus docs/health sync `efe2143`, deployed to
+  application baseline `c7ecbf6` plus docs/health sync `3c85999`, deployed to
   Trace-Twin, and post-restart verified. The deployed API-key and product
-  registry backends plus product quota guard remain disabled by default;
-  enabling the SQLite registries and the query quota guard is an explicit
+  registry backends plus product quota/RBAC guards remain disabled by default;
+  enabling the SQLite registries and the query quota/RBAC guards is an explicit
   operational choice, not an automatic production activation.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.

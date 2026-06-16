@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 00:39 CST
+Last live check: 2026-06-17 01:09 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `c130778`
-(`feat: add local product quota guard`).
-Last deployed source/docs/health sync: `efe2143`
-(`docs: document product quota guard`).
+Last deployed implementation update: `c7ecbf6`
+(`feat: add local product RBAC guard`).
+Last deployed source/docs/health sync: `3c85999`
+(`docs: document local product RBAC guard`).
 
 ```
 Host          Trace-Twin
@@ -99,8 +99,8 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Local product-quota-guard deploy was refreshed on 2026-06-17 00:39 CST after
-pushing `c130778` and `efe2143`. `.venv/bin/python scripts/deploy_sync.py
+Local product-RBAC-guard deploy was refreshed on 2026-06-17 01:09 CST after
+pushing `c7ecbf6` and `3c85999`. `.venv/bin/python scripts/deploy_sync.py
 --apply --restart` synced source, docs, tests, and health-check changes to
 `/opt/fluxmind`, then restarted `fluxmind-api.service`,
 `fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
@@ -116,29 +116,32 @@ The follow-up health gates passed with public HTTPS UI 200 at
 Server-local `scripts/product_readiness.py --format markdown` returned
 `local_foundation_ready=true`, `activation_ready=false`,
 `identity_quotas_billing_enabled=false`, `product_registry_available=false`,
-`product_quota_guard_enabled=false`, and expected activation blockers for
-multi-user identity, API-key lifecycle, quota store, billing provider, and
-billing attribution. `product_quota_guard_disabled` is an advisory in the
-default production config. Server-local code anchors confirmed
-`enforce_product_quota` in `api.py`, `quota_decision` in
-`src/product_registry.py`, and `fluxmind_product_quota_guard_enabled` in
-`src/admin.py`.
+`product_quota_guard_enabled=false`, `product_rbac_guard_enabled=false`, and
+expected activation blockers for multi-user identity, API-key lifecycle, quota
+store, billing provider, and billing attribution. `product_quota_guard_disabled`
+and `product_rbac_guard_disabled` are advisories in the default production
+config. Server-local code anchors confirmed `enforce_product_quota` and
+`enforce_product_rbac` in `api.py`, `quota_decision` and `permission_decision`
+in `src/product_registry.py`, and both `fluxmind_product_quota_guard_enabled`
+and `fluxmind_product_rbac_guard_enabled` in `src/admin.py`.
 
 Server-local `scripts/api_key_registry.py status --format markdown` returned
 `backend=none`, `available=false`, `active_keys=0`, and
 `secrets_exported=false`. Server-local `scripts/product_registry.py status
 --format markdown` returned `backend=none`, `available=false`, `users=0`,
-`workspaces=0`, `quota_limits=0`, `usage_events=0`, `billing_accounts=0`, and
-`secrets_exported=false`. Production does not activate either SQLite registry
-or the query quota guard until `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`,
+`workspaces=0`, `rbac_available=false`, `quota_limits=0`, `usage_events=0`,
+`billing_accounts=0`, and `secrets_exported=false`. Production does not activate
+either SQLite registry or the query quota/RBAC guards until
+`FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`,
 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`, `FLUXMIND_QUOTA_STORE_BACKEND=sqlite`,
-and `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` are deliberately set.
+`FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true`, and
+`FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` are deliberately set.
 
 Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
 http://127.0.0.1:18502 --json-report
-/tmp/fluxmind-product-quota-guard-live-report.json` passed 107/107 live
+/tmp/fluxmind-product-rbac-live-report.json` passed 107/107 live
 retrieval cases. Re-running `scripts/quality_readiness.py --live-report
-/tmp/fluxmind-product-quota-guard-live-report.json` returned
+/tmp/fluxmind-product-rbac-live-report.json` returned
 `local_foundation_ready=true`, `small_group_ready=true`,
 `community_ready=false`, and `live_retrieval_result_count=107`; this confirms
 the small-group quality lane only when explicit no-secret live report evidence

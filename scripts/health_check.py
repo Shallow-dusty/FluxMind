@@ -151,12 +151,12 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  c130778 feat: add local product quota guard" in repo_status
-        and "Current docs/health sync       efe2143 docs: document product quota guard" in repo_status
+        and "Current implementation commit  c7ecbf6 feat: add local product RBAC guard" in repo_status
+        and "Current docs/health sync       3c85999 docs: document local product RBAC guard" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:37 CST"
+        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 01:08 CST"
         in repo_status
-        and "Latest deploy follow-up        c130778/efe2143 synced with restart and live-checked on 2026-06-17 00:39 CST"
+        and "Latest deploy follow-up        c7ecbf6/3c85999 synced with restart and live-checked on 2026-06-17 01:09 CST"
         in repo_status,
         "repo status records current source and deployed baselines",
         failures,
