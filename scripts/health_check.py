@@ -403,6 +403,13 @@ def main() -> int:
         failures,
     )
     check(
+        "live_answer_pass_rate" in quality_readiness_source
+        and "average_live_answer_term_coverage" in quality_readiness_source
+        and "minimum_live_retrieval_pass_rate" in quality_readiness_source,
+        "quality readiness live quality thresholds installed",
+        failures,
+    )
+    check(
         "format_quality_readiness_markdown" in quality_readiness_source
         and "secrets_exported" in quality_readiness_source
         and "paths_exported" in quality_readiness_source,
@@ -1031,6 +1038,8 @@ def main() -> int:
             "grep -q -- '--json-report' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q 'collect_quality_readiness' /opt/fluxmind/src/quality_readiness.py; "
             "grep -q 'format_quality_readiness_markdown' /opt/fluxmind/src/quality_readiness.py; "
+            "grep -q 'live_answer_pass_rate' /opt/fluxmind/src/quality_readiness.py; "
+            "grep -q 'average_live_answer_term_coverage' /opt/fluxmind/src/quality_readiness.py; "
             "grep -q -- '--require-target' /opt/fluxmind/scripts/quality_readiness.py; "
             "grep -q -- '--live-report' /opt/fluxmind/scripts/quality_readiness.py; "
             "grep -q 'REQUIRED_RUNTIME_EXCLUDES' /opt/fluxmind/scripts/deploy_sync.py; "

@@ -1153,10 +1153,10 @@ def quality_metric_values(
     live_results: list[LiveAnswerResult] | None = None,
     live_retrieval_results: list[LiveRetrievalResult] | None = None,
     project_root: Path = PROJECT_ROOT,
-) -> dict[str, int]:
+) -> dict[str, int | float]:
     """Return no-secret quality maturity metrics for staged product gates."""
     all_retrieval_cases = retrieval_eval_cases(config)
-    return {
+    metrics: dict[str, int | float] = {
         "seed_paper_count": _seed_library_paper_count(project_root=project_root),
         "answer_case_count": len(config.get("cases", [])),
         "retrieval_only_case_count": len(config.get("retrieval_only_cases", [])),
@@ -1169,11 +1169,20 @@ def quality_metric_values(
         "live_answer_result_count": len(live_results or []),
         "live_retrieval_result_count": len(live_retrieval_results or []),
     }
+    if live_results is not None:
+        metrics["live_answer_pass_rate"] = _pass_rate(live_results)
+        metrics["average_live_answer_term_coverage"] = _average_coverage(
+            live_results,
+            "answer_term_coverage",
+        )
+    if live_retrieval_results is not None:
+        metrics["live_retrieval_pass_rate"] = _pass_rate(live_retrieval_results)
+    return metrics
 
 
 def evaluate_quality_maturity_targets(
     config: dict[str, Any],
-    metrics: dict[str, int],
+    metrics: dict[str, int | float],
 ) -> list[dict[str, Any]]:
     """Compare current quality metrics with staged product maturity targets."""
     results: list[dict[str, Any]] = []
