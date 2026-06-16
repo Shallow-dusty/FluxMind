@@ -7,6 +7,7 @@ import scripts.evaluate_rag as evaluate_rag_cli
 import scripts.platform_migration_preflight as platform_migration_preflight_cli
 import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
 import scripts.provider_readiness as provider_readiness_cli
+import scripts.quality_readiness as quality_readiness_cli
 import scripts.product_readiness as product_readiness_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
@@ -422,6 +423,84 @@ def test_provider_readiness_cli_writes_markdown(monkeypatch, tmp_path):
 
     assert provider_readiness_cli.main() == 0
     assert output_path.read_text(encoding="utf-8") == "# Provider\n"
+
+
+def test_quality_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        quality_readiness_cli,
+        "collect_quality_readiness",
+        lambda **kwargs: {
+            "local_foundation_ready": True,
+            "small_group_ready": False,
+            "community_ready": False,
+        },
+    )
+    monkeypatch.setattr("sys.argv", ["quality_readiness.py"])
+
+    assert quality_readiness_cli.main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "community_ready": False,
+        "local_foundation_ready": True,
+        "small_group_ready": False,
+    }
+
+
+def test_quality_readiness_cli_can_require_community(monkeypatch, capsys):
+    monkeypatch.setattr(
+        quality_readiness_cli,
+        "collect_quality_readiness",
+        lambda **kwargs: {
+            "local_foundation_ready": True,
+            "small_group_ready": True,
+            "community_ready": False,
+        },
+    )
+    monkeypatch.setattr("sys.argv", ["quality_readiness.py", "--require-target", "community"])
+
+    assert quality_readiness_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["community_ready"] is False
+
+
+def test_quality_readiness_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "quality.md"
+    monkeypatch.setattr(
+        quality_readiness_cli,
+        "collect_quality_readiness",
+        lambda **kwargs: {
+            "local_foundation_ready": True,
+            "small_group_ready": True,
+            "community_ready": True,
+        },
+    )
+    monkeypatch.setattr(
+        quality_readiness_cli,
+        "format_quality_readiness_markdown",
+        lambda status: "# Quality",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "quality_readiness.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert quality_readiness_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# Quality\n"
+
+
+def test_quality_readiness_cli_reports_os_errors(monkeypatch, capsys):
+    def fail_collect(**kwargs):
+        raise OSError("cannot read eval")
+
+    monkeypatch.setattr(quality_readiness_cli, "collect_quality_readiness", fail_collect)
+    monkeypatch.setattr("sys.argv", ["quality_readiness.py"])
+
+    assert quality_readiness_cli.main() == 2
+    assert "error: cannot read eval" in capsys.readouterr().err
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):

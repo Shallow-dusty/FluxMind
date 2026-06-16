@@ -114,6 +114,7 @@ def main() -> int:
         "src/storage_migration.py",
         "src/product_readiness.py",
         "src/provider_readiness.py",
+        "src/quality_readiness.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
@@ -124,6 +125,7 @@ def main() -> int:
         "scripts/platform_migration_rehearsal.py",
         "scripts/product_readiness.py",
         "scripts/provider_readiness.py",
+        "scripts/quality_readiness.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -283,6 +285,33 @@ def main() -> int:
         "--require-activation" in provider_readiness_cli
         and "local_foundation_ready" in provider_readiness_cli,
         "provider readiness CLI installed",
+        failures,
+    )
+    quality_readiness_source = (PROJECT_ROOT / "src" / "quality_readiness.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "collect_quality_readiness" in quality_readiness_source
+        and "quality_maturity_targets" in quality_readiness_source
+        and "live_report_unreadable" in quality_readiness_source,
+        "quality readiness collector installed",
+        failures,
+    )
+    check(
+        "format_quality_readiness_markdown" in quality_readiness_source
+        and "secrets_exported" in quality_readiness_source
+        and "paths_exported" in quality_readiness_source,
+        "quality readiness no-secret markdown installed",
+        failures,
+    )
+    quality_readiness_cli = (PROJECT_ROOT / "scripts" / "quality_readiness.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "--require-target" in quality_readiness_cli
+        and "--live-report" in quality_readiness_cli
+        and "local_foundation_ready" in quality_readiness_cli,
+        "quality readiness CLI installed",
         failures,
     )
 
@@ -835,6 +864,10 @@ def main() -> int:
             "grep -q -- '--retrieval-url' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q 'regression gate' /opt/fluxmind/scripts/evaluate_rag.py; "
             "grep -q -- '--json-report' /opt/fluxmind/scripts/evaluate_rag.py; "
+            "grep -q 'collect_quality_readiness' /opt/fluxmind/src/quality_readiness.py; "
+            "grep -q 'format_quality_readiness_markdown' /opt/fluxmind/src/quality_readiness.py; "
+            "grep -q -- '--require-target' /opt/fluxmind/scripts/quality_readiness.py; "
+            "grep -q -- '--live-report' /opt/fluxmind/scripts/quality_readiness.py; "
             "grep -q 'REQUIRED_RUNTIME_EXCLUDES' /opt/fluxmind/scripts/deploy_sync.py; "
             "grep -q -- '--dry-run' /opt/fluxmind/scripts/deploy_sync.py; "
             "grep -q -- '--apply' /opt/fluxmind/scripts/deploy_sync.py; "
