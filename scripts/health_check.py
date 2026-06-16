@@ -794,9 +794,9 @@ def main() -> int:
     )
     required_pdf_kinds = set(eval_config.get("quality_gates", {}).get("required_pdf_structure_kinds", []))
     check(
-        eval_config.get("quality_gates", {}).get("minimum_pdf_structure_case_count", 0) >= 15
+        eval_config.get("quality_gates", {}).get("minimum_pdf_structure_case_count", 0) >= 30
         and {"equation", "table", "figure", "algorithm"}.issubset(required_pdf_kinds)
-        and len(eval_config.get("pdf_structure_cases", [])) >= 15,
+        and len(eval_config.get("pdf_structure_cases", [])) >= 30,
         "RAG eval PDF structure gate installed",
         failures,
     )

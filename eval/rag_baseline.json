@@ -113,7 +113,7 @@
       "local_job"
     ],
     "minimum_code_output_pass_rate": 1.0,
-    "minimum_pdf_structure_case_count": 20,
+    "minimum_pdf_structure_case_count": 30,
     "required_pdf_structure_kinds": [
       "equation",
       "table",
@@ -865,6 +865,76 @@
       "page": 10,
       "kind": "figure",
       "contains": "Control block diagram for the CESO"
+    },
+    {
+      "id": "structure-frontiers-chattering-simulation-table",
+      "source_path": "papers/library/li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+      "page": 3,
+      "kind": "table",
+      "contains": "TABLE 1 Related parameters of the simulation model"
+    },
+    {
+      "id": "structure-frontiers-smo-pmsm-coordinate-figure",
+      "source_path": "papers/library/liu-2022-frontiers-smo-sensorless-pmsm.pdf",
+      "page": 2,
+      "kind": "figure",
+      "contains": "FIGURE 1 | Coordinates of PMSM"
+    },
+    {
+      "id": "structure-improved-smo-startup-comparison-table",
+      "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
+      "page": 12,
+      "kind": "table",
+      "contains": "Table 3. The comparative simulation results of startup"
+    },
+    {
+      "id": "structure-switching-function-sosmo-pll-diagram",
+      "source_path": "papers/library/scholz-2022-switching-functions-smo-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "A block diagram of sensorless"
+    },
+    {
+      "id": "structure-nftsmc-block-diagram",
+      "source_path": "papers/library/shi-2024-nftsmc-sdob-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "The block diagram of N-NFTSMC"
+    },
+    {
+      "id": "structure-integrated-smc-vsi-foc-diagram",
+      "source_path": "papers/library/tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf",
+      "page": 3,
+      "kind": "figure",
+      "contains": "Diagram illustrating SMC and VSI-FOC"
+    },
+    {
+      "id": "structure-fractional-smdo-pmsm-architecture",
+      "source_path": "papers/library/ullah-2024-fractional-super-twisting-smdo-pmsm.pdf",
+      "page": 6,
+      "kind": "figure",
+      "contains": "Representation of the PMSM system architecture"
+    },
+    {
+      "id": "structure-fast-terminal-smpc-control-structure",
+      "source_path": "papers/library/kong-2024-fast-terminal-smpc-pmsm.pdf",
+      "page": 3,
+      "kind": "figure",
+      "contains": "general control structure of the proposed FTSMPC"
+    },
+    {
+      "id": "structure-model-free-gsta-speed-control-system",
+      "source_path": "papers/library/ma-2025-model-free-gsta-ftsmc-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "PMSM Speed Control System Based on MFFTSMC-GSTA"
+    },
+    {
+      "id": "structure-iftsm-control-block-diagram",
+      "source_path": "papers/library/hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+      "page": 5,
+      "kind": "figure",
+      "contains": "Control Block Diagram of IFSM Surface"
     }
   ],
   "cases": [
