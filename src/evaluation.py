@@ -1095,13 +1095,21 @@ def evaluate_config(
 def _pass_rate(results: list[Any]) -> float:
     if not results:
         return 0.0
-    return sum(1 for result in results if result.ok) / len(results)
+    return sum(1 for result in results if getattr(result, "ok", False)) / len(results)
 
 
 def _average_coverage(results: list[Any], attribute: str) -> float:
     if not results:
         return 0.0
-    return sum(float(getattr(result, attribute)) for result in results) / len(results)
+    values: list[float] = []
+    for result in results:
+        try:
+            values.append(float(getattr(result, attribute)))
+        except (AttributeError, TypeError, ValueError):
+            continue
+    if not values:
+        return 0.0
+    return sum(values) / len(values)
 
 
 def _case_values(cases: list[dict[str, Any]], field: str) -> list[str]:
