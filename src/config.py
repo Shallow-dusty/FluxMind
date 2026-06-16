@@ -45,6 +45,18 @@ CODE_EXECUTION_ALERT_MIN_EVENTS = int(os.getenv("CODE_EXECUTION_ALERT_MIN_EVENTS
 CODE_EXECUTION_ALERT_FAILURE_RATE = float(os.getenv("CODE_EXECUTION_ALERT_FAILURE_RATE", "0.5"))
 CODE_EXECUTION_ALERT_DURATION_MS = int(os.getenv("CODE_EXECUTION_ALERT_DURATION_MS", "30000"))
 
+# External provider activation readiness. Local mock/image and local execution
+# remain active; these settings only report future real provider activation
+# targets and never expose credential values.
+EXTERNAL_PROVIDERS_ENABLED = _env_flag("EXTERNAL_PROVIDERS_ENABLED", "false")
+IMAGE_PROVIDER_BACKEND = os.getenv("IMAGE_PROVIDER_BACKEND", "local-mock").strip()
+IMAGE_PROVIDER_API_CONFIGURED = _env_flag("IMAGE_PROVIDER_API_CONFIGURED", "false")
+HOSTED_EXECUTION_BACKEND = os.getenv("HOSTED_EXECUTION_BACKEND", "none").strip()
+HOSTED_EXECUTION_CONFIGURED = _env_flag("HOSTED_EXECUTION_CONFIGURED", "false")
+MATLAB_BACKEND = os.getenv("MATLAB_BACKEND", "none").strip()
+MATLAB_LICENSE_CONFIGURED = _env_flag("MATLAB_LICENSE_CONFIGURED", "false")
+PROVIDER_QUOTA_GUARD_ENABLED = _env_flag("PROVIDER_QUOTA_GUARD_ENABLED", "false")
+
 # Storage backend readiness. Local JSON/SQLite/filesystem storage remains the
 # active no-key backend; external database/object storage requires explicit
 # configuration and is only reported as readiness here.

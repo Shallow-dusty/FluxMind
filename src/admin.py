@@ -79,6 +79,7 @@ from src.costs import summarize_query_cost
 from src.jobs import LocalJobStore
 from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore
 from src.product_readiness import collect_product_readiness
+from src.provider_readiness import collect_provider_readiness
 from src.providers import docker_execution_status
 from src.runtime import append_runtime_event, list_runtime_events
 from src.storage_schema import storage_schema_status
@@ -905,6 +906,9 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     product_readiness = config.get("product_readiness", {}) or {}
     product_summary = product_readiness.get("summary", {}) or {}
     product_blockers = product_readiness.get("blockers", {}) or {}
+    provider_readiness = config.get("provider_readiness", {}) or {}
+    provider_summary = provider_readiness.get("summary", {}) or {}
+    provider_blockers = provider_readiness.get("blockers", {}) or {}
 
     lines = [
         "# FluxMind Admin Status",
@@ -1298,6 +1302,15 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Product query cost pricing configured: {_format_bool(product_summary.get('query_cost_pricing_configured', False))}",
             f"- Product local blockers: {_format_report_codes(product_blockers.get('local_foundation', []))}",
             f"- Product activation blockers: {_format_report_codes(product_blockers.get('activation', []))}",
+            f"- Provider local foundation ready: {_format_bool(provider_readiness.get('local_foundation_ready', False))}",
+            f"- Provider activation ready: {_format_bool(provider_readiness.get('activation_ready', False))}",
+            f"- Provider external providers enabled: {_format_bool(provider_readiness.get('external_providers_enabled', False))}",
+            f"- Provider external image configured: {_format_bool(provider_summary.get('external_image_provider_configured', False))}",
+            f"- Provider hosted execution configured: {_format_bool(provider_summary.get('hosted_execution_provider_configured', False))}",
+            f"- Provider MATLAB backend configured: {_format_bool(provider_summary.get('matlab_backend_configured', False))}",
+            f"- Provider quota guard enabled: {_format_bool(provider_summary.get('provider_quota_guard_enabled', False))}",
+            f"- Provider local blockers: {_format_report_codes(provider_blockers.get('local_foundation', []))}",
+            f"- Provider activation blockers: {_format_report_codes(provider_blockers.get('activation', []))}",
             "",
         ]
     )
@@ -1345,6 +1358,8 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     config = data.get("config", {})
     product_readiness = config.get("product_readiness", {}) or {}
     product_summary = product_readiness.get("summary", {}) or {}
+    provider_readiness = config.get("provider_readiness", {}) or {}
+    provider_summary = provider_readiness.get("summary", {}) or {}
     storage_readiness = config.get("storage_readiness", {})
     metadata_storage = storage_readiness.get("metadata", {})
     object_storage = storage_readiness.get("object_storage", {})
@@ -1732,6 +1747,41 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
         "fluxmind_product_single_api_token_configured",
         product_summary.get("single_api_token_configured", False),
         "Whether the legacy single shared API token is configured.",
+    )
+    emit(
+        "fluxmind_provider_local_foundation_ready",
+        provider_readiness.get("local_foundation_ready", False),
+        "Whether local no-secret provider foundations are ready.",
+    )
+    emit(
+        "fluxmind_provider_activation_ready",
+        provider_readiness.get("activation_ready", False),
+        "Whether configured external provider activation targets are ready.",
+    )
+    emit(
+        "fluxmind_provider_activation_blockers_total",
+        len((provider_readiness.get("blockers", {}) or {}).get("activation", [])),
+        "Current external provider activation blocker count.",
+    )
+    emit(
+        "fluxmind_provider_external_image_configured",
+        provider_summary.get("external_image_provider_configured", False),
+        "Whether an external image provider target is configured.",
+    )
+    emit(
+        "fluxmind_provider_hosted_execution_configured",
+        provider_summary.get("hosted_execution_provider_configured", False),
+        "Whether a hosted code execution provider target is configured.",
+    )
+    emit(
+        "fluxmind_provider_matlab_backend_configured",
+        provider_summary.get("matlab_backend_configured", False),
+        "Whether an external MATLAB backend target is configured.",
+    )
+    emit(
+        "fluxmind_provider_quota_guard_enabled",
+        provider_summary.get("provider_quota_guard_enabled", False),
+        "Whether external provider quota and cost guards are enabled.",
     )
 
     lines.append("# EOF")
@@ -2511,6 +2561,14 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         distributed_job_store=distributed_job_store,
     )
     product_readiness = collect_product_readiness()
+    docker_execution = docker_execution_status(
+        configured_backend=CODE_EXECUTION_BACKEND,
+        image=DOCKER_EXECUTION_IMAGE,
+    )
+    provider_readiness = collect_provider_readiness(
+        code_execution_backend=CODE_EXECUTION_BACKEND,
+        docker_status=docker_execution,
+    )
 
     return AdminStatus(
         runtime_dirs=[
@@ -2808,12 +2866,13 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             ],
             "storage_readiness": storage_readiness,
             "distributed_job_store": distributed_job_store,
-            "docker_execution": docker_execution_status(
-                configured_backend=CODE_EXECUTION_BACKEND,
-                image=DOCKER_EXECUTION_IMAGE,
-            ),
+            "docker_execution": docker_execution,
             "product_readiness": product_readiness,
-            "external_providers_enabled": False,
+            "provider_readiness": provider_readiness,
+            "external_providers_enabled": provider_readiness.get(
+                "external_providers_enabled",
+                False,
+            ),
             "identity_quotas_billing_enabled": product_readiness.get(
                 "identity_quotas_billing_enabled",
                 False,

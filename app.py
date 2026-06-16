@@ -144,6 +144,7 @@ I18N = {
         "status_storage_schemas": "本地存储模式",
         "status_platform_readiness": "平台化就绪状态",
         "status_product_readiness": "产品化就绪状态",
+        "status_provider_readiness": "Provider 激活就绪状态",
         "status_runtime_manifest": "运行时备份清单",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
@@ -286,6 +287,7 @@ I18N = {
         "status_storage_schemas": "Local storage schemas",
         "status_platform_readiness": "Platform readiness",
         "status_product_readiness": "Product readiness",
+        "status_provider_readiness": "Provider activation readiness",
         "status_runtime_manifest": "Runtime backup manifest",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
@@ -599,6 +601,7 @@ def render_admin_status() -> None:
     storage_readiness = config.get("storage_readiness", {})
     distributed_job_store = config.get("distributed_job_store", {})
     product_readiness = config.get("product_readiness", {})
+    provider_readiness = config.get("provider_readiness", {})
 
     st.caption(text["status_jobs"])
     st.json(
@@ -733,6 +736,21 @@ def render_admin_status() -> None:
             "advisories": product_readiness.get("advisories", []),
             "content_exported": product_readiness.get("content_exported", False),
             "secrets_exported": product_readiness.get("secrets_exported", False),
+        }
+    )
+    st.caption(text["status_provider_readiness"])
+    st.json(
+        {
+            "local_foundation_ready": provider_readiness.get("local_foundation_ready", False),
+            "activation_ready": provider_readiness.get("activation_ready", False),
+            "external_providers_enabled": provider_readiness.get("external_providers_enabled", False),
+            "summary": provider_readiness.get("summary", {}),
+            "checks": provider_readiness.get("checks", {}),
+            "blockers": provider_readiness.get("blockers", {}),
+            "advisories": provider_readiness.get("advisories", []),
+            "content_exported": provider_readiness.get("content_exported", False),
+            "secrets_exported": provider_readiness.get("secrets_exported", False),
+            "connectivity_checked": provider_readiness.get("connectivity_checked", False),
         }
     )
     runtime_manifest = collect_runtime_backup_manifest()

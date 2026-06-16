@@ -833,6 +833,18 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["config"]["docker_execution"]["configured"] is False
     assert status["config"]["docker_execution"]["available"] is False
     assert status["config"]["docker_execution"]["reason"] == "not_configured"
+    provider_readiness = status["config"]["provider_readiness"]
+    assert provider_readiness["local_foundation_ready"] is True
+    assert provider_readiness["activation_ready"] is False
+    assert provider_readiness["external_providers_enabled"] is False
+    assert provider_readiness["summary"]["external_image_provider_configured"] is False
+    assert provider_readiness["summary"]["hosted_execution_provider_configured"] is False
+    assert provider_readiness["summary"]["matlab_backend_configured"] is False
+    assert "external_providers_disabled" in provider_readiness["blockers"]["activation"]
+    assert "external_image_provider_not_configured" in provider_readiness["blockers"]["activation"]
+    assert "hosted_execution_provider_not_configured" in provider_readiness["blockers"]["activation"]
+    assert "matlab_backend_not_configured" in provider_readiness["blockers"]["activation"]
+    assert "provider_quota_guard_not_enabled" in provider_readiness["blockers"]["activation"]
     assert status["config"]["storage_readiness"]["metadata"]["backend"] == "local"
     assert status["config"]["storage_readiness"]["metadata"]["available"] is True
     assert status["config"]["storage_readiness"]["metadata"]["database_url_configured"] is False
@@ -919,6 +931,14 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "Job alert expired min events: 1" in report
     assert "Code execution allowed imports:" in report
     assert "Docker execution available: false" in report
+    assert "Provider local foundation ready: true" in report
+    assert "Provider activation ready: false" in report
+    assert "Provider external image configured: false" in report
+    assert "Provider hosted execution configured: false" in report
+    assert "Provider MATLAB backend configured: false" in report
+    assert "Provider activation blockers:" in report
+    assert "external_image_provider_not_configured" in report
+    assert "matlab_backend_not_configured" in report
     assert "Metadata storage backend: local" in report
     assert "Object storage backend: local" in report
     assert "## Storage Inventory" in report
@@ -971,6 +991,13 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert 'fluxmind_api_access_by_status_code{status_code="429"} 1' in metrics
     assert 'fluxmind_upload_scans_by_reason{reason="active_content_javascript"} 1' in metrics
     assert "fluxmind_retention_delete_enabled 0" in metrics
+    assert "fluxmind_provider_local_foundation_ready 1" in metrics
+    assert "fluxmind_provider_activation_ready 0" in metrics
+    assert "fluxmind_provider_activation_blockers_total 5" in metrics
+    assert "fluxmind_provider_external_image_configured 0" in metrics
+    assert "fluxmind_provider_hosted_execution_configured 0" in metrics
+    assert "fluxmind_provider_matlab_backend_configured 0" in metrics
+    assert "fluxmind_provider_quota_guard_enabled 0" in metrics
     assert "lab-admin" not in metrics
     assert "req-code" not in metrics
     assert "question" not in metrics.casefold()
