@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src import config
+from src.api_keys import api_key_registry_backend_status
 from src.costs import query_pricing_status
 
 
@@ -160,6 +161,18 @@ def collect_product_readiness(
         missing_reason="api_key_registry_not_configured",
         unsupported_reason="unsupported_api_key_registry",
     )
+    if api_key_registry["backend"] == "sqlite":
+        local_registry = api_key_registry_backend_status(
+            backend=api_key_registry["backend"],
+        )
+        api_key_registry.update(
+            {
+                "available": bool(local_registry.get("available", False)),
+                "reason": local_registry.get("reason", api_key_registry["reason"]),
+                "active_key_count": local_registry.get("active_key_count", 0),
+                "revoked_key_count": local_registry.get("revoked_key_count", 0),
+            }
+        )
     quota_store = _backend_status(
         value=quota_store_backend if quota_store_backend is not None else config.QUOTA_STORE_BACKEND,
         supported=SUPPORTED_QUOTA_STORES,
@@ -192,6 +205,8 @@ def collect_product_readiness(
         activation_blockers.append("api_key_lifecycle_not_configured")
     elif not api_key_registry["supported"]:
         activation_blockers.append("api_key_registry_unsupported")
+    elif not api_key_registry["available"]:
+        activation_blockers.append("api_key_registry_unavailable")
     if not quota_store["configured"]:
         activation_blockers.append("identity_quota_store_not_configured")
     elif not quota_store["supported"]:
@@ -234,6 +249,7 @@ def collect_product_readiness(
             "owner_metadata_supported": bool(owner_metadata_supported),
             "query_cost_estimation_available": True,
             "query_cost_pricing_configured": bool(pricing["configured"]),
+            "api_key_lifecycle_available": bool(api_key_registry["available"]),
             "external_billing_enabled": False,
             "identity_quotas_billing_enabled": product_enabled,
         },

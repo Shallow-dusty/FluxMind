@@ -12,6 +12,7 @@ from typing import Any
 
 from src.config import (
     ACTIVE_PAPERS_FILE,
+    API_KEY_REGISTRY_FILE,
     API_ACCESS_AUDIT_ENABLED,
     API_RATE_LIMIT_ENABLED,
     API_RATE_LIMIT_MAX_REQUESTS,
@@ -557,6 +558,7 @@ def storage_inventory_status() -> dict[str, Any]:
                 "corpus_profiles_json": CORPUS_PROFILES_FILE,
                 "corpus_sqlite": CORPUS_METADATA_DB_FILE,
                 "chunks_sqlite": CHUNK_METADATA_DB_FILE,
+                "api_key_registry_sqlite": API_KEY_REGISTRY_FILE,
                 "runtime_events_jsonl": RUNTIME_EVENTS_FILE,
             },
         ),

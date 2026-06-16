@@ -17,6 +17,14 @@ LLM_MODEL = os.getenv("LLM_MODEL", "DeepSeek-V3.2")
 def _env_flag(name: str, default: str) -> bool:
     return os.getenv(name, default).strip().lower() not in {"0", "false", "no", "off"}
 
+
+def _project_path_from_env(name: str, default: Path) -> Path:
+    path = Path(os.getenv(name, str(default))).expanduser()
+    if path.is_absolute():
+        return path
+    return PROJECT_ROOT / path
+
+
 # Embedding
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "")
@@ -140,6 +148,10 @@ CORPUS_PROFILES_FILE = METADATA_DIR / "corpus_profiles.json"
 CORPUS_METADATA_DB_FILE = METADATA_DIR / "corpus.sqlite3"
 CHUNK_METADATA_DB_FILE = METADATA_DIR / "chunks.sqlite3"
 RUNTIME_EVENTS_FILE = METADATA_DIR / "runtime_events.jsonl"
+API_KEY_REGISTRY_FILE = _project_path_from_env(
+    "FLUXMIND_API_KEY_REGISTRY_FILE",
+    METADATA_DIR / "api_keys.sqlite3",
+)
 
 # RAG parameters
 CHUNK_SIZE = 1000

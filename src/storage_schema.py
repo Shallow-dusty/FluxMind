@@ -14,6 +14,7 @@ from typing import Any
 
 from src.config import (
     ARTIFACTS_DIR,
+    API_KEY_REGISTRY_FILE,
     CHUNK_METADATA_DB_FILE,
     CORPUS_METADATA_DB_FILE,
     CORPUS_METADATA_FILE,
@@ -136,6 +137,18 @@ ARTIFACT_COLUMNS = (
     "payload",
 )
 
+API_KEY_COLUMNS = (
+    "key_id",
+    "token_hash",
+    "owner_id",
+    "owner_label",
+    "description",
+    "created_at",
+    "revoked_at",
+    "last_used_at",
+    "use_count",
+)
+
 RUNTIME_EVENT_FIELDS = ("event_id", "kind", "code", "message", "created_at", "metadata")
 
 
@@ -176,6 +189,11 @@ def default_sqlite_store_specs() -> tuple[SqliteStoreSpec, ...]:
             "artifacts_sqlite",
             ARTIFACTS_DIR / "artifacts.sqlite3",
             (SqliteTableSpec("artifacts", ARTIFACT_COLUMNS),),
+        ),
+        SqliteStoreSpec(
+            "api_key_registry_sqlite",
+            API_KEY_REGISTRY_FILE,
+            (SqliteTableSpec("api_keys", API_KEY_COLUMNS),),
         ),
     )
 
@@ -454,6 +472,11 @@ def storage_schema_status_for_root(project_root: Path) -> dict[str, Any]:
                 "artifacts_sqlite",
                 artifacts_dir / "artifacts.sqlite3",
                 (SqliteTableSpec("artifacts", ARTIFACT_COLUMNS),),
+            ),
+            SqliteStoreSpec(
+                "api_key_registry_sqlite",
+                metadata_dir / "api_keys.sqlite3",
+                (SqliteTableSpec("api_keys", API_KEY_COLUMNS),),
             ),
         ),
     )

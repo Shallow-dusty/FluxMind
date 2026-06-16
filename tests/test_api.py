@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import api
+from src.api_keys import LocalApiKeyRegistry
 from src.jobs import AsyncJobManager
 from src.metadata import PaperRecord
 from src.artifacts import artifact_id_for_uri
@@ -55,6 +56,8 @@ def test_api_token_status_does_not_return_token_values(monkeypatch):
         "credential_type": "multiple",
         "credential_present": True,
         "auth_configured": True,
+        "auth_source": "static_token",
+        "api_key_registry_configured": False,
     }
     assert "secret" not in str(status)
     assert "wrong" not in str(status)
@@ -74,6 +77,23 @@ def test_api_token_status_uses_constant_time_comparison(monkeypatch):
 
     assert status["token_status"] == "valid"
     assert calls == [("wrong", "secret"), ("secret", "secret")]
+
+
+def test_verify_api_token_accepts_configured_registry_token(tmp_path, monkeypatch):
+    registry = LocalApiKeyRegistry(tmp_path / "api_keys.sqlite3")
+    token = registry.create_key(owner_id="lab-api")["token"]
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", tmp_path / "api_keys.sqlite3")
+
+    api.verify_api_token(None, token)
+
+    status = api.api_token_status(None, token)
+    assert status["token_status"] == "valid"
+    assert status["auth_configured"] is True
+    assert status["auth_source"] == "api_key_registry"
+    assert status["api_key_registry_configured"] is True
+    assert token not in str(status)
 
 
 def test_api_access_middleware_records_valid_auth_without_secrets(monkeypatch):

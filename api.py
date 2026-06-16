@@ -27,6 +27,7 @@ from src.admin import (
     format_admin_metrics,
     format_corpus_profile_status_report,
 )
+from src.api_keys import api_key_registry_backend_status, verify_configured_api_key_token
 from src.artifacts import LocalArtifactRegistry
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import get_vector_store, query_with_metadata, retrieve_with_metadata
@@ -166,7 +167,12 @@ app.add_middleware(
 )
 
 
-def api_token_status(authorization: str | None, x_api_key: str | None) -> dict[str, Any]:
+def api_token_status(
+    authorization: str | None,
+    x_api_key: str | None,
+    *,
+    update_registry_usage: bool = False,
+) -> dict[str, Any]:
     """Classify API token headers without returning token values."""
     bearer_token = ""
     if authorization and authorization.lower().startswith("bearer "):
@@ -182,12 +188,28 @@ def api_token_status(authorization: str | None, x_api_key: str | None) -> dict[s
     else:
         credential_type = "none"
 
-    token_valid = any(
+    static_token_valid = any(
         hmac.compare_digest(candidate, API_TOKEN)
         for candidate in (x_api_key or "", bearer_token)
         if candidate
     )
-    if not API_TOKEN:
+    registry_status = api_key_registry_backend_status()
+    registry_configured = bool(registry_status.get("configured") and registry_status.get("supported"))
+    registry_record = None
+    if registry_configured:
+        for candidate in (x_api_key or "", bearer_token):
+            if not candidate:
+                continue
+            registry_record = verify_configured_api_key_token(
+                candidate,
+                update_usage=update_registry_usage,
+            )
+            if registry_record is not None:
+                break
+
+    token_valid = static_token_valid or registry_record is not None
+    auth_configured = bool(API_TOKEN) or registry_configured
+    if not auth_configured:
         token_status = "not_configured"
     elif token_valid:
         token_status = "valid"
@@ -195,12 +217,20 @@ def api_token_status(authorization: str | None, x_api_key: str | None) -> dict[s
         token_status = "invalid"
     else:
         token_status = "missing"
+    if static_token_valid:
+        auth_source = "static_token"
+    elif registry_record is not None:
+        auth_source = "api_key_registry"
+    else:
+        auth_source = "none"
 
     return {
         "token_status": token_status,
         "credential_type": credential_type,
         "credential_present": credential_type != "none",
-        "auth_configured": bool(API_TOKEN),
+        "auth_configured": auth_configured,
+        "auth_source": auth_source,
+        "api_key_registry_configured": registry_configured,
     }
 
 
@@ -538,7 +568,7 @@ class RuntimeRestoreCheckResponse(BaseModel):
 
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
-    status = api_token_status(authorization, x_api_key)
+    status = api_token_status(authorization, x_api_key, update_registry_usage=True)
     if status["token_status"] in {"not_configured", "valid"}:
         return
     else:

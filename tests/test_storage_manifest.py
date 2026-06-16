@@ -9,6 +9,7 @@ from src.storage_manifest import (
     RuntimeGroupSpec,
     collect_runtime_backup_manifest,
     collect_runtime_restore_check,
+    default_runtime_groups,
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
@@ -106,6 +107,13 @@ def test_runtime_manifest_cli_emits_json():
     assert data["mode"] == "local_runtime_backup_manifest"
     assert data["content_exported"] is False
     assert "groups" in data
+
+
+def test_default_runtime_manifest_includes_api_key_registry_state():
+    groups = {group.name: group for group in default_runtime_groups()}
+    metadata_files = {file_spec.name for file_spec in groups["metadata"].known_files}
+
+    assert "api_key_registry_sqlite" in metadata_files
 
 
 def test_runtime_restore_check_accepts_matching_manifest_without_content(tmp_path: Path):

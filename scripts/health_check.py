@@ -107,6 +107,7 @@ def main() -> int:
         "src/artifacts.py",
         "src/admin.py",
         "src/runtime.py",
+        "src/api_keys.py",
         "src/metadata.py",
         "src/storage_manifest.py",
         "src/storage_schema.py",
@@ -126,6 +127,7 @@ def main() -> int:
         "scripts/product_readiness.py",
         "scripts/provider_readiness.py",
         "scripts/quality_readiness.py",
+        "scripts/api_key_registry.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -261,6 +263,31 @@ def main() -> int:
         "product readiness CLI installed",
         failures,
     )
+    api_keys_source = (PROJECT_ROOT / "src" / "api_keys.py").read_text(encoding="utf-8")
+    check(
+        "LocalApiKeyRegistry" in api_keys_source
+        and "token_hash" in api_keys_source
+        and "revoke_key" in api_keys_source,
+        "local API key registry installed",
+        failures,
+    )
+    check(
+        "secrets_exported" in api_keys_source
+        and "api_key_registry_backend_status" in api_keys_source,
+        "local API key registry no-secret status installed",
+        failures,
+    )
+    api_key_registry_cli = (PROJECT_ROOT / "scripts" / "api_key_registry.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "create" in api_key_registry_cli
+        and "revoke" in api_key_registry_cli
+        and "verify" in api_key_registry_cli
+        and "list" in api_key_registry_cli,
+        "local API key registry CLI installed",
+        failures,
+    )
     provider_readiness_source = (PROJECT_ROOT / "src" / "provider_readiness.py").read_text(
         encoding="utf-8"
     )
@@ -358,10 +385,18 @@ def main() -> int:
         failures,
     )
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
+    check("verify_configured_api_key_token" in api_source and "api_key_registry_configured" in api_source, "API auth supports local key registry", failures)
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
     check("/admin/runtime-manifest" in api_source and "collect_runtime_backup_manifest" in api_source, "admin runtime manifest route installed", failures)
+    storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")
+    check(
+        "API_KEY_REGISTRY_FILE" in storage_manifest_source
+        and "api_key_registry_sqlite" in storage_manifest_source,
+        "runtime manifest includes API key registry state",
+        failures,
+    )
     check("/admin/runtime-manifest/restore-check" in api_source and "collect_runtime_restore_check" in api_source, "admin runtime restore-check route installed", failures)
     check("/admin/retention" in api_source and "collect_retention_preview" in api_source, "admin retention preview route installed", failures)
     check("/admin/retention/delete" in api_source and "apply_retention_delete" in api_source, "admin retention delete route installed", failures)
@@ -526,6 +561,7 @@ def main() -> int:
     check("code_execution_events" in admin_source and "policy_violations" in admin_source, "admin code execution event summary installed", failures)
     check("storage_readiness_status" in admin_source and "external_storage_configured" in admin_source, "admin durable storage readiness installed", failures)
     check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
+    check("API_KEY_REGISTRY_FILE" in admin_source and "api_key_registry_sqlite" in admin_source, "admin storage inventory includes API key registry state", failures)
     check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
     check("distributed_job_store_status" in admin_source and "external_job_store_configured" in admin_source, "admin distributed job-store readiness installed", failures)
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
@@ -536,6 +572,7 @@ def main() -> int:
     storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
     storage_schema_cli = (PROJECT_ROOT / "scripts" / "storage_schema.py").read_text(encoding="utf-8")
     check("STORAGE_SCHEMA_VERSION" in storage_schema_source and "missing_required_columns" in storage_schema_source, "storage schema drift checks installed", failures)
+    check("API_KEY_COLUMNS" in storage_schema_source and "api_key_registry_sqlite" in storage_schema_source, "API key registry storage schema installed", failures)
     check("storage_schema_status_for_root" in storage_schema_cli and "format_storage_schema_markdown" in storage_schema_cli, "storage schema CLI installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
@@ -784,6 +821,17 @@ def main() -> int:
             "test -f /opt/fluxmind/src/execution_policy.py; "
             "test -f /opt/fluxmind/src/admin.py; "
             "test -f /opt/fluxmind/src/runtime.py; "
+            "test -f /opt/fluxmind/src/api_keys.py; "
+            "grep -q 'LocalApiKeyRegistry' /opt/fluxmind/src/api_keys.py; "
+            "grep -q 'token_hash' /opt/fluxmind/src/api_keys.py; "
+            "grep -q 'api_key_registry_backend_status' /opt/fluxmind/src/api_keys.py; "
+            "grep -q 'verify_configured_api_key_token' /opt/fluxmind/api.py; "
+            "grep -q 'api_key_registry_configured' /opt/fluxmind/api.py; "
+            "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/admin.py; "
+            "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
+            "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
+            "grep -q 'create' /opt/fluxmind/scripts/api_key_registry.py; "
+            "grep -q 'revoke' /opt/fluxmind/scripts/api_key_registry.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
             "grep -q 'CorpusProfileStore' /opt/fluxmind/src/metadata.py; "
             "grep -q 'atomic_write_json' /opt/fluxmind/src/metadata.py; "

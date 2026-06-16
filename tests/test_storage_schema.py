@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from src.storage_schema import (
+    API_KEY_COLUMNS,
     ARTIFACT_COLUMNS,
     CHUNK_COLUMNS,
     JOB_COLUMNS,
@@ -207,17 +208,19 @@ def test_storage_schema_for_root_and_markdown_cover_all_store_kinds(tmp_path: Pa
     _create_table(jobs / "jobs.sqlite3", "jobs", JOB_COLUMNS)
     _create_table(jobs / "jobs.sqlite3", "job_idempotency", JOB_IDEMPOTENCY_COLUMNS)
     _create_table(artifacts / "artifacts.sqlite3", "artifacts", ARTIFACT_COLUMNS)
+    _create_table(metadata / "api_keys.sqlite3", "api_keys", API_KEY_COLUMNS)
 
     status = storage_schema_status_for_root(tmp_path)
     markdown = format_storage_schema_markdown(status)
 
     assert status["ok"] is True
-    assert status["store_count"] == 7
+    assert status["store_count"] == 8
     assert "kind=json" in markdown
     assert "kind=jsonl" in markdown
     assert "kind=sqlite" in markdown
     assert "sampled_events=1" in markdown
     assert "table job_idempotency" in markdown
+    assert "table api_keys" in markdown
     assert str(tmp_path) not in markdown
 
 

@@ -1,5 +1,6 @@
 import json
 
+from src.api_keys import LocalApiKeyRegistry
 from src.product_readiness import (
     collect_product_readiness,
     format_product_readiness_markdown,
@@ -70,6 +71,34 @@ def test_product_readiness_can_report_activation_ready_without_secrets():
     assert status["checks"]["billing_provider"]["backend"] == "stripe"
     assert "api_key" in payload
     assert "hunter2" not in payload
+
+
+def test_product_readiness_checks_local_sqlite_api_key_registry(tmp_path, monkeypatch):
+    registry_path = tmp_path / "api_keys.sqlite3"
+    token = LocalApiKeyRegistry(registry_path).create_key(owner_id="lab-product")["token"]
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", registry_path)
+
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=True,
+        api_rate_limit_max_requests=120,
+        api_rate_limit_window_s=60,
+        identity_provider="none",
+        api_key_registry_backend="sqlite",
+        quota_store_backend="none",
+        billing_provider="none",
+        billing_attribution_enabled=False,
+    )
+
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    assert status["checks"]["api_key_registry"]["backend"] == "sqlite"
+    assert status["checks"]["api_key_registry"]["available"] is True
+    assert status["summary"]["api_key_lifecycle_available"] is True
+    assert "api_key_lifecycle_not_configured" not in status["blockers"]["activation"]
+    assert "api_key_registry_unavailable" not in status["blockers"]["activation"]
+    assert "identity_quota_store_not_configured" in status["blockers"]["activation"]
+    assert token not in payload
 
 
 def test_product_readiness_sanitizes_secret_like_backend_values():

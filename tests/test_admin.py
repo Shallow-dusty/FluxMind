@@ -374,6 +374,7 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr("src.admin.CORPUS_PROFILES_FILE", metadata_dir / "corpus_profiles.json")
     monkeypatch.setattr("src.admin.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
     monkeypatch.setattr("src.admin.CHUNK_METADATA_DB_FILE", metadata_dir / "chunks.sqlite3")
+    monkeypatch.setattr("src.admin.API_KEY_REGISTRY_FILE", metadata_dir / "api_keys.sqlite3")
     monkeypatch.setattr("src.admin.RUNTIME_EVENTS_FILE", metadata_dir / "runtime_events.jsonl")
     monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
     monkeypatch.setattr("src.metadata.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
@@ -1177,6 +1178,10 @@ def test_storage_inventory_status_reports_local_counts_without_content(tmp_path,
         "is_file": True,
         "bytes": 25,
     }
+    assert {
+        item["name"]
+        for item in groups["metadata"]["known_files"]
+    } >= {"corpus_json", "api_key_registry_sqlite", "runtime_events_jsonl"}
     assert groups["uploads"]["files"] == 1
     assert groups["faiss_index"]["bytes"] == 5
 

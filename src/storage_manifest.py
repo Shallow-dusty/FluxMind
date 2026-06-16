@@ -10,6 +10,7 @@ from typing import Any
 
 from src.config import (
     ACTIVE_PAPERS_FILE,
+    API_KEY_REGISTRY_FILE,
     ARTIFACTS_DIR,
     CHUNK_METADATA_DB_FILE,
     CORPUS_METADATA_DB_FILE,
@@ -147,6 +148,7 @@ def default_runtime_groups() -> tuple[RuntimeGroupSpec, ...]:
                 RuntimeFileSpec("corpus_profiles_json", CORPUS_PROFILES_FILE),
                 RuntimeFileSpec("corpus_sqlite", CORPUS_METADATA_DB_FILE),
                 RuntimeFileSpec("chunks_sqlite", CHUNK_METADATA_DB_FILE),
+                RuntimeFileSpec("api_key_registry_sqlite", API_KEY_REGISTRY_FILE),
                 RuntimeFileSpec("runtime_events_jsonl", RUNTIME_EVENTS_FILE),
             ),
         ),

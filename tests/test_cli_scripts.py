@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import scripts.api_key_registry as api_key_registry_cli
 import scripts.evaluate_rag as evaluate_rag_cli
 import scripts.platform_migration_preflight as platform_migration_preflight_cli
 import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
@@ -149,6 +150,99 @@ def test_runtime_manifest_cli_reports_read_errors(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["runtime_manifest.py", "--restore-check", "/missing/manifest.json"])
 
     assert runtime_manifest_cli.main() == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_api_key_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "api_keys.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "create",
+            "--owner-id",
+            "lab-cli",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 0
+    created = json.loads(capsys.readouterr().out)
+    token = created["token"]
+    key_id = created["key"]["key_id"]
+    assert token.startswith("fmk_")
+
+    monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "verify", token])
+    assert api_key_registry_cli.main() == 0
+    verified_output = capsys.readouterr().out
+    assert json.loads(verified_output)["valid"] is True
+    assert token not in verified_output
+
+    monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "revoke", key_id])
+    assert api_key_registry_cli.main() == 0
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+    monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "verify", token])
+    assert api_key_registry_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["valid"] is False
+
+
+def test_api_key_registry_cli_status_markdown(monkeypatch, tmp_path):
+    db_path = tmp_path / "api_keys.sqlite3"
+    output_path = tmp_path / "registry.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+            "status",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 0
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# FluxMind API Key Registry" in markdown
+    assert "Secrets exported: false" in markdown
+
+
+def test_api_key_registry_cli_accepts_subcommand_output_flags(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "api_keys.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "status",
+            "--format",
+            "markdown",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 0
+    assert "# FluxMind API Key Registry" in capsys.readouterr().out
+
+
+def test_api_key_registry_cli_reports_sqlite_errors(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "api_keys.sqlite3"
+    db_path.write_text("not sqlite", encoding="utf-8")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "list",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 2
     assert "error:" in capsys.readouterr().err
 
 
