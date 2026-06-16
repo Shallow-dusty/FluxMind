@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 import sqlite3
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -370,6 +370,195 @@ class LocalProductRegistry:
             "amount": amount_int,
             "source": safe_source,
             "created_at": created_at,
+        }
+
+    def workspace_for_user(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Return an active workspace membership for a local product user."""
+        self.ensure_schema()
+        safe_user_id = _safe_identifier(user_id, prefix="user")
+        requested_workspace_id = (
+            _safe_identifier(workspace_id, prefix="ws") if workspace_id else None
+        )
+        where = [
+            "m.user_id = ?",
+            "m.status = 'active'",
+            "w.status = 'active'",
+        ]
+        params: list[Any] = [safe_user_id]
+        if requested_workspace_id:
+            where.append("m.workspace_id = ?")
+            params.append(requested_workspace_id)
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                f"""
+                SELECT w.workspace_id, w.label, w.owner_user_id, m.user_id, m.role
+                FROM workspace_members m
+                JOIN workspaces w ON w.workspace_id = m.workspace_id
+                WHERE {" AND ".join(where)}
+                ORDER BY
+                    CASE m.role
+                        WHEN 'owner' THEN 0
+                        WHEN 'admin' THEN 1
+                        WHEN 'member' THEN 2
+                        ELSE 3
+                    END,
+                    w.created_at ASC,
+                    w.workspace_id ASC
+                LIMIT 1
+                """,
+                params,
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "workspace_id": row[0],
+            "workspace_label": row[1],
+            "owner_user_id": row[2],
+            "user_id": row[3],
+            "role": row[4],
+            "content_exported": False,
+            "secrets_exported": False,
+        }
+
+    def quota_decision(
+        self,
+        *,
+        workspace_id: str,
+        user_id: str,
+        metric: str,
+        amount: int = 1,
+        source: str = "runtime",
+        record: bool = True,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Check a local quota window and optionally record no-secret usage."""
+        self.ensure_schema()
+        safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        safe_user_id = _safe_identifier(user_id, prefix="user")
+        safe_metric = _safe_identifier(metric, prefix="metric")
+        amount_int = max(0, int(amount))
+        safe_source = _safe_label(source, "runtime")
+        now_dt = now or datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        with sqlite3.connect(self.db_path) as conn:
+            quota = conn.execute(
+                """
+                SELECT limit_value, window_s
+                FROM quota_limits
+                WHERE workspace_id = ? AND metric = ?
+                """,
+                (safe_workspace_id, safe_metric),
+            ).fetchone()
+            if quota is None:
+                usage_event_id = None
+                if record:
+                    usage_event_id = _generated_id("usage")
+                    conn.execute(
+                        """
+                        INSERT INTO usage_events (
+                            event_id, workspace_id, user_id, metric, amount, source, created_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            usage_event_id,
+                            safe_workspace_id,
+                            safe_user_id,
+                            safe_metric,
+                            amount_int,
+                            safe_source,
+                            now_dt.isoformat(),
+                        ),
+                    )
+                return {
+                    "enabled": True,
+                    "allowed": True,
+                    "limited": False,
+                    "reason": "quota_not_configured",
+                    "quota_configured": False,
+                    "workspace_id": safe_workspace_id,
+                    "user_id": safe_user_id,
+                    "metric": safe_metric,
+                    "amount": amount_int,
+                    "limit_value": 0,
+                    "used": 0,
+                    "remaining": 0,
+                    "window_s": 0,
+                    "reset_after_s": 0,
+                    "usage_event_id": usage_event_id,
+                    "content_exported": False,
+                    "secrets_exported": False,
+                }
+            limit_value = max(0, int(quota[0] or 0))
+            window_s = max(1, int(quota[1] or 0))
+            cutoff = (now_dt - timedelta(seconds=window_s)).isoformat()
+            row = conn.execute(
+                """
+                SELECT COALESCE(SUM(amount), 0), COUNT(*), MIN(created_at)
+                FROM usage_events
+                WHERE workspace_id = ? AND metric = ? AND created_at >= ?
+                """,
+                (safe_workspace_id, safe_metric, cutoff),
+            ).fetchone()
+            used = int(row[0] or 0)
+            oldest = row[2]
+            allowed = used + amount_int <= limit_value
+            usage_event_id = None
+            if allowed and record:
+                event_id = _generated_id("usage")
+                created_at = now_dt.isoformat()
+                conn.execute(
+                    """
+                    INSERT INTO usage_events (
+                        event_id, workspace_id, user_id, metric, amount, source, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        event_id,
+                        safe_workspace_id,
+                        safe_user_id,
+                        safe_metric,
+                        amount_int,
+                        safe_source,
+                        created_at,
+                    ),
+                )
+                usage_event_id = event_id
+                used += amount_int
+            reset_after_s = window_s
+            if oldest:
+                try:
+                    oldest_dt = datetime.fromisoformat(str(oldest))
+                    if oldest_dt.tzinfo is None:
+                        oldest_dt = oldest_dt.replace(tzinfo=timezone.utc)
+                    reset_after_s = max(0, int((oldest_dt + timedelta(seconds=window_s) - now_dt).total_seconds()))
+                except ValueError:
+                    reset_after_s = window_s
+        return {
+            "enabled": True,
+            "allowed": allowed,
+            "limited": not allowed,
+            "reason": "allowed" if allowed else "quota_exceeded",
+            "quota_configured": True,
+            "workspace_id": safe_workspace_id,
+            "user_id": safe_user_id,
+            "metric": safe_metric,
+            "amount": amount_int,
+            "limit_value": limit_value,
+            "used": used,
+            "remaining": max(0, limit_value - used),
+            "window_s": window_s,
+            "reset_after_s": reset_after_s,
+            "usage_event_id": usage_event_id,
+            "content_exported": False,
+            "secrets_exported": False,
         }
 
     def set_billing_account(

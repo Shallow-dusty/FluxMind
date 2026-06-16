@@ -41,6 +41,7 @@ def test_product_readiness_reports_local_foundation_without_activation():
     assert "billing_attribution_not_enabled" in status["blockers"]["activation"]
     assert "single_api_token_not_configured" in status["advisories"]
     assert "local_rate_limit_disabled" in status["advisories"]
+    assert "product_quota_guard_disabled" in status["advisories"]
     assert status["summary"]["owner_metadata_supported"] is True
 
 
@@ -61,6 +62,7 @@ def test_product_readiness_can_report_activation_ready_without_secrets():
         billing_provider="stripe",
         billing_attribution_enabled=True,
         identity_quotas_billing_enabled=True,
+        product_quota_guard_enabled=True,
     )
 
     payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
@@ -137,6 +139,7 @@ def test_product_readiness_can_use_local_product_registry(tmp_path, monkeypatch)
         billing_provider="local-ledger",
         billing_attribution_enabled=True,
         identity_quotas_billing_enabled=True,
+        product_quota_guard_enabled=True,
         product_registry_backend="sqlite",
     )
 
@@ -148,6 +151,7 @@ def test_product_readiness_can_use_local_product_registry(tmp_path, monkeypatch)
     assert status["summary"]["workspace_identity_available"] is True
     assert status["summary"]["quota_store_available"] is True
     assert status["summary"]["billing_ledger_available"] is True
+    assert status["summary"]["product_quota_guard_enabled"] is True
     assert status["checks"]["identity_provider"]["backend"] == "local-registry"
     assert status["checks"]["identity_provider"]["workspace_count"] == 1
     assert status["checks"]["quota_store"]["quota_limit_count"] == 1
@@ -176,6 +180,26 @@ def test_product_readiness_blocks_local_product_registry_when_unavailable(tmp_pa
     assert "identity_provider_unavailable" in status["blockers"]["activation"]
     assert "quota_store_unavailable" in status["blockers"]["activation"]
     assert "billing_provider_unavailable" in status["blockers"]["activation"]
+
+
+def test_product_readiness_blocks_enabled_runtime_without_quota_guard():
+    status = collect_product_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        api_access_audit_enabled=True,
+        api_rate_limit_enabled=True,
+        api_rate_limit_max_requests=120,
+        api_rate_limit_window_s=60,
+        identity_provider="oidc",
+        api_key_registry_backend="postgres",
+        quota_store_backend="redis",
+        billing_provider="stripe",
+        billing_attribution_enabled=True,
+        identity_quotas_billing_enabled=True,
+        product_quota_guard_enabled=False,
+    )
+
+    assert "product_quota_guard_not_enabled" in status["blockers"]["activation"]
+    assert status["summary"]["product_quota_guard_enabled"] is False
 
 
 def test_product_readiness_sanitizes_secret_like_backend_values():
@@ -234,5 +258,6 @@ def test_format_product_readiness_markdown_is_no_secret():
     assert "# FluxMind Product Readiness" in markdown
     assert "Local foundation ready:" in markdown
     assert "Activation ready:" in markdown
+    assert "Product quota guard enabled:" in markdown
     assert "hunter2" not in markdown
     assert "example.test" not in markdown

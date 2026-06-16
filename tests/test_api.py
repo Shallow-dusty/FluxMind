@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 import api
 from src.api_keys import LocalApiKeyRegistry
+from src.product_registry import LocalProductRegistry
 from src.jobs import AsyncJobManager
 from src.metadata import PaperRecord
 from src.artifacts import artifact_id_for_uri
@@ -16,6 +17,8 @@ def no_job_runtime_event_disk_writes(monkeypatch):
     monkeypatch.setattr("src.jobs.append_runtime_event", lambda **_kwargs: None)
     monkeypatch.setattr(api, "API_ACCESS_AUDIT_ENABLED", False)
     monkeypatch.setattr(api, "API_RATE_LIMIT_ENABLED", False)
+    monkeypatch.setattr(api, "IDENTITY_QUOTAS_BILLING_ENABLED", False)
+    monkeypatch.setattr(api, "PRODUCT_QUOTA_GUARD_ENABLED", False)
     api._API_RATE_LIMIT_BUCKETS.clear()
 
 
@@ -320,6 +323,72 @@ def test_query_accepts_answer_mode(monkeypatch):
 
     assert response.status_code == 200
     assert seen == {"question": "Derive SMC reaching law", "answer_mode": "derivation"}
+
+
+def test_query_product_quota_guard_records_usage_and_blocks_over_limit(tmp_path, monkeypatch):
+    api_key_path = tmp_path / "api_keys.sqlite3"
+    product_registry_path = tmp_path / "product_registry.sqlite3"
+    token = LocalApiKeyRegistry(api_key_path).create_key(owner_id="local-user")["token"]
+    product_registry = LocalProductRegistry(product_registry_path)
+    workspace = product_registry.create_workspace(
+        workspace_id="local-workspace",
+        owner_user_id="local-user",
+    )
+    product_registry.set_quota(
+        workspace_id=workspace.workspace_id,
+        metric="requests",
+        limit_value=1,
+        window_s=3600,
+    )
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(api, "IDENTITY_QUOTAS_BILLING_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_QUOTA_GUARD_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr(api, "QUOTA_STORE_BACKEND", "sqlite")
+    monkeypatch.setattr(api, "PRODUCT_QUOTA_METRIC", "requests")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", api_key_path)
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", product_registry_path)
+    events = []
+    calls = {"query": 0}
+
+    class FakeResult:
+        answer = "quota ok"
+        provider_usage = None
+
+    def fake_query_with_metadata(question, *, answer_mode):
+        calls["query"] += 1
+        return FakeResult()
+
+    monkeypatch.setattr(api, "query_with_metadata", fake_query_with_metadata)
+    monkeypatch.setattr(api, "append_runtime_event", lambda **kwargs: events.append(kwargs))
+
+    client = TestClient(api.app)
+    first = client.post(
+        "/query",
+        json={"question": "Explain quota guard"},
+        headers={"X-API-Key": token, "X-Request-ID": "req-quota-1"},
+    )
+    second = client.post(
+        "/query",
+        json={"question": "Explain quota guard again"},
+        headers={"X-API-Key": token, "X-Request-ID": "req-quota-2"},
+    )
+
+    assert first.status_code == 200
+    assert first.headers["X-Product-Quota-Limit"] == "1"
+    assert first.headers["X-Product-Quota-Remaining"] == "0"
+    assert second.status_code == 429
+    assert second.json()["detail"]["code"] == "quota_exceeded"
+    assert second.headers["X-Product-Quota-Reason"] == "quota_exceeded"
+    assert calls["query"] == 1
+    assert product_registry.status()["usage_event_count"] == 1
+    denied_events = [event for event in events if event["kind"] == "product_quota"]
+    assert denied_events[0]["request_id"] == "req-quota-2"
+    assert denied_events[0]["metadata"]["product_quota_limited"] is True
+    assert denied_events[0]["metadata"]["product_workspace_id"] == "local-workspace"
+    assert token not in str(events)
 
 
 def test_query_inspect_returns_citation_validation(monkeypatch):

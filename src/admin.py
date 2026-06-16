@@ -1304,6 +1304,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Product activation ready: {_format_bool(product_readiness.get('activation_ready', False))}",
             f"- Product single API token configured: {_format_bool(product_summary.get('single_api_token_configured', False))}",
             f"- Product query cost pricing configured: {_format_bool(product_summary.get('query_cost_pricing_configured', False))}",
+            f"- Product quota guard enabled: {_format_bool(product_summary.get('product_quota_guard_enabled', False))}",
             f"- Product local blockers: {_format_report_codes(product_blockers.get('local_foundation', []))}",
             f"- Product activation blockers: {_format_report_codes(product_blockers.get('activation', []))}",
             f"- Provider local foundation ready: {_format_bool(provider_readiness.get('local_foundation_ready', False))}",
@@ -1751,6 +1752,11 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
         "fluxmind_product_single_api_token_configured",
         product_summary.get("single_api_token_configured", False),
         "Whether the legacy single shared API token is configured.",
+    )
+    emit(
+        "fluxmind_product_quota_guard_enabled",
+        product_summary.get("product_quota_guard_enabled", False),
+        "Whether local product quota guard is enabled.",
     )
     emit(
         "fluxmind_provider_local_foundation_ready",

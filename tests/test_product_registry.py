@@ -80,3 +80,83 @@ def test_product_registry_sanitizes_invalid_ids(tmp_path):
 
     assert "secret" not in workspace.workspace_id
     assert "example.test" not in workspace.owner_user_id
+
+
+def test_product_registry_finds_workspace_for_member(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(workspace_id="ws-main", owner_user_id="owner")
+    registry.add_member(workspace_id=workspace.workspace_id, user_id="member", role="member")
+
+    membership = registry.workspace_for_user(user_id="member")
+    requested = registry.workspace_for_user(user_id="member", workspace_id="ws-main")
+    missing = registry.workspace_for_user(user_id="member", workspace_id="ws-other")
+
+    assert membership["workspace_id"] == "ws-main"
+    assert membership["role"] == "member"
+    assert requested["workspace_id"] == "ws-main"
+    assert requested["secrets_exported"] is False
+    assert missing is None
+
+
+def test_product_registry_quota_decision_records_and_blocks_over_limit(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(workspace_id="quota-ws", owner_user_id="owner")
+    registry.set_quota(
+        workspace_id=workspace.workspace_id,
+        metric="requests",
+        limit_value=2,
+        window_s=3600,
+    )
+
+    first = registry.quota_decision(
+        workspace_id=workspace.workspace_id,
+        user_id="owner",
+        metric="requests",
+        amount=1,
+        source="test",
+    )
+    second = registry.quota_decision(
+        workspace_id=workspace.workspace_id,
+        user_id="owner",
+        metric="requests",
+        amount=1,
+        source="test",
+    )
+    third = registry.quota_decision(
+        workspace_id=workspace.workspace_id,
+        user_id="owner",
+        metric="requests",
+        amount=1,
+        source="test",
+    )
+    status = registry.status()
+
+    assert first["allowed"] is True
+    assert first["remaining"] == 1
+    assert second["allowed"] is True
+    assert second["remaining"] == 0
+    assert third["allowed"] is False
+    assert third["limited"] is True
+    assert third["reason"] == "quota_exceeded"
+    assert third["usage_event_id"] is None
+    assert status["usage_event_count"] == 2
+    assert "hunter2" not in json.dumps(third, sort_keys=True)
+
+
+def test_product_registry_quota_decision_allows_and_records_without_limit(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(workspace_id="unlimited-ws", owner_user_id="owner")
+
+    decision = registry.quota_decision(
+        workspace_id=workspace.workspace_id,
+        user_id="owner",
+        metric="requests",
+        amount=3,
+        source="test",
+    )
+
+    assert decision["allowed"] is True
+    assert decision["quota_configured"] is False
+    assert decision["reason"] == "quota_not_configured"
+    assert decision["usage_event_id"]
+    assert registry.status()["usage_event_count"] == 1

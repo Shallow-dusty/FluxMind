@@ -311,6 +311,12 @@ def main() -> int:
         "local product registry no-secret status installed",
         failures,
     )
+    check(
+        "workspace_for_user" in product_registry_source
+        and "quota_decision" in product_registry_source,
+        "local product quota decision installed",
+        failures,
+    )
     product_registry_cli = (PROJECT_ROOT / "scripts" / "product_registry.py").read_text(
         encoding="utf-8"
     )
@@ -419,6 +425,7 @@ def main() -> int:
     )
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("verify_configured_api_key_token" in api_source and "api_key_registry_configured" in api_source, "API auth supports local key registry", failures)
+    check("enforce_product_quota" in api_source and "product_quota_guard" in api_source, "API query paths support local product quota guard", failures)
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
@@ -607,6 +614,7 @@ def main() -> int:
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
     check("collect_product_readiness" in admin_source and "product_readiness" in admin_source, "admin product readiness installed", failures)
     check("fluxmind_product_local_foundation_ready" in admin_source and "fluxmind_product_activation_ready" in admin_source, "admin product readiness metrics installed", failures)
+    check("fluxmind_product_quota_guard_enabled" in admin_source, "admin product quota guard metric installed", failures)
     check("collect_provider_readiness" in admin_source and "provider_readiness" in admin_source, "admin provider readiness installed", failures)
     check("fluxmind_provider_local_foundation_ready" in admin_source and "fluxmind_provider_activation_ready" in admin_source, "admin provider readiness metrics installed", failures)
     storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
@@ -869,10 +877,13 @@ def main() -> int:
             "grep -q 'api_key_registry_backend_status' /opt/fluxmind/src/api_keys.py; "
             "grep -q 'LocalProductRegistry' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'product_registry_backend_status' /opt/fluxmind/src/product_registry.py; "
+            "grep -q 'quota_decision' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'verify_configured_api_key_token' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_configured' /opt/fluxmind/api.py; "
+            "grep -q 'enforce_product_quota' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/admin.py; "
+            "grep -q 'fluxmind_product_quota_guard_enabled' /opt/fluxmind/src/admin.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "

@@ -37,14 +37,20 @@ from src.config import (
     API_RATE_LIMIT_MAX_REQUESTS,
     API_RATE_LIMIT_WINDOW_S,
     FAISS_INDEX_DIR,
+    IDENTITY_QUOTAS_BILLING_ENABLED,
     LLM_MODEL,
+    PRODUCT_QUOTA_GUARD_ENABLED,
+    PRODUCT_QUOTA_METRIC,
+    PRODUCT_REGISTRY_BACKEND,
     QUERY_COST_COMPLETION_USD_PER_1M,
     QUERY_COST_PROMPT_USD_PER_1M,
     QUERY_COST_PROVIDER,
+    QUOTA_STORE_BACKEND,
 )
 from src.costs import summarize_query_cost
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager, normalize_ownership, ownership_from_record
 from src.metadata import ChunkMetadataStore, CorpusProfileStore
+from src.product_registry import LocalProductRegistry, product_registry_backend_status
 from src.runtime import append_runtime_event, estimate_text_tokens, list_runtime_events, logger, new_request_id, normalize_exception
 from src.storage_manifest import (
     collect_runtime_backup_manifest,
@@ -167,13 +173,13 @@ app.add_middleware(
 )
 
 
-def api_token_status(
+def api_auth_context(
     authorization: str | None,
     x_api_key: str | None,
     *,
     update_registry_usage: bool = False,
 ) -> dict[str, Any]:
-    """Classify API token headers without returning token values."""
+    """Classify API token headers and keep registry owner data internal."""
     bearer_token = ""
     if authorization and authorization.lower().startswith("bearer "):
         bearer_token = authorization[7:].strip()
@@ -231,6 +237,32 @@ def api_token_status(
         "auth_configured": auth_configured,
         "auth_source": auth_source,
         "api_key_registry_configured": registry_configured,
+        "auth_key_id": registry_record.key_id if registry_record is not None else "",
+        "auth_owner_id": registry_record.owner_id if registry_record is not None else "",
+        "auth_owner_label": registry_record.owner_label if registry_record is not None else "",
+        "auth_owner_source": "api_key" if registry_record is not None else "none",
+    }
+
+
+def api_token_status(
+    authorization: str | None,
+    x_api_key: str | None,
+    *,
+    update_registry_usage: bool = False,
+) -> dict[str, Any]:
+    """Classify API token headers without returning token values or owners."""
+    status = api_auth_context(
+        authorization,
+        x_api_key,
+        update_registry_usage=update_registry_usage,
+    )
+    return {
+        "token_status": status["token_status"],
+        "credential_type": status["credential_type"],
+        "credential_present": status["credential_present"],
+        "auth_configured": status["auth_configured"],
+        "auth_source": status["auth_source"],
+        "api_key_registry_configured": status["api_key_registry_configured"],
     }
 
 
@@ -382,6 +414,12 @@ async def api_access_audit_middleware(request: Request, call_next):
 
 
 class OwnershipRequest(BaseModel):
+    workspace_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="Optional local workspace metadata for product quota attribution",
+    )
     owner_id: str | None = Field(
         default=None,
         min_length=1,
@@ -566,11 +604,11 @@ class RuntimeRestoreCheckResponse(BaseModel):
     restore_check: dict = Field(..., description="No-secret runtime restore dry-run result")
 
 
-def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
+def verify_api_token(authorization: str | None, x_api_key: str | None) -> dict[str, Any]:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
-    status = api_token_status(authorization, x_api_key, update_registry_usage=True)
+    status = api_auth_context(authorization, x_api_key, update_registry_usage=True)
     if status["token_status"] in {"not_configured", "valid"}:
-        return
+        return status
     else:
         raise HTTPException(status_code=401, detail="Invalid API token")
 
@@ -581,10 +619,155 @@ def request_id_header(response: Response, x_request_id: str | None) -> str:
     return request_id
 
 
-def request_ownership(req: Any) -> dict[str, str]:
+def request_ownership(req: Any, auth_context: dict[str, Any] | None = None) -> dict[str, str]:
+    if not getattr(req, "owner_id", None) and auth_context and auth_context.get("auth_owner_id"):
+        return normalize_ownership(
+            owner_id=auth_context.get("auth_owner_id"),
+            owner_label=auth_context.get("auth_owner_label"),
+            ownership_source="api_key",
+        )
     return normalize_ownership(
         owner_id=getattr(req, "owner_id", None),
         owner_label=getattr(req, "owner_label", None),
+    )
+
+
+def product_quota_guard_decision(
+    *,
+    req: Any,
+    ownership: dict[str, str],
+    auth_context: dict[str, Any],
+    endpoint: str,
+    amount: int = 1,
+) -> dict[str, Any]:
+    """Check optional local product quota before expensive query work."""
+    if not (IDENTITY_QUOTAS_BILLING_ENABLED and PRODUCT_QUOTA_GUARD_ENABLED):
+        return {
+            "enabled": False,
+            "allowed": True,
+            "limited": False,
+            "reason": "product_quota_guard_disabled",
+        }
+    if PRODUCT_REGISTRY_BACKEND.strip().lower() != "sqlite" or QUOTA_STORE_BACKEND.strip().lower() != "sqlite":
+        return {
+            "enabled": True,
+            "allowed": False,
+            "limited": False,
+            "reason": "product_quota_guard_backend_not_configured",
+            "status_code": 503,
+        }
+    status = product_registry_backend_status(backend="sqlite")
+    if not status.get("available"):
+        return {
+            "enabled": True,
+            "allowed": False,
+            "limited": False,
+            "reason": "product_registry_unavailable",
+            "status_code": 503,
+        }
+
+    registry = LocalProductRegistry()
+    user_id = auth_context.get("auth_owner_id") or ownership.get("owner_id", "local-user")
+    workspace_hint = getattr(req, "workspace_id", None)
+    membership = registry.workspace_for_user(user_id=user_id, workspace_id=workspace_hint)
+    if membership is None:
+        return {
+            "enabled": True,
+            "allowed": False,
+            "limited": False,
+            "reason": "product_workspace_not_found",
+            "status_code": 403,
+            "user_id": user_id,
+            "workspace_id": workspace_hint or "",
+        }
+    decision = registry.quota_decision(
+        workspace_id=membership["workspace_id"],
+        user_id=user_id,
+        metric=PRODUCT_QUOTA_METRIC,
+        amount=amount,
+        source=f"api:{endpoint}",
+        record=True,
+    )
+    decision["role"] = membership.get("role", "")
+    return decision
+
+
+def product_quota_event_metadata(decision: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "product_quota_guard_enabled": bool(decision.get("enabled", False)),
+        "product_quota_limited": bool(decision.get("limited", False)),
+        "product_quota_reason": decision.get("reason", ""),
+        "product_quota_metric": decision.get("metric", ""),
+        "product_quota_limit": int(decision.get("limit_value", 0) or 0),
+        "product_quota_remaining": int(decision.get("remaining", 0) or 0),
+        "product_quota_window_s": int(decision.get("window_s", 0) or 0),
+        "product_workspace_id": decision.get("workspace_id", ""),
+    }
+
+
+def product_quota_headers(decision: dict[str, Any]) -> dict[str, str]:
+    if not decision.get("enabled"):
+        return {}
+    headers = {"X-Product-Quota-Reason": str(decision.get("reason", ""))}
+    if decision.get("quota_configured"):
+        headers["X-Product-Quota-Limit"] = str(decision.get("limit_value", 0))
+        headers["X-Product-Quota-Remaining"] = str(decision.get("remaining", 0))
+        headers["X-Product-Quota-Reset"] = str(decision.get("reset_after_s", 0))
+    return headers
+
+
+def apply_product_quota_headers(response: Response, decision: dict[str, Any]) -> None:
+    for key, value in product_quota_headers(decision).items():
+        response.headers[key] = value
+
+
+def enforce_product_quota(
+    *,
+    req: Any,
+    response: Response,
+    request_id: str,
+    ownership: dict[str, str],
+    auth_context: dict[str, Any],
+    endpoint: str,
+) -> dict[str, Any]:
+    decision = product_quota_guard_decision(
+        req=req,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=endpoint,
+    )
+    apply_product_quota_headers(response, decision)
+    if decision.get("allowed", True):
+        return decision
+    status_code = int(
+        decision.get(
+            "status_code",
+            429 if decision.get("limited", False) else 403,
+        )
+    )
+    try:
+        append_runtime_event(
+            kind="product_quota",
+            code=str(decision.get("reason", "product_quota_denied")),
+            message="Metadata-only product quota guard event.",
+            request_id=request_id,
+            metadata={
+                "endpoint": endpoint,
+                "status_code": status_code,
+                **product_quota_event_metadata(decision),
+                **ownership,
+            },
+        )
+    except OSError:
+        logger.warning("product_quota.event_log_failed request_id=%s endpoint=%s", request_id, endpoint)
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": decision.get("reason", "product_quota_denied"),
+            "message": "Product quota guard denied this request.",
+            "request_id": request_id,
+        },
+        headers=product_quota_headers(decision),
     )
 
 
@@ -1619,11 +1802,19 @@ def ask(
     x_request_id: str | None = Header(default=None),
 ):
     """Query the FluxMind knowledge base. Retrieves relevant paper chunks and generates an answer."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    quota_decision = enforce_product_quota(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query",
+    )
     logger.info(
         "query.start request_id=%s client=%s chars=%s",
         request_id,
@@ -1673,6 +1864,7 @@ def ask(
         ownership=ownership,
         duration_ms=duration_ms,
     )
+    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query",
         answer_mode=req.answer_mode,
@@ -1694,11 +1886,19 @@ def ask_with_inspection(
     x_request_id: str | None = Header(default=None),
 ):
     """Return an answer plus numbered citation validation against retrieved chunks."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    quota_decision = enforce_product_quota(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/inspect",
+    )
     logger.info(
         "query.inspect_start request_id=%s client=%s chars=%s",
         request_id,
@@ -1754,6 +1954,7 @@ def ask_with_inspection(
         ownership=ownership,
         duration_ms=duration_ms,
     )
+    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query/inspect",
         answer_mode=req.answer_mode,
@@ -1774,11 +1975,19 @@ def inspect_retrieval(
     x_request_id: str | None = Header(default=None),
 ):
     """Return retrieved source/page context refs without calling the model provider."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    quota_decision = enforce_product_quota(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/retrieve",
+    )
     logger.info(
         "query.retrieve_start request_id=%s client=%s chars=%s",
         request_id,
@@ -1821,6 +2030,7 @@ def inspect_retrieval(
         retrieval_ok=retrieval.ok,
         duration_ms=duration_ms,
     )
+    apply_product_quota_headers(response, quota_decision)
     return QueryRetrieveResponse(retrieval=retrieval.to_dict(), request_id=request_id)
 
 
@@ -1834,11 +2044,19 @@ def ask_with_report(
     x_request_id: str | None = Header(default=None),
 ):
     """Return a Markdown report with answer, citation validation, and context refs."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    quota_decision = enforce_product_quota(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/report",
+    )
     logger.info(
         "query.report_start request_id=%s client=%s chars=%s",
         request_id,
@@ -1888,6 +2106,7 @@ def ask_with_report(
         ownership=ownership,
         duration_ms=duration_ms,
     )
+    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query/report",
         answer_mode=req.answer_mode,

@@ -98,7 +98,7 @@ def normalize_ownership(
     if not clean_owner_label:
         clean_owner_label = DEFAULT_OWNER_LABEL if clean_owner_id == DEFAULT_OWNER_ID else clean_owner_id
     clean_source = (ownership_source or "").strip()
-    if clean_source not in {"default", "request", "inherited"}:
+    if clean_source not in {"default", "request", "inherited", "api_key"}:
         clean_source = (
             "request"
             if (owner_id and owner_id.strip()) or (owner_label and owner_label.strip())
