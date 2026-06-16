@@ -36,6 +36,8 @@ python scripts/product_readiness.py --format markdown # identity/quota/billing p
 python scripts/provider_readiness.py --format markdown # 外部 provider/MATLAB activation readiness
 python scripts/quality_readiness.py --format markdown # self-use/small-group/community 质量 readiness
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown # 本地迁移演练 + opaque object-storage 清单
+python scripts/platform_migration_rehearsal.py --include-object-manifest --output /tmp/fluxmind-object-manifest.json # 写入可校验 JSON 清单
+python scripts/platform_migration_rehearsal.py --verify-object-manifest /tmp/fluxmind-object-manifest.json --format markdown # 校验 rehearsal/object 清单
 python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，--apply --restart 才真正执行）
 ```
 
@@ -51,7 +53,7 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 - `src/artifacts.py` — artifact 注册表（`artifacts/artifacts.sqlite3`）+ 安全导出；只导出落在 `ARTIFACTS_DIR` 下的 `file://` artifact。
 - `src/api_keys.py` — 可选本地 SQLite API key 生命周期 registry；只持久化 token hash，原始 token 仅在创建时输出一次，API 鉴权可在 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 时使用它。
 - `src/product_registry.py` — 可选本地 SQLite product registry；提供 user/workspace/RBAC/quota/usage/billing attribution ledger、本地 `/admin/product-registry/*` 管理 API 和 Streamlit operator 面板，在显式启用 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 时供 `/query*` 路径做本地 quota guard，在显式启用 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 时按 workspace role 守护查询、job/corpus/admin 写路径；不连接外部身份或支付系统。
-- `src/storage_migration.py` — 本地 runtime migration rehearsal；可选生成 opaque object-storage migration manifest（object key/hash/byte count/group only），不输出源路径、文件名、bucket、endpoint、credential 或内容。
+- `src/storage_migration.py` — 本地 runtime migration rehearsal；可选生成并校验 opaque object-storage migration manifest（object key/hash/byte count/group/token only），不输出源路径、文件名、bucket、endpoint、credential 或内容。
 - `src/providers.py` + `src/capabilities.py` + `src/execution_policy.py` — 执行/图像 provider 与契约；执行前 `local-safe-v1` 策略用 `ast` 校验 Python、import 白名单、拦截 shell/绝对路径。`CODE_EXECUTION_BACKEND=local|docker`。
 - `src/product_readiness.py` + `src/provider_readiness.py` — no-secret activation readiness：前者覆盖身份/API-key/RBAC/配额/计费并能检查本地 SQLite key registry、product registry、本地 quota guard 与 RBAC guard，后者覆盖外部图像 provider、托管执行、MATLAB backend 和 provider quota guard。默认只报告 blocker code，不启用外部调用。
 - `src/quality_readiness.py` — no-secret 质量成熟度 readiness：复用 `eval/rag_baseline.json` 的 `quality_maturity_targets`，可合并显式传入的 no-secret live eval report，区分 self-use、small-group、community 缺口。

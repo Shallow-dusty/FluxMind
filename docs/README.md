@@ -1,6 +1,6 @@
 # FluxMind Documentation Index
 
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 This directory separates current status, architecture, planning, deployment
 evidence, and demo handoff material. Prefer updating the document that owns the

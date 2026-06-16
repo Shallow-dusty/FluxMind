@@ -68,9 +68,9 @@ runtime-manifest, admin-inventory, CLI, API/UI anchors, and unit/API tests.
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, external identity providers,
 identity-backed quotas, external billing/payment providers, external distributed
-worker/storage activation, and production
-database/object-storage migration tests. Those remain planned, intentionally
-disabled, or decision-gated.
+worker/storage activation, and live external database/object-storage migration
+execution tests. Those remain planned, intentionally disabled, or
+decision-gated.
 
 ## WP0: Stabilize Current Production
 
@@ -763,6 +763,11 @@ identity-backed quotas, and external billing disabled until decisions are made
   hash, byte-count, and group coverage locally without connecting to object
   storage or leaking source paths, filenames, buckets, endpoints, credentials,
   or contents.
+- `scripts/platform_migration_rehearsal.py --verify-object-manifest` checks an
+  opaque object manifest, or a full rehearsal JSON containing one, against a
+  local/staged runtime tree. It returns only group, source-path-token, hash,
+  byte-count, and status-code differences, without leaking source paths,
+  filenames, buckets, endpoints, credentials, or runtime contents.
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
   access audit, owner metadata, rate-limit configuration, local API-key registry,
@@ -903,6 +908,9 @@ Acceptance:
   exposing runtime contents.
 - Object-storage upload manifests can be generated from a migration rehearsal
   without activating external storage or exposing source paths, filenames,
+  buckets, endpoints, credentials, or runtime contents.
+- Object-storage upload manifests can be verified against local/staged runtime
+  state without activating external storage or exposing source paths, filenames,
   buckets, endpoints, credentials, or runtime contents.
 - Local retention candidates can be previewed without deleting files or reading
   raw runtime directories by hand.

@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 424 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 430 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       12 code-output cases,
@@ -34,6 +34,7 @@ Command                                                               Result
                                                                       product-quota/product-RBAC/
                                                                       product-registry-management/
                                                                       object-storage-manifest/
+                                                                      object-storage-manifest-verifier/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 9 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
@@ -48,6 +49,10 @@ Command                                                               Result
 .venv/bin/python scripts/platform_migration_rehearsal.py
   --include-object-manifest --format...                              pass, opaque object manifest
                                                                       without paths, buckets, or contents
+.venv/bin/python scripts/platform_migration_rehearsal.py
+  --verify-object-manifest /tmp/... --format...                      pass, object manifest verifies
+                                                                      against local runtime with 0
+                                                                      missing/mismatched/extra objects
 .venv/bin/python scripts/product_readiness.py --format markdown      pass, local_foundation_ready=true,
                                                                       activation_ready=false with expected
                                                                       identity/quota/billing blockers and
@@ -288,10 +293,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   distributed job-store targets, but no production database, object store, or
   distributed queue has been activated. The new migration preflight proves local
   evidence and external blocker reporting. The migration rehearsal now proves a
-  local staged runtime copy plus restore/schema verification and can emit an
-  opaque object-storage migration manifest for staged files without source
-  paths, filenames, buckets, endpoints, credentials, or contents. It is still
-  not live external database or object-storage migration.
+  local staged runtime copy plus restore/schema verification and can emit and
+  verify an opaque object-storage migration manifest for staged files without
+  source paths, filenames, buckets, endpoints, credentials, or contents. It is
+  still not live external database or object-storage migration.
 - Productization readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, and the local API-key lifecycle
   registry is implemented with hash-only storage and API auth integration. The

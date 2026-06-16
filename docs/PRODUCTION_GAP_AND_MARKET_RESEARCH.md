@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-17 01:52 CST
+Last updated: 2026-06-17 02:07 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -35,12 +35,12 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 4e8a12a feat: add object storage migration manifest
-Current docs/health    52817a9 docs: document object migration manifest
-Status note     object-storage migration manifest is implemented, documented, pushed, deployed, and live-verified; external object storage remains disabled by default
+Current implementation 45e4cc6 feat: verify object storage migration manifests
+Current docs/health    pending docs sync for object manifest verifier
+Status note     object-storage migration manifest generation and local verification are implemented; external object storage remains disabled by default
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Work scope      opaque object manifest for local migration rehearsal, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-17 01:50 CST before deployment-record edits
+Work scope      opaque object manifest verifier for local/staged rehearsal output, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed for implementation files on 2026-06-17 02:06 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -48,14 +48,14 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    424 passed, 2 known warnings
-coverage                                  89% total branch coverage over api,
+pytest                                    430 passed, 2 known warnings
+coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier anchors
 storage_schema.py                         pass, ok=true, 9 stores, 0 problems
 api_key_registry.py status                pass, backend=none, available=false,
                                           active_keys=0, secrets_exported=false
@@ -65,6 +65,10 @@ runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked fil
 object manifest smoke                     pass, rehearsal_ok=true,
                                           object_manifest_ready=true,
                                           objects=9, unique=8,
+                                          paths/filenames/bucket/secrets
+                                          exported=false
+object manifest verify                    pass, ok=true, checked=9,
+                                          missing=0, mismatched=0, extra=0,
                                           paths/filenames/bucket/secrets
                                           exported=false
 product_readiness.py                      pass, local_foundation_ready=true,

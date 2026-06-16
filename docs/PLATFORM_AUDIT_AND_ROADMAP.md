@@ -31,7 +31,7 @@ RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
 token-protected FastAPI `/query` endpoint until those activation decisions are
 made.
 
-## Project Evaluation: 2026-06-15
+## Project Evaluation: 2026-06-17
 
 Current verified state: the no-key/local platform baseline is healthy and
 deployed, but the project is still a single-machine product foundation rather
@@ -46,20 +46,21 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 424 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 430 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
-coverage report --fail-under=88           pass, 89% total branch coverage
+coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 12 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/provider-readiness/quality-readiness and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier/provider-readiness/quality-readiness and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
 quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
 platform_migration_rehearsal object manifest pass, rehearsal_ok=true, objects=9, unique=8, no paths/filenames/bucket/secrets exported
+platform_migration_rehearsal object verify pass, ok=true, checked=9, 0 missing/mismatched/extra, no paths/filenames/bucket/secrets exported
 health_check.py HTTPS endpoints            01:52 snapshot, UI/API 200
 health_check.py SSH runtime                01:52 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
