@@ -320,6 +320,84 @@ def test_product_registry_cli_status_output_file(monkeypatch, tmp_path):
     assert "Secrets exported: false" in markdown
 
 
+def test_product_registry_cli_member_and_permission_check(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "product_registry.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "bootstrap-local",
+            "--user-id",
+            "owner",
+            "--workspace-id",
+            "lab-workspace",
+        ],
+    )
+    assert product_registry_cli.main() == 0
+    capsys.readouterr()
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "add-member",
+            "--workspace-id",
+            "lab-workspace",
+            "--user-id",
+            "viewer",
+            "--role",
+            "viewer",
+        ],
+    )
+    assert product_registry_cli.main() == 0
+    assert json.loads(capsys.readouterr().out)["member"]["role"] == "viewer"
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "check-permission",
+            "--workspace-id",
+            "lab-workspace",
+            "--user-id",
+            "viewer",
+            "--action",
+            "query",
+        ],
+    )
+    assert product_registry_cli.main() == 0
+    assert json.loads(capsys.readouterr().out)["permission"]["allowed"] is True
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "check-permission",
+            "--workspace-id",
+            "lab-workspace",
+            "--user-id",
+            "viewer",
+            "--action",
+            "job_submit",
+            "--format",
+            "markdown",
+        ],
+    )
+    assert product_registry_cli.main() == 1
+    markdown = capsys.readouterr().out
+    assert "Allowed: false" in markdown
+    assert "Reason: product_role_forbidden" in markdown
+    assert "Secrets exported: false" in markdown
+
+
 def test_storage_schema_cli_outputs_markdown(monkeypatch, tmp_path):
     output_path = tmp_path / "schema.md"
     monkeypatch.setattr(storage_schema_cli, "storage_schema_status_for_root", lambda root: {"ok": True})

@@ -93,6 +93,7 @@ def collect_product_readiness(
     billing_attribution_enabled: bool | None = None,
     identity_quotas_billing_enabled: bool | None = None,
     product_quota_guard_enabled: bool | None = None,
+    product_rbac_guard_enabled: bool | None = None,
     product_registry_backend: str | None = None,
     owner_metadata_supported: bool = True,
 ) -> dict[str, Any]:
@@ -136,6 +137,11 @@ def collect_product_readiness(
         config.PRODUCT_QUOTA_GUARD_ENABLED
         if product_quota_guard_enabled is None
         else bool(product_quota_guard_enabled)
+    )
+    rbac_guard_enabled = (
+        config.PRODUCT_RBAC_GUARD_ENABLED
+        if product_rbac_guard_enabled is None
+        else bool(product_rbac_guard_enabled)
     )
 
     pricing = query_pricing_status(
@@ -280,6 +286,8 @@ def collect_product_readiness(
         activation_blockers.append("billing_attribution_not_enabled")
     if product_enabled and not quota_guard_enabled:
         activation_blockers.append("product_quota_guard_not_enabled")
+    if product_enabled and not rbac_guard_enabled:
+        activation_blockers.append("product_rbac_guard_not_enabled")
 
     advisories: list[str] = []
     if not token_configured:
@@ -292,6 +300,8 @@ def collect_product_readiness(
         advisories.append("identity_quotas_billing_runtime_disabled")
     if not quota_guard_enabled:
         advisories.append("product_quota_guard_disabled")
+    if not rbac_guard_enabled:
+        advisories.append("product_rbac_guard_disabled")
 
     local_foundation_ready = not local_blockers
     activation_ready = local_foundation_ready and not activation_blockers
@@ -320,6 +330,7 @@ def collect_product_readiness(
             "quota_store_available": bool(quota_store["available"]),
             "billing_ledger_available": bool(billing["available"]),
             "product_quota_guard_enabled": quota_guard_enabled,
+            "product_rbac_guard_enabled": rbac_guard_enabled,
             "external_billing_enabled": False,
             "identity_quotas_billing_enabled": product_enabled,
         },
@@ -365,6 +376,11 @@ def collect_product_readiness(
                 "metric": getattr(config, "PRODUCT_QUOTA_METRIC", "requests"),
                 "reason": "enabled" if quota_guard_enabled else "product_quota_guard_disabled",
             },
+            "product_rbac_guard": {
+                "enabled": rbac_guard_enabled,
+                "role_source": "local_product_registry",
+                "reason": "enabled" if rbac_guard_enabled else "product_rbac_guard_disabled",
+            },
         },
         "blockers": {
             "local_foundation": local_blockers,
@@ -373,7 +389,7 @@ def collect_product_readiness(
         "advisories": advisories,
         "notes": [
             "Local owner fields, audit events, rate limits, and cost estimates are readiness foundations only.",
-            "Local product registry can satisfy local workspace, quota, and billing-attribution contracts but is not an external identity or payment provider.",
+            "Local product registry can satisfy local workspace, RBAC, quota, and billing-attribution contracts but is not an external identity or payment provider.",
         ],
     }
 
@@ -410,6 +426,7 @@ def format_product_readiness_markdown(status: dict[str, Any]) -> str:
         f"- Query cost pricing configured: {_format_bool(summary.get('query_cost_pricing_configured', False))}",
         f"- Product registry available: {_format_bool(summary.get('product_registry_available', False))}",
         f"- Product quota guard enabled: {_format_bool(summary.get('product_quota_guard_enabled', False))}",
+        f"- Product RBAC guard enabled: {_format_bool(summary.get('product_rbac_guard_enabled', False))}",
         f"- External billing enabled: {_format_bool(summary.get('external_billing_enabled', False))}",
         "",
         "## Activation Targets",
@@ -421,6 +438,7 @@ def format_product_readiness_markdown(status: dict[str, Any]) -> str:
         f"- Billing provider: {checks.get('billing_provider', {}).get('backend', '')} ({checks.get('billing_provider', {}).get('reason', '')})",
         f"- Billing attribution: {_format_bool(checks.get('billing_attribution', {}).get('enabled', False))}",
         f"- Product quota guard: {_format_bool(checks.get('product_quota_guard', {}).get('enabled', False))}",
+        f"- Product RBAC guard: {_format_bool(checks.get('product_rbac_guard', {}).get('enabled', False))}",
         "",
         "## Blockers",
         "",

@@ -98,6 +98,50 @@ def test_product_registry_finds_workspace_for_member(tmp_path):
     assert missing is None
 
 
+def test_product_registry_permission_decision_enforces_local_roles(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(workspace_id="ws-main", owner_user_id="owner")
+    registry.add_member(workspace_id=workspace.workspace_id, user_id="admin", role="admin")
+    registry.add_member(workspace_id=workspace.workspace_id, user_id="member", role="member")
+    registry.add_member(workspace_id=workspace.workspace_id, user_id="viewer", role="viewer")
+
+    owner_corpus = registry.permission_decision(
+        user_id="owner",
+        workspace_id=workspace.workspace_id,
+        action="corpus_write",
+    )
+    member_job = registry.permission_decision(
+        user_id="member",
+        workspace_id=workspace.workspace_id,
+        action="job_submit",
+    )
+    viewer_job = registry.permission_decision(
+        user_id="viewer",
+        workspace_id=workspace.workspace_id,
+        action="job_submit",
+    )
+    viewer_query = registry.permission_decision(
+        user_id="viewer",
+        workspace_id=workspace.workspace_id,
+        action="query",
+    )
+    unsupported = registry.permission_decision(
+        user_id="admin",
+        workspace_id=workspace.workspace_id,
+        action="billing/delete",
+    )
+
+    assert owner_corpus["allowed"] is True
+    assert owner_corpus["required_roles"] == ["owner", "admin"]
+    assert member_job["allowed"] is True
+    assert viewer_job["allowed"] is False
+    assert viewer_job["reason"] == "product_role_forbidden"
+    assert viewer_query["allowed"] is True
+    assert unsupported["allowed"] is False
+    assert unsupported["reason"] == "unsupported_product_action"
+    assert "billing/delete" not in json.dumps(unsupported, sort_keys=True)
+
+
 def test_product_registry_quota_decision_records_and_blocks_over_limit(tmp_path):
     registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
     workspace = registry.create_workspace(workspace_id="quota-ws", owner_user_id="owner")

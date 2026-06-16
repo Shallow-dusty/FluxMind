@@ -317,6 +317,12 @@ def main() -> int:
         "local product quota decision installed",
         failures,
     )
+    check(
+        "permission_decision" in product_registry_source
+        and "PRODUCT_RBAC_ACTION_ROLES" in product_registry_source,
+        "local product RBAC decision installed",
+        failures,
+    )
     product_registry_cli = (PROJECT_ROOT / "scripts" / "product_registry.py").read_text(
         encoding="utf-8"
     )
@@ -325,6 +331,12 @@ def main() -> int:
         and "record-usage" in product_registry_cli
         and "set-quota" in product_registry_cli,
         "local product registry CLI installed",
+        failures,
+    )
+    check(
+        "add-member" in product_registry_cli
+        and "check-permission" in product_registry_cli,
+        "local product RBAC CLI installed",
         failures,
     )
     provider_readiness_source = (PROJECT_ROOT / "src" / "provider_readiness.py").read_text(
@@ -426,6 +438,7 @@ def main() -> int:
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("verify_configured_api_key_token" in api_source and "api_key_registry_configured" in api_source, "API auth supports local key registry", failures)
     check("enforce_product_quota" in api_source and "product_quota_guard" in api_source, "API query paths support local product quota guard", failures)
+    check("enforce_product_rbac" in api_source and "product_rbac_guard" in api_source, "API write paths support local product RBAC guard", failures)
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
@@ -615,6 +628,7 @@ def main() -> int:
     check("collect_product_readiness" in admin_source and "product_readiness" in admin_source, "admin product readiness installed", failures)
     check("fluxmind_product_local_foundation_ready" in admin_source and "fluxmind_product_activation_ready" in admin_source, "admin product readiness metrics installed", failures)
     check("fluxmind_product_quota_guard_enabled" in admin_source, "admin product quota guard metric installed", failures)
+    check("fluxmind_product_rbac_guard_enabled" in admin_source, "admin product RBAC guard metric installed", failures)
     check("collect_provider_readiness" in admin_source and "provider_readiness" in admin_source, "admin provider readiness installed", failures)
     check("fluxmind_provider_local_foundation_ready" in admin_source and "fluxmind_provider_activation_ready" in admin_source, "admin provider readiness metrics installed", failures)
     storage_schema_source = (PROJECT_ROOT / "src" / "storage_schema.py").read_text(encoding="utf-8")
@@ -878,12 +892,15 @@ def main() -> int:
             "grep -q 'LocalProductRegistry' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'product_registry_backend_status' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'quota_decision' /opt/fluxmind/src/product_registry.py; "
+            "grep -q 'permission_decision' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'verify_configured_api_key_token' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_configured' /opt/fluxmind/api.py; "
             "grep -q 'enforce_product_quota' /opt/fluxmind/api.py; "
+            "grep -q 'enforce_product_rbac' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'fluxmind_product_quota_guard_enabled' /opt/fluxmind/src/admin.py; "
+            "grep -q 'fluxmind_product_rbac_guard_enabled' /opt/fluxmind/src/admin.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
@@ -891,6 +908,7 @@ def main() -> int:
             "grep -q 'create' /opt/fluxmind/scripts/api_key_registry.py; "
             "grep -q 'revoke' /opt/fluxmind/scripts/api_key_registry.py; "
             "grep -q 'bootstrap-local' /opt/fluxmind/scripts/product_registry.py; "
+            "grep -q 'check-permission' /opt/fluxmind/scripts/product_registry.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
             "grep -q 'CorpusProfileStore' /opt/fluxmind/src/metadata.py; "
             "grep -q 'atomic_write_json' /opt/fluxmind/src/metadata.py; "

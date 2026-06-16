@@ -19,6 +19,7 @@ def no_job_runtime_event_disk_writes(monkeypatch):
     monkeypatch.setattr(api, "API_RATE_LIMIT_ENABLED", False)
     monkeypatch.setattr(api, "IDENTITY_QUOTAS_BILLING_ENABLED", False)
     monkeypatch.setattr(api, "PRODUCT_QUOTA_GUARD_ENABLED", False)
+    monkeypatch.setattr(api, "PRODUCT_RBAC_GUARD_ENABLED", False)
     api._API_RATE_LIMIT_BUCKETS.clear()
 
 
@@ -389,6 +390,77 @@ def test_query_product_quota_guard_records_usage_and_blocks_over_limit(tmp_path,
     assert denied_events[0]["metadata"]["product_quota_limited"] is True
     assert denied_events[0]["metadata"]["product_workspace_id"] == "local-workspace"
     assert token not in str(events)
+
+
+def test_product_rbac_guard_allows_query_but_blocks_disallowed_writes(tmp_path, monkeypatch):
+    api_key_path = tmp_path / "api_keys.sqlite3"
+    product_registry_path = tmp_path / "product_registry.sqlite3"
+    api_key_registry = LocalApiKeyRegistry(api_key_path)
+    viewer_token = api_key_registry.create_key(owner_id="viewer-user")["token"]
+    member_token = api_key_registry.create_key(owner_id="member-user")["token"]
+    product_registry = LocalProductRegistry(product_registry_path)
+    workspace = product_registry.create_workspace(
+        workspace_id="rbac-workspace",
+        owner_user_id="owner-user",
+    )
+    product_registry.add_member(
+        workspace_id=workspace.workspace_id,
+        user_id="viewer-user",
+        role="viewer",
+    )
+    product_registry.add_member(
+        workspace_id=workspace.workspace_id,
+        user_id="member-user",
+        role="member",
+    )
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(api, "IDENTITY_QUOTAS_BILLING_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_RBAC_GUARD_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", api_key_path)
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", product_registry_path)
+    events = []
+
+    class FakeResult:
+        answer = "rbac query ok"
+        provider_usage = None
+
+    monkeypatch.setattr(api, "query_with_metadata", lambda question, *, answer_mode: FakeResult())
+    monkeypatch.setattr(api, "append_runtime_event", lambda **kwargs: events.append(kwargs))
+
+    client = TestClient(api.app)
+    query_response = client.post(
+        "/query",
+        json={"question": "Explain RBAC", "workspace_id": "rbac-workspace"},
+        headers={"X-API-Key": viewer_token, "X-Request-ID": "req-rbac-query"},
+    )
+    job_response = client.post(
+        "/jobs/image/mock",
+        json={"prompt": "Draw SMC", "workspace_id": "rbac-workspace"},
+        headers={"X-API-Key": viewer_token, "X-Request-ID": "req-rbac-job"},
+    )
+    index_response = client.post(
+        "/jobs/index/rebuild",
+        json={"source_paths": ["papers/library/example.pdf"], "workspace_id": "rbac-workspace"},
+        headers={"X-API-Key": member_token, "X-Request-ID": "req-rbac-index"},
+    )
+
+    assert query_response.status_code == 200
+    assert query_response.headers["X-Product-RBAC-Role"] == "viewer"
+    assert job_response.status_code == 403
+    assert job_response.json()["detail"]["code"] == "product_role_forbidden"
+    assert job_response.headers["X-Product-RBAC-Action"] == "job_submit"
+    assert job_response.headers["X-Product-RBAC-Role"] == "viewer"
+    assert index_response.status_code == 403
+    assert index_response.json()["detail"]["code"] == "product_role_forbidden"
+    assert index_response.headers["X-Product-RBAC-Action"] == "corpus_write"
+    denied_events = [event for event in events if event["kind"] == "product_rbac"]
+    assert [event["request_id"] for event in denied_events] == ["req-rbac-job", "req-rbac-index"]
+    assert denied_events[0]["metadata"]["product_workspace_id"] == "rbac-workspace"
+    assert viewer_token not in str(events)
+    assert member_token not in str(events)
 
 
 def test_query_inspect_returns_citation_validation(monkeypatch):

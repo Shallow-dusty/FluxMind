@@ -834,6 +834,10 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["config"]["docker_execution"]["configured"] is False
     assert status["config"]["docker_execution"]["available"] is False
     assert status["config"]["docker_execution"]["reason"] == "not_configured"
+    product_readiness = status["config"]["product_readiness"]
+    assert product_readiness["summary"]["product_quota_guard_enabled"] is False
+    assert product_readiness["summary"]["product_rbac_guard_enabled"] is False
+    assert "product_rbac_guard_disabled" in product_readiness["advisories"]
     provider_readiness = status["config"]["provider_readiness"]
     assert provider_readiness["local_foundation_ready"] is True
     assert provider_readiness["activation_ready"] is False
@@ -908,6 +912,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "req-rate-limit" in report
     assert "API access audit enabled: true" in report
     assert "API rate limit enabled: false" in report
+    assert "Product quota guard enabled: false" in report
+    assert "Product RBAC guard enabled: false" in report
     assert "API rate limit max requests: 300" in report
     assert "## Upload Scans" in report
     assert "By reason: active_content_javascript=1" in report

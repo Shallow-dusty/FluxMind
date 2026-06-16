@@ -17,6 +17,13 @@ SUPPORTED_LOCAL_PRODUCT_REGISTRY_BACKENDS = {"sqlite"}
 DISABLED_PRODUCT_REGISTRY_BACKENDS = {"", "none", "disabled", "local-disabled"}
 SAFE_BACKEND_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789_.-")
 SAFE_ID_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
+PRODUCT_ROLE_ORDER = ("owner", "admin", "member", "viewer")
+PRODUCT_RBAC_ACTION_ROLES = {
+    "query": {"owner", "admin", "member", "viewer"},
+    "job_submit": {"owner", "admin", "member"},
+    "corpus_write": {"owner", "admin"},
+    "admin_write": {"owner", "admin"},
+}
 
 
 @dataclass(frozen=True)
@@ -80,6 +87,10 @@ def _safe_identifier(value: str | None, *, prefix: str) -> str:
 def _safe_label(value: str | None, fallback: str) -> str:
     label = (value or "").strip()
     return (label or fallback)[:128]
+
+
+def _ordered_roles(roles: set[str]) -> list[str]:
+    return [role for role in PRODUCT_ROLE_ORDER if role in roles]
 
 
 class LocalProductRegistry:
@@ -425,6 +436,60 @@ class LocalProductRegistry:
             "secrets_exported": False,
         }
 
+    def permission_decision(
+        self,
+        *,
+        user_id: str,
+        action: str,
+        workspace_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Check local workspace role permissions without exporting secrets."""
+        safe_action = _safe_identifier(action, prefix="action")
+        required_roles = PRODUCT_RBAC_ACTION_ROLES.get(safe_action)
+        safe_user_id = _safe_identifier(user_id, prefix="user")
+        safe_workspace_hint = _safe_identifier(workspace_id, prefix="ws") if workspace_id else ""
+        if required_roles is None:
+            return {
+                "allowed": False,
+                "reason": "unsupported_product_action",
+                "action": safe_action,
+                "user_id": safe_user_id,
+                "workspace_id": safe_workspace_hint,
+                "role": "",
+                "required_roles": [],
+                "content_exported": False,
+                "secrets_exported": False,
+            }
+
+        membership = self.workspace_for_user(user_id=safe_user_id, workspace_id=workspace_id)
+        if membership is None:
+            return {
+                "allowed": False,
+                "reason": "product_workspace_not_found",
+                "action": safe_action,
+                "user_id": safe_user_id,
+                "workspace_id": safe_workspace_hint,
+                "role": "",
+                "required_roles": _ordered_roles(required_roles),
+                "content_exported": False,
+                "secrets_exported": False,
+            }
+
+        role = str(membership.get("role", ""))
+        allowed = role in required_roles
+        return {
+            "allowed": allowed,
+            "reason": "allowed" if allowed else "product_role_forbidden",
+            "action": safe_action,
+            "user_id": safe_user_id,
+            "workspace_id": membership.get("workspace_id", ""),
+            "workspace_label": membership.get("workspace_label", ""),
+            "role": role,
+            "required_roles": _ordered_roles(required_roles),
+            "content_exported": False,
+            "secrets_exported": False,
+        }
+
     def quota_decision(
         self,
         *,
@@ -650,6 +715,7 @@ class LocalProductRegistry:
             "billing_attribution_count": int(billing_attribution_count or 0),
             "identity_available": True,
             "workspace_available": True,
+            "rbac_available": True,
             "quota_store_available": True,
             "billing_ledger_available": True,
             "content_exported": False,
@@ -677,6 +743,7 @@ def product_registry_backend_status(
             "workspace_count": 0,
             "quota_limit_count": 0,
             "billing_account_count": 0,
+            "rbac_available": False,
             "content_exported": False,
             "secrets_exported": False,
             "paths_exported": False,
@@ -693,6 +760,7 @@ def product_registry_backend_status(
             "workspace_count": 0,
             "quota_limit_count": 0,
             "billing_account_count": 0,
+            "rbac_available": False,
             "content_exported": False,
             "secrets_exported": False,
             "paths_exported": False,
@@ -711,6 +779,7 @@ def product_registry_backend_status(
             "workspace_count": 0,
             "quota_limit_count": 0,
             "billing_account_count": 0,
+            "rbac_available": False,
             "content_exported": False,
             "secrets_exported": False,
             "paths_exported": False,

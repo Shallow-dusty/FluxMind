@@ -41,6 +41,7 @@ from src.config import (
     LLM_MODEL,
     PRODUCT_QUOTA_GUARD_ENABLED,
     PRODUCT_QUOTA_METRIC,
+    PRODUCT_RBAC_GUARD_ENABLED,
     PRODUCT_REGISTRY_BACKEND,
     QUERY_COST_COMPLETION_USD_PER_1M,
     QUERY_COST_PROMPT_USD_PER_1M,
@@ -499,11 +500,11 @@ class IndexRebuildJobRequest(OwnershipRequest):
     retry_backoff_s: int = Field(default=0, ge=0, le=3600, description="Delay before automatic async retry")
 
 
-class ActiveCorpusRequest(BaseModel):
+class ActiveCorpusRequest(OwnershipRequest):
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths to keep active")
 
 
-class CorpusProfileRequest(BaseModel):
+class CorpusProfileRequest(OwnershipRequest):
     name: str = Field(..., description="Human-readable local corpus profile name")
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths in this profile")
     profile_id: str | None = Field(default=None, description="Optional stable local profile ID")
@@ -768,6 +769,135 @@ def enforce_product_quota(
             "request_id": request_id,
         },
         headers=product_quota_headers(decision),
+    )
+
+
+def product_rbac_guard_decision(
+    *,
+    req: Any | None,
+    ownership: dict[str, str],
+    auth_context: dict[str, Any],
+    endpoint: str,
+    action: str,
+) -> dict[str, Any]:
+    """Check optional local product RBAC before product-scoped work."""
+    if not (IDENTITY_QUOTAS_BILLING_ENABLED and PRODUCT_RBAC_GUARD_ENABLED):
+        return {
+            "enabled": False,
+            "allowed": True,
+            "reason": "product_rbac_guard_disabled",
+            "action": action,
+        }
+    if PRODUCT_REGISTRY_BACKEND.strip().lower() != "sqlite":
+        return {
+            "enabled": True,
+            "allowed": False,
+            "reason": "product_rbac_guard_backend_not_configured",
+            "action": action,
+            "status_code": 503,
+        }
+    status = product_registry_backend_status(backend="sqlite")
+    if not status.get("available"):
+        return {
+            "enabled": True,
+            "allowed": False,
+            "reason": "product_registry_unavailable",
+            "action": action,
+            "status_code": 503,
+        }
+
+    user_id = auth_context.get("auth_owner_id")
+    if not user_id:
+        return {
+            "enabled": True,
+            "allowed": False,
+            "reason": "product_identity_not_authenticated",
+            "action": action,
+            "status_code": 403,
+        }
+    workspace_hint = getattr(req, "workspace_id", None) if req is not None else None
+    decision = LocalProductRegistry().permission_decision(
+        user_id=user_id,
+        workspace_id=workspace_hint,
+        action=action,
+    )
+    decision["enabled"] = True
+    decision["endpoint"] = endpoint
+    decision.setdefault("status_code", 403)
+    return decision
+
+
+def product_rbac_event_metadata(decision: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "product_rbac_guard_enabled": bool(decision.get("enabled", False)),
+        "product_rbac_reason": decision.get("reason", ""),
+        "product_rbac_action": decision.get("action", ""),
+        "product_rbac_role": decision.get("role", ""),
+        "product_rbac_required_roles": ",".join(decision.get("required_roles", []) or []),
+        "product_workspace_id": decision.get("workspace_id", ""),
+    }
+
+
+def product_rbac_headers(decision: dict[str, Any]) -> dict[str, str]:
+    if not decision.get("enabled"):
+        return {}
+    headers = {"X-Product-RBAC-Reason": str(decision.get("reason", ""))}
+    if decision.get("role"):
+        headers["X-Product-RBAC-Role"] = str(decision.get("role", ""))
+    if decision.get("action"):
+        headers["X-Product-RBAC-Action"] = str(decision.get("action", ""))
+    return headers
+
+
+def apply_product_rbac_headers(response: Response, decision: dict[str, Any]) -> None:
+    for key, value in product_rbac_headers(decision).items():
+        response.headers[key] = value
+
+
+def enforce_product_rbac(
+    *,
+    req: Any | None,
+    response: Response,
+    request_id: str,
+    ownership: dict[str, str],
+    auth_context: dict[str, Any],
+    endpoint: str,
+    action: str,
+) -> dict[str, Any]:
+    decision = product_rbac_guard_decision(
+        req=req,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=endpoint,
+        action=action,
+    )
+    apply_product_rbac_headers(response, decision)
+    if decision.get("allowed", True):
+        return decision
+    status_code = int(decision.get("status_code", 403))
+    try:
+        append_runtime_event(
+            kind="product_rbac",
+            code=str(decision.get("reason", "product_rbac_denied")),
+            message="Metadata-only product RBAC guard event.",
+            request_id=request_id,
+            metadata={
+                "endpoint": endpoint,
+                "status_code": status_code,
+                **product_rbac_event_metadata(decision),
+                **ownership,
+            },
+        )
+    except OSError:
+        logger.warning("product_rbac.event_log_failed request_id=%s endpoint=%s", request_id, endpoint)
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": decision.get("reason", "product_rbac_denied"),
+            "message": "Product RBAC guard denied this request.",
+            "request_id": request_id,
+        },
+        headers=product_rbac_headers(decision),
     )
 
 
@@ -1463,11 +1593,24 @@ def corpus_status(
 @app.put("/corpus/active", response_model=ActiveCorpusResponse, summary="Update active corpus selection")
 def update_active_corpus(
     req: ActiveCorpusRequest,
+    response: Response,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
 ):
     """Persist active/deactivated papers without requiring filesystem edits."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(req, auth_context)
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/corpus/active",
+        action="corpus_write",
+    )
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
     try:
@@ -1496,11 +1639,24 @@ def list_corpus_profiles(
 @app.post("/corpus/profiles", response_model=CorpusProfileResponse, summary="Create or update local corpus profile")
 def upsert_corpus_profile(
     req: CorpusProfileRequest,
+    response: Response,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
 ):
     """Persist a named local corpus selection without changing the active FAISS index."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(req, auth_context)
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/corpus/profiles",
+        action="corpus_write",
+    )
     try:
         source_paths = validate_corpus_profile_source_paths(req.source_paths)
         profile = CorpusProfileStore().upsert_profile(
@@ -1555,11 +1711,24 @@ def corpus_profile_report(
 )
 def activate_corpus_profile(
     profile_id: str,
+    response: Response,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
 ):
     """Apply a saved corpus profile to the active local selection."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=None,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=f"/corpus/profiles/{profile_id}/activate",
+        action="corpus_write",
+    )
     try:
         profile = CorpusProfileStore().get_profile(profile_id)
         papers = [record_to_dict(record) for record in set_active_paper_source_paths(profile.source_paths)]
@@ -1589,9 +1758,18 @@ def rebuild_corpus_profile(
     x_request_id: str | None = Header(default=None),
 ):
     """Apply a saved corpus profile and queue FAISS rebuild through the local job system."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=f"/corpus/profiles/{profile_id}/rebuild",
+        action="corpus_write",
+    )
     try:
         profile = CorpusProfileStore().get_profile(profile_id)
         papers = [record_to_dict(record) for record in set_active_paper_source_paths(profile.source_paths)]
@@ -1744,14 +1922,27 @@ def admin_retention_preview(
 
 @app.post("/admin/retention/delete", response_model=RetentionDeleteResponse, summary="Delete local retention candidates")
 def admin_retention_delete(
+    response: Response,
     upload_days: int = 0,
     artifact_days: int = 0,
     limit: int = 100,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
 ):
     """Delete local upload/artifact retention candidates when explicitly enabled."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=None,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/admin/retention/delete",
+        action="admin_write",
+    )
     retention = apply_retention_delete(
         upload_days=upload_days,
         artifact_days=artifact_days,
@@ -1807,6 +1998,15 @@ def ask(
     ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query",
+        action="query",
+    )
     quota_decision = enforce_product_quota(
         req=req,
         response=response,
@@ -1891,6 +2091,15 @@ def ask_with_inspection(
     ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/inspect",
+        action="query",
+    )
     quota_decision = enforce_product_quota(
         req=req,
         response=response,
@@ -1980,6 +2189,15 @@ def inspect_retrieval(
     ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/retrieve",
+        action="query",
+    )
     quota_decision = enforce_product_quota(
         req=req,
         response=response,
@@ -2049,6 +2267,15 @@ def ask_with_report(
     ownership = request_ownership(req, auth_context)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/query/report",
+        action="query",
+    )
     quota_decision = enforce_product_quota(
         req=req,
         response=response,
@@ -2137,11 +2364,20 @@ def create_mock_image_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Generate a deterministic local SVG artifact without an external provider key."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/image/mock",
+        action="job_submit",
+    )
     existing = existing_idempotent_job("image_generation", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -2169,11 +2405,20 @@ def enqueue_mock_image_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue deterministic local SVG artifact generation without an external provider key."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/async/image/mock",
+        action="job_submit",
+    )
     job = get_async_job_manager().enqueue_mock_image(
         ImageGenerationRequest(
             prompt=req.prompt,
@@ -2201,11 +2446,20 @@ def create_local_python_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Run a development-only local Python job without hosted sandbox keys."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/code/python-local",
+        action="job_submit",
+    )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -2233,11 +2487,20 @@ def enqueue_local_python_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue a development-only local Python job without hosted sandbox keys."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/async/code/python-local",
+        action="job_submit",
+    )
     job = get_async_job_manager().enqueue_local_python(
         CodeExecutionRequest(
             language="python",
@@ -2265,11 +2528,20 @@ def create_local_octave_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Run a no-key local GNU Octave-compatible job when octave is installed."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/code/octave-local",
+        action="job_submit",
+    )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -2297,11 +2569,20 @@ def enqueue_local_octave_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue a no-key local GNU Octave-compatible job when octave is installed."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/async/code/octave-local",
+        action="job_submit",
+    )
     job = get_async_job_manager().enqueue_local_octave(
         CodeExecutionRequest(
             language="octave",
@@ -2329,11 +2610,20 @@ def create_index_rebuild_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Rebuild the local FAISS index from selected project PDFs as a persisted job."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/index/rebuild",
+        action="corpus_write",
+    )
     existing = existing_idempotent_job("index_rebuild", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -2355,11 +2645,20 @@ def enqueue_index_rebuild_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue local FAISS rebuild from selected project PDFs."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req)
+    ownership = request_ownership(req, auth_context)
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/jobs/async/index/rebuild",
+        action="corpus_write",
+    )
     job = get_async_job_manager().enqueue_index_rebuild(
         req.source_paths,
         request_id=request_id,
@@ -2415,11 +2714,24 @@ def get_job(
 @app.post("/jobs/{job_id}/cancel", response_model=JobResponse, summary="Cancel local job")
 def cancel_job(
     job_id: str,
+    response: Response,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
 ):
     """Mark a queued/running local job as cancelled."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=None,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=f"/jobs/{job_id}/cancel",
+        action="job_submit",
+    )
     job = get_async_job_manager().cancel(job_id) or LocalJobStore().cancel(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -2435,8 +2747,18 @@ def retry_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Retry a failed/cancelled local job with a new job ID."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=None,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=f"/jobs/{job_id}/retry",
+        action="job_submit",
+    )
     job = LocalJobRunner().retry(job_id, request_id=request_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -2453,8 +2775,18 @@ def schedule_retry_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue a failed/cancelled local job retry after a bounded backoff delay."""
-    verify_api_token(authorization, x_api_key)
+    auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=f"/jobs/{job_id}/retry-scheduled",
+        action="job_submit",
+    )
     job = get_async_job_manager().schedule_retry(
         job_id,
         delay_s=req.delay_s,

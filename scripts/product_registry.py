@@ -45,6 +45,34 @@ def render_markdown(payload: dict) -> str:
                 f"- Secrets exported: {str(payload.get('secrets_exported', False)).lower()}",
             ]
         )
+    elif "member" in payload:
+        member = payload.get("member", {})
+        lines.extend(
+            [
+                "## Member",
+                "",
+                f"- Workspace ID: {member.get('workspace_id', '')}",
+                f"- User ID: {member.get('user_id', '')}",
+                f"- Role: {member.get('role', '')}",
+                f"- Secrets exported: {str(payload.get('secrets_exported', False)).lower()}",
+            ]
+        )
+    elif "permission" in payload:
+        decision = payload.get("permission", {})
+        lines.extend(
+            [
+                "## Permission",
+                "",
+                f"- Allowed: {str(decision.get('allowed', False)).lower()}",
+                f"- Reason: {decision.get('reason', '')}",
+                f"- Workspace ID: {decision.get('workspace_id', '')}",
+                f"- User ID: {decision.get('user_id', '')}",
+                f"- Role: {decision.get('role', '')}",
+                f"- Action: {decision.get('action', '')}",
+                f"- Required roles: {', '.join(decision.get('required_roles', [])) or 'none'}",
+                f"- Secrets exported: {str(payload.get('secrets_exported', False)).lower()}",
+            ]
+        )
     elif "usage_event" in payload:
         event = payload.get("usage_event", {})
         lines.extend(
@@ -76,6 +104,7 @@ def render_markdown(payload: dict) -> str:
                 f"- Available: {str(payload.get('available', False)).lower()}",
                 f"- Users: {payload.get('user_count', 0)}",
                 f"- Workspaces: {payload.get('workspace_count', 0)}",
+                f"- RBAC available: {str(payload.get('rbac_available', False)).lower()}",
                 f"- Quota limits: {payload.get('quota_limit_count', 0)}",
                 f"- Usage events: {payload.get('usage_event_count', 0)}",
                 f"- Billing accounts: {payload.get('billing_account_count', 0)}",
@@ -120,6 +149,19 @@ def main() -> int:
     usage.add_argument("--metric", required=True)
     usage.add_argument("--amount", type=int, required=True)
     usage.add_argument("--source", default="manual")
+
+    member = subparsers.add_parser("add-member")
+    add_output_args(member)
+    member.add_argument("--workspace-id", required=True)
+    member.add_argument("--user-id", required=True)
+    member.add_argument("--user-label")
+    member.add_argument("--role", choices=("owner", "admin", "member", "viewer"), default="member")
+
+    permission = subparsers.add_parser("check-permission")
+    add_output_args(permission)
+    permission.add_argument("--workspace-id")
+    permission.add_argument("--user-id", required=True)
+    permission.add_argument("--action", required=True)
 
     list_cmd = subparsers.add_parser("list-workspaces")
     add_output_args(list_cmd)
@@ -181,6 +223,32 @@ def main() -> int:
                 "content_exported": False,
                 "secrets_exported": False,
             }
+        elif args.command == "add-member":
+            registry.add_member(
+                workspace_id=args.workspace_id,
+                user_id=args.user_id,
+                label=args.user_label,
+                role=args.role,
+            )
+            payload = {
+                "member": {
+                    "workspace_id": args.workspace_id,
+                    "user_id": args.user_id,
+                    "role": args.role,
+                },
+                "content_exported": False,
+                "secrets_exported": False,
+            }
+        elif args.command == "check-permission":
+            payload = {
+                "permission": registry.permission_decision(
+                    workspace_id=args.workspace_id,
+                    user_id=args.user_id,
+                    action=args.action,
+                ),
+                "content_exported": False,
+                "secrets_exported": False,
+            }
         else:
             payload = {
                 "workspaces": [workspace.to_public_dict() for workspace in registry.list_workspaces()],
@@ -199,6 +267,8 @@ def main() -> int:
 
     if args.command == "status":
         return 0 if payload.get("available") or not payload.get("configured") else 1
+    if args.command == "check-permission":
+        return 0 if payload.get("permission", {}).get("allowed", False) else 1
     return 0
 
 
