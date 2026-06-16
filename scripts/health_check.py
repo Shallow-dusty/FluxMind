@@ -148,9 +148,13 @@ def main() -> int:
     check("Previous temporary index `80` has been retired" in readme, "README records 80 retirement", failures)
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
-        "Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval" in repo_status
+        "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
+        and "Current implementation commit  6ad6dbc feat: add local API key registry" in repo_status
+        and "Current docs/health head       207ba7a fix: extend remote health timeout" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST"
+        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 23:36 CST"
+        in repo_status
+        and "Latest deploy follow-up        6ad6dbc/8f9db56/ea1c508/207ba7a synced with restart on 2026-06-16 23:36 CST"
         in repo_status,
         "repo status records current source and deployed baselines",
         failures,

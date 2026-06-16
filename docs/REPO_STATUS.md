@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 20:47 CST
+Snapshot time: 2026-06-16 23:36 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,15 +13,15 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  850f7f8 feat: add quality readiness preflight
-Implementation base            c05a7fd docs: record provider readiness deployment
-Remote status at verification  origin/main includes 8b433be after quality-readiness push
-Current refresh scope          quality-readiness deployment record refresh
+Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
+Current implementation commit  6ad6dbc feat: add local API key registry
+Current docs/health head       207ba7a fix: extend remote health timeout
+Remote status at verification  main == origin/main at 207ba7a
+Current refresh scope          local API key registry deployment record refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   8b433be docs: record quality readiness status
-Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
-Latest deploy follow-up        850f7f8/8b433be synced with restart on 2026-06-16 20:47 CST
+Last deployed docs sync base   8f9db56 docs: document local API key registry boundary
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 23:36 CST
+Latest deploy follow-up        6ad6dbc/8f9db56/ea1c508/207ba7a synced with restart on 2026-06-16 23:36 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -42,7 +42,8 @@ Platform readiness   separate metadata/object/job-store readiness targets,
                      blocker codes, and no-secret metrics/report fields
 Admin/product shell  status/report endpoints, retention preview, runtime
                      events, query usage/cost visibility, product-readiness
-                     and provider-readiness blocker surfaces
+                     and provider-readiness blocker surfaces, local API-key
+                     lifecycle registry
 Artifacts/images     artifact metadata mirror/integrity, local SVG diagram
                      templates, stable artifact downloads
 Execution            local Python/Octave provider hardening, templates,
@@ -72,14 +73,23 @@ The latest quality-readiness source/docs sync deployed to `/opt/fluxmind` is
 `850f7f8` (`feat: add quality readiness preflight`). It adds a no-secret
 CLI/module for self-use, small-group, and community maturity checks, including
 explicit `--live-report` evidence merging and `--require-target` failure gates.
+The latest local API-key registry source/docs/health sync deployed to
+`/opt/fluxmind` is `207ba7a` (`fix: extend remote health timeout`), with
+implementation commit `6ad6dbc` (`feat: add local API key registry`),
+documentation boundary commit `8f9db56`, and metrics guard fix `ea1c508`. It
+adds an opt-in local SQLite API-key lifecycle registry, a CLI, FastAPI auth
+integration, product-readiness visibility, and storage-schema/admin inventory
+coverage. The live deployment keeps the registry backend disabled by default
+(`none`), so no production credential lifecycle is activated until
+`FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` is deliberately set.
 
-Current local verification on 2026-06-16 20:39 CST:
+Current local verification on 2026-06-16 23:16 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 387 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 387 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 399 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 399 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/provider_readiness.py at 93%,
@@ -93,9 +103,12 @@ Command                                                     Result
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
                                                             migration-preflight,
                                                             migration-rehearsal, and
-                                                            product/provider/quality-readiness
+                                                            product/provider/quality-readiness,
+                                                            API-key registry
                                                             anchors
-.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 8 stores, 0 problems
+.venv/bin/python scripts/api_key_registry.py status          pass, backend=none, available=false,
+  --format markdown                                          active_keys=0, secrets_exported=false
 .venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
                                                             activation_ready=false with expected
                                                             external-backend blockers
@@ -135,6 +148,15 @@ Product readiness smoke                                     local_foundation_rea
                                                             blockers include identity provider,
                                                             key lifecycle, quota store, billing
                                                             provider, and billing attribution
+Temporary SQLite API-key registry smoke                     create/verify/list/revoke passed
+                                                            against an isolated temp registry;
+                                                            list/verify did not return raw
+                                                            tokens
+Product readiness temp-registry smoke                       enabling sqlite registry in an
+                                                            isolated temp env cleared
+                                                            api_key_lifecycle_not_configured;
+                                                            identity/quota/billing blockers
+                                                            remained expected
 Provider readiness smoke                                    local_foundation_ready=true,
                                                             activation_ready=false,
                                                             blockers include external providers
@@ -175,6 +197,20 @@ Remote quality live-report smoke                            server-local evaluat
                                                             --require-target small_group
                                                             exited 0 and
                                                             --require-target community exited 1
+Remote API-key registry smoke                               `/opt/fluxmind/venv/bin/python
+                                                            scripts/api_key_registry.py status`
+                                                            returned backend=none,
+                                                            available=false, active_keys=0,
+                                                            secrets_exported=false
+Remote storage-schema smoke                                 `/opt/fluxmind/venv/bin/python
+                                                            scripts/storage_schema.py`
+                                                            returned ok=true, store_count=8,
+                                                            problem_count=0, and optional
+                                                            api_key_registry_sqlite ok=true
+Remote deployment health smoke                              public HTTPS and default SSH health
+                                                            passed after the SSH command timeout
+                                                            floor was raised to 180s for the
+                                                            expanded admin/status checks
 ```
 
 The earlier small-group quality work was deployed and live-verified through the
@@ -344,12 +380,14 @@ counts, rates, thresholds, and codes.
 The latest storage-schema slice adds `src.storage_schema` plus admin/report/
 metrics/Streamlit exposure for a no-secret local storage-schema inventory. It
 checks schema version, JSON/JSONL shape, and expected SQLite table/column
-presence across corpus, chunk, job, artifact, and runtime-event stores without
-returning row contents, prompts, answers, filenames, owner IDs, request IDs,
-source paths, or runtime file contents. `scripts/storage_schema.py` exposes the
-same check as a local or target-root CLI preflight with JSON/Markdown output and
-a nonzero exit code on drift. The current local CLI/admin snapshot reports
-`ok=true`, 7 stores, and 0 schema problems.
+presence across corpus, chunk, job, artifact, runtime-event, and optional local
+API-key registry stores without returning row contents, prompts, answers,
+filenames, owner IDs, request IDs, token hashes, source paths, or runtime file
+contents. `scripts/storage_schema.py` exposes the same check as a local or
+target-root CLI preflight with JSON/Markdown output and a nonzero exit code on
+drift. The current local CLI/admin snapshot reports `ok=true`, 8 stores, and 0
+schema problems; `api_key_registry_sqlite` is allowed to be absent when the
+registry backend is left at the production-safe default `none`.
 
 The 2026-06-13 pass also refreshed the agent-facing bootstrap docs `CLAUDE.md`
 and `AGENTS.md` so they describe the current dual-entrypoint (Streamlit + FastAPI)
@@ -601,10 +639,11 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after syncing `9b1cbc5` and
-the current docs tree without restart, then running SSH, public HTTPS, and live
-retrieval checks on 2026-06-16 17:39 CST in `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
-job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
+The latest live deployment snapshot was refreshed after syncing `207ba7a` with
+restart, then running SSH, public HTTPS, storage-schema, API-key registry, and
+live retrieval checks on 2026-06-16 23:36 CST in
+`docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
+job-idempotency/retry-dead-letter/ownership/API-key-registry/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
 API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
@@ -633,6 +672,8 @@ FAISS index bytes   2970669
 Chunk rows          1934 across 30 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
+Storage schema      ok=true; store_count=8; problems=0; api_key_registry_sqlite ok=true
+API key registry    backend=none; available=false; active_keys=0; secrets_exported=false
 Job-store readiness local job store available; external job store configured false
 Migration preflight preflight_ok=true; activation_ready=false; local_blockers=none;
                     activation blockers are the expected external metadata DB,
@@ -648,15 +689,16 @@ Disk                /dev/vda3 40G total, 24G free, 36% used
 - Runtime state remains git-ignored: `papers/`, `faiss_index/`, `artifacts/`,
   `jobs/`, `metadata/`, `.env`, virtual environments, caches, and bytecode.
 - The retrieval-eval/code-output/PDF-structure/report/runtime-restore/
-  job-idempotency/retry-dead-letter/ownership/Docker-execution/
+  job-idempotency/retry-dead-letter/ownership/API-key-registry/Docker-execution/
   execution-policy/execution-observability/output-limits/artifact-limits/
   execution-alerts/query-latency/query-alerts/provider-alerts/job-alerts/
   API-access-audit/API-rate-limit/upload-scan/retention-delete/
   metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API work plus
   the eval-breadth, coverage/corpus-hardening, runtime-state-hardening, and
   deploy-exclude slices are verified, committed, pushed to `origin/main` through
-  application baseline `4f27651`, deployed to Trace-Twin, and post-restart
-  verified. Documentation commits may be newer than the deployed application-code
-  baseline.
+  application baseline `207ba7a`, deployed to Trace-Twin, and post-restart
+  verified. The deployed API-key registry backend remains disabled by default;
+  enabling the SQLite registry is an explicit operational choice, not an
+  automatic production activation.
 - Deployment facts should not be inferred from git state alone because
   `/opt/fluxmind` is a synchronized source tree, not a git checkout.

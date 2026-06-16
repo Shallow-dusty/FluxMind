@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-16 20:39 CST
+Last updated: 2026-06-16 23:36 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      refreshed on 2026-06-16 20:47 CST; re-run before deploy claims
+                      refreshed on 2026-06-16 23:36 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -35,11 +35,12 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 850f7f8 feat: add quality readiness preflight
-Status note     this docs-status refresh follows quality-readiness deployment verification
+Current implementation 6ad6dbc feat: add local API key registry
+Current docs/health    207ba7a fix: extend remote health timeout
+Status note     this docs-status refresh follows local API-key registry deployment verification
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Work scope      quality-readiness CLI/module, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-16 20:39 CST
+Work scope      local API-key registry, auth integration, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed on 2026-06-16 23:16 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -47,15 +48,17 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    387 passed, 2 known warnings
+pytest                                    399 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry anchors
 storage_schema.py                         pass, ok=true, 8 stores, 0 problems
+api_key_registry.py status                pass, backend=none, available=false,
+                                          active_keys=0, secrets_exported=false
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
@@ -66,15 +69,17 @@ provider_readiness.py                     pass, local_foundation_ready=true,
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
                                           corpus/eval/live-evidence gaps
-HTTPS UI                                  14:17 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          14:17 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                14:17 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  23:36 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          23:36 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                23:36 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro
 Remote active corpus                       active_papers=30
 Remote chunk metadata                     chunk_metadata_rows=1934, sources=30
 Remote index freshness                     index_fresh=True
+Remote API-key registry                    backend=none, available=false; local SQLite
+                                          registry implemented but not activated
 Remote execution sandbox                   Local Docker backend implemented; live Docker execution not configured
 ```
 
@@ -206,8 +211,8 @@ Product shell           Streamlit UI, FastAPI token boundary, public deployed
                         UI/API, admin/status/report panels with local owner
                         summaries.
 
-Gap to production       User accounts, workspaces, RBAC, API-key lifecycle,
-                        quotas, billing, share/export flows, real frontend,
+Gap to production       User accounts, workspaces, RBAC, identity-backed API-key
+                        lifecycle, quotas, billing, share/export flows, real frontend,
                         onboarding, team/lab workflows.
 
 Priority                Medium-high. Build after storage/job ownership is clear.
