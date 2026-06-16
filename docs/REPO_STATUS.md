@@ -54,6 +54,9 @@ verification evidence was recorded in `32fca21`. The previous small-group live
 retrieval baseline was built from the `d80c083` / `cc705dc` quality run. The
 current source/eval quality baseline is `9b1cbc5`, and its expanded
 107-question retrieval set has now passed against the live deployment.
+The latest platform-migration source/docs sync deployed to `/opt/fluxmind` is
+`d2774a6` (`docs: record platform migration preflight`), with implementation
+commit `8a4a76f` (`feat: add platform migration preflight`).
 
 Current local verification on 2026-06-16 18:02 CST:
 
@@ -541,6 +544,9 @@ Chunk rows          1934 across 30 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
 Job-store readiness local job store available; external job store configured false
+Migration preflight preflight_ok=true; activation_ready=false; local_blockers=none;
+                    activation blockers are the expected external metadata DB,
+                    object storage, and distributed job-store targets
 Docker execution    configured=False available=False reason=not_configured
 Disk                /dev/vda3 40G total, 24G free, 36% used
 ```
