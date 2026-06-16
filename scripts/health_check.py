@@ -151,8 +151,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  c41ea94 feat: add local product registry" in repo_status
-        and "Current docs/health sync       c41ea94 feat: add local product registry" in repo_status
+        and "Current implementation commit  c130778 feat: add local product quota guard" in repo_status
+        and "Current docs/health sync       c130778 feat: add local product quota guard" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:13 CST"
         in repo_status

@@ -416,9 +416,14 @@ foundation can pass through API access audit, owner metadata, local rate-limit
 configuration, query-cost estimation surfaces, and the optional local hashed-key
 registry. When the optional local product registry is enabled, local-registry
 identity, SQLite quota store, and local-ledger billing attribution can also be
-verified without external accounts. Activation remains blocked until the chosen
-identity, quota-store, billing-provider, and billing-attribution targets are
-configured. The CLI
+verified without external accounts. When `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED`
+is explicitly enabled together with the local product registry and SQLite quota
+store, the FastAPI `/query`, `/query/inspect`, `/query/retrieve`, and
+`/query/report` paths resolve the local user/workspace, check the configured
+request quota, record a metadata-only usage event, and reject over-limit
+requests before calling the model provider. Activation remains blocked until the
+chosen identity, quota-store, billing-provider, billing-attribution, and runtime
+quota-guard targets are configured. The CLI
 `scripts/product_readiness.py` exits successfully for local foundation readiness
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,

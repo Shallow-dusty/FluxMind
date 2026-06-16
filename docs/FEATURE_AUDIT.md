@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 407 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 412 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
@@ -124,9 +124,11 @@ Product platform layer        incomplete    local product-readiness CLI/admin/re
                                             lifecycle is implemented through a hash-only SQLite
                                             registry. Local users/workspaces/quota limits/usage/
                                             billing attribution are implemented through an optional
-                                            SQLite product registry. External identity providers,
-                                            identity-backed quotas, external billing/payment, and
-                                            a real frontend are not implemented.
+                                            SQLite product registry, and `/query*` routes can enforce
+                                            local request quotas when the product quota guard is
+                                            explicitly enabled. External identity providers,
+                                            external billing/payment, RBAC, and a real frontend are
+                                            not implemented.
 ```
 
 ## API Route Coverage
@@ -270,7 +272,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   surface. The current local foundation passes, and the local API-key lifecycle
   registry is implemented with hash-only storage and API auth integration. The
   local product registry now covers users, workspaces, quota limits, usage events,
-  and billing attribution as a SQLite ledger for readiness checks. Activation
+  and billing attribution as a SQLite ledger for readiness checks. FastAPI query
+  routes can also use that ledger as a local request quota guard when explicitly
+  enabled, returning `429` before model generation for over-limit work. Activation
   still remains blocked on real external identity provider, identity-backed quota
   enforcement, external billing/payment provider, and tenancy decisions when
   those are required for production.

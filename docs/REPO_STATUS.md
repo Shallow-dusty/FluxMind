@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 00:13 CST
+Snapshot time: 2026-06-17 00:33 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,10 +14,10 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  c41ea94 feat: add local product registry
-Current docs/health sync       c41ea94 feat: add local product registry
-Remote status at verification  main == origin/main at c41ea94
-Current refresh scope          local product registry deployment record refresh
+Current implementation commit  c130778 feat: add local product quota guard
+Current docs/health sync       c130778 feat: add local product quota guard
+Remote status at verification  local ahead of origin pending product quota guard push
+Current refresh scope          local product quota guard implementation and docs refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   8f9db56 docs: document local API key registry boundary
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 00:13 CST
@@ -91,14 +91,20 @@ no-secret health anchors. The live deployment keeps this registry backend
 disabled by default (`none`), so no multi-user identity, quota, or billing
 runtime is activated until the corresponding local backends are deliberately
 enabled.
+The current local implementation head is `c130778` (`feat: add local product
+quota guard`). It adds an opt-in runtime quota guard for `/query`,
+`/query/inspect`, `/query/retrieve`, and `/query/report` when the local product
+registry and SQLite quota store are explicitly enabled. Default production
+configuration remains disabled until deployment verification updates
+`docs/DEPLOYMENT_STATUS.md`.
 
 Current local verification on 2026-06-17 00:06 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 407 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 407 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 412 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 412 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 89%,

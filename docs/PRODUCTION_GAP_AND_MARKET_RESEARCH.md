@@ -35,12 +35,12 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation c41ea94 feat: add local product registry
-Current docs/health    c41ea94 feat: add local product registry
-Status note     this docs-status refresh follows local product registry deployment verification
+Current implementation c130778 feat: add local product quota guard
+Current docs/health    c130778 feat: add local product quota guard
+Status note     this docs-status refresh follows local product quota guard implementation; live deployment refresh remains in docs/DEPLOYMENT_STATUS.md
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Work scope      local product registry, product-readiness linkage, tests, health anchors, docs refresh
-Diff hygiene    git diff --check passed on 2026-06-17 00:06 CST
+Work scope      local product quota guard, product-readiness linkage, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed on 2026-06-17 00:33 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -48,14 +48,14 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    407 passed, 2 known warnings
+pytest                                    412 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota anchors
 storage_schema.py                         pass, ok=true, 9 stores, 0 problems
 api_key_registry.py status                pass, backend=none, available=false,
                                           active_keys=0, secrets_exported=false
@@ -64,7 +64,7 @@ product_registry.py status                pass, backend=none, available=false,
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
-                                          identity/quota/billing blockers
+                                          identity/quota/billing/quota-guard blockers
 provider_readiness.py                     pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           provider/MATLAB blockers
@@ -158,7 +158,9 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         local identity/quota/billing foundation, including the
                         hash-only local API-key registry plus a local product
                         registry for users, workspaces, quota limits, usage, and
-                        billing attribution, with activation blockers for
+                        billing attribution. `/query*` routes can enforce local
+                        request quotas when the product quota guard is explicitly
+                        enabled, with activation blockers still reporting
                         external systems.
 
 Gap to production       Relational metadata store, object storage, vector DB or
@@ -221,9 +223,9 @@ Product shell           Streamlit UI, FastAPI token boundary, public deployed
                         UI/API, admin/status/report panels with local owner
                         summaries.
 
-Gap to production       User accounts, workspaces, RBAC, identity-backed API-key
-                        lifecycle, quotas, billing, share/export flows, real frontend,
-                        onboarding, team/lab workflows.
+Gap to production       External user accounts, RBAC, external identity-backed
+                        API-key lifecycle, external billing/payment, share/export
+                        flows, real frontend, onboarding, team/lab workflows.
 
 Priority                Medium-high. Build after storage/job ownership is clear.
 ```

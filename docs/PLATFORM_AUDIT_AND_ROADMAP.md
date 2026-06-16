@@ -75,8 +75,9 @@ RAG quality coverage      small-group retrieval bar met; broad live answer QA re
 Execution/artifacts       good contract baseline; not production sandboxed
 Storage/queue durability  local SQLite/JSONL bridge plus explicit external
                           job-store readiness target; not distributed yet
-Product maturity          pre-platform: local API-key and product registries
-                          exist; external identity/payment and teams disabled
+Product maturity          pre-platform: local API-key/product registries and
+                          optional query quota guard exist; external
+                          identity/payment and teams disabled
 Frontend maturity         demo/personal workflow; Streamlit remains limiting
 ```
 
@@ -615,10 +616,12 @@ Reference: https://developers.cloudflare.com/sandbox/
 Status: partial local foundation. Local API-key lifecycle is implemented through
 a hash-only SQLite registry, and local user/workspace/quota/usage/billing
 attribution state is implemented through a separate SQLite product registry.
-Public identity providers, identity-backed quota enforcement, external billing,
-and team workflows remain disabled until those product and operational decisions
-are made. FluxMind exposes no-secret product-readiness and provider-readiness
-preflights plus admin surfaces for the remaining blockers.
+The local product registry can also enforce request quotas on `/query*` routes
+when the quota guard is explicitly enabled. Public identity providers, external
+identity-backed quota infrastructure, external billing, and team workflows
+remain disabled until those product and operational decisions are made.
+FluxMind exposes no-secret product-readiness and provider-readiness preflights
+plus admin surfaces for the remaining blockers.
 
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.

@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress on 2026-06-16: the automated suite has 407 passing
+Current hardening progress on 2026-06-17: the automated suite has 412 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
@@ -56,8 +56,10 @@ The current product-shell slice also adds optional local SQLite API key and
 product registries. The API-key registry stores token hashes only and supports
 create/list/verify/revoke plus FastAPI auth integration. The product registry
 stores local users, workspaces, quota limits, usage events, and billing
-attribution records for no-secret readiness checks. Both are covered by
-storage-schema, runtime-manifest, admin-inventory, CLI, and unit tests.
+attribution records for no-secret readiness checks; when explicitly enabled, it
+also guards `/query*` routes with local request quotas and records metadata-only
+usage attribution. Both are covered by storage-schema, runtime-manifest,
+admin-inventory, CLI, and unit/API tests.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, external identity providers,
@@ -672,7 +674,8 @@ local API rate-limit status, local job/provider/query/retrieval/code advisory al
 metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
 inventory dashboard plus no-secret runtime backup manifest, restore dry-run
-verifier, local API-key lifecycle registry, local product registry, and
+verifier, local API-key lifecycle registry, local product registry, local
+product quota guard, and
 provider-readiness preflight implemented; keep external identity providers,
 identity-backed quotas, and external billing disabled until decisions are made
 
@@ -707,6 +710,13 @@ identity-backed quotas, and external billing disabled until decisions are made
   limits/usage/billing-attribution ledger. It supports status, bootstrap-local,
   set-quota, record-usage, and list-workspaces while keeping provider secrets,
   payment credentials, prompts, answers, and runtime file contents out of output.
+- FastAPI query routes can enforce the local product registry's `requests`
+  quota when `IDENTITY_QUOTAS_BILLING_ENABLED=true`,
+  `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`,
+  `FLUXMIND_QUOTA_STORE_BACKEND=sqlite`, and
+  `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` are all set. Over-limit requests
+  return `429` before model generation and record only metadata-only quota
+  events.
 - `scripts/platform_migration_preflight.py` gives production storage/worker
   migration a single no-secret CLI gate. It reports `preflight_ok` for local
   evidence and `activation_ready` for configured external backends, keeping
@@ -720,7 +730,8 @@ identity-backed quotas, and external billing disabled until decisions are made
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
   access audit, owner metadata, rate-limit configuration, local API-key registry,
-  local product registry, and cost-estimation surfaces are present;
+  local product registry, local product quota guard, and cost-estimation
+  surfaces are present;
   `--require-activation` still fails until the chosen identity provider, quota
   store, billing provider, and billing-attribution targets are configured.
 - `scripts/provider_readiness.py` gives external image providers, hosted
