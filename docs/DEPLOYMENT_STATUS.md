@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 02:37 CST
+Last live check: 2026-06-17 02:59 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,16 +9,16 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last verified source/eval baseline before this deployment record: `9b1cbc5`
-(`test: expand FluxMind community quality eval`). `/opt/fluxmind` is not a
+Last verified source/eval update before this deployment record: `95f1760`
+(`test: add octave-aware code-output eval`), building on the `9b1cbc5`
+community-quality eval baseline. `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `fa512df`
-(`fix: tolerate partial live quality result objects`), after feature commit
-`177dd4e` (`feat: gate quality readiness on live answer metrics`).
-Last deployed source/docs/health sync: `35338d2`
-(`docs: clarify live answer quality readiness`).
+Last deployed implementation update: `95f1760`
+(`test: add octave-aware code-output eval`).
+Last deployed source/docs/health sync: `e4da2e9`
+(`docs: document octave-aware eval status`).
 
 ```
 Host          Trace-Twin
@@ -100,20 +100,39 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
-Live-answer-quality-readiness deploy was refreshed on 2026-06-17 02:37 CST
-after pushing `177dd4e`, `35338d2`, and `fa512df`. `.venv/bin/python
-scripts/deploy_sync.py --apply --restart` synced source, docs, tests, and
-health-check changes to
-`/opt/fluxmind`, then restarted `fluxmind-api.service`,
-`fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
-`active`. API startup completed after the normal model/import cold-start window.
+Octave-aware code-output eval status was refreshed on 2026-06-17 02:59 CST
+after pushing `95f1760` and `e4da2e9`. `.venv/bin/python
+scripts/deploy_sync.py --apply` synced source, docs, tests, and health-check
+changes to `/opt/fluxmind` without restarting services, because the active
+UI/API/worker runtime path did not change.
 
 The follow-up health gates passed with public HTTPS UI 200 at
 `https://smy.hyper-dusty.cloud/`, public API health 200 at
 `https://api-smy.hyper-dusty.cloud/health`, services active, ports `18501` and
 `18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
-`chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
-`index_fresh=True`. The default SSH health check passed.
+`chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, `index_fresh=True`,
+and `/dev/vda3` at 36% used. Server-local `venv/bin/python
+scripts/health_check.py` passed, and local
+`.venv/bin/python scripts/health_check.py --url https://smy.hyper-dusty.cloud/
+--ssh-host root@100.100.233.26` also passed.
+
+Server-local `venv/bin/python scripts/evaluate_rag.py --retrieval-url
+http://127.0.0.1:18502 --json-report
+/tmp/fluxmind-live-octave-eval-report.json` passed 107/107 live retrieval
+results and all regression gates. The report metrics include
+`answer_case_count=42`, `retrieval_only_case_count=65`,
+`retrieval_eval_question_count=107`, `recorded_answer_count=42`,
+`code_output_case_count=13`, `pdf_structure_case_count=20`,
+`live_retrieval_result_count=107`, `live_retrieval_pass_rate=1.0`, and
+`seed_paper_count=30`. The Octave-compatible
+`octave-pmsm-current-decay-template` case passed through the expected
+`runtime_unavailable` path on the current host.
+
+Server-local `venv/bin/python scripts/quality_readiness.py --live-report
+/tmp/fluxmind-live-octave-eval-report.json --format markdown` returned
+`local_foundation_ready=true`, `small_group_ready=true`, and
+`community_ready=false`. Community remains blocked on corpus/eval breadth and
+live-answer evidence, not on the 13-case code-output gate.
 
 Server-local `scripts/product_readiness.py --format markdown` returned
 `local_foundation_ready=true`, `activation_ready=false`,
@@ -231,11 +250,11 @@ passed with the local FAISS index non-empty and `active_papers=30`.
 
 Server-local
 `venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
---json-report /tmp/fluxmind-live-community-expansion-report.json` passed all
-107 live retrieval cases, with `minimum_live_retrieval_pass_rate=1.00`. The
+--json-report /tmp/fluxmind-live-octave-eval-report.json` passed all 107 live
+retrieval cases, with `minimum_live_retrieval_pass_rate=1.00`. The current
 report metrics are `answer_case_count=42`, `retrieval_only_case_count=65`,
 `retrieval_eval_question_count=107`, `recorded_answer_count=42`,
-`code_output_case_count=12`, `pdf_structure_case_count=20`,
+`code_output_case_count=13`, `pdf_structure_case_count=20`,
 `live_retrieval_result_count=107`, and `seed_paper_count=30`. Public HTTPS
 checks with bounded timeouts passed after the sync:
 `https://api-smy.hyper-dusty.cloud/health` returned `{"status":"ok"}` and
@@ -243,7 +262,7 @@ checks with bounded timeouts passed after the sync:
 
 Current community gaps remain: corpus growth toward 50 papers, 80 answer cases,
 80 recorded answers, 100 retrieval-only cases, 180 total retrieval questions,
-30 PDF structure cases, and live answer evidence. The 12-case code-output target
+30 PDF structure cases, and live answer evidence. The 13-case code-output gate
 and 100-case live retrieval target are now met.
 
 Production readiness foundation deploy was refreshed on 2026-06-16 14:42 CST
@@ -297,7 +316,8 @@ active, ports `18501` and `18502` listening, Docker execution still
 available, retrieval/admin smokes passing, and `/dev/vda3` at 36% used. At that
 point, small-group gaps were zero and community gaps still included corpus
 growth toward 50 papers, 80 recorded answers, 180 retrieval questions, 30 PDF
-structure cases, 12 code-output cases, and live answer evidence.
+structure cases, and live answer evidence; code-output breadth is now 13 cases
+in the latest 2026-06-17 eval sync.
 
 Corpus-expansion deploy and live retrieval evaluation were refreshed on
 2026-06-15 14:29 CST after pushing `b2f543e` and `d1e5326`. Four additional

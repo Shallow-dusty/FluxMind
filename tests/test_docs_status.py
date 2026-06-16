@@ -9,19 +9,21 @@ def test_repo_status_records_post_deployment_git_boundary():
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Current implementation commit  95f1760 test: add octave-aware code-output eval" in text
-    assert "Current docs/health sync       95f1760 test: add octave-aware code-output eval" in text
+    assert "Current docs/health sync       e4da2e9 docs: document octave-aware eval status" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
-    assert "Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST; 95f1760 pending deploy sync at this snapshot" in text
+    assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
     assert "`177dd4e` (`feat: gate quality readiness on live answer metrics`)" in text
     assert "`35338d2` (`docs: clarify live answer quality readiness`)" in text
     assert "`fa512df` (`fix: tolerate partial live quality result objects`)" in text
     assert "`95f1760`" in text
+    assert "`e4da2e9` (`docs: document octave-aware eval status`)" in text
     assert "Octave-aware code-output fallback" in text
     assert "pmsm_current_decay" in text
     assert "structured runtime-unavailable diagnostic" in text
     assert "live answer count/pass-rate/term-coverage gates" in text
     assert "live_retrieval_pass_rate=1.0" in text
+    assert "code_output_case_count=13" in text
     assert "live_answer_result_count=0" in text
     assert "local product registry source/docs/health sync deployed to" in text
     assert "`c41ea94` (`feat: add local product registry`)" in text

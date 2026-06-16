@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 02:52 CST
+Snapshot time: 2026-06-17 02:59 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -15,13 +15,13 @@ Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  95f1760 test: add octave-aware code-output eval
-Current docs/health sync       95f1760 test: add octave-aware code-output eval
-Remote status at verification  main ahead of origin/main by 1 implementation commit before this docs refresh
-Current refresh scope          Octave-aware code-output eval implemented, locally verified, and documented
+Current docs/health sync       e4da2e9 docs: document octave-aware eval status
+Remote status at verification  main == origin/main at e4da2e9 before this deployment-record refresh
+Current refresh scope          Octave-aware code-output eval implemented, pushed, deployed, live-verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   35338d2 docs: clarify live answer quality readiness
+Last deployed docs sync base   e4da2e9 docs: document octave-aware eval status
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST
-Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST; 95f1760 pending deploy sync at this snapshot
+Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -77,13 +77,15 @@ no-secret CLI/module for self-use, small-group, and community maturity checks,
 and now merges explicit `--live-report` evidence for live retrieval count/pass
 rate and live answer count/pass-rate/term-coverage gates before readiness can
 pass.
-The latest local source/eval sync is `95f1760`
-(`test: add octave-aware code-output eval`). It raises the code-output regression
-gate to 13 cases, requires Python and Octave language coverage, requires the
-`pmsm_current_decay` template, and lets the Octave case pass only through either
-real artifact output when an `octave` binary is installed or a structured
-runtime-unavailable diagnostic when the binary is absent. This commit is locally
-verified but not yet included in the last deployed snapshot recorded below.
+The latest Octave-aware source/docs/health sync deployed to `/opt/fluxmind` is
+`e4da2e9` (`docs: document octave-aware eval status`), with implementation
+commit `95f1760` (`test: add octave-aware code-output eval`). It raises the
+code-output regression gate to 13 cases, requires Python and Octave language
+coverage, requires the `pmsm_current_decay` template, and lets the Octave case
+pass only through either real artifact output when an `octave` binary is
+installed or a structured runtime-unavailable diagnostic when the binary is
+absent. Server-local live retrieval eval now reports 107/107 live retrieval
+passes and `code_output_case_count=13` after the deploy sync.
 The latest local API-key registry source/docs/health sync deployed to
 `/opt/fluxmind` is `207ba7a` (`fix: extend remote health timeout`), with
 implementation commit `6ad6dbc` (`feat: add local API key registry`),
