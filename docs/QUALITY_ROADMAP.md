@@ -52,7 +52,7 @@ small_group  met: 30 curated papers, 100 no-LLM retrieval questions,
 community    gap: mainly corpus size, live answer evidence, and coverage depth
 ```
 
-Latest measured deployed quality snapshot on 2026-06-16 01:47 CST:
+Latest measured deployed quality snapshot on 2026-06-16 14:17 CST:
 
 ```text
 Metric                         Current  Small-group target  Gap
@@ -68,7 +68,7 @@ pdf_structure_case_count       17       15                  0
 topic_group_count              4        4                   0
 ```
 
-The offline rows come from `/tmp/fluxmind-p0-p1-local-report-v3.json`; live
+The offline rows come from `/tmp/fluxmind-status-refresh-local-report.json`; live
 retrieval comes from `/tmp/fluxmind-live-corpus30-report.json` on the deployed
 host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
 

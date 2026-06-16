@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-16 01:47 CST
+Last updated: 2026-06-16 14:17 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      run on 2026-06-16 01:47 CST; re-run before deploy claims
+                      run on 2026-06-16 14:17 CST; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -37,7 +37,7 @@ Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Status note     this docs-status refresh follows verified live deployment
 Deployed source/eval  d80c083 test: tighten FluxMind small-group quality gates
 Work scope      docs/status/test-guard updates after deployed small-group quality completion
-Diff hygiene    git diff --check passed on 2026-06-16 01:47 CST
+Diff hygiene    git diff --check passed on 2026-06-16 14:17 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -55,9 +55,9 @@ offline RAG eval                          40 answer cases, 60 retrieval-only
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
-HTTPS UI                                  01:47 snapshot: https://smy.hyper-dusty.cloud/ 200
-HTTPS API health                          01:47 snapshot: https://api-smy.hyper-dusty.cloud/health 200
-SSH health                                01:47 snapshot: pass on root@100.100.233.26
+HTTPS UI                                  14:17 snapshot: https://smy.hyper-dusty.cloud/ 200
+HTTPS API health                          14:17 snapshot: https://api-smy.hyper-dusty.cloud/health 200
+SSH health                                14:17 snapshot: pass on root@100.100.233.26
 Remote services                           UI/API/worker/cloudflared/docker active
 Remote listeners                          0.0.0.0:18501 and 0.0.0.0:18502
 Remote model                              LLM_MODEL=mimo-v2.5-pro

@@ -137,7 +137,7 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates" in repo_status
-        and "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 01:47 CST"
+        and "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST"
         in repo_status,
         "repo status records deployment-record baseline",
         failures,
