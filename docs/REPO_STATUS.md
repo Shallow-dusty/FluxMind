@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 14:36 CST
+Snapshot time: 2026-06-16 14:42 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,12 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Verified source/eval baseline  d80c083 test: tighten FluxMind small-group quality gates
-Current implementation base    8191656 docs: refresh FluxMind sync status
-Remote status at verification  main...origin/main up to date before this implementation pass
+Current implementation commit  18200f6 feat: add distributed job store readiness
+Implementation base            8191656 docs: refresh FluxMind sync status
+Remote status at verification  origin/main includes 18200f6 after push
 Current refresh scope          distributed job-store readiness foundation and docs guard refresh
 Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates
 Last deployed docs sync base   8191656 docs: refresh FluxMind sync status
 Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST
+Latest deploy follow-up        18200f6 synced/restarted on 2026-06-16 14:42 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -500,10 +502,11 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after guarded corpus sync,
-index rebuild, live retrieval evaluation, and HTTPS/SSH health checks on
-2026-06-16 14:17 CST in
-`docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
+The latest live deployment snapshot was refreshed after syncing and restarting
+`18200f6`, then running SSH and public HTTPS health checks on
+2026-06-16 14:42 CST in `docs/DEPLOYMENT_STATUS.md`. The earlier guarded
+corpus sync, index rebuild, and live retrieval evaluation were refreshed on
+2026-06-16 14:17 CST. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
@@ -511,8 +514,9 @@ API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/
 retrieval-alerts/storage-schema work above plus the API startup readiness,
 import-latency fixes, coverage gate, 30-paper seed corpus, API token comparison
 hardening, runtime JSON/JSONL state-file tolerance, and `.coverage` deploy
-exclude are now synced or rebuilt on Trace-Twin through the current
-source/runtime boundary. The latest remote corpus status is `papers=30`,
+exclude and the distributed job-store readiness foundation are now synced or
+rebuilt on Trace-Twin through the current source/runtime boundary. The latest
+remote corpus status is `papers=30`,
 `active=30`, `indexed=30`, `chunks=1934`, and `index=fresh`; live retrieval eval
 passes `100/100`, with `small_group=met`. External
 providers, hosted sandboxes, MATLAB,
@@ -532,6 +536,7 @@ FAISS index bytes   2970669
 Chunk rows          1934 across 30 source paths
 Index freshness     True
 Storage readiness   local metadata/object storage available
+Job-store readiness local job store available; external job store configured false
 Docker execution    configured=False available=False reason=not_configured
 Disk                /dev/vda3 40G total, 24G free, 36% used
 ```

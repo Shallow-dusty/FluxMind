@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 14:17 CST
+Last live check: 2026-06-16 14:42 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,6 +14,8 @@ Last verified source/eval baseline before this deployment record: `d80c083`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
+Last deployed implementation update: `18200f6`
+(`feat: add distributed job store readiness`).
 
 ```
 Host          Trace-Twin
@@ -94,6 +96,25 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Production readiness foundation deploy was refreshed on 2026-06-16 14:42 CST
+after pushing `18200f6`.
+`.venv/bin/python scripts/deploy_sync.py --apply --restart` synced source,
+docs, tests, and `.env.example` changes to `/opt/fluxmind`, then restarted
+`fluxmind-api.service`, `fluxmind-ui.service`, and
+`fluxmind-worker.service`; all three returned `active`.
+
+The follow-up SSH health gate passed with services active, ports `18501` and
+`18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
+`chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
+`index_fresh=True`. Admin status smoke reported local metadata/object storage
+available and the new distributed job-store readiness surface as
+`backend=local`, `available=True`, `external_configured=False`; this is the
+expected blocker state until an external job-store backend is chosen and
+migration-tested. The same SSH gate passed admin metrics, chunk-filter,
+retrieval, and corpus-profile report smokes. Public HTTPS checks also passed:
+`https://smy.hyper-dusty.cloud/` returned 200 and
+`https://api-smy.hyper-dusty.cloud/health` returned `{"status":"ok"}`.
 
 Small-group quality completion deploy and live retrieval evaluation were
 refreshed on 2026-06-16 14:17 CST after pushing `e069873`, `cc705dc`, and
@@ -674,6 +695,7 @@ deployed admin layer     present in /opt/fluxmind/src/admin.py
 admin status report      present in /opt/fluxmind/src/admin.py and /opt/fluxmind/api.py; authenticated smoke returned text/markdown
 admin query usage        present in /opt/fluxmind/src/admin.py, /opt/fluxmind/src/chain.py, /opt/fluxmind/src/costs.py, and /opt/fluxmind/api.py; query events keep estimated token counts and can include provider prompt/completion/total token counts when the upstream response exposes them; optional QUERY_COST_* rates estimate local USD cost without external billing; remote smoke returned estimated_cost_usd=0 cost_source=not_configured pricing_configured=false external_billing=false
 admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; authenticated admin smoke returned metadata_backend=local metadata_available=true object_backend=local object_available=true external_storage_configured=false
+admin job-store readiness present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; SSH health on 2026-06-16 14:42 CST returned distributed_job_store backend=local available=true external_configured=false
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
@@ -711,7 +733,7 @@ admin status route       present; authenticated local API returned runtime state
 admin retention preview  present in /opt/fluxmind/api.py, /opt/fluxmind/src/admin.py, and /opt/fluxmind/app.py; authenticated smoke returned mode=preview delete_enabled=false limit=25 uploads=0 artifacts=0
 admin query usage panel  present in /opt/fluxmind/app.py; status_query_usage rendered in Streamlit source
 admin cost pricing panel present in /opt/fluxmind/app.py; status_cost_pricing rendered in Streamlit source
-admin storage panel      present in /opt/fluxmind/app.py; status_storage and storage_readiness rendered in Streamlit source
+admin storage panel      present in /opt/fluxmind/app.py; status_storage, storage_readiness, and distributed_job_store rendered in Streamlit source
 admin inventory panel    present in /opt/fluxmind/app.py; status_storage_inventory rendered in Streamlit source
 admin events route       present in /opt/fluxmind/api.py and /opt/fluxmind/app.py; runtime event filters available by kind/code/q; authenticated event filter smoke created event=070664f3ced8 filtered_count=1 missing_filter_count=0
 admin index freshness    present in /opt/fluxmind/src/admin.py; authenticated local API returned corpus.index.status=fresh
