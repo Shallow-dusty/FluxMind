@@ -123,8 +123,9 @@ BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
 metadata-only retrieval trace events/admin summaries/metrics and local
 retrieval-quality advisory alerts,
-retrieval-only source/page cases, 12 local Python code-output artifact cases
-(four of them job-backed) across reusable execution templates plus
+retrieval-only source/page cases, 13 local code-output artifact cases
+(12 Python, one Octave-compatible runtime-aware case; four Python cases are
+job-backed) across reusable execution templates plus
 paper-specific local fixtures, 20 seeded PDF equation/table/figure/algorithm
 structure extraction acceptance cases, optional JSON eval report export, and
 aggregate eval-set regression gates implemented. The baseline now has a 42-case
@@ -133,8 +134,8 @@ for 107 total no-LLM retrieval questions. It gates 145 expected source/page refs
 ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
 equation fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports; external/service reranking plus richer PDF layout
-extraction and broader Octave *execution* eval (blocked on an Octave binary in
-CI/runtime) remain planned.
+extraction remain planned, while broader real Octave execution coverage depends
+on installing an `octave` binary in CI/runtime.
 
 - `eval/rag_baseline.json` contains a 42-case control-engineering answer
   evaluation set plus 65 retrieval-only source/page cases, with a small domain
@@ -154,6 +155,9 @@ CI/runtime) remain planned.
   artifact store and verify stdout terms, plot/text artifacts, checksums/byte
   metadata, runtime metadata, provider/direct mode, local job-backed mode, and
   reusable execution-template coverage without writing project runtime artifacts.
+  They include an Octave-compatible PMSM current-decay template case that passes
+  either by producing the expected artifact when `octave` is installed or by
+  matching the structured runtime-unavailable diagnostic when it is absent.
 - `pdf_structure_cases` verify that representative seeded PDF pages expose
   equation, table, figure, and algorithm markers through no-key PyMuPDF extraction, so
   paper-to-code workflows can fail locally when source layout anchors disappear.
@@ -217,10 +221,9 @@ CI/runtime) remain planned.
 - Generated answers neutralize out-of-range bracket numbers before validation so
   source-paper bibliography refs cannot masquerade as FluxMind context refs.
 - Still planned: external/service reranking that would require a hosted model or
-  new account; broader Octave *execution* eval (an Octave code-output case would
-  fail in CI until an `octave` binary is installed); a real-PDF algorithm-caption
-  acceptance case (needs a curated paper containing a numbered `Algorithm N`
-  block).
+  new account; broader real Octave execution eval after an `octave` binary is
+  installed in CI/runtime; a real-PDF algorithm-caption acceptance case (needs a
+  curated paper containing a numbered `Algorithm N` block).
 
 Acceptance:
 

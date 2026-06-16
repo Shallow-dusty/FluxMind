@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 02:37 CST
+Snapshot time: 2026-06-17 02:52 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,14 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  fa512df fix: tolerate partial live quality result objects
-Current docs/health sync       35338d2 docs: clarify live answer quality readiness
-Remote status at verification  main == origin/main at fa512df before this deployment-record refresh
-Current refresh scope          live answer quality readiness gates implemented, pushed, deployed, live-verified, and documented
+Current implementation commit  95f1760 test: add octave-aware code-output eval
+Current docs/health sync       95f1760 test: add octave-aware code-output eval
+Remote status at verification  main ahead of origin/main by 1 implementation commit before this docs refresh
+Current refresh scope          Octave-aware code-output eval implemented, locally verified, and documented
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   35338d2 docs: clarify live answer quality readiness
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST
-Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST
+Latest deploy follow-up        177dd4e/35338d2/fa512df synced with restart and live-checked on 2026-06-17 02:37 CST; 95f1760 pending deploy sync at this snapshot
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -34,7 +34,7 @@ Area                 Main contents
 RAG/eval             live retrieval gates, live answer quality readiness
                      gates, aggregate regression gates, recorded-answer
                      checks, JSON eval reports, staged quality-readiness
-                     preflight
+                     preflight, Octave-aware code-output fallback
 Jobs/workers         durable leases, explicit local worker loop, systemd worker
                      unit, retries, deadlines, cancellation metadata
 Corpus/storage       metadata profiles, paper/chunk SQLite mirrors, runtime
@@ -77,6 +77,13 @@ no-secret CLI/module for self-use, small-group, and community maturity checks,
 and now merges explicit `--live-report` evidence for live retrieval count/pass
 rate and live answer count/pass-rate/term-coverage gates before readiness can
 pass.
+The latest local source/eval sync is `95f1760`
+(`test: add octave-aware code-output eval`). It raises the code-output regression
+gate to 13 cases, requires Python and Octave language coverage, requires the
+`pmsm_current_decay` template, and lets the Octave case pass only through either
+real artifact output when an `octave` binary is installed or a structured
+runtime-unavailable diagnostic when the binary is absent. This commit is locally
+verified but not yet included in the last deployed snapshot recorded below.
 The latest local API-key registry source/docs/health sync deployed to
 `/opt/fluxmind` is `207ba7a` (`fix: extend remote health timeout`), with
 implementation commit `6ad6dbc` (`feat: add local API key registry`),
@@ -134,13 +141,13 @@ JSON against a local/staged runtime tree. The verifier returns only safe
 group/token/hash/count differences. The live deployment has the CLI and health
 anchors installed, but still keeps external object storage disabled.
 
-Current local verification on 2026-06-17 02:34 CST:
+Current local verification on 2026-06-17 02:52 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest                                  pass, 432 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 432 tests, 2 known warnings
+.venv/bin/python -m pytest                                  pass, 435 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 435 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/product_registry.py at 92%,
@@ -150,7 +157,7 @@ Command                                                     Result
                                                             src/evaluation.py at 88%,
                                                             scripts/platform_migration_rehearsal.py at 97%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
-                                                            cases, 12 code-output cases,
+                                                            cases, 13 code-output cases,
                                                             20 PDF structure cases,
                                                             42 recorded answers
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
@@ -531,15 +538,18 @@ commands, and the documentation discipline, instead of the earlier
 Streamlit-only summary. These are documentation-only changes and keep the
 docs-guard tests green.
 
-The same 2026-06-13 pass also adds a CI-safe slice of the previously planned
+The same 2026-06-13 pass also added a CI-safe slice of the previously planned
 local eval breadth: a second Python execution template `pmsm_current_step`
 (PMSM q-axis current step response producing CSV/SVG), a second job-backed Python
 code-output eval case using it (4 code-output cases total, 2 job-backed), a
 second Octave template `smc_sign_switching`, and unit tests for the new Python
-template and Octave template breadth. Broader Octave *execution* eval and a
-real-PDF algorithm-caption acceptance case stay deferred (no `octave` binary in
-CI/runtime; no curated library paper with a numbered `Algorithm N` block). Test
-count is now 282 and `evaluate_rag.py` reports 4 code-output cases.
+template and Octave template breadth. The 2026-06-17 follow-up `95f1760` adds
+the first Octave-compatible code-output eval case for `pmsm_current_decay`: it
+runs the real template when `octave` is installed and otherwise accepts only the
+structured runtime-unavailable diagnostic. Broader real Octave execution coverage
+still depends on installing an `octave` binary in CI/runtime, and a real-PDF
+algorithm-caption acceptance case still needs a curated library paper with a
+numbered `Algorithm N` block.
 
 ## Current Documentation Set
 

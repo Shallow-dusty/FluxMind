@@ -48,11 +48,11 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    430 passed, 2 known warnings
+pytest                                    435 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
-                                          cases, 12 code-output cases,
+                                          cases, 13 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier anchors
@@ -583,9 +583,11 @@ offline/recorded answer cases and 65 retrieval-only cases, for 107 total no-LLM
 retrieval questions. The baseline gates 145 source/page refs and 111 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
-12 local Python code-output gates that verify expected stdout plus plot/text
-artifacts in a temporary artifact store, including reusable execution-template
-coverage, paper-specific examples, and four local job-backed execution paths.
+13 local code-output gates that verify expected stdout plus plot/text artifacts
+in a temporary artifact store, including reusable execution-template coverage,
+paper-specific examples, four local Python job-backed execution paths, and an
+Octave-compatible PMSM current-decay case with structured runtime-unavailable
+fallback when no `octave` binary is installed.
 The evaluator also has 20 seeded PDF structure gates for
 equation/table/figure/algorithm markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure

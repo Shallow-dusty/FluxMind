@@ -53,7 +53,7 @@ Target       Status
 -----------  ---------------------------------------------------------------
 self_use     met by the current no-key/local baseline
 small_group  met: 30 curated papers, 107 no-LLM retrieval questions,
-             42 recorded answers, 12 code-output cases, 20 PDF structure
+             42 recorded answers, 13 code-output cases, 20 PDF structure
              cases, and 107/107 live retrieval pass in the latest deployment run
 community    gap: corpus size, live answer evidence, and remaining
              answer/retrieval/PDF coverage depth; when live answer count is met,
@@ -72,7 +72,7 @@ retrieval_only_case_count      65       60                  0
 retrieval_eval_question_count  107      100                 0
 recorded_answer_count          42       40                  0
 live_retrieval_result_count    107      50                  0
-code_output_case_count         12       8                   0
+code_output_case_count         13       8                   0
 pdf_structure_case_count       20       15                  0
 topic_group_count              4        4                   0
 ```

@@ -46,11 +46,11 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 430 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 435 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
-                                             cases, 12 code-output cases,
+                                             cases, 13 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier/provider-readiness/quality-readiness and repo/roadmap drift checks
@@ -109,8 +109,9 @@ Current RAG quality work includes an offline baseline in
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
 baseline now has 42 small-group answer cases, 42 recorded answers, and 65
-retrieval-only cases for 107 total no-LLM retrieval questions, plus 12 local
-Python code-output cases (four job-backed) and 20 seeded PDF
+retrieval-only cases for 107 total no-LLM retrieval questions, plus 13 local
+code-output cases (12 Python, one Octave-compatible runtime-aware case; four
+Python cases are job-backed) and 20 seeded PDF
 equation/table/figure/algorithm structure cases. The baseline gates 145 expected source/page refs, 111 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and
@@ -121,7 +122,10 @@ retrieval-only source/page anchors without answer fixtures, checks recorded
 answers for citation validity plus deterministic key-term coverage thresholds,
 verifies that local Python code-output fixtures produce expected stdout plus
 plot/text artifacts, including reusable execution templates, paper-specific
-paper-to-code examples, and job-backed local execution paths, and verifies that
+paper-to-code examples, and job-backed local execution paths, verifies the
+Octave-compatible PMSM current-decay template through real artifact output when
+`octave` is installed or structured runtime-unavailable fallback when absent,
+and verifies that
 representative PDF pages still expose equation/table/figure/algorithm markers for
 paper-to-code work.
 `scripts/quality_readiness.py` now exposes the same staged target state as a
