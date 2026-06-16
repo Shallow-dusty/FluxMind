@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 14:42 CST
+Snapshot time: 2026-06-16 17:25 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -13,12 +13,12 @@ use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
-Verified source/eval baseline  d80c083 test: tighten FluxMind small-group quality gates
-Current implementation commit  18200f6 feat: add distributed job store readiness
+Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
+Current implementation commit  9b1cbc5 test: expand FluxMind community quality eval
 Implementation base            8191656 docs: refresh FluxMind sync status
-Remote status at verification  origin/main includes 18200f6 after push
-Current refresh scope          distributed job-store readiness foundation and docs guard refresh
-Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates
+Remote status at verification  local main is ahead of origin/main pending this quality/docs push
+Current refresh scope          community-quality eval expansion plus docs guard refresh
+Last deployed source/eval baseline 18200f6 feat: add distributed job store readiness
 Last deployed docs sync base   8191656 docs: refresh FluxMind sync status
 Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST
 Latest deploy follow-up        18200f6 synced/restarted on 2026-06-16 14:42 CST
@@ -50,11 +50,12 @@ Deployment/docs      guarded deploy sync, health-check expansion, deployment
 ```
 
 Earlier no-key platform deployment completed for `a51a060`; that live
-verification evidence was recorded in `32fca21`. The current small-group quality
-source/eval baseline is `d80c083`, with the main corpus/eval expansion in
-`e069873` and the live retrieval recalibration in `cc705dc`.
+verification evidence was recorded in `32fca21`. The deployed small-group live
+retrieval baseline was built from the `d80c083` / `cc705dc` quality run. The
+current source/eval quality baseline is `9b1cbc5`, which has not yet had its
+expanded 107-question retrieval set re-run against the live deployment.
 
-Current local verification on 2026-06-16 14:36 CST:
+Current local verification on 2026-06-16 17:25 CST:
 
 ```text
 Command                                                     Result
@@ -62,10 +63,10 @@ Command                                                     Result
 .venv/bin/python -m pytest -q                               pass, 334 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest                  pass, 334 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py                    pass, 40 answer cases, 60 retrieval-only
-                                                            cases, 11 code-output cases,
-                                                            17 PDF structure cases,
-                                                            40 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
+                                                            cases, 12 code-output cases,
+                                                            20 PDF structure cases,
+                                                            42 recorded answers
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store
                                                             readiness anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
@@ -78,12 +79,12 @@ Admin status smoke                                          distributed_job_stor
                                                             remains the expected external blocker
 ```
 
-The earlier small-group quality work is committed, pushed to `origin/main`
-through source/eval baseline `d80c083`, deployed to Trace-Twin with the guarded
-sync/restart path, and verified after the API readiness window. It expands the deterministic
-RAG baseline from answer-only checks into a
-100-question no-LLM retrieval gate: 40 answer cases, 40 recorded answers, and
-60 retrieval-only source/page cases with topic, lane, and ontology coverage gates.
+The earlier small-group quality work was deployed and live-verified through the
+100/100 retrieval snapshot on 2026-06-16 14:17 CST. The current source/eval
+baseline `9b1cbc5` advances the deterministic RAG baseline beyond that deployed
+snapshot into a 107-question no-LLM retrieval gate: 42 answer cases, 42 recorded
+answers, and 65 retrieval-only source/page cases with topic, lane, and ontology
+coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
 implementation and code-generation report exports, plus local Python
 code-output eval cases that verify generated plot/text artifacts, reusable

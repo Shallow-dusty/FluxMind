@@ -16,14 +16,14 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 332 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 334 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py                             pass, 40 answer cases and
-                                                                      60 retrieval-only cases,
-                                                                      11 code-output cases,
-                                                                      17 PDF structure cases,
-                                                                      40 recorded answers
+.venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
+                                                                      65 retrieval-only cases,
+                                                                      12 code-output cases,
+                                                                      20 PDF structure cases,
+                                                                      42 recorded answers
 .venv/bin/python scripts/health_check.py                             pass, local/docs/query-latency/query-alert/
                                                                       provider-alert/job-alert/API-access-audit/
                                                                       API-rate-limit/upload-scan/
@@ -198,9 +198,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 
 ## Known Evaluation Gaps
 
-- The offline RAG baseline is deterministic and now covers 100 no-LLM retrieval
-  questions plus 11 local Python code-output cases (four job-backed, across
-  reusable templates and paper-specific examples) and 17 seeded PDF
+- The offline RAG baseline is deterministic and now covers 107 no-LLM retrieval
+  questions plus 12 local Python code-output cases (four job-backed, across
+  reusable templates and paper-specific examples) and 20 seeded PDF
   equation/table/figure/algorithm structure cases, but the live answer QA set, richer PDF
   layout extraction, and broader Octave *execution* eval (blocked on an Octave
   binary in CI/runtime) are still narrow for broad control-engineering coverage.

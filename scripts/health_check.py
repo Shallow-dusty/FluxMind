@@ -136,10 +136,11 @@ def main() -> int:
     check("Previous temporary index `80` has been retired" in readme, "README records 80 retirement", failures)
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
-        "Last deployed source/eval baseline d80c083 test: tighten FluxMind small-group quality gates" in repo_status
+        "Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval" in repo_status
+        and "Last deployed source/eval baseline 18200f6 feat: add distributed job store readiness" in repo_status
         and "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST"
         in repo_status,
-        "repo status records deployment-record baseline",
+        "repo status records current source and deployed baselines",
         failures,
     )
     check(

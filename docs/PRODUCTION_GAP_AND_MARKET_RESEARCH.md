@@ -30,10 +30,11 @@ Documentation-pass state:
 
 ```text
 Branch          main
-Start state     source/eval baseline d80c083 before docs refresh
+Start state     deployed source/eval baseline d80c083 before quality expansion
 Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
+Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Status note     this docs-status refresh follows verified live deployment
 Deployed source/eval  d80c083 test: tighten FluxMind small-group quality gates
 Work scope      docs/status/test-guard updates after deployed small-group quality completion
@@ -45,13 +46,13 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    332 passed, 2 known warnings
+pytest                                    334 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
-offline RAG eval                          40 answer cases, 60 retrieval-only
-                                          cases, 11 code-output cases,
-                                          17 PDF structure cases,
-                                          40 recorded answers
+offline RAG eval                          42 answer cases, 65 retrieval-only
+                                          cases, 12 code-output cases,
+                                          20 PDF structure cases,
+                                          42 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
@@ -502,15 +503,15 @@ Order  Lane                                      Why first
 - Add a "paper-to-code report" export: source refs, assumptions, parameters,
   generated code, execution output, plot artifacts.
 
-Current progress on 2026-06-16: the no-key baseline has advanced from 5 to 40
-offline/recorded answer cases and 60 retrieval-only cases, for 100 total no-LLM
-retrieval questions. The baseline gates 136 source/page refs and 102 topic tags
+Current progress on 2026-06-16: the no-key baseline has advanced from 5 to 42
+offline/recorded answer cases and 65 retrieval-only cases, for 107 total no-LLM
+retrieval questions. The baseline gates 145 source/page refs and 111 topic tags
 across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
-11 local Python code-output gates that verify expected stdout plus plot/text
+12 local Python code-output gates that verify expected stdout plus plot/text
 artifacts in a temporary artifact store, including reusable execution-template
 coverage, paper-specific examples, and four local job-backed execution paths.
-The evaluator also has 17 seeded PDF structure gates for
+The evaluator also has 20 seeded PDF structure gates for
 equation/table/figure/algorithm markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
 anchors as a Markdown handoff report. `POST /query/report` now adds a local

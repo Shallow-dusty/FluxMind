@@ -46,13 +46,13 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 332 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 334 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
-.venv/bin/python scripts/evaluate_rag.py  pass, 40 answer cases, 60 retrieval-only
-                                             cases, 11 code-output cases,
-                                             17 PDF structure cases,
-                                             40 recorded answers
+.venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
+                                             cases, 12 code-output cases,
+                                             20 PDF structure cases,
+                                             42 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
@@ -101,10 +101,10 @@ Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
 numbered citation validation, source/page fixture verification, provider-error
 fixtures, generated-answer inspection metadata, and selectable answer modes. The
-baseline now has 40 small-group answer cases, 40 recorded answers, and 60
-retrieval-only cases for 100 total no-LLM retrieval questions, plus 11 local
-Python code-output cases (four job-backed) and 17 seeded PDF
-equation/table/figure/algorithm structure cases. The baseline gates 136 expected source/page refs, 102 topic tags,
+baseline now has 42 small-group answer cases, 42 recorded answers, and 65
+retrieval-only cases for 107 total no-LLM retrieval questions, plus 12 local
+Python code-output cases (four job-backed) and 20 seeded PDF
+equation/table/figure/algorithm structure cases. The baseline gates 145 expected source/page refs, 111 topic tags,
 ontology-group coverage, eval-lane coverage spanning retrieval, answer quality, equation
 fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports, code-output case/language/template/execution-mode/pass
@@ -661,8 +661,9 @@ blocked on product decisions.
    JSON report as the product steering layer: the small-group quality bar is
    met, so the next decision is community-quality evidence versus production
    storage/distributed-worker hardening.
-2. Treat `d80c083` as the current pushed/deployed source/eval baseline and
-   keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
+2. Treat `9b1cbc5` as the current source/eval quality baseline and `18200f6`
+   as the last deployed application baseline until the next guarded deploy.
+   Keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.
 3. Keep the local health/eval/deploy-smoke checks as the deploy gate, and extend

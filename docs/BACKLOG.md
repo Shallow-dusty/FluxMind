@@ -96,21 +96,21 @@ BM25-lite lexical reranking, optional local CrossEncoder reranking,
 generated-answer citation-inspection metadata, numbered-citation prompt guards,
 metadata-only retrieval trace events/admin summaries/metrics and local
 retrieval-quality advisory alerts,
-retrieval-only source/page cases, 11 local Python code-output artifact cases
+retrieval-only source/page cases, 12 local Python code-output artifact cases
 (four of them job-backed) across reusable execution templates plus
-paper-specific local fixtures, 17 seeded PDF equation/table/figure/algorithm
+paper-specific local fixtures, 20 seeded PDF equation/table/figure/algorithm
 structure extraction acceptance cases, optional JSON eval report export, and
-aggregate eval-set regression gates implemented. The baseline now has a 40-case
-small-group quality gate with 40 recorded answers plus 60 retrieval-only cases
-for 100 total no-LLM retrieval questions. It gates 136 expected source/page refs, topic-tag coverage,
+aggregate eval-set regression gates implemented. The baseline now has a 42-case
+small-group quality gate with 42 recorded answers plus 65 retrieval-only cases
+for 107 total no-LLM retrieval questions. It gates 145 expected source/page refs, topic-tag coverage,
 ontology-group coverage, and eval-lane coverage for retrieval, answer quality,
 equation fidelity, code generation, forum-style debugging, failure modes, and
 paper-to-code reports; external/service reranking plus richer PDF layout
 extraction and broader Octave *execution* eval (blocked on an Octave binary in
 CI/runtime) remain planned.
 
-- `eval/rag_baseline.json` contains a 40-case control-engineering answer
-  evaluation set plus 60 retrieval-only source/page cases, with a small domain
+- `eval/rag_baseline.json` contains a 42-case control-engineering answer
+  evaluation set plus 65 retrieval-only source/page cases, with a small domain
   ontology for SMC, PMSM/FOC, observer/estimation, and implementation-trust
   groups.
 - Answer cases record expected source papers/pages, fixture snippets, recorded
