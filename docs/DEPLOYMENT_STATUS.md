@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 19:08 CST
+Last live check: 2026-06-16 19:51 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `e2dc1e3`
-(`feat: add product readiness preflight`).
-Last deployed source/docs sync: `79be409`
-(`docs: record product readiness status`).
+Last deployed implementation update: `938e918`
+(`feat: add provider readiness preflight`).
+Last deployed source/docs sync: `0deea23`
+(`docs: record provider readiness status`).
 
 ```
 Host          Trace-Twin
@@ -98,6 +98,28 @@ The sentence-transformers embedding model was copied to the server under
 depend on downloading from Hugging Face.
 
 ## Last Verification
+
+Provider-readiness deploy was refreshed on 2026-06-16 19:51 CST after pushing
+`938e918` and `0deea23`. `.venv/bin/python scripts/deploy_sync.py --apply
+--restart` synced source, docs, tests, and `.env.example` changes to
+`/opt/fluxmind`, then restarted `fluxmind-api.service`,
+`fluxmind-ui.service`, and `fluxmind-worker.service`; all three returned
+`active`.
+
+The follow-up health gate passed with public HTTPS UI 200 at
+`https://smy.hyper-dusty.cloud/`, public API health 200 at
+`https://api-smy.hyper-dusty.cloud/health`, services active, ports `18501` and
+`18502` listening, local API health `{"status":"ok"}`, `active_papers=30`,
+`chunk_metadata_rows=1934`, `chunk_metadata_sources=30`, and
+`index_fresh=True`. Server-local provider-readiness smoke returned
+`local_foundation_ready=true`, `activation_ready=false`,
+`local_blockers=none`, and activation blockers
+`external_providers_disabled`, `external_image_provider_not_configured`,
+`hosted_execution_provider_not_configured`, `matlab_backend_not_configured`,
+and `provider_quota_guard_not_enabled`; `--require-activation` exited 1 as
+expected. Authenticated admin status returned the same `provider_readiness`
+state, and `/admin/metrics` includes `fluxmind_provider_*` gauges while still
+omitting `api_key` and `owner_id`.
 
 Community-quality eval/docs sync and live retrieval evaluation were refreshed
 on 2026-06-16 17:39 CST after pushing `9b1cbc5` and `8b81c57`.
@@ -727,6 +749,7 @@ admin job-store readiness present in /opt/fluxmind/src/admin.py and /opt/fluxmin
 platform migration preflight present in /opt/fluxmind/src/platform_migration.py and /opt/fluxmind/scripts/platform_migration_preflight.py; SSH smoke on 2026-06-16 18:13 CST returned preflight_ok=true activation_ready=false local_blockers=none activation_blockers=[production_metadata_database_not_configured,production_object_storage_not_configured,distributed_job_store_not_configured]
 runtime migration rehearsal present in /opt/fluxmind/src/storage_migration.py and /opt/fluxmind/scripts/platform_migration_rehearsal.py; SSH smoke on 2026-06-16 18:34 CST returned rehearsal_ok=true copied_files=19 restore_check_ok=true staged_storage_schema_ok=true blockers=none
 product readiness       present in /opt/fluxmind/src/product_readiness.py and /opt/fluxmind/scripts/product_readiness.py; SSH smoke on 2026-06-16 19:08 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[multi_user_identity_not_configured,api_key_lifecycle_not_configured,identity_quota_store_not_configured,billing_provider_not_configured,billing_attribution_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned product_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_product_* and still omit api_key/owner_id
+provider readiness      present in /opt/fluxmind/src/provider_readiness.py and /opt/fluxmind/scripts/provider_readiness.py; SSH smoke on 2026-06-16 19:51 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[external_providers_disabled,external_image_provider_not_configured,hosted_execution_provider_not_configured,matlab_backend_not_configured,provider_quota_guard_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned provider_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_provider_* and still omit api_key/owner_id
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
@@ -858,6 +881,9 @@ python scripts/health_check.py --ssh-host root@100.100.233.26
 
 ssh -o BatchMode=yes root@100.100.233.26 \
   'cd /opt/fluxmind && venv/bin/python scripts/product_readiness.py --format markdown'
+
+ssh -o BatchMode=yes root@100.100.233.26 \
+  'cd /opt/fluxmind && venv/bin/python scripts/provider_readiness.py --format markdown'
 
 ssh -o BatchMode=yes root@100.100.233.26 \
   'systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service fluxmind-worker.service docker.service;

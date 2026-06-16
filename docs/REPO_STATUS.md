@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 19:42 CST
+Snapshot time: 2026-06-16 19:51 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -16,12 +16,12 @@ Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  938e918 feat: add provider readiness preflight
 Implementation base            b0906df docs: record product readiness deployment
-Remote status at verification  origin/main at b0906df before provider-readiness push
-Current refresh scope          provider-readiness preflight plus docs guard refresh
+Remote status at verification  origin/main includes 0deea23 after provider-readiness push
+Current refresh scope          provider-readiness deployment record refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   current docs tree synced with deploy_sync --apply
+Last deployed docs sync base   0deea23 docs: record provider readiness status
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
-Latest deploy follow-up        e2dc1e3/79be409 synced with restart on 2026-06-16 19:08 CST
+Latest deploy follow-up        938e918/0deea23 synced with restart on 2026-06-16 19:51 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -62,9 +62,10 @@ commits `8a4a76f` (`feat: add platform migration preflight`) and `366c1e7`
 The latest product-readiness source/docs sync deployed to `/opt/fluxmind` is
 `79be409` (`docs: record product readiness status`), with implementation commit
 `e2dc1e3` (`feat: add product readiness preflight`) and deployment record
-`b0906df` (`docs: record product readiness deployment`). The provider-readiness
-implementation exists locally at `938e918` and is not recorded as deployed in
-this snapshot.
+`b0906df` (`docs: record product readiness deployment`). The latest
+provider-readiness source/docs sync deployed to `/opt/fluxmind` is `0deea23`
+(`docs: record provider readiness status`), with implementation commit
+`938e918` (`feat: add provider readiness preflight`).
 
 Current local verification on 2026-06-16 19:42 CST:
 
@@ -133,7 +134,16 @@ Remote product readiness smoke                              `/opt/fluxmind/venv/
                                                             admin metrics include
                                                             fluxmind_product_* and omit
                                                             api_key/owner_id
-Remote provider readiness smoke                             pending until 938e918 is deployed
+Remote provider readiness smoke                             `/opt/fluxmind/venv/bin/python
+                                                            scripts/provider_readiness.py`
+                                                            returned local_foundation_ready=true,
+                                                            activation_ready=false;
+                                                            --require-activation exited 1;
+                                                            authenticated admin status returned
+                                                            the same provider_readiness state;
+                                                            admin metrics include
+                                                            fluxmind_provider_* and omit
+                                                            api_key/owner_id
 ```
 
 The earlier small-group quality work was deployed and live-verified through the
