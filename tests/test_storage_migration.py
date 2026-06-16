@@ -5,8 +5,10 @@ from src.jobs import LocalJobStore
 from src.storage_migration import (
     collect_object_storage_migration_manifest,
     format_object_storage_migration_manifest_markdown,
+    format_object_storage_migration_verify_markdown,
     format_storage_migration_rehearsal_markdown,
     run_storage_migration_rehearsal,
+    verify_object_storage_migration_manifest,
 )
 
 
@@ -115,6 +117,118 @@ def test_object_storage_migration_manifest_markdown_is_no_secret(tmp_path):
     assert "Source paths exported: false" in markdown
     assert "paper.pdf" not in markdown
     assert "do-not-copy" not in markdown
+
+
+def test_object_storage_migration_manifest_verify_accepts_matching_runtime(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    _seed_runtime(source)
+
+    manifest = collect_object_storage_migration_manifest(
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    status = verify_object_storage_migration_manifest(
+        manifest,
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    markdown = format_object_storage_migration_verify_markdown(status)
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+
+    assert status["mode"] == "object_storage_migration_manifest_verify"
+    assert status["ok"] is True
+    assert status["checked_objects"] == manifest["object_count"]
+    assert status["missing_objects"] == 0
+    assert status["mismatched_objects"] == 0
+    assert status["extra_objects"] == 0
+    assert status["manifest_errors"] == []
+    assert status["source_paths_exported"] is False
+    assert status["filenames_exported"] is False
+    assert "Verification OK: true" in markdown
+    assert "paper.pdf" not in payload
+    assert "corpus.json" not in payload
+    assert "do-not-copy" not in payload
+    assert "paper.pdf" not in markdown
+
+
+def test_object_storage_migration_manifest_verify_accepts_rehearsal_output(tmp_path):
+    source = tmp_path / "source"
+    staging = tmp_path / "staging"
+    source.mkdir()
+    _seed_runtime(source)
+    rehearsal = run_storage_migration_rehearsal(
+        project_root=source,
+        staging_root=staging,
+        include_object_manifest=True,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+
+    status = verify_object_storage_migration_manifest(
+        rehearsal,
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+
+    assert status["ok"] is True
+    assert status["checked_objects"] == rehearsal["object_storage_manifest"]["object_count"]
+
+
+def test_object_storage_migration_manifest_verify_detects_changed_runtime_file(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    _seed_runtime(source)
+    manifest = collect_object_storage_migration_manifest(
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    (source / "artifacts" / "plot.svg").write_text("<svg>changed</svg>", encoding="utf-8")
+
+    status = verify_object_storage_migration_manifest(
+        manifest,
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+
+    assert status["ok"] is False
+    assert status["mismatched_objects"] == 1
+    assert status["missing_objects"] == 0
+    assert status["extra_objects"] == 0
+    [difference] = status["object_differences"]
+    assert difference["group"] == "artifacts"
+    assert difference["status"] == "mismatched"
+    assert difference["sha256_match"] is False
+    assert difference["object_key_match"] is False
+
+
+def test_object_storage_migration_manifest_verify_rejects_secret_bearing_manifest(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    _seed_runtime(source)
+    manifest = collect_object_storage_migration_manifest(
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    manifest["source_paths_exported"] = True
+    manifest["bucket"] = "hidden-bucket"
+    manifest["objects"][0]["source_path"] = "/private/paper.pdf"
+
+    status = verify_object_storage_migration_manifest(
+        manifest,
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    markdown = format_object_storage_migration_verify_markdown(status)
+
+    assert status["ok"] is False
+    assert "source_paths_exported_must_be_false" in status["manifest_errors"]
+    assert "manifest_contains_unsafe_field" in status["manifest_errors"]
+    assert "object_entry_contains_unsafe_field" in status["manifest_errors"]
+    assert "hidden-bucket" not in payload
+    assert "/private/paper.pdf" not in payload
+    assert "hidden-bucket" not in markdown
+    assert "/private/paper.pdf" not in markdown
 
 
 def test_storage_migration_rehearsal_can_include_object_manifest(tmp_path):

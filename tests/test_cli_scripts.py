@@ -539,6 +539,77 @@ def test_platform_migration_rehearsal_cli_can_include_object_manifest(monkeypatc
     assert seen["object_key_prefix"] == "lab-runtime"
 
 
+def test_platform_migration_rehearsal_cli_verifies_object_manifest_from_stdin(
+    monkeypatch, capsys
+):
+    seen = {}
+
+    def fake_verify(manifest, **kwargs):
+        seen["manifest"] = manifest
+        seen.update(kwargs)
+        return {"mode": "object_storage_migration_manifest_verify", "ok": True}
+
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "verify_object_storage_migration_manifest",
+        fake_verify,
+    )
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"mode":"object_storage_migration_manifest"}'))
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--target-root",
+            "/tmp/root",
+            "--verify-object-manifest",
+            "-",
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output == {"mode": "object_storage_migration_manifest_verify", "ok": True}
+    assert seen["manifest"]["mode"] == "object_storage_migration_manifest"
+    assert str(seen["project_root"]) == "/tmp/root"
+    assert seen["include_runtime_dependencies"] is None
+
+
+def test_platform_migration_rehearsal_cli_verify_failure_returns_nonzero(
+    monkeypatch, tmp_path
+):
+    manifest_path = tmp_path / "object-manifest.json"
+    output_path = tmp_path / "verify.md"
+    manifest_path.write_text('{"mode":"object_storage_migration_manifest"}', encoding="utf-8")
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "verify_object_storage_migration_manifest",
+        lambda manifest, **kwargs: {
+            "mode": "object_storage_migration_manifest_verify",
+            "ok": False,
+        },
+    )
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "format_object_storage_migration_verify_markdown",
+        lambda status: "# Verify",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--verify-object-manifest",
+            str(manifest_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 1
+    assert output_path.read_text(encoding="utf-8") == "# Verify\n"
+
+
 def test_platform_migration_rehearsal_cli_retained_staging_can_fail(monkeypatch, capsys):
     monkeypatch.setattr(
         platform_migration_rehearsal_cli,

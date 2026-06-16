@@ -240,6 +240,13 @@ def main() -> int:
         "object storage migration manifest installed",
         failures,
     )
+    check(
+        "verify_object_storage_migration_manifest" in storage_migration_source
+        and "object_storage_migration_manifest_verify" in storage_migration_source
+        and "object_differences" in storage_migration_source,
+        "object storage migration manifest verifier installed",
+        failures,
+    )
     storage_migration_cli = (
         PROJECT_ROOT / "scripts" / "platform_migration_rehearsal.py"
     ).read_text(encoding="utf-8")
@@ -252,7 +259,8 @@ def main() -> int:
     )
     check(
         "--include-object-manifest" in storage_migration_cli
-        and "--object-key-prefix" in storage_migration_cli,
+        and "--object-key-prefix" in storage_migration_cli
+        and "--verify-object-manifest" in storage_migration_cli,
         "platform migration rehearsal object manifest CLI installed",
         failures,
     )

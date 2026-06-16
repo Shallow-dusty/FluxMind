@@ -29,7 +29,25 @@ from src.storage_schema import storage_schema_status_for_root
 
 STORAGE_MIGRATION_REHEARSAL_SCHEMA_VERSION = 1
 OBJECT_STORAGE_MIGRATION_MANIFEST_SCHEMA_VERSION = 1
+OBJECT_STORAGE_MIGRATION_VERIFY_SCHEMA_VERSION = 1
 DEFAULT_OBJECT_KEY_PREFIX = "fluxmind-runtime"
+_HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+_SAFE_GROUP_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_UNSAFE_OBJECT_MANIFEST_FIELDS = {
+    "bucket",
+    "bucket_name",
+    "content",
+    "credential",
+    "credentials",
+    "endpoint",
+    "file_name",
+    "filename",
+    "filenames",
+    "path",
+    "secret",
+    "source_path",
+    "source_paths",
+}
 
 
 def _utc_now() -> str:
@@ -318,6 +336,298 @@ def _object_manifest_summary(manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _object_manifest_includes_runtime_dependencies(manifest: dict[str, Any]) -> bool:
+    for group in manifest.get("groups", []):
+        if isinstance(group, dict) and group.get("restore_priority") == "runtime_dependency":
+            return True
+    for item in manifest.get("objects", []):
+        if isinstance(item, dict) and item.get("restore_priority") == "runtime_dependency":
+            return True
+    return False
+
+
+def _object_manifest_schema_errors(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    if manifest.get("schema_version") != OBJECT_STORAGE_MIGRATION_MANIFEST_SCHEMA_VERSION:
+        errors.append("schema_version_unsupported")
+    if manifest.get("mode") != "object_storage_migration_manifest":
+        errors.append("mode_invalid")
+    if manifest.get("hash_algorithm") != "sha256":
+        errors.append("hash_algorithm_invalid")
+    if manifest.get("object_key_strategy") != "grouped_by_content_sha256":
+        errors.append("object_key_strategy_invalid")
+    for field in (
+        "content_exported",
+        "secrets_exported",
+        "source_paths_exported",
+        "filenames_exported",
+        "bucket_exported",
+        "external_connectivity_checked",
+    ):
+        if manifest.get(field) is not False:
+            errors.append(f"{field}_must_be_false")
+    key_prefix = manifest.get("key_prefix", DEFAULT_OBJECT_KEY_PREFIX)
+    if not isinstance(key_prefix, str) or "://" in key_prefix:
+        errors.append("key_prefix_invalid")
+    if any(field in manifest for field in _UNSAFE_OBJECT_MANIFEST_FIELDS):
+        errors.append("manifest_contains_unsafe_field")
+
+    groups = manifest.get("groups")
+    objects = manifest.get("objects")
+    if not isinstance(groups, list):
+        errors.append("groups_not_list")
+        groups = []
+    if not isinstance(objects, list):
+        errors.append("objects_not_list")
+        objects = []
+
+    if isinstance(manifest.get("group_count"), int) and manifest.get("group_count") != len(groups):
+        errors.append("group_count_mismatch")
+    if isinstance(manifest.get("object_count"), int) and manifest.get("object_count") != len(objects):
+        errors.append("object_count_mismatch")
+    object_keys = [
+        item.get("object_key")
+        for item in objects
+        if isinstance(item, dict) and isinstance(item.get("object_key"), str)
+    ]
+    if (
+        isinstance(manifest.get("unique_object_count"), int)
+        and manifest.get("unique_object_count") != len(set(object_keys))
+    ):
+        errors.append("unique_object_count_mismatch")
+    object_bytes = [
+        item.get("bytes")
+        for item in objects
+        if isinstance(item, dict) and isinstance(item.get("bytes"), int)
+    ]
+    if (
+        isinstance(manifest.get("total_bytes"), int)
+        and manifest.get("total_bytes") != sum(object_bytes)
+    ):
+        errors.append("total_bytes_mismatch")
+    return errors
+
+
+def _index_object_manifest_objects(
+    manifest: dict[str, Any],
+    *,
+    key_prefix: str,
+) -> tuple[dict[tuple[str, str], dict[str, Any]], list[str]]:
+    errors: list[str] = []
+    records: dict[tuple[str, str], dict[str, Any]] = {}
+    objects = manifest.get("objects")
+    if not isinstance(objects, list):
+        return records, ["objects_not_list"]
+
+    for item in objects:
+        if not isinstance(item, dict):
+            errors.append("object_entry_not_object")
+            continue
+        if any(field in item for field in _UNSAFE_OBJECT_MANIFEST_FIELDS):
+            errors.append("object_entry_contains_unsafe_field")
+            continue
+        group = item.get("group")
+        token = item.get("source_path_token")
+        digest = item.get("sha256")
+        object_key = item.get("object_key")
+        byte_count = item.get("bytes")
+        if (
+            not isinstance(group, str)
+            or not _SAFE_GROUP_RE.fullmatch(group)
+            or not isinstance(token, str)
+            or not _HEX64_RE.fullmatch(token)
+            or not isinstance(digest, str)
+            or not _HEX64_RE.fullmatch(digest)
+            or not isinstance(object_key, str)
+            or "://" in object_key
+            or not object_key.startswith(f"{key_prefix}/{group}/")
+            or not isinstance(byte_count, int)
+            or byte_count < 0
+        ):
+            errors.append("object_entry_invalid")
+            continue
+        identity = (group, token)
+        if identity in records:
+            errors.append("duplicate_object_identity")
+            continue
+        records[identity] = {
+            "group": group,
+            "source_path_token": token,
+            "sha256": digest,
+            "bytes": byte_count,
+            "object_key": object_key,
+            "restore_priority": str(item.get("restore_priority", "")),
+        }
+    return records, errors
+
+
+def verify_object_storage_migration_manifest(
+    manifest: dict[str, Any],
+    *,
+    project_root: Path = config.PROJECT_ROOT,
+    include_runtime_dependencies: bool | None = None,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    """Verify a no-secret object manifest against local runtime files.
+
+    The result deliberately never echoes source paths, filenames, buckets,
+    endpoints, credentials, or object contents from the supplied manifest.
+    """
+    manifest_errors: list[str] = []
+    if not isinstance(manifest, dict):
+        manifest_errors.append("manifest_not_object")
+        manifest = {}
+    if (
+        manifest.get("mode") == "local_runtime_migration_rehearsal"
+        and isinstance(manifest.get("object_storage_manifest"), dict)
+    ):
+        manifest = manifest["object_storage_manifest"]
+
+    manifest_errors.extend(_object_manifest_schema_errors(manifest))
+    key_prefix = _sanitize_object_key_prefix(str(manifest.get("key_prefix", DEFAULT_OBJECT_KEY_PREFIX)))
+    expected_records, expected_errors = _index_object_manifest_objects(
+        manifest,
+        key_prefix=key_prefix,
+    )
+    manifest_errors.extend(expected_errors)
+
+    include_dependencies = (
+        _object_manifest_includes_runtime_dependencies(manifest)
+        if include_runtime_dependencies is None
+        else include_runtime_dependencies
+    )
+    current_manifest = collect_object_storage_migration_manifest(
+        project_root=project_root,
+        include_runtime_dependencies=include_dependencies,
+        key_prefix=key_prefix,
+        generated_at=generated_at,
+    )
+    current_records, current_errors = _index_object_manifest_objects(
+        current_manifest,
+        key_prefix=key_prefix,
+    )
+    manifest_errors.extend(f"current_{error}" for error in current_errors)
+
+    expected_keys = set(expected_records)
+    current_keys = set(current_records)
+    missing_keys = expected_keys - current_keys
+    extra_keys = current_keys - expected_keys
+    shared_keys = expected_keys & current_keys
+    differences: list[dict[str, Any]] = []
+
+    for identity in sorted(missing_keys):
+        expected = expected_records[identity]
+        differences.append(
+            {
+                "group": expected["group"],
+                "source_path_token": expected["source_path_token"],
+                "status": "missing",
+                "expected_bytes": expected["bytes"],
+                "current_bytes": None,
+                "sha256_match": False,
+                "bytes_match": False,
+                "object_key_match": False,
+            }
+        )
+    for identity in sorted(extra_keys):
+        current = current_records[identity]
+        differences.append(
+            {
+                "group": current["group"],
+                "source_path_token": current["source_path_token"],
+                "status": "extra",
+                "expected_bytes": None,
+                "current_bytes": current["bytes"],
+                "sha256_match": False,
+                "bytes_match": False,
+                "object_key_match": False,
+            }
+        )
+    for identity in sorted(shared_keys):
+        expected = expected_records[identity]
+        current = current_records[identity]
+        sha256_match = expected["sha256"] == current["sha256"]
+        bytes_match = expected["bytes"] == current["bytes"]
+        object_key_match = expected["object_key"] == current["object_key"]
+        if sha256_match and bytes_match and object_key_match:
+            continue
+        differences.append(
+            {
+                "group": expected["group"],
+                "source_path_token": expected["source_path_token"],
+                "status": "mismatched",
+                "expected_bytes": expected["bytes"],
+                "current_bytes": current["bytes"],
+                "sha256_match": sha256_match,
+                "bytes_match": bytes_match,
+                "object_key_match": object_key_match,
+            }
+        )
+
+    group_names = sorted(
+        {group for group, _token in expected_keys}
+        | {group for group, _token in current_keys}
+        | {
+            str(group.get("name"))
+            for group in manifest.get("groups", [])
+            if isinstance(group, dict) and group.get("name")
+        }
+    )
+    group_summaries: list[dict[str, Any]] = []
+    for group_name in group_names:
+        group_missing = [
+            item for item in differences
+            if item["group"] == group_name and item["status"] == "missing"
+        ]
+        group_extra = [
+            item for item in differences
+            if item["group"] == group_name and item["status"] == "extra"
+        ]
+        group_mismatched = [
+            item for item in differences
+            if item["group"] == group_name and item["status"] == "mismatched"
+        ]
+        group_summaries.append(
+            {
+                "name": group_name,
+                "expected_objects": sum(1 for key in expected_keys if key[0] == group_name),
+                "current_objects": sum(1 for key in current_keys if key[0] == group_name),
+                "missing_objects": len(group_missing),
+                "mismatched_objects": len(group_mismatched),
+                "extra_objects": len(group_extra),
+                "ok": not group_missing and not group_mismatched and not group_extra,
+            }
+        )
+
+    missing_count = sum(1 for item in differences if item["status"] == "missing")
+    mismatched_count = sum(1 for item in differences if item["status"] == "mismatched")
+    extra_count = sum(1 for item in differences if item["status"] == "extra")
+    ok = not manifest_errors and not missing_count and not mismatched_count and not extra_count
+    return {
+        "schema_version": OBJECT_STORAGE_MIGRATION_VERIFY_SCHEMA_VERSION,
+        "generated_at": generated_at or _utc_now(),
+        "mode": "object_storage_migration_manifest_verify",
+        "ok": ok,
+        "content_exported": False,
+        "secrets_exported": False,
+        "source_paths_exported": False,
+        "filenames_exported": False,
+        "bucket_exported": False,
+        "external_connectivity_checked": False,
+        "hash_algorithm": "sha256",
+        "key_prefix": key_prefix,
+        "include_runtime_dependencies": include_dependencies,
+        "checked_objects": len(expected_records),
+        "current_objects": len(current_records),
+        "missing_objects": missing_count,
+        "mismatched_objects": mismatched_count,
+        "extra_objects": extra_count,
+        "manifest_errors": sorted(set(manifest_errors)),
+        "groups": group_summaries,
+        "object_differences": differences,
+    }
+
+
 def run_storage_migration_rehearsal(
     *,
     project_root: Path = config.PROJECT_ROOT,
@@ -570,5 +880,59 @@ def format_object_storage_migration_manifest_markdown(manifest: dict[str, Any]) 
             f"- {group.get('name', '')}: priority={group.get('restore_priority', '')}, "
             f"source_exists={_format_bool(group.get('source_exists', False))}, "
             f"objects={group.get('object_count', 0)}, bytes={group.get('bytes', 0)}"
+        )
+    return "\n".join(lines)
+
+
+def format_object_storage_migration_verify_markdown(status: dict[str, Any]) -> str:
+    """Render a no-secret object-manifest verification report."""
+    lines = [
+        "# FluxMind Object Storage Migration Manifest Verification",
+        "",
+        "No runtime contents, source paths, filenames, buckets, endpoints, credentials, or secrets are exported.",
+        "",
+        f"- Generated at: {status.get('generated_at', '')}",
+        f"- Mode: {status.get('mode', '')}",
+        f"- Verification OK: {_format_bool(status.get('ok', False))}",
+        f"- Content exported: {_format_bool(status.get('content_exported', False))}",
+        f"- Secrets exported: {_format_bool(status.get('secrets_exported', False))}",
+        f"- Source paths exported: {_format_bool(status.get('source_paths_exported', False))}",
+        f"- Filenames exported: {_format_bool(status.get('filenames_exported', False))}",
+        f"- Bucket exported: {_format_bool(status.get('bucket_exported', False))}",
+        f"- External connectivity checked: {_format_bool(status.get('external_connectivity_checked', False))}",
+        f"- Include runtime dependencies: {_format_bool(status.get('include_runtime_dependencies', False))}",
+        f"- Checked objects: {status.get('checked_objects', 0)}",
+        f"- Current objects: {status.get('current_objects', 0)}",
+        f"- Missing objects: {status.get('missing_objects', 0)}",
+        f"- Mismatched objects: {status.get('mismatched_objects', 0)}",
+        f"- Extra objects: {status.get('extra_objects', 0)}",
+        "",
+        "## Manifest Errors",
+        "",
+        f"- {', '.join(status.get('manifest_errors', [])) or 'none'}",
+        "",
+        "## Runtime Groups",
+        "",
+    ]
+    for group in status.get("groups", []):
+        lines.append(
+            f"- {group.get('name', '')}: ok={_format_bool(group.get('ok', False))}, "
+            f"expected={group.get('expected_objects', 0)}, "
+            f"current={group.get('current_objects', 0)}, "
+            f"missing={group.get('missing_objects', 0)}, "
+            f"mismatched={group.get('mismatched_objects', 0)}, "
+            f"extra={group.get('extra_objects', 0)}"
+        )
+    differences = status.get("object_differences", [])
+    lines.extend(["", "## Object Differences", ""])
+    if not differences:
+        lines.append("- none")
+    for item in differences:
+        lines.append(
+            f"- {item.get('group', '')}: status={item.get('status', '')}, "
+            f"source_path_token={item.get('source_path_token', '')}, "
+            f"sha256_match={_format_bool(item.get('sha256_match', False))}, "
+            f"bytes_match={_format_bool(item.get('bytes_match', False))}, "
+            f"object_key_match={_format_bool(item.get('object_key_match', False))}"
         )
     return "\n".join(lines)

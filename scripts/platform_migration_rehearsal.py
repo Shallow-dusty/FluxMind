@@ -15,8 +15,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.storage_migration import (
+    format_object_storage_migration_verify_markdown,
     format_storage_migration_rehearsal_markdown,
     run_storage_migration_rehearsal,
+    verify_object_storage_migration_manifest,
 )
 
 
@@ -29,8 +31,16 @@ def emit_output(output: str, output_path: str | None) -> None:
 
 def _render(status: dict, output_format: str) -> str:
     if output_format == "markdown":
+        if status.get("mode") == "object_storage_migration_manifest_verify":
+            return format_object_storage_migration_verify_markdown(status) + "\n"
         return format_storage_migration_rehearsal_markdown(status) + "\n"
     return json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def _read_json(path: str) -> dict:
+    if path == "-":
+        return json.loads(sys.stdin.read())
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def main() -> int:
@@ -71,9 +81,27 @@ def main() -> int:
         default="fluxmind-runtime",
         help="Opaque object-key prefix for --include-object-manifest output.",
     )
+    parser.add_argument(
+        "--verify-object-manifest",
+        metavar="PATH",
+        help="Verify an opaque object-storage migration manifest JSON against --target-root. Use '-' for stdin.",
+    )
     args = parser.parse_args()
 
     try:
+        if args.verify_object_manifest:
+            manifest = _read_json(args.verify_object_manifest)
+            status = verify_object_storage_migration_manifest(
+                manifest,
+                project_root=Path(args.target_root),
+                include_runtime_dependencies=True
+                if args.include_runtime_dependencies
+                else None,
+            )
+            output = _render(status, args.format)
+            emit_output(output, args.output)
+            return 0 if status.get("ok") else 1
+
         if args.staging_root:
             status = run_storage_migration_rehearsal(
                 project_root=Path(args.target_root),
@@ -100,7 +128,7 @@ def main() -> int:
             output = _render(status, args.format)
             emit_output(output, args.output)
             return 0 if status.get("rehearsal_ok") else 1
-    except OSError as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
