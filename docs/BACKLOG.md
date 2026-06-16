@@ -59,8 +59,11 @@ stores local users, workspaces, quota limits, usage events, and billing
 attribution records for no-secret readiness checks; when explicitly enabled, it
 also guards `/query*` routes with local request quotas, enforces local
 workspace-role permissions on query/job/corpus/admin write paths, and records
-metadata-only usage or RBAC denial attribution. Both are covered by
-storage-schema, runtime-manifest, admin-inventory, CLI, and unit/API tests.
+metadata-only usage or RBAC denial attribution. It now also exposes a local
+operator management surface through `/admin/product-registry/*` and the
+Streamlit admin panel for workspace creation, member roles, quota limits, and
+permission checks. Both registries are covered by storage-schema,
+runtime-manifest, admin-inventory, CLI, API/UI anchors, and unit/API tests.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, external identity providers,
@@ -676,7 +679,8 @@ metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
 inventory dashboard plus no-secret runtime backup manifest, restore dry-run
 verifier, local API-key lifecycle registry, local product registry, local
-product quota guard, local product RBAC guard, and
+product quota guard, local product RBAC guard, local product registry
+management API/UI, and
 provider-readiness preflight implemented; keep external identity providers,
 identity-backed quotas, and external billing disabled until decisions are made
 
@@ -715,6 +719,16 @@ identity-backed quotas, and external billing disabled until decisions are made
   while keeping provider secrets, payment credentials, prompts, answers, and
   runtime file contents out of output. `check-permission` exits nonzero when a
   local role does not satisfy the requested action.
+- `GET/POST /admin/product-registry/*` exposes the same local registry as an
+  API contract for operator tooling: status, workspace list/detail,
+  create/update workspace, add/update member, set quota, set local billing
+  attribution metadata, and permission check. Mutations emit metadata-only
+  `product_registry_admin` runtime events and require the local registry backend
+  to be explicitly configured as SQLite.
+- The Streamlit admin panel includes the local product-registry management
+  surface for workspace, member-role, quota, and permission-check operations
+  when the backend is enabled. With the default disabled backend, it only shows
+  the no-secret unavailable status.
 - FastAPI query routes can enforce the local product registry's `requests`
   quota when `IDENTITY_QUOTAS_BILLING_ENABLED=true`,
   `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`,
@@ -857,7 +871,7 @@ identity-backed quotas, and external billing disabled until decisions are made
   choice, external job-store activation behind the existing readiness target,
   identity-backed deletion/audit controls, external billing/payment activation,
   production scrape/alert routing beyond the local metrics text, and a real
-  product frontend/team admin once external identity exists.
+  product frontend/team admin backed by external identity.
 
 Acceptance:
 

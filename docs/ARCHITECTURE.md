@@ -86,8 +86,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/product_registry.py` and `scripts/product_registry.py`: optional local
   SQLite user/workspace/RBAC/quota/usage/billing-attribution ledger. It gives
   product-readiness a no-secret local contract for product identity state, role
-  permissions, and usage attribution without connecting to an external identity
-  provider or payment processor.
+  permissions, usage attribution, and operator-managed workspace/quota state
+  without connecting to an external identity provider or payment processor.
+  FastAPI exposes the local management contract under
+  `/admin/product-registry/*`, and Streamlit surfaces the same local operator
+  workflow in the admin panel when the SQLite backend is enabled.
 - `src/product_readiness.py` and `scripts/product_readiness.py`: no-secret
   productization readiness check for identity, API-key lifecycle, RBAC, quotas,
   and billing activation. It can verify the local SQLite key registry, product
@@ -436,6 +439,16 @@ guard, and RBAC guard targets are configured. The CLI
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,
 and blocker codes.
+The local registry also has an operator API surface at
+`/admin/product-registry/status`, `/admin/product-registry/workspaces`,
+`/admin/product-registry/workspaces/{workspace_id}`,
+`/admin/product-registry/workspaces/{workspace_id}/members`,
+`/admin/product-registry/workspaces/{workspace_id}/quota`,
+`/admin/product-registry/workspaces/{workspace_id}/billing`, and
+`/admin/product-registry/permissions/check`. These routes are inactive until
+the registry backend is configured as SQLite; mutating routes append
+metadata-only `product_registry_admin` events and still do not create external
+identity or payment accounts.
 `src.provider_readiness` adds the same no-secret split for external provider
 activation. The current local foundation passes with local mock image
 generation, local Python execution, artifact registry, provider-failure

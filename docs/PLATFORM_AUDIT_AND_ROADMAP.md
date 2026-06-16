@@ -619,6 +619,10 @@ attribution state is implemented through a separate SQLite product registry.
 The local product registry can also enforce request quotas on `/query*` routes
 when the quota guard is explicitly enabled, and workspace-role permissions on
 query/job/corpus/admin write paths when the RBAC guard is explicitly enabled.
+The same registry now has local operator management through
+`/admin/product-registry/*` and the Streamlit admin panel for workspace,
+member-role, quota, billing-attribution metadata, and permission-check actions
+when the SQLite backend is explicitly enabled.
 Public identity providers, external identity-backed quota infrastructure,
 external billing, and team workflows remain disabled until those product and
 operational decisions are made.
@@ -682,7 +686,10 @@ code-execution, and API-access audit event kinds. Estimated query usage remains
 the fallback when provider
 usage data is absent; provider-specific pricing is available as local
 configuration only, while billing attribution and user cost dashboards remain
-blocked on product decisions.
+blocked on external product decisions. The local product-registry admin panel
+can configure local workspace, role, quota, and attribution metadata for
+self-hosted/operator testing, but it is not a substitute for external identity
+or payment administration.
 
 ## Near-Term Implementation Plan
 

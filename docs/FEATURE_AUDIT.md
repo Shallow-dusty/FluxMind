@@ -131,9 +131,12 @@ Product platform layer        incomplete    local product-readiness CLI/admin/re
                                             role checks: viewer/member/admin/owner memberships gate
                                             query access, job submit/manage, and corpus/index/admin
                                             destructive writes when the RBAC guard is explicitly
-                                            enabled. External identity providers, external
-                                            billing/payment, production team administration, and a
-                                            real frontend are not implemented.
+                                            enabled. Local operator management is exposed through
+                                            `/admin/product-registry/*` and the Streamlit admin
+                                            panel when the SQLite backend is enabled. External
+                                            identity providers, external billing/payment,
+                                            production team administration, and a real frontend
+                                            are not implemented.
 ```
 
 ## API Route Coverage
@@ -169,6 +172,14 @@ POST   /admin/runtime-manifest/restore-check/report
 GET    /admin/retention
 POST   /admin/retention/delete
 GET    /admin/events
+GET    /admin/product-registry/status
+GET    /admin/product-registry/workspaces
+POST   /admin/product-registry/workspaces
+GET    /admin/product-registry/workspaces/{workspace_id}
+POST   /admin/product-registry/workspaces/{workspace_id}/members
+PUT    /admin/product-registry/workspaces/{workspace_id}/quota
+PUT    /admin/product-registry/workspaces/{workspace_id}/billing
+POST   /admin/product-registry/permissions/check
 
 POST   /query
 POST   /query/inspect
@@ -282,7 +293,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   guard when explicitly enabled, returning `429` before model generation for
   over-limit work. FastAPI query/job/corpus/admin write paths can enforce local
   role permissions when the RBAC guard is explicitly enabled, returning `403`
-  before protected work starts. Activation still remains blocked on real
+  before protected work starts. FastAPI and Streamlit now expose a local
+  product-registry management surface for workspace/member/quota/permission
+  operations when the SQLite backend is enabled. Activation still remains
+  blocked on real
   external identity provider, identity-backed quota enforcement, external
   billing/payment provider, and tenancy decisions when those are required for
   production.

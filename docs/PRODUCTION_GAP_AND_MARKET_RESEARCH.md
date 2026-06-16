@@ -168,7 +168,11 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         guard is explicitly enabled, and query/job/corpus/admin
                         write paths can enforce local workspace roles when the
                         RBAC guard is explicitly enabled, with activation
-                        blockers still reporting external systems.
+                        blockers still reporting external systems. Local
+                        operator management for workspace/member/quota/
+                        billing-attribution metadata is available through
+                        `/admin/product-registry/*` and the Streamlit admin
+                        panel when the SQLite backend is enabled.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,

@@ -55,7 +55,7 @@ Artifacts                  generated plots/files/diagrams with IDs and checksums
 Jobs                       local durable JSONL + SQLite job state, worker service
 Admin/status               no-secret status, events, metrics, retention preview
 API keys                   optional local SQLite registry with hashed tokens only
-Product registry           optional local users/workspaces/RBAC/quotas/billing ledger, query quota guard, and write-path RBAC guard
+Product registry           optional local users/workspaces/RBAC/quotas/billing ledger, admin API/UI, query quota guard, and write-path RBAC guard
 Readiness gates            quality, platform, product, provider, migration checks
 ```
 
@@ -85,6 +85,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 optional hashed API-key registry
 optional product registry SQLite ledger
+local product registry admin API/UI
 optional query quota and local RBAC guards
 ```
 
@@ -172,7 +173,7 @@ FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. These local registries do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
+Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger plus the local `/admin/product-registry/*` management API and Streamlit operator panel. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. These local registries do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
 
 ### Documentation Map
 
@@ -198,7 +199,7 @@ The local research baseline is usable. The remaining path is dependency-driven:
 1. Expand community-quality evidence: more curated papers, recorded answers, retrieval questions, PDF structure cases, and live answer evidence.
 2. Finish production state foundations: metadata database, object storage, distributed job-store backend, migrations, backups, and restore drills.
 3. Harden execution and observability: sandbox decision, abuse controls, production metrics/traces/alerts, cost attribution.
-4. Add product identity: users, workspaces, identity-backed API keys, quotas, billing, and audit controls.
+4. Add external product identity: identity-backed API keys, external quotas, billing/payment, team workflows, and audit controls.
 5. Replace or wrap the demo-oriented Streamlit surface with a maintainable product UI.
 
 ---
@@ -244,7 +245,7 @@ Artifact 管理             生成图、文件、diagram，带稳定 ID 和 chec
 Job 系统                  本地 durable JSONL + SQLite 状态和 worker 服务
 管理面                    no-secret status、events、metrics、retention preview
 API key                   可选本地 SQLite registry，只持久化 token hash
-Product registry          可选本地 user/workspace/RBAC/quota/billing ledger、query quota guard 与写路径 RBAC guard
+Product registry          可选本地 user/workspace/RBAC/quota/billing ledger、admin API/UI、query quota guard 与写路径 RBAC guard
 Readiness 门禁            quality、platform、product、provider、migration 检查
 ```
 
@@ -274,6 +275,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 可选 hashed API-key registry
 可选 product registry SQLite ledger
+本地 product registry admin API/UI
 可选 query quota 与本地 RBAC guard
 ```
 
@@ -361,7 +363,7 @@ FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。这些本地 registry 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
+设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger，以及本地 `/admin/product-registry/*` 管理 API 和 Streamlit operator 面板。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。这些本地 registry 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
 
 ### 文档地图
 
@@ -387,5 +389,5 @@ docs/demo-script.md                    中文演示脚本和答辩问答
 1. 扩展社区质量证据：更多精选论文、recorded answers、retrieval questions、PDF structure cases 和 live answer evidence。
 2. 完成生产状态基础：metadata database、object storage、distributed job-store、迁移、备份和恢复演练。
 3. 强化执行安全和观测：sandbox 方案、滥用控制、生产 metrics/traces/alerts、成本归因。
-4. 建立产品身份层：用户、workspace、identity-backed API key、quota、billing 和审计控制。
+4. 建立外部产品身份层：identity-backed API key、外部 quota、billing/payment、team workflow 和审计控制。
 5. 替换或包裹 demo-oriented Streamlit，形成可维护的正式产品 UI。
