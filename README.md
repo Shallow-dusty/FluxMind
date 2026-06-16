@@ -109,6 +109,7 @@ python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
 python scripts/provider_readiness.py --format markdown
+python scripts/quality_readiness.py --format markdown
 ```
 
 Deployment and live checks:
@@ -150,6 +151,9 @@ and the remaining identity/quota/billing blocker codes without enabling those
 systems. `scripts/provider_readiness.py` reports the matching external image
 provider, hosted sandbox, MATLAB backend, and provider quota-guard activation
 blockers while preserving the same no-secret boundary.
+`scripts/quality_readiness.py` reports the self-use, small-group, and community
+quality target gaps from the eval baseline and can merge explicit no-secret live
+eval reports with `--live-report`.
 
 ### Documentation
 
@@ -279,6 +283,7 @@ python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
 python scripts/provider_readiness.py --format markdown
+python scripts/quality_readiness.py --format markdown
 ```
 
 部署与 live 检查：
@@ -314,6 +319,7 @@ IDENTITY_QUOTAS_BILLING_ENABLED=false
 
 真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。`scripts/product_readiness.py` 会报告当前本地基础和剩余 identity/quota/billing blocker code，但不会启用这些系统。
 `scripts/provider_readiness.py` 会报告外部图像 provider、托管 sandbox、MATLAB backend 和 provider quota guard 的 activation blocker，同样不暴露 secret，也不会启用外部调用。
+`scripts/quality_readiness.py` 会报告 self-use、small-group、community 质量目标缺口，并可通过 `--live-report` 合并显式传入的 no-secret live eval report。
 
 ### 文档入口
 

@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 379 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 387 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
@@ -29,7 +29,7 @@ Command                                                               Result
                                                                       API-rate-limit/upload-scan/
                                                                       retention-delete/metrics-export/retrieval-trace/
                                                                       retrieval-alerts/storage-schema/artifact-limit/
-                                                                      execution-alert/provider-readiness/
+                                                                      execution-alert/provider-readiness/quality-readiness/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py --format... pass, preflight_ok=true,
@@ -45,6 +45,10 @@ Command                                                               Result
                                                                       activation_ready=false with expected
                                                                       provider/MATLAB blockers
 .venv/bin/python scripts/provider_readiness.py --require-activation  pass, exits 1 because activation_ready=false
+.venv/bin/python scripts/quality_readiness.py --format markdown      pass, local_foundation_ready=true,
+                                                                      small_group/community false without supplied
+                                                                      live report evidence
+.venv/bin/python scripts/quality_readiness.py --require-target...    pass, exits 1 because community_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
 server-local evaluate_rag.py --retrieval-url ... --json-report ...   17:39 snapshot, 107/107 live retrieval
@@ -67,7 +71,9 @@ RAG query and inspection      verified      /query, /query/inspect, /query/retri
                                             /corpus/structure, /corpus/structure/report;
                                             offline eval, citation tests, code-output artifact and
                                             template checks, PDF structure checks, and paper-to-code
-                                            report handoff tests pass. Live QA breadth is still limited.
+                                            report handoff tests pass. quality-readiness now reports
+                                            staged self-use/small-group/community gaps. Live QA
+                                            breadth is still limited.
 Corpus and profile control    verified      30-paper curated seed library plus paper/chunk/status/
                                             active/profile routes exist; local
                                             JSON/SQLite store is inspectable. Multi-user ownership and

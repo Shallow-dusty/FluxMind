@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress on 2026-06-16: the automated suite has 379 passing
+Current hardening progress on 2026-06-16: the automated suite has 387 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
@@ -48,8 +48,10 @@ separate local foundations from real identity/quota/billing activation and real
 image-provider, hosted sandbox, MATLAB, and provider quota/cost-guard
 activation. The eval report also
 carries staged quality-maturity targets for self-use, small-group, and community
-readiness; self-use and small-group are now met, so corpus/eval growth can be
-tracked before new platform features are prioritized.
+readiness. `scripts/quality_readiness.py` now turns those targets into a
+no-secret preflight that can merge explicit live eval reports; self-use and the
+latest live-verified small-group lane are met, while community remains a measured
+gap before broader release work.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
@@ -181,6 +183,10 @@ CI/runtime) remain planned.
   machine-readable summary of offline/retrieval-only/code-output/provider/
   recorded/live retrieval/live answer eval results plus quality-maturity target
   gaps for deployment records.
+- `scripts/quality_readiness.py` turns the same quality-maturity targets into a
+  no-secret readiness preflight for self-use, small-group, and community
+  release gates. It exits nonzero under `--require-target community` until the
+  community corpus/eval/live-evidence gaps are closed.
 - `eval/rag_baseline.json` includes aggregate `quality_gates` for minimum case
   count, retrieval-only case count, total retrieval-question count, expected
   source-ref count, provider fixture count, recorded-answer count/pass

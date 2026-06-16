@@ -89,6 +89,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
   It reports safe backend names, local foundation checks, and activation blocker
   codes without exporting prompts, content, URLs, credentials, or license data.
+- `src/quality_readiness.py` and `scripts/quality_readiness.py`: no-secret
+  quality maturity readiness check for the staged self-use, small-group, and
+  community targets. It reuses `eval/rag_baseline.json`, optionally merges
+  explicit no-secret live eval reports, and reports only counts, booleans, and
+  blocker codes.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -237,6 +242,13 @@ and configured live aggregate gates without storing API tokens in the
 repository. `--json-report` writes the same
 offline/retrieval-only/code-output/provider/recorded/live-retrieval/live-answer/gate
 result summary as no-secret JSON for CI or deployment evidence.
+`scripts/quality_readiness.py` is the small wrapper for reading that eval
+baseline as staged readiness. By default it proves the local source-quality
+foundation; when supplied with `--live-report`, it merges the no-secret live
+retrieval/live answer counts from an eval JSON report before deciding whether
+the small-group or community targets are met. `--require-target community`
+stays nonzero until the community bar has enough curated papers, answer cases,
+retrieval questions, PDF structure cases, and live evidence.
 
 For retrieval-only checks, `src.chain.retrieve_with_metadata()` returns
 retrieved context refs, source/page completeness, and the citation guard without
@@ -404,6 +416,10 @@ image, hosted execution, MATLAB backend/license, and provider quota/cost guard
 targets are configured. The CLI `scripts/provider_readiness.py` succeeds for
 local foundation readiness and exits nonzero under `--require-activation` until
 those provider activation blockers are cleared.
+`src.quality_readiness` applies the same no-secret reporting discipline to RAG
+quality maturity. It separates local source/eval readiness from live-evidence
+readiness, masks report paths down to filenames, and keeps prompts, answers,
+source paths, API keys, and runtime contents out of the output.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`

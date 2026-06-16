@@ -46,18 +46,19 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 379 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 387 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 12 code-output cases,
                                              20 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/provider-readiness and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/provider-readiness/quality-readiness and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
+quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
 health_check.py HTTPS endpoints            14:17 snapshot, UI/API 200
 health_check.py SSH runtime                14:17 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
@@ -120,6 +121,10 @@ plot/text artifacts, including reusable execution templates, paper-specific
 paper-to-code examples, and job-backed local execution paths, and verifies that
 representative PDF pages still expose equation/table/figure/algorithm markers for
 paper-to-code work.
+`scripts/quality_readiness.py` now exposes the same staged target state as a
+no-secret preflight: local foundation passes from the source/eval baseline, live
+report evidence can be supplied explicitly, and the community target remains
+nonzero until the corpus/eval/live-answer gaps are closed.
 Retrieval now uses a local hybrid path: FAISS
 vector hits plus BM25-lite keyword matches from the indexed docstore, with
 dedupe, deterministic BM25-lite lexical reranking, optional no-key local
@@ -676,8 +681,10 @@ blocked on product decisions.
    JSON report as the product steering layer: the small-group quality bar is
    met, so the next decision is community-quality evidence versus production
    storage/distributed-worker hardening.
-2. Treat `9b1cbc5` as the current source/eval quality baseline and `18200f6`
-   as the last deployed application baseline until the next guarded deploy.
+2. Treat `9b1cbc5` as the current source/eval quality baseline and `850f7f8`
+   as the current local implementation baseline. The last recorded deployed
+   application baseline remains the provider-readiness source sync until the
+   next guarded deploy.
    Keep `docs/REPO_STATUS.md` plus `docs/DEPLOYMENT_STATUS.md` refreshed after
    any future release or live-state verification pass. Repo documentation commits
    may be newer than the deployed application-code baseline.

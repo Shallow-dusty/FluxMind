@@ -26,6 +26,9 @@ reproducible plots, and implementation notes.
 The executable target definitions live in `eval/rag_baseline.json` under
 `quality_maturity_targets`. `scripts/evaluate_rag.py --json-report ...` exports
 the current metrics and target gaps under `quality_maturity`.
+`scripts/quality_readiness.py` is the no-secret preflight for reading those
+targets directly. It reports self-use, small-group, and community readiness from
+the baseline and can merge explicit live eval evidence with `--live-report`.
 
 ```text
 Stage        Product meaning                 Main bar
@@ -73,6 +76,11 @@ The offline rows come from `scripts/evaluate_rag.py --json-report
 artifacts/eval/community-expansion-local.json` after `9b1cbc5`; live retrieval
 comes from `/tmp/fluxmind-live-community-expansion-report.json` on the deployed
 host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
+`scripts/quality_readiness.py --format markdown` now reports `self_use=met` from
+the source/eval baseline. Without a supplied live report, it intentionally marks
+`small_group=gap` because live evidence is not inferred from prose docs; passing
+the deployed no-secret retrieval report with `--live-report` is the executable
+way to re-prove the small-group lane.
 
 ## Near-Term Quality Lane
 

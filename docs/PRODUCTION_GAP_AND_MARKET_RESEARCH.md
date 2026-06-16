@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-16 14:17 CST
+Last updated: 2026-06-16 20:39 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -13,7 +13,7 @@ Layer                 Current source
 --------------------  -------------------------------------------------------
 Current repo state    git status/log plus docs/REPO_STATUS.md
 Current live state    health_check.py HTTPS/SSH checks plus live retrieval eval
-                      run on 2026-06-16 14:17 CST; re-run before deploy claims
+                      run on 2026-06-16; re-run before deploy claims
 Repo snapshots        docs/ARCHITECTURE.md, docs/BACKLOG.md,
                       docs/PLATFORM_AUDIT_AND_ROADMAP.md, docs/FEATURE_AUDIT.md
 External research     Public project docs, GitHub API, community/forum search
@@ -35,10 +35,11 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Status note     this docs-status refresh follows verified live deployment
-Deployed source/eval  d80c083 test: tighten FluxMind small-group quality gates
-Work scope      docs/status/test-guard updates after deployed small-group quality completion
-Diff hygiene    git diff --check passed on 2026-06-16 14:17 CST
+Current implementation 850f7f8 feat: add quality readiness preflight
+Status note     this docs-status refresh follows local quality-readiness implementation
+Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
+Work scope      quality-readiness CLI/module, tests, health anchors, docs refresh
+Diff hygiene    git diff --check passed on 2026-06-16 20:39 CST
 ```
 
 Current local verification from this pass plus the latest deployment snapshot:
@@ -46,19 +47,25 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    379 passed, 2 known warnings
+pytest                                    387 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+product_readiness.py                      pass, local_foundation_ready=true,
+                                          activation_ready=false with expected
+                                          identity/quota/billing blockers
 provider_readiness.py                     pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           provider/MATLAB blockers
+quality_readiness.py                      pass, local_foundation_ready=true,
+                                          community_ready=false with measured
+                                          corpus/eval/live-evidence gaps
 HTTPS UI                                  14:17 snapshot: https://smy.hyper-dusty.cloud/ 200
 HTTPS API health                          14:17 snapshot: https://api-smy.hyper-dusty.cloud/health 200
 SSH health                                14:17 snapshot: pass on root@100.100.233.26
@@ -590,6 +597,9 @@ owned without reading local JSON/SQLite files by hand.
 - Keep `scripts/provider_readiness.py --require-activation` failing until the
   selected sandbox, MATLAB path, external provider switch, and quota/cost guard
   are all configured and verified.
+- Keep `scripts/quality_readiness.py --require-target community` failing until
+  the community-quality corpus, eval breadth, PDF structure, and live-answer
+  evidence gaps are closed.
 
 Success criterion: generated code can run in a controlled environment, and every
 expensive or risky operation is observable and attributable.

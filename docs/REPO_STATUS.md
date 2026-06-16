@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 19:51 CST
+Snapshot time: 2026-06-16 20:39 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,12 +14,12 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  938e918 feat: add provider readiness preflight
-Implementation base            b0906df docs: record product readiness deployment
-Remote status at verification  origin/main includes 0deea23 after provider-readiness push
-Current refresh scope          provider-readiness deployment record refresh
+Current implementation commit  850f7f8 feat: add quality readiness preflight
+Implementation base            c05a7fd docs: record provider readiness deployment
+Remote status at verification  quality-readiness commits pending push before deployment
+Current refresh scope          quality-readiness local status refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
-Last deployed docs sync base   0deea23 docs: record provider readiness status
+Last deployed docs sync base   c05a7fd docs: record provider readiness deployment
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
 Latest deploy follow-up        938e918/0deea23 synced with restart on 2026-06-16 19:51 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
@@ -32,7 +32,8 @@ pushed to `origin/main`. Their main contents are:
 Area                 Main contents
 -------------------  ---------------------------------------------------------
 RAG/eval             live retrieval gates, aggregate regression gates,
-                     recorded-answer checks, JSON eval reports
+                     recorded-answer checks, JSON eval reports, staged
+                     quality-readiness preflight
 Jobs/workers         durable leases, explicit local worker loop, systemd worker
                      unit, retries, deadlines, cancellation metadata
 Corpus/storage       metadata profiles, paper/chunk SQLite mirrors, runtime
@@ -66,18 +67,25 @@ The latest product-readiness source/docs sync deployed to `/opt/fluxmind` is
 provider-readiness source/docs sync deployed to `/opt/fluxmind` is `0deea23`
 (`docs: record provider readiness status`), with implementation commit
 `938e918` (`feat: add provider readiness preflight`).
+The latest quality-readiness local implementation is `850f7f8`
+(`feat: add quality readiness preflight`). It adds a no-secret CLI/module for
+self-use, small-group, and community maturity checks, including explicit
+`--live-report` evidence merging and `--require-target` failure gates. It is
+not yet recorded as deployed in this snapshot.
 
-Current local verification on 2026-06-16 19:42 CST:
+Current local verification on 2026-06-16 20:39 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 379 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 379 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 387 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 387 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
                                                             src/provider_readiness.py at 93%,
-                                                            src/storage_migration.py at 94%
+                                                            src/storage_migration.py at 94%,
+                                                            src/quality_readiness.py at 88%,
+                                                            scripts/quality_readiness.py at 85%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
                                                             20 PDF structure cases,
@@ -85,7 +93,8 @@ Command                                                     Result
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
                                                             migration-preflight,
                                                             migration-rehearsal, and
-                                                            product/provider-readiness anchors
+                                                            product/provider/quality-readiness
+                                                            anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
                                                             activation_ready=false with expected
@@ -108,6 +117,12 @@ Command                                                     Result
 .venv/bin/python scripts/provider_readiness.py               pass, --require-activation exits 1:
   --require-activation                                      local_foundation_ready=true but
                                                             activation_ready=false
+.venv/bin/python scripts/quality_readiness.py                pass, local_foundation_ready=true,
+                                                            self_use=met, small_group=false
+                                                            without supplied live report,
+                                                            community=false with measured gaps
+.venv/bin/python scripts/quality_readiness.py                pass, --require-target community
+  --require-target community                                exits 1 because community_ready=false
 git diff --check                                            pass
 Admin status smoke                                          distributed_job_store backend=local,
                                                             available=true,
