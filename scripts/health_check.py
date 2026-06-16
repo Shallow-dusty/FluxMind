@@ -323,6 +323,12 @@ def main() -> int:
         "local product RBAC decision installed",
         failures,
     )
+    check(
+        "workspace_detail" in product_registry_source
+        and "list_workspace_summaries" in product_registry_source,
+        "local product registry admin summaries installed",
+        failures,
+    )
     product_registry_cli = (PROJECT_ROOT / "scripts" / "product_registry.py").read_text(
         encoding="utf-8"
     )
@@ -421,6 +427,12 @@ def main() -> int:
     check("status_storage_schemas" in app_source and "storage_schemas" in app_source, "Streamlit storage schema panel installed", failures)
     check("status_platform_readiness" in app_source and "platform_readiness" in app_source, "Streamlit platform readiness panel installed", failures)
     check("status_product_readiness" in app_source and "product_readiness" in app_source, "Streamlit product readiness panel installed", failures)
+    check(
+        "render_product_registry_management" in app_source
+        and "product_registry_management" in app_source,
+        "Streamlit product registry management panel installed",
+        failures,
+    )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
@@ -439,6 +451,13 @@ def main() -> int:
     check("verify_configured_api_key_token" in api_source and "api_key_registry_configured" in api_source, "API auth supports local key registry", failures)
     check("enforce_product_quota" in api_source and "product_quota_guard" in api_source, "API query paths support local product quota guard", failures)
     check("enforce_product_rbac" in api_source and "product_rbac_guard" in api_source, "API write paths support local product RBAC guard", failures)
+    check(
+        "/admin/product-registry/workspaces" in api_source
+        and "admin_product_registry_create_workspace" in api_source
+        and "admin_product_registry_check_permission" in api_source,
+        "API product registry management routes installed",
+        failures,
+    )
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)

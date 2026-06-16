@@ -463,6 +463,141 @@ def test_product_rbac_guard_allows_query_but_blocks_disallowed_writes(tmp_path, 
     assert member_token not in str(events)
 
 
+def test_admin_product_registry_status_reports_disabled_backend(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(api, "PRODUCT_REGISTRY_BACKEND", "none")
+
+    client = TestClient(api.app)
+    response = client.get("/admin/product-registry/status")
+    workspaces = client.get("/admin/product-registry/workspaces")
+
+    assert response.status_code == 200
+    assert response.json()["status"]["available"] is False
+    assert response.json()["status"]["reason"] == "product_registry_not_configured"
+    assert workspaces.status_code == 503
+    assert workspaces.json()["detail"]["code"] == "product_registry_not_configured"
+
+
+def test_admin_product_registry_management_routes_use_local_backend(tmp_path, monkeypatch):
+    db_path = tmp_path / "product_registry.sqlite3"
+    monkeypatch.setattr(api, "API_TOKEN", "admin-token")
+    monkeypatch.setattr(api, "PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", db_path)
+    events = []
+    monkeypatch.setattr(api, "append_runtime_event", lambda **kwargs: events.append(kwargs))
+
+    client = TestClient(api.app)
+    headers = {"X-API-Key": "admin-token", "X-Request-ID": "req-product-admin"}
+    created = client.post(
+        "/admin/product-registry/workspaces",
+        json={
+            "workspace_id": "lab-ws",
+            "label": "Lab Workspace",
+            "owner_user_id": "lab-owner",
+            "owner_label": "Lab Owner",
+        },
+        headers=headers,
+    )
+    member = client.post(
+        "/admin/product-registry/workspaces/lab-ws/members",
+        json={"user_id": "viewer-user", "label": "Viewer", "role": "viewer"},
+        headers=headers,
+    )
+    quota = client.put(
+        "/admin/product-registry/workspaces/lab-ws/quota",
+        json={"metric": "requests", "limit_value": 7, "window_s": 3600},
+        headers=headers,
+    )
+    billing = client.put(
+        "/admin/product-registry/workspaces/lab-ws/billing",
+        json={"billing_mode": "local-ledger", "status": "active", "attribution_enabled": True},
+        headers=headers,
+    )
+    permission = client.post(
+        "/admin/product-registry/permissions/check",
+        json={"workspace_id": "lab-ws", "user_id": "viewer-user", "action": "job_submit"},
+        headers=headers,
+    )
+    listed = client.get("/admin/product-registry/workspaces", headers=headers)
+    detail = client.get("/admin/product-registry/workspaces/lab-ws", headers=headers)
+
+    assert created.status_code == 200
+    assert created.json()["workspace"]["workspace"]["workspace_id"] == "lab-ws"
+    assert member.status_code == 200
+    assert quota.status_code == 200
+    assert billing.status_code == 200
+    assert permission.status_code == 200
+    assert permission.json()["permission"]["allowed"] is False
+    assert permission.json()["permission"]["reason"] == "product_role_forbidden"
+    assert listed.status_code == 200
+    assert listed.json()["workspaces"][0]["member_count"] == 2
+    assert listed.json()["workspaces"][0]["quota_limit_count"] == 1
+    assert listed.json()["workspaces"][0]["billing_configured"] is True
+    assert detail.status_code == 200
+    payload = detail.json()["workspace"]
+    assert [member["role"] for member in payload["members"]] == ["owner", "viewer"]
+    assert payload["quota_limits"][0]["limit_value"] == 7
+    assert payload["billing"]["attribution_enabled"] is True
+    assert "admin-token" not in str(events)
+    assert [event["kind"] for event in events] == [
+        "product_registry_admin",
+        "product_registry_admin",
+        "product_registry_admin",
+        "product_registry_admin",
+        "product_registry_admin",
+    ]
+    assert events[-1]["metadata"]["product_workspace_id"] == "lab-ws"
+
+
+def test_admin_product_registry_management_routes_respect_product_rbac(tmp_path, monkeypatch):
+    api_key_path = tmp_path / "api_keys.sqlite3"
+    product_registry_path = tmp_path / "product_registry.sqlite3"
+    api_key_registry = LocalApiKeyRegistry(api_key_path)
+    owner_token = api_key_registry.create_key(owner_id="owner-user")["token"]
+    viewer_token = api_key_registry.create_key(owner_id="viewer-user")["token"]
+    product_registry = LocalProductRegistry(product_registry_path)
+    workspace = product_registry.create_workspace(
+        workspace_id="rbac-admin-workspace",
+        owner_user_id="owner-user",
+    )
+    product_registry.add_member(
+        workspace_id=workspace.workspace_id,
+        user_id="viewer-user",
+        role="viewer",
+    )
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(api, "IDENTITY_QUOTAS_BILLING_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_RBAC_GUARD_ENABLED", True)
+    monkeypatch.setattr(api, "PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.api_keys.config.API_KEY_REGISTRY_FILE", api_key_path)
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_BACKEND", "sqlite")
+    monkeypatch.setattr("src.product_registry.config.PRODUCT_REGISTRY_FILE", product_registry_path)
+
+    client = TestClient(api.app)
+    viewer_response = client.post(
+        "/admin/product-registry/workspaces/rbac-admin-workspace/members",
+        json={"user_id": "new-admin", "role": "admin"},
+        headers={"X-API-Key": viewer_token},
+    )
+    owner_response = client.post(
+        "/admin/product-registry/workspaces/rbac-admin-workspace/members",
+        json={"user_id": "new-admin", "role": "admin"},
+        headers={"X-API-Key": owner_token},
+    )
+
+    assert viewer_response.status_code == 403
+    assert viewer_response.json()["detail"]["code"] == "product_role_forbidden"
+    assert viewer_response.headers["X-Product-RBAC-Action"] == "admin_write"
+    assert owner_response.status_code == 200
+    roles = {
+        member["user_id"]: member["role"]
+        for member in owner_response.json()["workspace"]["members"]
+    }
+    assert roles["new-admin"] == "admin"
+
+
 def test_query_inspect_returns_citation_validation(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     seen = {}

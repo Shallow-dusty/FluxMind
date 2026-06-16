@@ -668,6 +668,151 @@ class LocalProductRegistry:
             "updated_at": now,
         }
 
+    def workspace_detail(self, *, workspace_id: str) -> dict[str, Any] | None:
+        """Return one workspace with local members, quotas, and billing state."""
+        self.ensure_schema()
+        safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        with sqlite3.connect(self.db_path) as conn:
+            workspace_row = conn.execute(
+                """
+                SELECT workspace_id, label, owner_user_id, status, created_at, updated_at
+                FROM workspaces
+                WHERE workspace_id = ?
+                """,
+                (safe_workspace_id,),
+            ).fetchone()
+            if workspace_row is None:
+                return None
+            member_rows = conn.execute(
+                """
+                SELECT m.user_id, COALESCE(u.label, m.user_id), m.role, m.status, m.created_at, m.updated_at
+                FROM workspace_members m
+                LEFT JOIN product_users u ON u.user_id = m.user_id
+                WHERE m.workspace_id = ?
+                ORDER BY
+                    CASE m.role
+                        WHEN 'owner' THEN 0
+                        WHEN 'admin' THEN 1
+                        WHEN 'member' THEN 2
+                        ELSE 3
+                    END,
+                    m.user_id ASC
+                """,
+                (safe_workspace_id,),
+            ).fetchall()
+            quota_rows = conn.execute(
+                """
+                SELECT metric, limit_value, window_s, updated_at
+                FROM quota_limits
+                WHERE workspace_id = ?
+                ORDER BY metric ASC
+                """,
+                (safe_workspace_id,),
+            ).fetchall()
+            billing_row = conn.execute(
+                """
+                SELECT billing_mode, status, attribution_enabled, updated_at
+                FROM billing_accounts
+                WHERE workspace_id = ?
+                """,
+                (safe_workspace_id,),
+            ).fetchone()
+            usage_count = conn.execute(
+                "SELECT COUNT(*) FROM usage_events WHERE workspace_id = ?",
+                (safe_workspace_id,),
+            ).fetchone()[0]
+        workspace = ProductWorkspace(
+            workspace_id=workspace_row[0],
+            label=workspace_row[1],
+            owner_user_id=workspace_row[2],
+            status=workspace_row[3],
+            created_at=workspace_row[4],
+            updated_at=workspace_row[5],
+        ).to_public_dict()
+        return {
+            "workspace": workspace,
+            "members": [
+                {
+                    "workspace_id": safe_workspace_id,
+                    "user_id": row[0],
+                    "label": row[1],
+                    "role": row[2],
+                    "status": row[3],
+                    "created_at": row[4],
+                    "updated_at": row[5],
+                }
+                for row in member_rows
+            ],
+            "quota_limits": [
+                {
+                    "workspace_id": safe_workspace_id,
+                    "metric": row[0],
+                    "limit_value": int(row[1] or 0),
+                    "window_s": int(row[2] or 0),
+                    "updated_at": row[3],
+                }
+                for row in quota_rows
+            ],
+            "billing": {
+                "workspace_id": safe_workspace_id,
+                "configured": billing_row is not None,
+                "billing_mode": billing_row[0] if billing_row else "",
+                "status": billing_row[1] if billing_row else "",
+                "attribution_enabled": bool(billing_row[2]) if billing_row else False,
+                "updated_at": billing_row[3] if billing_row else "",
+            },
+            "usage_event_count": int(usage_count or 0),
+            "content_exported": False,
+            "secrets_exported": False,
+        }
+
+    def list_workspace_summaries(self, *, limit: int = 50) -> list[dict[str, Any]]:
+        """List local workspace summaries for product-admin screens."""
+        self.ensure_schema()
+        limit_int = min(200, max(1, int(limit)))
+        with sqlite3.connect(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    w.workspace_id,
+                    w.label,
+                    w.owner_user_id,
+                    w.status,
+                    w.created_at,
+                    w.updated_at,
+                    COUNT(DISTINCT m.user_id) AS member_count,
+                    COUNT(DISTINCT q.metric) AS quota_limit_count,
+                    COUNT(DISTINCT u.event_id) AS usage_event_count,
+                    CASE WHEN b.workspace_id IS NULL THEN 0 ELSE 1 END AS billing_configured
+                FROM workspaces w
+                LEFT JOIN workspace_members m ON m.workspace_id = w.workspace_id
+                LEFT JOIN quota_limits q ON q.workspace_id = w.workspace_id
+                LEFT JOIN usage_events u ON u.workspace_id = w.workspace_id
+                LEFT JOIN billing_accounts b ON b.workspace_id = w.workspace_id
+                GROUP BY w.workspace_id
+                ORDER BY w.created_at DESC, w.workspace_id DESC
+                LIMIT ?
+                """,
+                (limit_int,),
+            ).fetchall()
+        return [
+            {
+                "workspace_id": row[0],
+                "label": row[1],
+                "owner_user_id": row[2],
+                "status": row[3],
+                "created_at": row[4],
+                "updated_at": row[5],
+                "member_count": int(row[6] or 0),
+                "quota_limit_count": int(row[7] or 0),
+                "usage_event_count": int(row[8] or 0),
+                "billing_configured": bool(row[9]),
+                "content_exported": False,
+                "secrets_exported": False,
+            }
+            for row in rows
+        ]
+
     def list_workspaces(self) -> list[ProductWorkspace]:
         self.ensure_schema()
         with sqlite3.connect(self.db_path) as conn:

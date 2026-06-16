@@ -1,6 +1,7 @@
 """FluxMind — RAG-based Copilot for Sliding Mode Control & Flux Linkage Estimation."""
 
 import json
+import sqlite3
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -38,6 +39,7 @@ from src.ingestion import (
 )
 from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
 from src.metadata import CorpusProfileStore
+from src.product_registry import LocalProductRegistry, product_registry_backend_status
 from src.runtime import list_runtime_events, logger, new_request_id, normalize_exception
 from src.storage_manifest import (
     collect_runtime_backup_manifest,
@@ -109,6 +111,23 @@ I18N = {
         "artifact_metadata": "产物元数据",
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
+        "product_registry_management": "本地产品 Registry",
+        "product_registry_workspace_id": "Workspace ID",
+        "product_registry_workspace_label": "Workspace 名称",
+        "product_registry_owner_id": "Owner user ID",
+        "product_registry_owner_label": "Owner 名称",
+        "product_registry_create_workspace": "创建/更新 Workspace",
+        "product_registry_member_user_id": "成员 user ID",
+        "product_registry_member_label": "成员名称",
+        "product_registry_member_role": "成员角色",
+        "product_registry_add_member": "添加/更新成员",
+        "product_registry_quota_metric": "Quota 指标",
+        "product_registry_quota_limit": "Quota 上限",
+        "product_registry_quota_window": "Quota 窗口秒数",
+        "product_registry_set_quota": "设置 Quota",
+        "product_registry_permission_action": "权限动作",
+        "product_registry_check_permission": "检查权限",
+        "product_registry_disabled": "本地产品 registry 未启用",
         "download_status_report": "下载状态报告",
         "download_metrics": "下载指标文本",
         "download_runtime_manifest": "下载运行时备份清单",
@@ -252,6 +271,23 @@ I18N = {
         "artifact_metadata": "Artifact metadata",
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
+        "product_registry_management": "Local product registry",
+        "product_registry_workspace_id": "Workspace ID",
+        "product_registry_workspace_label": "Workspace label",
+        "product_registry_owner_id": "Owner user ID",
+        "product_registry_owner_label": "Owner label",
+        "product_registry_create_workspace": "Create/update workspace",
+        "product_registry_member_user_id": "Member user ID",
+        "product_registry_member_label": "Member label",
+        "product_registry_member_role": "Member role",
+        "product_registry_add_member": "Add/update member",
+        "product_registry_quota_metric": "Quota metric",
+        "product_registry_quota_limit": "Quota limit",
+        "product_registry_quota_window": "Quota window seconds",
+        "product_registry_set_quota": "Set quota",
+        "product_registry_permission_action": "Permission action",
+        "product_registry_check_permission": "Check permission",
+        "product_registry_disabled": "Local product registry is not enabled",
         "download_status_report": "Download status report",
         "download_metrics": "Download metrics text",
         "download_runtime_manifest": "Download runtime manifest",
@@ -581,6 +617,177 @@ def render_latest_artifacts() -> None:
                 )
             except (FileNotFoundError, ValueError) as exc:
                 st.caption(str(exc))
+
+
+def render_product_registry_management() -> None:
+    status = product_registry_backend_status()
+    st.caption(text["product_registry_management"])
+    st.json(
+        {
+            "backend": status.get("backend", ""),
+            "available": status.get("available", False),
+            "reason": status.get("reason", ""),
+            "users": status.get("user_count", 0),
+            "workspaces": status.get("workspace_count", 0),
+            "rbac_available": status.get("rbac_available", False),
+            "quota_limits": status.get("quota_limit_count", 0),
+            "usage_events": status.get("usage_event_count", 0),
+            "billing_accounts": status.get("billing_account_count", 0),
+            "secrets_exported": status.get("secrets_exported", False),
+        }
+    )
+    if not status.get("available", False):
+        st.caption(text["product_registry_disabled"])
+        return
+
+    registry = LocalProductRegistry()
+    try:
+        workspaces = registry.list_workspace_summaries(limit=50)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        st.error(str(exc))
+        return
+    st.json({"workspaces": workspaces})
+    default_workspace_id = workspaces[0]["workspace_id"] if workspaces else "local-workspace"
+
+    with st.form("product_registry_workspace_form"):
+        workspace_id = st.text_input(
+            text["product_registry_workspace_id"],
+            value=default_workspace_id,
+            key="product_registry_workspace_id",
+        )
+        workspace_label = st.text_input(
+            text["product_registry_workspace_label"],
+            value="Local workspace",
+            key="product_registry_workspace_label",
+        )
+        owner_id = st.text_input(
+            text["product_registry_owner_id"],
+            value="local-user",
+            key="product_registry_owner_id",
+        )
+        owner_label = st.text_input(
+            text["product_registry_owner_label"],
+            value="Local user",
+            key="product_registry_owner_label",
+        )
+        if st.form_submit_button(text["product_registry_create_workspace"], use_container_width=True):
+            try:
+                workspace = registry.create_workspace(
+                    workspace_id=workspace_id,
+                    label=workspace_label,
+                    owner_user_id=owner_id,
+                    owner_label=owner_label,
+                )
+                st.json(registry.workspace_detail(workspace_id=workspace.workspace_id))
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("product_registry_member_form"):
+        member_workspace_id = st.text_input(
+            text["product_registry_workspace_id"],
+            value=default_workspace_id,
+            key="product_registry_member_workspace_id",
+        )
+        member_user_id = st.text_input(
+            text["product_registry_member_user_id"],
+            value="local-member",
+            key="product_registry_member_user_id",
+        )
+        member_label = st.text_input(
+            text["product_registry_member_label"],
+            value="Local member",
+            key="product_registry_member_label",
+        )
+        member_role = st.selectbox(
+            text["product_registry_member_role"],
+            options=["viewer", "member", "admin", "owner"],
+            index=1,
+            key="product_registry_member_role",
+        )
+        if st.form_submit_button(text["product_registry_add_member"], use_container_width=True):
+            try:
+                if registry.workspace_detail(workspace_id=member_workspace_id) is None:
+                    st.error(text["product_registry_disabled"])
+                else:
+                    registry.add_member(
+                        workspace_id=member_workspace_id,
+                        user_id=member_user_id,
+                        label=member_label,
+                        role=member_role,
+                    )
+                    st.json(registry.workspace_detail(workspace_id=member_workspace_id))
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("product_registry_quota_form"):
+        quota_workspace_id = st.text_input(
+            text["product_registry_workspace_id"],
+            value=default_workspace_id,
+            key="product_registry_quota_workspace_id",
+        )
+        quota_metric = st.text_input(
+            text["product_registry_quota_metric"],
+            value="requests",
+            key="product_registry_quota_metric",
+        )
+        quota_limit = st.number_input(
+            text["product_registry_quota_limit"],
+            min_value=0,
+            max_value=1_000_000_000,
+            value=1000,
+            step=1,
+            key="product_registry_quota_limit",
+        )
+        quota_window = st.number_input(
+            text["product_registry_quota_window"],
+            min_value=0,
+            max_value=31_536_000,
+            value=86400,
+            step=60,
+            key="product_registry_quota_window",
+        )
+        if st.form_submit_button(text["product_registry_set_quota"], use_container_width=True):
+            try:
+                if registry.workspace_detail(workspace_id=quota_workspace_id) is None:
+                    st.error(text["product_registry_disabled"])
+                else:
+                    registry.set_quota(
+                        workspace_id=quota_workspace_id,
+                        metric=quota_metric,
+                        limit_value=int(quota_limit),
+                        window_s=int(quota_window),
+                    )
+                    st.json(registry.workspace_detail(workspace_id=quota_workspace_id))
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("product_registry_permission_form"):
+        permission_workspace_id = st.text_input(
+            text["product_registry_workspace_id"],
+            value=default_workspace_id,
+            key="product_registry_permission_workspace_id",
+        )
+        permission_user_id = st.text_input(
+            text["product_registry_member_user_id"],
+            value="local-member",
+            key="product_registry_permission_user_id",
+        )
+        permission_action = st.selectbox(
+            text["product_registry_permission_action"],
+            options=["query", "job_submit", "corpus_write", "admin_write"],
+            key="product_registry_permission_action",
+        )
+        if st.form_submit_button(text["product_registry_check_permission"], use_container_width=True):
+            try:
+                st.json(
+                    registry.permission_decision(
+                        workspace_id=permission_workspace_id,
+                        user_id=permission_user_id,
+                        action=permission_action,
+                    )
+                )
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
 
 
 def render_admin_status() -> None:
@@ -1164,6 +1371,8 @@ with st.sidebar:
         if st.button(text["refresh_status"], use_container_width=True):
             st.rerun()
         render_admin_status()
+        st.divider()
+        render_product_registry_management()
         st.divider()
         st.caption(text["retention_preview"])
         render_retention_preview()

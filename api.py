@@ -5,11 +5,13 @@ import logging
 import hashlib
 import hmac
 import re
+import sqlite3
 import threading
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
@@ -605,6 +607,54 @@ class RuntimeRestoreCheckResponse(BaseModel):
     restore_check: dict = Field(..., description="No-secret runtime restore dry-run result")
 
 
+class ProductRegistryStatusResponse(BaseModel):
+    status: dict = Field(..., description="No-secret local product registry status")
+
+
+class ProductRegistryWorkspaceListResponse(BaseModel):
+    status: dict = Field(..., description="No-secret local product registry status")
+    workspaces: list[dict] = Field(..., description="Local workspace summaries")
+
+
+class ProductRegistryWorkspaceResponse(BaseModel):
+    workspace: dict = Field(..., description="Local workspace detail")
+
+
+class ProductRegistryWorkspaceRequest(BaseModel):
+    workspace_id: str | None = Field(default=None, min_length=1, max_length=128)
+    label: str | None = Field(default=None, min_length=1, max_length=128)
+    owner_user_id: str | None = Field(default=None, min_length=1, max_length=128)
+    owner_label: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class ProductRegistryMemberRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    label: str | None = Field(default=None, min_length=1, max_length=128)
+    role: str = Field(default="member", description="Local role: owner, admin, member, or viewer")
+
+
+class ProductRegistryQuotaRequest(BaseModel):
+    metric: str = Field(default="requests", min_length=1, max_length=128)
+    limit_value: int = Field(..., ge=0, le=1_000_000_000)
+    window_s: int = Field(..., ge=0, le=31_536_000)
+
+
+class ProductRegistryBillingRequest(BaseModel):
+    billing_mode: str = Field(default="local-ledger", min_length=1, max_length=128)
+    status: str = Field(default="active", description="Local billing status: active or disabled")
+    attribution_enabled: bool = True
+
+
+class ProductRegistryPermissionCheckRequest(BaseModel):
+    user_id: str = Field(..., min_length=1, max_length=128)
+    action: str = Field(..., min_length=1, max_length=128)
+    workspace_id: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class ProductRegistryPermissionResponse(BaseModel):
+    permission: dict = Field(..., description="No-secret local product RBAC decision")
+
+
 def verify_api_token(authorization: str | None, x_api_key: str | None) -> dict[str, Any]:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
     status = api_auth_context(authorization, x_api_key, update_registry_usage=True)
@@ -899,6 +949,51 @@ def enforce_product_rbac(
         },
         headers=product_rbac_headers(decision),
     )
+
+
+def product_registry_admin_status() -> dict[str, Any]:
+    return product_registry_backend_status(backend=PRODUCT_REGISTRY_BACKEND)
+
+
+def require_local_product_registry() -> LocalProductRegistry:
+    status = product_registry_admin_status()
+    if not status.get("available"):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": status.get("reason", "product_registry_unavailable"),
+                "message": "Local product registry is not available.",
+                "status": status,
+            },
+        )
+    return LocalProductRegistry()
+
+
+def record_product_registry_admin_event(
+    *,
+    action: str,
+    status_code: int,
+    request_id: str | None = None,
+    workspace_id: str = "",
+    reason: str = "ok",
+) -> None:
+    try:
+        append_runtime_event(
+            kind="product_registry_admin",
+            code=reason,
+            message="Metadata-only product registry admin event.",
+            request_id=request_id,
+            metadata={
+                "action": action,
+                "status_code": status_code,
+                "product_workspace_id": workspace_id[:128],
+                "product_registry_backend": PRODUCT_REGISTRY_BACKEND,
+                "content_exported": False,
+                "secrets_exported": False,
+            },
+        )
+    except OSError:
+        logger.warning("product_registry_admin.event_log_failed action=%s", action)
 
 
 def job_to_dict(record: JobRecord) -> dict:
@@ -1981,6 +2076,290 @@ def admin_runtime_events(
         )
     ]
     return RuntimeEventsResponse(events=events)
+
+
+@app.get(
+    "/admin/product-registry/status",
+    response_model=ProductRegistryStatusResponse,
+    summary="Inspect local product registry status",
+)
+def admin_product_registry_status(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Return no-secret local product registry availability and counts."""
+    verify_api_token(authorization, x_api_key)
+    return ProductRegistryStatusResponse(status=product_registry_admin_status())
+
+
+@app.get(
+    "/admin/product-registry/workspaces",
+    response_model=ProductRegistryWorkspaceListResponse,
+    summary="List local product workspaces",
+)
+def admin_product_registry_workspaces(
+    limit: int = 50,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """List local product workspace summaries when the SQLite registry is enabled."""
+    verify_api_token(authorization, x_api_key)
+    registry = require_local_product_registry()
+    bounded_limit = min(max(limit, 1), 200)
+    return ProductRegistryWorkspaceListResponse(
+        status=product_registry_admin_status(),
+        workspaces=registry.list_workspace_summaries(limit=bounded_limit),
+    )
+
+
+@app.post(
+    "/admin/product-registry/workspaces",
+    response_model=ProductRegistryWorkspaceResponse,
+    summary="Create or update a local product workspace",
+)
+def admin_product_registry_create_workspace(
+    req: ProductRegistryWorkspaceRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Create or update a local workspace and owner membership."""
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/admin/product-registry/workspaces",
+        action="admin_write",
+    )
+    registry = require_local_product_registry()
+    try:
+        workspace = registry.create_workspace(
+            workspace_id=req.workspace_id,
+            label=req.label,
+            owner_user_id=req.owner_user_id,
+            owner_label=req.owner_label,
+        )
+        detail = registry.workspace_detail(workspace_id=workspace.workspace_id)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "product_registry_write_failed"},
+        ) from exc
+    record_product_registry_admin_event(
+        action="workspace_upsert",
+        status_code=200,
+        request_id=request_id,
+        workspace_id=workspace.workspace_id,
+    )
+    return ProductRegistryWorkspaceResponse(workspace=detail or {})
+
+
+@app.get(
+    "/admin/product-registry/workspaces/{workspace_id}",
+    response_model=ProductRegistryWorkspaceResponse,
+    summary="Inspect one local product workspace",
+)
+def admin_product_registry_workspace_detail(
+    workspace_id: str,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+):
+    """Return one local workspace with members, quota limits, and billing state."""
+    verify_api_token(authorization, x_api_key)
+    detail = require_local_product_registry().workspace_detail(workspace_id=workspace_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Product workspace not found")
+    return ProductRegistryWorkspaceResponse(workspace=detail)
+
+
+@app.post(
+    "/admin/product-registry/workspaces/{workspace_id}/members",
+    response_model=ProductRegistryWorkspaceResponse,
+    summary="Add or update a local product workspace member",
+)
+def admin_product_registry_add_member(
+    workspace_id: str,
+    req: ProductRegistryMemberRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Add or update a local workspace member role."""
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=SimpleNamespace(workspace_id=workspace_id),
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/admin/product-registry/workspaces/{workspace_id}/members",
+        action="admin_write",
+    )
+    registry = require_local_product_registry()
+    if registry.workspace_detail(workspace_id=workspace_id) is None:
+        raise HTTPException(status_code=404, detail="Product workspace not found")
+    try:
+        registry.add_member(
+            workspace_id=workspace_id,
+            user_id=req.user_id,
+            label=req.label,
+            role=req.role,
+        )
+        detail = registry.workspace_detail(workspace_id=workspace_id)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "product_registry_write_failed"},
+        ) from exc
+    record_product_registry_admin_event(
+        action="member_upsert",
+        status_code=200,
+        request_id=request_id,
+        workspace_id=workspace_id,
+    )
+    return ProductRegistryWorkspaceResponse(workspace=detail or {})
+
+
+@app.put(
+    "/admin/product-registry/workspaces/{workspace_id}/quota",
+    response_model=ProductRegistryWorkspaceResponse,
+    summary="Set a local product workspace quota",
+)
+def admin_product_registry_set_quota(
+    workspace_id: str,
+    req: ProductRegistryQuotaRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Set one local quota limit for a workspace."""
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=SimpleNamespace(workspace_id=workspace_id),
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/admin/product-registry/workspaces/{workspace_id}/quota",
+        action="admin_write",
+    )
+    registry = require_local_product_registry()
+    if registry.workspace_detail(workspace_id=workspace_id) is None:
+        raise HTTPException(status_code=404, detail="Product workspace not found")
+    try:
+        registry.set_quota(
+            workspace_id=workspace_id,
+            metric=req.metric,
+            limit_value=req.limit_value,
+            window_s=req.window_s,
+        )
+        detail = registry.workspace_detail(workspace_id=workspace_id)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "product_registry_write_failed"},
+        ) from exc
+    record_product_registry_admin_event(
+        action="quota_set",
+        status_code=200,
+        request_id=request_id,
+        workspace_id=workspace_id,
+    )
+    return ProductRegistryWorkspaceResponse(workspace=detail or {})
+
+
+@app.put(
+    "/admin/product-registry/workspaces/{workspace_id}/billing",
+    response_model=ProductRegistryWorkspaceResponse,
+    summary="Set local product billing attribution state",
+)
+def admin_product_registry_set_billing(
+    workspace_id: str,
+    req: ProductRegistryBillingRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Set local billing-attribution metadata without external payment credentials."""
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(None, auth_context)
+    enforce_product_rbac(
+        req=SimpleNamespace(workspace_id=workspace_id),
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint="/admin/product-registry/workspaces/{workspace_id}/billing",
+        action="admin_write",
+    )
+    registry = require_local_product_registry()
+    if registry.workspace_detail(workspace_id=workspace_id) is None:
+        raise HTTPException(status_code=404, detail="Product workspace not found")
+    try:
+        registry.set_billing_account(
+            workspace_id=workspace_id,
+            billing_mode=req.billing_mode,
+            status=req.status,
+            attribution_enabled=req.attribution_enabled,
+        )
+        detail = registry.workspace_detail(workspace_id=workspace_id)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "product_registry_write_failed"},
+        ) from exc
+    record_product_registry_admin_event(
+        action="billing_set",
+        status_code=200,
+        request_id=request_id,
+        workspace_id=workspace_id,
+    )
+    return ProductRegistryWorkspaceResponse(workspace=detail or {})
+
+
+@app.post(
+    "/admin/product-registry/permissions/check",
+    response_model=ProductRegistryPermissionResponse,
+    summary="Check local product RBAC permission",
+)
+def admin_product_registry_check_permission(
+    req: ProductRegistryPermissionCheckRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Check a local product RBAC decision without performing the target action."""
+    verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    registry = require_local_product_registry()
+    decision = registry.permission_decision(
+        user_id=req.user_id,
+        action=req.action,
+        workspace_id=req.workspace_id,
+    )
+    record_product_registry_admin_event(
+        action="permission_check",
+        status_code=200,
+        request_id=request_id,
+        workspace_id=str(decision.get("workspace_id", req.workspace_id or "")),
+        reason=str(decision.get("reason", "ok")),
+    )
+    return ProductRegistryPermissionResponse(permission=decision)
 
 
 @app.post("/query", response_model=QueryResponse, summary="Ask FluxMind")

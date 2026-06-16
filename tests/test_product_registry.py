@@ -142,6 +142,51 @@ def test_product_registry_permission_decision_enforces_local_roles(tmp_path):
     assert "billing/delete" not in json.dumps(unsupported, sort_keys=True)
 
 
+def test_product_registry_workspace_detail_and_summary_are_no_secret(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(
+        workspace_id="ws-detail",
+        label="Detail workspace",
+        owner_user_id="owner",
+        owner_label="Owner",
+    )
+    registry.add_member(
+        workspace_id=workspace.workspace_id,
+        user_id="member",
+        label="Member",
+        role="member",
+    )
+    registry.set_quota(
+        workspace_id=workspace.workspace_id,
+        metric="requests",
+        limit_value=10,
+        window_s=60,
+    )
+    registry.record_usage(
+        workspace_id=workspace.workspace_id,
+        user_id="member",
+        metric="requests",
+        amount=2,
+    )
+    registry.set_billing_account(workspace_id=workspace.workspace_id)
+
+    detail = registry.workspace_detail(workspace_id=workspace.workspace_id)
+    summaries = registry.list_workspace_summaries()
+    payload = json.dumps({"detail": detail, "summaries": summaries}, sort_keys=True)
+
+    assert detail["workspace"]["workspace_id"] == "ws-detail"
+    assert [member["role"] for member in detail["members"]] == ["owner", "member"]
+    assert detail["quota_limits"][0]["limit_value"] == 10
+    assert detail["billing"]["configured"] is True
+    assert detail["usage_event_count"] == 1
+    assert summaries[0]["member_count"] == 2
+    assert summaries[0]["quota_limit_count"] == 1
+    assert summaries[0]["usage_event_count"] == 1
+    assert summaries[0]["billing_configured"] is True
+    assert "admin-token" not in payload
+    assert "sk-" not in payload
+
+
 def test_product_registry_quota_decision_records_and_blocks_over_limit(tmp_path):
     registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
     workspace = registry.create_workspace(workspace_id="quota-ws", owner_user_id="owner")
