@@ -58,26 +58,32 @@ The latest platform-migration source/docs sync deployed to `/opt/fluxmind` is
 `d2774a6` (`docs: record platform migration preflight`), with implementation
 commit `8a4a76f` (`feat: add platform migration preflight`).
 
-Current local verification on 2026-06-16 18:02 CST:
+Current local verification on 2026-06-16 18:31 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 345 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 345 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 363 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 363 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
+.venv/bin/python -m coverage report --sort=cover            pass, src/storage_migration.py at 94%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
                                                             20 PDF structure cases,
                                                             42 recorded answers
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store
-                                                            and migration-preflight anchors
+                                                            migration-preflight, and
+                                                            migration-rehearsal anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
                                                             activation_ready=false with expected
                                                             external-backend blockers
 .venv/bin/python scripts/platform_migration_preflight.py     pass, --require-activation exits 1:
   --require-activation                                      preflight_ok=true but activation_ready=false
+.venv/bin/python scripts/platform_migration_rehearsal.py     pass, rehearsal_ok=true, copied_files=9,
+                                                            restore_check_ok=true,
+                                                            staged_storage_schema_ok=true,
+                                                            blockers=none
 git diff --check                                            pass
 Admin status smoke                                          distributed_job_store backend=local,
                                                             available=true,

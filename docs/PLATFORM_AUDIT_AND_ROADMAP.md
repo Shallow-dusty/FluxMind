@@ -168,9 +168,14 @@ schema readiness, the runtime manifest, restore dry-run, local durable job-store
 contract, and external backend blocker split into one no-secret CLI gate. The
 default command validates local migration evidence; `--require-activation`
 fails until real external metadata database, object storage, and distributed
-job-store targets are configured. The no-secret runtime manifest can also be checked
-against a target runtime root through the CLI or authenticated API without
-copying, deleting, or restoring files. This is still a local
+job-store targets are configured. `scripts/platform_migration_rehearsal.py` now
+adds a local staged migration drill: copy required runtime groups into a staging
+root, run the restore verifier against the staged tree, then run staged storage
+schema checks. The default staging root is temporary and deleted after reporting;
+retained staging and overwrite are explicit flags, and reports remain no-secret.
+The no-secret runtime manifest can also be checked against a target runtime root
+through the CLI or authenticated API without copying, deleting, or restoring
+files. This is still a local
 baseline, not the final multi-user database. Reusable local corpus profiles now
 persist named active-paper selections under `metadata/corpus_profiles.json`, with
 API routes to list, upsert, inspect status, and activate them. Profile status
@@ -675,10 +680,11 @@ blocked on product decisions.
 4. Use `docs/ARCHITECTURE.md` and `docs/BACKLOG.md` as the implementation
    source of truth for platformization work.
 5. Use `scripts/platform_migration_preflight.py` plus the local
-   `platform_readiness` blockers to choose and test the production metadata
+   `platform_readiness` blockers, then `scripts/platform_migration_rehearsal.py`
+   for local staged-copy evidence, to choose and test the production metadata
    database, object storage, and distributed job-store backend. The readiness
    surface already has separate metadata, object, and job-store targets; the
-   remaining work is backend selection, real migration execution, and live
+   remaining work is backend selection, external migration execution, and live
    activation. Then extend the local restart-recovery/lease/worker-service bridge
    into a distributed worker/storage runtime and extend the local metrics export
    into production scrape/tracing/alert routing plus deeper abuse controls

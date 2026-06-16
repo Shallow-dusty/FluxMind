@@ -75,6 +75,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `scripts/platform_migration_preflight.py`: no-secret production migration
   preflight that separates local migration evidence from external activation
   readiness.
+- `scripts/platform_migration_rehearsal.py`: local runtime migration rehearsal
+  that stages required runtime state, then verifies restore and schema checks
+  without exposing contents.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -359,6 +362,16 @@ evidence is complete, and `--require-activation` makes the command fail until
 external metadata database, object storage, and distributed job-store targets are
 configured. The output keeps the same no-secret boundary: no runtime contents,
 job payloads, external URLs, bucket names, queue names, or credentials.
+`src.storage_migration` adds a local migration rehearsal that copies required
+runtime state into a staging root, then verifies that the staged tree matches the
+source manifest and passes local storage-schema checks. The CLI
+`scripts/platform_migration_rehearsal.py` uses a temporary staging directory by
+default and deletes it after reporting; retained staging requires an explicit
+`--staging-root`, and clearing an existing staging root requires
+`--overwrite-staging`. Reports expose only group counts, byte totals, status
+codes, and blocker codes; `.env` is never copied, runtime dependencies such as
+models are skipped unless `--include-runtime-dependencies` is supplied, and
+staging roots inside the source project are rejected.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`

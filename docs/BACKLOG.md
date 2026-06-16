@@ -37,10 +37,12 @@ readiness from metadata database readiness through `DISTRIBUTED_JOB_STORE_*`
 configuration and no-secret admin/report/metrics fields. A production migration
 preflight now composes local storage-schema evidence, no-secret runtime backup
 manifest, restore dry-run, and read-only local job-store contract checks into a
-single CLI gate. The eval report also carries staged quality-maturity targets
-for self-use, small-group, and community readiness; self-use and small-group are
-now met, so corpus/eval growth can be tracked before new platform features are
-prioritized.
+single CLI gate. A local migration rehearsal now stages required runtime state
+into a temporary or explicit staging root, then verifies restore-check and
+schema integrity before any external backend is activated. The eval report also
+carries staged quality-maturity targets for self-use, small-group, and community
+readiness; self-use and small-group are now met, so corpus/eval growth can be
+tracked before new platform features are prioritized.
 
 The incomplete scope is production platformization: real external providers,
 hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
@@ -287,6 +289,13 @@ durable multi-user database/object storage migration remains planned
   no-secret CLI. Default mode fails only when local migration evidence is
   incomplete; `--require-activation` also fails until external metadata
   database, object storage, and distributed job-store targets are configured.
+- `scripts/platform_migration_rehearsal.py` performs the next local migration
+  drill by copying required runtime state into a staging root, verifying the
+  staged copy with the runtime restore-check, and checking staged storage schema.
+  Default mode uses an auto-cleaned temporary staging root; retained staging
+  requires `--staging-root`, existing staging data requires
+  `--overwrite-staging`, and runtime dependency groups such as models are skipped
+  unless `--include-runtime-dependencies` is supplied.
 - `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
   the local state trees that source deploys exclude, with file counts, byte
   totals, and SHA-256 hashes for known metadata/job/index files without
@@ -661,6 +670,11 @@ are made
   evidence and `activation_ready` for configured external backends, keeping
   external URLs, buckets, queue names, credentials, job payloads, and runtime
   contents out of the output.
+- `scripts/platform_migration_rehearsal.py` gives the same path a local
+  backup/restore drill: copy required runtime groups into staging, verify the
+  staged restore against the no-secret manifest, then verify staged storage
+  schema. Reports still exclude runtime contents, job payloads, `.env`, external
+  URLs, bucket names, queue names, and credentials.
 - Admin status/report, metrics, and the Streamlit status panel display a
   no-secret `platform_readiness` summary for production storage migration and
   distributed worker acceptance. It reports only booleans, counts, and blocker
@@ -747,9 +761,10 @@ are made
   estimates USD query cost from provider token counts when available and rough
   estimated tokens otherwise; external billing remains disabled.
 - Still planned: production durable storage dashboards beyond the local
-  inventory/readiness/platform-readiness view, real production storage and
-  distributed worker migration tests after backend choice, external job-store
-  activation behind the existing readiness target, identity-backed
+  inventory/readiness/platform-readiness and local rehearsal views, real
+  production storage and distributed worker migration execution after backend
+  choice, external job-store activation behind the existing readiness target,
+  identity-backed
   deletion/audit controls, billing attribution, production scrape/alert routing
   beyond the local metrics text, and user/workspace admin once identity exists.
 
