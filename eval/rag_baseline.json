@@ -48,7 +48,7 @@
     }
   },
   "quality_gates": {
-    "minimum_case_count": 40,
+    "minimum_case_count": 42,
     "required_answer_modes": [
       "explanation",
       "derivation",
@@ -94,11 +94,11 @@
       "observer_estimation",
       "implementation_trust"
     ],
-    "minimum_expected_source_ref_count": 120,
-    "minimum_retrieval_only_case_count": 60,
-    "minimum_retrieval_eval_question_count": 100,
+    "minimum_expected_source_ref_count": 145,
+    "minimum_retrieval_only_case_count": 65,
+    "minimum_retrieval_eval_question_count": 107,
     "minimum_retrieval_only_pass_rate": 1.0,
-    "minimum_code_output_case_count": 8,
+    "minimum_code_output_case_count": 12,
     "required_code_output_languages": [
       "python"
     ],
@@ -111,7 +111,7 @@
       "local_job"
     ],
     "minimum_code_output_pass_rate": 1.0,
-    "minimum_pdf_structure_case_count": 15,
+    "minimum_pdf_structure_case_count": 20,
     "required_pdf_structure_kinds": [
       "equation",
       "table",
@@ -120,7 +120,7 @@
     ],
     "minimum_pdf_structure_pass_rate": 1.0,
     "minimum_provider_fixture_count": 4,
-    "minimum_recorded_answer_count": 40,
+    "minimum_recorded_answer_count": 42,
     "minimum_recorded_answer_pass_rate": 1.0,
     "minimum_average_recorded_answer_term_coverage": 0.9,
     "minimum_live_answer_pass_rate": 1.0,
@@ -639,6 +639,50 @@
         "filesystem_isolation": "temporary_workdir",
         "network_policy_enforced": "false"
       }
+    },
+    {
+      "id": "python-paper-to-code-piecewise-smo-chattering",
+      "language": "python",
+      "entrypoint": "main.py",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "files": {
+        "main.py": "from pathlib import Path\nrows = ['time_s,current_error,switching_gain,piecewise_power', '0.0,0.42,1.00,0.65', '0.1,0.18,0.72,0.38', '0.2,0.04,0.31,0.09']\nPath('piecewise_smo_chattering.csv').write_text('\\n'.join(rows) + '\\n', encoding='utf-8')\nPath('piecewise_smo_report.txt').write_text('paper-to-code piecewise-power SMO report: current-error envelope, chattering suppression, marine electric propulsion context, plot validation', encoding='utf-8')\nPath('piecewise_smo_trace.svg').write_text('<svg xmlns=\"http://www.w3.org/2000/svg\"><text>piecewise-power SMO chattering trace</text></svg>', encoding='utf-8')\nprint('fluxmind-piecewise-smo-chattering piecewise_smo_chattering.csv piecewise_smo_report.txt piecewise_smo_trace.svg')\n"
+      },
+      "required_stdout_terms": [
+        "fluxmind-piecewise-smo-chattering",
+        "piecewise_smo_chattering.csv",
+        "piecewise_smo_report.txt",
+        "piecewise_smo_trace.svg"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "piecewise_smo_chattering.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 90,
+          "contains": "time_s,current_error,switching_gain,piecewise_power"
+        },
+        {
+          "title": "piecewise_smo_report.txt",
+          "kind": "text",
+          "mime_type": "text/plain",
+          "minimum_byte_count": 100,
+          "contains": "paper-to-code piecewise-power SMO report"
+        },
+        {
+          "title": "piecewise_smo_trace.svg",
+          "kind": "plot",
+          "mime_type": "image/svg+xml",
+          "minimum_byte_count": 70,
+          "contains": "piecewise-power SMO chattering trace"
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "python-local",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      }
     }
   ],
   "pdf_structure_cases": [
@@ -760,6 +804,27 @@
       "page": 8,
       "kind": "algorithm",
       "contains": "Algorithm 1 Disturbance Estimation Based on Sliding Mode Observer"
+    },
+    {
+      "id": "structure-yao-overall-system-block-diagram",
+      "source_path": "papers/library/yao-2025-prescribed-performance-leso-pmsm.pdf",
+      "page": 4,
+      "kind": "figure",
+      "contains": "Overall block diagram of the system"
+    },
+    {
+      "id": "structure-du-fuzzy-control-rules-table",
+      "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+      "page": 6,
+      "kind": "table",
+      "contains": "Table 1. Fuzzy control rules."
+    },
+    {
+      "id": "structure-xu-ceso-control-block-diagram",
+      "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
+      "page": 10,
+      "kind": "figure",
+      "contains": "Control block diagram for the CESO"
     }
   ],
   "cases": [
@@ -2124,6 +2189,102 @@
         "plot"
       ],
       "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "leso-prescribed-performance-error-envelope",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "linear extended state observer",
+        "prescribed performance",
+        "tracking error"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
+      "question": "How should FluxMind translate a prescribed-performance LESO PMSM paper into implementation guardrails?",
+      "expected_refs": [
+        {
+          "source": "yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "source_path": "papers/library/yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "page": 1,
+          "snippet": "smooth and bounded prescribed performance function"
+        },
+        {
+          "source": "yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "source_path": "papers/library/yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "page": 2,
+          "snippet": "tracking errors converge within a finite time"
+        }
+      ],
+      "fixture_answer": "The implementation guardrail should cite the prescribed-performance function [1] and preserve the finite-time tracking-error requirement [2].",
+      "recorded_answer": "FluxMind should preserve the prescribed-performance envelope, LESO disturbance-estimation boundary, finite-time tracking-error objective, overshoot and settling constraints, and validation plots before turning this paper into code. The source grounds the controller in a smooth bounded prescribed-performance function [1] and motivates the finite-time convergence of tracking errors [2].",
+      "required_answer_terms": [
+        "prescribed-performance",
+        "LESO",
+        "tracking-error",
+        "finite-time"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "prescribed",
+        "LESO",
+        "tracking",
+        "finite"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
+    },
+    {
+      "id": "ismo-feedforward-compensator-load-disturbance",
+      "answer_mode": "implementation",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "feed-forward compensator",
+        "load disturbance",
+        "q-axis current"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode",
+        "paper_to_code"
+      ],
+      "question": "What implementation checks should FluxMind require for an ISMDO feed-forward compensator under load disturbance?",
+      "expected_refs": [
+        {
+          "source": "du-2023-ismo-antidisturbance-pmsm.pdf",
+          "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+          "page": 2,
+          "snippet": "ISMDO is constructed as a feed-forward compensator"
+        },
+        {
+          "source": "du-2023-ismo-antidisturbance-pmsm.pdf",
+          "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+          "page": 9,
+          "snippet": "load disturbance variable speed"
+        }
+      ],
+      "fixture_answer": "The implementation checklist should cite the ISMDO feed-forward compensator claim [1] and verify behavior under load-disturbance variable-speed simulation [2].",
+      "recorded_answer": "FluxMind should require explicit q-axis current compensation wiring, observer-gain assumptions, feed-forward compensator limits, and load-disturbance validation before treating the ISMDO design as deployment-ready. The paper states that the ISMDO is constructed as a feed-forward compensator [1] and validates the controller under load-disturbance variable-speed simulation [2].",
+      "required_answer_terms": [
+        "ISMDO",
+        "feed-forward compensator",
+        "q-axis current",
+        "load-disturbance"
+      ],
+      "minimum_answer_term_coverage": 0.75,
+      "live_required_answer_terms": [
+        "ISMDO",
+        "feed-forward",
+        "current",
+        "disturbance"
+      ],
+      "minimum_live_answer_term_coverage": 0.75
     }
   ],
   "retrieval_only_cases": [
@@ -3110,6 +3271,121 @@
           "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
           "page": 1,
           "snippet": "cascaded extended state observer (CESO) with a special cascade structure is proposed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ismo-feedforward-compensator",
+      "question": "Retrieve the ISMDO feed-forward compensator statement.",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "feed-forward compensator",
+        "q-axis current",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
+      "expected_refs": [
+        {
+          "source": "du-2023-ismo-antidisturbance-pmsm.pdf",
+          "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+          "page": 2,
+          "snippet": "ISMDO is constructed as a feed-forward compensator"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ismo-load-disturbance-variable-speed",
+      "question": "Retrieve the ISMDO simulation condition for load-disturbance variable-speed validation.",
+      "topic_tags": [
+        "PMSM",
+        "load disturbance",
+        "simulation validation",
+        "anti-disturbance",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "du-2023-ismo-antidisturbance-pmsm.pdf",
+          "source_path": "papers/library/du-2023-ismo-antidisturbance-pmsm.pdf",
+          "page": 9,
+          "snippet": "load disturbance variable speed"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-leso-prescribed-performance-function",
+      "question": "Retrieve the smooth bounded prescribed-performance function anchor from the LESO paper.",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "prescribed performance",
+        "linear extended state observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
+      "expected_refs": [
+        {
+          "source": "yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "source_path": "papers/library/yao-2025-prescribed-performance-leso-pmsm.pdf",
+          "page": 1,
+          "snippet": "smooth and bounded prescribed performance function"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-iftsm-finite-time-convergence",
+      "question": "Retrieve the improved fast terminal sliding-mode finite-time convergence claim.",
+      "topic_tags": [
+        "PMSM",
+        "terminal sliding mode control",
+        "adaptive control law",
+        "finite-time convergence",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality"
+      ],
+      "expected_refs": [
+        {
+          "source": "hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "source_path": "papers/library/hu-2025-iftsm-adaptive-control-law-pmsm.pdf",
+          "page": 1,
+          "snippet": "finite-time rapid convergence of system states"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-ceso-periodic-disturbance-cogging-torque",
+      "question": "Retrieve the CESO composite-SMC statement about cogging torque as a periodic disturbance.",
+      "topic_tags": [
+        "PMSM",
+        "cogging torque",
+        "periodic disturbance",
+        "anti-interference",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
+      "expected_refs": [
+        {
+          "source": "xu-2025-ceso-composite-smc-pmsm.pdf",
+          "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "cogging torque (a periodic disturbance)"
         }
       ]
     }
