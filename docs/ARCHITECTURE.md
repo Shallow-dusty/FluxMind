@@ -79,11 +79,15 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `scripts/platform_migration_rehearsal.py`: local runtime migration rehearsal
   that stages required runtime state, then verifies restore and schema checks
   without exposing contents.
+- `src/api_keys.py` and `scripts/api_key_registry.py`: optional local SQLite API
+  key lifecycle registry. It persists token hashes only, returns raw tokens once
+  on create, supports list/verify/revoke, and can back FastAPI auth when
+  `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
 - `src/product_readiness.py` and `scripts/product_readiness.py`: no-secret
   productization readiness check for identity, API-key lifecycle, quotas, and
-  billing activation. It reports local foundation checks and blocker codes
-  without exposing token values, owner IDs, billing credentials, or provider
-  secrets.
+  billing activation. It can verify the local SQLite key registry when enabled
+  and reports local foundation checks and blocker codes without exposing token
+  values, owner IDs, billing credentials, or provider secrets.
 - `src/provider_readiness.py` and `scripts/provider_readiness.py`: no-secret
   external provider activation readiness check for real image providers, hosted
   execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
@@ -114,8 +118,10 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   development should still proceed behind provider-neutral interfaces, local
   mocks, fixtures, and explicit runtime flags. This includes image generation,
   hosted code execution, real MATLAB integration, multi-user accounts, quotas,
-  and billing. The provider-readiness and product-readiness checks make the
-  disabled state explicit as blocker codes; they do not activate providers.
+  and billing. Local API key lifecycle can be enabled through the SQLite registry,
+  but it is not identity-backed tenancy, quotas, or billing. The
+  provider-readiness and product-readiness checks make the disabled state
+  explicit as blocker codes; they do not activate providers.
 - `LocalPythonExecutionProvider` is a development provider only. It proves the
   execution request/result contract; `DockerExecutionProvider` is the local
   isolated backend, while hosted/distributed production execution still needs a
@@ -363,10 +369,11 @@ known-file existence flags; it does not read or return runtime file contents.
 `src.storage_schema` provides the matching local storage-schema inventory for
 future migration work. Admin status/report, Streamlit, and metrics expose schema
 version, JSON/JSONL shape, and expected SQLite table/column presence for corpus,
-chunk, job, artifact, and runtime-event stores without returning row contents,
-prompts, answers, filenames, owner IDs, request IDs, source paths, or runtime
-file contents. `scripts/storage_schema.py` exposes the same check for local or
-target-root preflight use and exits nonzero when drift is found.
+chunk, job, artifact, API-key registry, and runtime-event stores without
+returning row contents, prompts, answers, filenames, owner IDs, request IDs,
+source paths, token values, or runtime file contents. `scripts/storage_schema.py`
+exposes the same check for local or target-root preflight use and exits nonzero
+when drift is found.
 Admin status/report, Streamlit, and metrics also expose a derived
 `platform_readiness` summary for production storage migration and distributed
 worker acceptance. It deliberately reports only blocker codes, booleans, and
@@ -400,9 +407,9 @@ staging roots inside the source project are rejected.
 identity, API-key lifecycle, quota-store, and billing-provider readiness. It
 separates `local_foundation_ready` from `activation_ready`: the current local
 foundation can pass through API access audit, owner metadata, local rate-limit
-configuration, and query-cost estimation surfaces, while activation remains
-blocked until identity, API-key registry, quota-store, billing-provider, and
-billing-attribution targets are configured. The CLI
+configuration, query-cost estimation surfaces, and the optional local hashed-key
+registry, while activation remains blocked until identity, quota-store,
+billing-provider, and billing-attribution targets are configured. The CLI
 `scripts/product_readiness.py` exits successfully for local foundation readiness
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,
@@ -422,7 +429,7 @@ readiness, masks report paths down to filenames, and keeps prompts, answers,
 source paths, API keys, and runtime contents out of the output.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
-for known metadata/job/index files without exporting file contents or `.env`
+for known metadata/job/API-key registry/index files without exporting file contents or `.env`
 values; the verifier checks a supplied manifest against a target runtime root or
 absolute manifest paths and reports missing or mismatched groups, files, byte
 counts, and hashes without copying, overwriting, deleting, or restoring files.
@@ -530,7 +537,7 @@ retrieval-quality advisory alerts, query latency advisory alerts,
 provider-failure advisory alerts, job-health advisory alerts
 for failed/dead-lettered jobs and expired queue/lease state, product-readiness
 local foundation and activation blockers, provider-readiness local foundation
-and activation blockers, plus explicit disabled switches for external providers
+and activation blockers, local API key registry readiness, plus explicit disabled switches for external providers
 and identity/quotas/billing. The
 Streamlit sidebar renders the same status,
 including durable storage readiness, storage inventory, query-cost pricing

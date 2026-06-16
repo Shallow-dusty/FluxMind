@@ -32,6 +32,8 @@ python scripts/health_check.py              # 本地运行时检查
 python scripts/evaluate_rag.py --json-report artifacts/eval/latest.json
 python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502  # 调用 /query/retrieve 评检索
 python scripts/storage_schema.py --format markdown   # 存储 schema 漂移检测（drift 时非零退出）
+python scripts/api_key_registry.py status --format markdown # 本地 API key registry no-secret 状态
+python scripts/product_readiness.py --format markdown # identity/quota/billing product readiness
 python scripts/provider_readiness.py --format markdown # 外部 provider/MATLAB activation readiness
 python scripts/quality_readiness.py --format markdown # self-use/small-group/community 质量 readiness
 python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，--apply --restart 才真正执行）
@@ -47,8 +49,9 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 - `src/jobs.py` — append-only JSONL（`jobs/jobs.jsonl`）+ SQLite 当前态镜像（`jobs/jobs.sqlite3`）；即时 runner、进程内队列、显式 durable worker；幂等键、租约（lease）、重试/退避、死信、deadline。这是**本地**契约，不是分布式队列。
 - `src/metadata.py` — `metadata/corpus.json`（+ `corpus.sqlite3`）语料注册表、`chunks.sqlite3` chunk 镜像、`corpus_profiles.json` 可复用选集。JSON 写入走同目录临时文件 + 原子替换。
 - `src/artifacts.py` — artifact 注册表（`artifacts/artifacts.sqlite3`）+ 安全导出；只导出落在 `ARTIFACTS_DIR` 下的 `file://` artifact。
+- `src/api_keys.py` — 可选本地 SQLite API key 生命周期 registry；只持久化 token hash，原始 token 仅在创建时输出一次，API 鉴权可在 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 时使用它。
 - `src/providers.py` + `src/capabilities.py` + `src/execution_policy.py` — 执行/图像 provider 与契约；执行前 `local-safe-v1` 策略用 `ast` 校验 Python、import 白名单、拦截 shell/绝对路径。`CODE_EXECUTION_BACKEND=local|docker`。
-- `src/product_readiness.py` + `src/provider_readiness.py` — no-secret activation readiness：前者覆盖身份/API-key/配额/计费，后者覆盖外部图像 provider、托管执行、MATLAB backend 和 provider quota guard。默认只报告 blocker code，不启用外部调用。
+- `src/product_readiness.py` + `src/provider_readiness.py` — no-secret activation readiness：前者覆盖身份/API-key/配额/计费并能检查本地 SQLite key registry，后者覆盖外部图像 provider、托管执行、MATLAB backend 和 provider quota guard。默认只报告 blocker code，不启用外部调用。
 - `src/quality_readiness.py` — no-secret 质量成熟度 readiness：复用 `eval/rag_baseline.json` 的 `quality_maturity_targets`，可合并显式传入的 no-secret live eval report，区分 self-use、small-group、community 缺口。
 - `src/admin.py`（115KB，最大模块）— 聚合上述所有状态为 `/admin/status`、`/admin/status/report`(Markdown)、`/admin/metrics`(Prometheus)、`/admin/events`。全部 no-secret：只出计数/布尔/code，绝不返回 prompt、答案、源路径、owner ID、文件内容。
 

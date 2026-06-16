@@ -31,7 +31,7 @@ Command                                                               Result
                                                                       retrieval-alerts/storage-schema/artifact-limit/
                                                                       execution-alert/provider-readiness/quality-readiness/
                                                                       readiness/log-noise anchors
-.venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
+.venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 8 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py --format... pass, preflight_ok=true,
                                                                       activation_ready=false with expected
                                                                       external-backend blockers
@@ -115,9 +115,11 @@ Deployment and health gates   verified      guarded deploy sync, local health, H
                                             health are present. Live facts must still be refreshed.
 Product platform layer        incomplete    local product-readiness CLI/admin/report/metrics/UI
                                             surface now separates local foundations from real
-                                            identity/quota/billing activation. Accounts, teams,
-                                            quotas, billing, identity-backed ownership, and a real
-                                            frontend are not implemented.
+                                            identity/quota/billing activation. Local API-key
+                                            lifecycle is implemented through a hash-only SQLite
+                                            registry. Accounts, teams, quotas, billing,
+                                            identity-backed ownership, and a real frontend are not
+                                            implemented.
 ```
 
 ## API Route Coverage
@@ -258,9 +260,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   local staged runtime copy plus restore/schema verification, not live external
   database or object-storage migration.
 - Productization readiness now has a no-secret CLI/admin/report/metrics/UI
-  surface. The current local foundation passes, but activation remains blocked
-  on real identity provider, API-key lifecycle, quota store, billing provider,
-  and billing attribution decisions.
+  surface. The current local foundation passes, and the local API-key lifecycle
+  registry is implemented with hash-only storage and API auth integration.
+  Activation still remains blocked on real identity provider, quota store,
+  billing provider, billing attribution, and identity-backed tenancy decisions.
 - Provider activation readiness now has a no-secret CLI/admin/report/metrics/UI
   surface. The current local foundation passes, but activation remains blocked
   on real external image provider configuration, hosted execution provider
@@ -284,4 +287,4 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 3. Add live sandbox and abuse-policy tests before enabling Docker, Cloudflare Sandbox, or any
    MATLAB-compatible hosted execution path.
 4. Add identity/workspace/ownership tests before exposing private corpora,
-   quotas, billing, or share links.
+   identity-backed keys, quotas, billing, or share links.

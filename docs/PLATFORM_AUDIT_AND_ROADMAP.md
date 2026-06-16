@@ -54,7 +54,7 @@ coverage report --fail-under=88           pass, 88% total branch coverage
                                              20 PDF structure cases,
                                              42 recorded answers
 health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/provider-readiness/quality-readiness and repo/roadmap drift checks
-storage_schema.py local preflight          pass, ok=true, 7 stores, 0 problems
+storage_schema.py local preflight          pass, ok=true, 8 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
@@ -75,8 +75,8 @@ RAG quality coverage      small-group retrieval bar met; broad live answer QA re
 Execution/artifacts       good contract baseline; not production sandboxed
 Storage/queue durability  local SQLite/JSONL bridge plus explicit external
                           job-store readiness target; not distributed yet
-Product maturity          pre-platform: no accounts, quotas, billing, teams
-                          but local product/provider-readiness blockers are explicit
+Product maturity          pre-platform: local API-key registry exists, but no
+                          accounts, quotas, billing, or teams
 Frontend maturity         demo/personal workflow; Streamlit remains limiting
 ```
 
@@ -381,7 +381,7 @@ provider switches first. Only real external activation is deferred.
 ### Phase 1: Real Platform Baseline
 
 - Introduce a durable metadata database for users, corpora, papers, chunks,
-  jobs, artifacts, and API keys.
+  jobs, artifacts, and identity-backed API keys.
 - Move file storage to object storage or an explicit volume layout with
   checksums and ownership metadata.
 - Add background jobs for PDF parsing, indexing, image generation, and code
@@ -612,10 +612,11 @@ Reference: https://developers.cloudflare.com/sandbox/
 
 ### Phase 5: Productization
 
-Status: partial local foundation. Public identity, API-key lifecycle, quotas,
-and billing remain disabled until those product and operational decisions are
-made, but FluxMind now exposes no-secret product-readiness and
-provider-readiness preflights plus admin surfaces for the remaining blockers.
+Status: partial local foundation. Local API-key lifecycle is implemented through
+a hash-only SQLite registry, but public identity, identity-backed quotas, and
+billing remain disabled until those product and operational decisions are made.
+FluxMind exposes no-secret product-readiness and provider-readiness preflights
+plus admin surfaces for the remaining blockers.
 
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.
@@ -633,7 +634,8 @@ durable storage readiness, public model, job/artifact owner summaries,
 metadata-only API access audit summaries, local API rate-limit status,
 metadata-only retrieval trace summaries, no-secret storage-schema readiness,
 no-secret platform-readiness blockers, no-secret product-readiness blockers,
-no-secret provider-readiness blockers, no-secret metrics text export, and
+local API-key registry readiness, no-secret provider-readiness blockers,
+no-secret metrics text export, and
 disabled-provider/product switch state
 without exposing API keys, storage
 credentials, or requiring real identity/billing systems. The Streamlit status
@@ -694,16 +696,17 @@ blocked on product decisions.
 5. Use `scripts/platform_migration_preflight.py` plus the local
    `platform_readiness` blockers, then `scripts/platform_migration_rehearsal.py`
    for local staged-copy evidence, to choose and test the production metadata
-   database, object storage, and distributed job-store backend. The readiness
-   surface already has separate metadata, object, and job-store targets; the
-   remaining work is backend selection, external migration execution, and live
-   activation. Then extend the local restart-recovery/lease/worker-service bridge
+  database, object storage, and distributed job-store backend. The readiness
+  surface already has separate metadata, object, and job-store targets; the
+  remaining work is backend selection, external migration execution, and live
+  activation. Then extend the local restart-recovery/lease/worker-service bridge
    into a distributed worker/storage runtime and extend the local metrics export
    into production scrape/tracing/alert routing plus deeper abuse controls
    before enabling real
    external image generation or hosted code execution providers.
 6. Choose the next platformization lane explicitly: frontend/API split,
-   production storage, isolated execution, or identity/quota/billing. Do not
+   production storage, isolated execution, or identity/quota/billing. Local API
+   key lifecycle is available, but do not
    activate real provider keys, hosted sandboxes, or MATLAB licensing until the
    matching runtime boundary is implemented, tested, and
    `scripts/provider_readiness.py --require-activation` passes.

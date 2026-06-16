@@ -37,6 +37,7 @@ FluxMind helps a control researcher move from paper reading to implementation ev
 - **Paper-to-code handoffs** with assumptions, source references, validation checklists, and local artifacts.
 - **Local execution workflows** for Python and Octave-compatible control examples.
 - **Artifact tracking** for generated plots, files, and mock diagrams with stable IDs and checksums.
+- **Local API key lifecycle** through an optional SQLite registry that stores token hashes only.
 - **No-secret admin status** for jobs, corpus state, storage schema, runtime events, metrics, retention preview, and platform readiness.
 
 ### Current Architecture
@@ -57,16 +58,17 @@ Local no-key platform layer
         +--> jobs: JSONL history + SQLite current-state mirror
         +--> corpus metadata: JSON + SQLite mirrors
         +--> artifacts: filesystem + SQLite registry
+        +--> API keys: optional SQLite registry with hashed tokens
         +--> runtime events: metadata-only JSONL observability
 ```
 
 External production components are intentionally **not** enabled by default. Metadata database, object storage, and distributed job-store targets are exposed as readiness configuration and blocker codes, not as active migrations.
 Identity, quotas, billing, and commercial activation follow the same boundary:
-local owner metadata, access audit, rate-limit configuration, and cost estimates
-are visible through product-readiness checks, while external image, hosted
-execution, MATLAB, and provider quota/cost blockers are visible through
-provider-readiness checks. Real account, billing, and external provider systems
-remain disabled.
+local owner metadata, access audit, rate-limit configuration, cost estimates, and
+the optional hashed-token API key registry are visible through product-readiness
+checks, while external image, hosted execution, MATLAB, and provider quota/cost
+blockers are visible through provider-readiness checks. Real accounts, quota
+stores, billing, and external provider systems remain disabled.
 
 ### Quick Start
 
@@ -105,6 +107,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/api_key_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
@@ -140,15 +143,18 @@ HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
 RETENTION_DELETE_ENABLED=false
+FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
 External providers, hosted sandboxes, real MATLAB integration, identity, quotas,
 billing, production database/object storage, and distributed job-store
 activation remain disabled until their runtime boundaries are implemented and
-verified. `scripts/product_readiness.py` reports the current local foundation
-and the remaining identity/quota/billing blocker codes without enabling those
-systems. `scripts/provider_readiness.py` reports the matching external image
+verified. Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local
+hashed-token registry, but it is still not a multi-user identity, quota, or
+billing system. `scripts/product_readiness.py` reports the current local
+foundation and the remaining identity/quota/billing blocker codes without
+enabling those systems. `scripts/provider_readiness.py` reports the matching external image
 provider, hosted sandbox, MATLAB backend, and provider quota-guard activation
 blockers while preserving the same no-secret boundary.
 `scripts/quality_readiness.py` reports the self-use, small-group, and community
@@ -179,7 +185,7 @@ The completed baseline covers no-key/local research use. Remaining work is stage
 1. Community-quality expansion: 50+ curated papers, 80 recorded answers, 180 retrieval questions, and live answer evidence.
 2. Production state foundation: external metadata database, object storage, distributed job-store backend, migration tests, and backup/restore drills.
 3. Execution safety and observability: live sandbox decision, abuse policy, production metrics, tracing, and alert routing.
-4. Identity and commercialization: users, workspaces, API keys, quotas, billing, and audit controls.
+4. Identity and commercialization: users, workspaces, identity-backed API keys, quotas, billing, and audit controls.
 5. Product frontend/API split: replace the demo-oriented Streamlit surface with a maintainable product UI.
 
 ---
@@ -213,6 +219,7 @@ FluxMind 面向控制理论研究，把“读论文、查证据、转实现”�
 - **Paper-to-code 交接**：输出假设、参数边界、来源引用、验证清单和本地 artifact。
 - **本地代码执行**：支持 Python 和 Octave-compatible 控制工程示例。
 - **Artifact 管理**：生成图、文件、mock diagram，记录稳定 ID、校验和与元数据。
+- **本地 API key 生命周期**：可选 SQLite registry，只持久化 token hash。
 - **No-secret 管理面**：展示 job、corpus、storage schema、runtime events、metrics、retention preview 和 platform readiness。
 
 ### 当前架构
@@ -233,14 +240,16 @@ Streamlit UI / FastAPI
         +--> jobs: JSONL 历史 + SQLite 当前态镜像
         +--> corpus metadata: JSON + SQLite 镜像
         +--> artifacts: 文件系统 + SQLite registry
+        +--> API keys: 可选 SQLite registry，只存 token hash
         +--> runtime events: 仅元数据 JSONL 观测层
 ```
 
 外部生产组件默认**不启用**。Metadata database、object storage、distributed job-store 目前只通过配置、readiness 和 blocker code 暴露，不代表已经迁移或激活。
 身份、配额、计费和商业化激活也遵循同一边界：本地 owner metadata、访问审计、
-rate-limit 配置和成本估算会通过 product-readiness 检查暴露；外部图像、托管执行、
-MATLAB 和 provider quota/cost blocker 会通过 provider-readiness 检查暴露。真实账号、
-计费和外部 provider 系统仍保持禁用。
+rate-limit 配置、成本估算和可选 hashed-token API key registry 会通过
+product-readiness 检查暴露；外部图像、托管执行、MATLAB 和 provider quota/cost
+blocker 会通过 provider-readiness 检查暴露。真实账号、quota store、计费和外部
+provider 系统仍保持禁用。
 
 ### 快速启动
 
@@ -279,6 +288,7 @@ python -m pytest
 python scripts/evaluate_rag.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
+python scripts/api_key_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
@@ -314,10 +324,11 @@ HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
 RETENTION_DELETE_ENABLED=false
+FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。`scripts/product_readiness.py` 会报告当前本地基础和剩余 identity/quota/billing blocker code，但不会启用这些系统。
+真实外部 provider、托管 sandbox、真实 MATLAB 集成、身份、配额、计费、生产数据库/object storage、distributed job-store 激活都仍处于禁用状态；需要先实现和验证对应运行时边界。设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token registry，但它仍不是多用户身份、quota 或 billing 系统。`scripts/product_readiness.py` 会报告当前本地基础和剩余 identity/quota/billing blocker code，但不会启用这些系统。
 `scripts/provider_readiness.py` 会报告外部图像 provider、托管 sandbox、MATLAB backend 和 provider quota guard 的 activation blocker，同样不暴露 secret，也不会启用外部调用。
 `scripts/quality_readiness.py` 会报告 self-use、small-group、community 质量目标缺口，并可通过 `--live-report` 合并显式传入的 no-secret live eval report。
 
@@ -345,5 +356,5 @@ docs/demo-script.md                    演示脚本和答辩问答
 1. 社区质量扩展：50+ 篇精选论文、80 个 recorded answers、180 个 retrieval questions、live answer evidence。
 2. 生产状态基础：外部 metadata database、object storage、distributed job-store、迁移测试、备份恢复演练。
 3. 执行安全和观测：live sandbox 方案、滥用策略、生产 metrics、tracing、alert routing。
-4. 身份和商业化：用户、workspace、API key、quota、billing、审计控制。
+4. 身份和商业化：用户、workspace、identity-backed API key、quota、billing、审计控制。
 5. 产品前端/API split：用可维护的正式产品 UI 替代 demo-oriented Streamlit 表面。

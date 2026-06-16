@@ -52,12 +52,15 @@ readiness. `scripts/quality_readiness.py` now turns those targets into a
 no-secret preflight that can merge explicit live eval reports; self-use and the
 latest live-verified small-group lane are met, while community remains a measured
 gap before broader release work.
+The current product-shell slice also adds an optional local SQLite API key
+registry with hash-only token storage, create/list/verify/revoke CLI support,
+FastAPI auth integration, storage-schema coverage, and runtime-manifest coverage.
 
 The incomplete scope is production platformization: real external providers,
-hosted sandboxes, MATLAB licensing, multi-user identity, quotas, billing,
-external distributed worker/storage activation, and production database/object
-storage migration tests. Those remain planned, intentionally disabled, or
-decision-gated.
+hosted sandboxes, MATLAB licensing, multi-user identity, identity-backed quotas,
+billing, external distributed worker/storage activation, and production
+database/object-storage migration tests. Those remain planned, intentionally
+disabled, or decision-gated.
 
 ## WP0: Stabilize Current Production
 
@@ -289,10 +292,10 @@ durable multi-user database/object storage migration remains planned
   artifacts, uploads, and FAISS index files as paths, file counts, byte totals,
   and known-file existence flags without returning file contents.
 - `GET /admin/status` reports local storage-schema readiness for corpus/chunk
-  metadata, jobs, artifacts, and runtime events by checking schema version,
-  JSON/JSONL shape, and SQLite table/column presence without returning row
-  contents, prompts, answers, filenames, owner IDs, request IDs, source paths, or
-  runtime file contents.
+  metadata, jobs, artifacts, the API-key registry, and runtime events by checking
+  schema version, JSON/JSONL shape, and SQLite table/column presence without
+  returning row contents, prompts, answers, filenames, owner IDs, request IDs,
+  source paths, token values, or runtime file contents.
 - `scripts/storage_schema.py` runs the same no-secret schema readiness check from
   the CLI with JSON/Markdown output, `--target-root`, and a nonzero exit code
   when drift is detected.
@@ -311,8 +314,8 @@ durable multi-user database/object storage migration remains planned
   unless `--include-runtime-dependencies` is supplied.
 - `scripts/runtime_manifest.py` exports a no-secret runtime backup manifest for
   the local state trees that source deploys exclude, with file counts, byte
-  totals, and SHA-256 hashes for known metadata/job/index files without
-  exporting file contents or `.env` values.
+  totals, and SHA-256 hashes for known metadata/job/API-key-registry/index files
+  without exporting file contents or `.env` values.
 - `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
   Streamlit runtime status panel expose the same no-secret backup manifest
   without requiring SSH access to run the CLI by hand.
@@ -665,12 +668,12 @@ local API rate-limit status, local job/provider/query/retrieval/code advisory al
 metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
 inventory dashboard plus no-secret runtime backup manifest, restore dry-run
-verifier, and provider-readiness preflight implemented; keep
-public identity, API-key lifecycle, quotas, and billing disabled until decisions
-are made
+verifier, local API-key lifecycle registry, and provider-readiness preflight
+implemented; keep public identity, identity-backed quotas, and billing disabled
+until decisions are made
 
 - Decide when to replace Streamlit with a real frontend.
-- Add users, private corpora, API keys, quotas, and share/export flows.
+- Add users, private corpora, identity-backed API keys, quotas, and share/export flows.
 - Local corpus profiles let multiple named paper selections coexist without
   introducing accounts, permissions, or a public share model.
 - `GET /admin/status` exposes no-secret local runtime status for job counts,
@@ -690,6 +693,12 @@ are made
   stored content or identifiers.
 - `scripts/storage_schema.py` gives the same storage-schema check a CLI preflight
   path for local or target-root use.
+- `scripts/api_key_registry.py` manages the local hashed-token registry with
+  create/list/verify/revoke/status commands. Created tokens are returned once;
+  list/status/verify/revoke outputs never include raw token values.
+- FastAPI auth can accept tokens from the local registry when
+  `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`; this is local API authentication,
+  not multi-user tenancy, quota enforcement, or billing.
 - `scripts/platform_migration_preflight.py` gives production storage/worker
   migration a single no-secret CLI gate. It reports `preflight_ok` for local
   evidence and `activation_ready` for configured external backends, keeping
@@ -702,10 +711,10 @@ are made
   URLs, bucket names, queue names, and credentials.
 - `scripts/product_readiness.py` gives identity/quota/billing productization a
   no-secret CLI gate. Default mode passes when local foundations such as API
-  access audit, owner metadata, rate-limit configuration, and cost-estimation
-  surfaces are present; `--require-activation` fails until identity provider,
-  API-key registry, quota store, billing provider, and billing attribution
-  targets are configured.
+  access audit, owner metadata, rate-limit configuration, local API-key registry,
+  and cost-estimation surfaces are present; `--require-activation` still fails
+  until identity provider, quota store, billing provider, and billing
+  attribution targets are configured.
 - `scripts/provider_readiness.py` gives external image providers, hosted
   execution, MATLAB backend/licensing, and provider quota/cost guards the same
   no-secret CLI gate. Default mode passes when local provider foundations are

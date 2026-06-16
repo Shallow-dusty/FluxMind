@@ -55,7 +55,7 @@ offline RAG eval                          42 answer cases, 65 retrieval-only
                                           20 PDF structure cases,
                                           42 recorded answers
 local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness anchors
-storage_schema.py                         pass, ok=true, 7 stores, 0 problems
+storage_schema.py                         pass, ok=true, 8 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
@@ -142,8 +142,9 @@ Storage                 Local JSON/SQLite/filesystem and FAISS. Good current
                         readiness blockers without connecting to external
                         services. Jobs and generated artifacts now carry local
                         owner metadata. Product-readiness checks now expose the
-                        local identity/quota/billing foundation and activation
-                        blockers without enabling account or billing systems.
+                        local identity/quota/billing foundation, including the
+                        hash-only local API-key registry, and activation blockers
+                        without enabling account or billing systems.
 
 Gap to production       Relational metadata store, object storage, vector DB or
                         managed vector index, identity-backed ownership,
@@ -502,7 +503,8 @@ Order  Lane                                      Why first
 3      Durable jobs/distributed worker control    Enables indexing/execution scale
 4      Observability and cost attribution         Needed before paid providers
 5      Isolated execution sandbox                 Needed before public code runs
-6      Identity/workspaces/API keys/quotas        Needs storage/job ownership
+6      Identity/workspaces/quotas                 Local API keys exist; identity
+                                                  needs storage/job ownership
 7      Frontend/API split                         Avoids overbuilding Streamlit
 8      Provider activation/billing                Only after trust and control
 ```
@@ -606,8 +608,8 @@ expensive or risky operation is observable and attributable.
 
 ### 90-120 Days: Product Shell
 
-- Introduce users, workspaces, corpora ownership, API-key lifecycle, quotas, and
-  admin roles.
+- Introduce users, workspaces, corpora ownership, identity-backed API keys,
+  quotas, and admin roles.
 - Replace or wrap Streamlit with a frontend that supports workspace navigation,
   artifact galleries, job timelines, citation inspection, and exports.
 - Add onboarding flows for: upload paper, ask paper-grounded question, generate
