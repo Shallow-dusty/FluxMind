@@ -61,6 +61,16 @@ def main() -> int:
         action="store_true",
         help="Also copy runtime_dependency groups such as local models.",
     )
+    parser.add_argument(
+        "--include-object-manifest",
+        action="store_true",
+        help="Include an opaque object-storage migration manifest for staged runtime files.",
+    )
+    parser.add_argument(
+        "--object-key-prefix",
+        default="fluxmind-runtime",
+        help="Opaque object-key prefix for --include-object-manifest output.",
+    )
     args = parser.parse_args()
 
     try:
@@ -70,6 +80,8 @@ def main() -> int:
                 staging_root=Path(args.staging_root),
                 overwrite_staging=args.overwrite_staging,
                 include_runtime_dependencies=args.include_runtime_dependencies,
+                include_object_manifest=args.include_object_manifest,
+                object_key_prefix=args.object_key_prefix,
             )
             output = _render(status, args.format)
             emit_output(output, args.output)
@@ -81,6 +93,8 @@ def main() -> int:
                 staging_root=Path(tmp_dir),
                 overwrite_staging=False,
                 include_runtime_dependencies=args.include_runtime_dependencies,
+                include_object_manifest=args.include_object_manifest,
+                object_key_prefix=args.object_key_prefix,
             )
             status["staging_root_retained"] = False
             output = _render(status, args.format)

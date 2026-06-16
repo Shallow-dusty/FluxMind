@@ -8,6 +8,8 @@ object-storage activation.
 
 from __future__ import annotations
 
+import hashlib
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +28,8 @@ from src.storage_schema import storage_schema_status_for_root
 
 
 STORAGE_MIGRATION_REHEARSAL_SCHEMA_VERSION = 1
+OBJECT_STORAGE_MIGRATION_MANIFEST_SCHEMA_VERSION = 1
+DEFAULT_OBJECT_KEY_PREFIX = "fluxmind-runtime"
 
 
 def _utc_now() -> str:
@@ -53,6 +57,26 @@ def _empty_directory(path: Path) -> None:
 
 def _directory_has_entries(path: Path) -> bool:
     return path.exists() and any(path.iterdir())
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sanitize_object_key_prefix(value: str) -> str:
+    prefix = (value or DEFAULT_OBJECT_KEY_PREFIX).strip().strip("/")
+    if "://" in prefix:
+        prefix = DEFAULT_OBJECT_KEY_PREFIX
+    prefix = re.sub(r"[^A-Za-z0-9._/-]+", "-", prefix).strip("/")
+    return prefix or DEFAULT_OBJECT_KEY_PREFIX
+
+
+def _path_token(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _copy_runtime_group(
@@ -185,12 +209,123 @@ def _schema_summary(status: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def collect_object_storage_migration_manifest(
+    *,
+    project_root: Path = config.PROJECT_ROOT,
+    groups: tuple[Any, ...] | None = None,
+    include_runtime_dependencies: bool = False,
+    key_prefix: str = DEFAULT_OBJECT_KEY_PREFIX,
+    generated_at: str | None = None,
+) -> dict[str, Any]:
+    """Return an opaque object manifest for copying runtime files to object storage.
+
+    The manifest deliberately omits source paths, filenames, buckets, endpoints,
+    and credentials. It gives an operator enough hash/key/count evidence to
+    validate a future upload plan without exposing runtime contents in reports.
+    """
+    root = project_root.resolve()
+    runtime_groups = groups if groups is not None else runtime_groups_for_root(root)
+    if not include_runtime_dependencies:
+        runtime_groups = tuple(
+            group for group in runtime_groups if group.restore_priority != "runtime_dependency"
+        )
+    prefix = _sanitize_object_key_prefix(key_prefix)
+    objects: list[dict[str, Any]] = []
+    group_summaries: list[dict[str, Any]] = []
+    unique_keys: set[str] = set()
+
+    for group in runtime_groups:
+        group_path = group.path.resolve()
+        group_objects = 0
+        group_bytes = 0
+        group_exists = group_path.exists()
+        group_is_dir = group_path.is_dir() and not group_path.is_symlink()
+        if group_is_dir:
+            for item in sorted(group_path.rglob("*"), key=lambda path: path.as_posix()):
+                if item.is_symlink() or not item.is_file():
+                    continue
+                relative_path = item.relative_to(group_path).as_posix()
+                digest = _sha256_file(item)
+                size = item.stat().st_size
+                object_key = f"{prefix}/{group.name}/{digest[:2]}/{digest}"
+                unique_keys.add(object_key)
+                group_objects += 1
+                group_bytes += size
+                objects.append(
+                    {
+                        "group": group.name,
+                        "restore_priority": group.restore_priority,
+                        "object_key": object_key,
+                        "bytes": size,
+                        "sha256": digest,
+                        "source_path_token": _path_token(f"{group.name}/{relative_path}"),
+                    }
+                )
+
+        group_summaries.append(
+            {
+                "name": group.name,
+                "restore_priority": group.restore_priority,
+                "source_exists": group_exists,
+                "source_is_directory": group_is_dir,
+                "object_count": group_objects,
+                "bytes": group_bytes,
+            }
+        )
+
+    return {
+        "schema_version": OBJECT_STORAGE_MIGRATION_MANIFEST_SCHEMA_VERSION,
+        "generated_at": generated_at or _utc_now(),
+        "mode": "object_storage_migration_manifest",
+        "content_exported": False,
+        "secrets_exported": False,
+        "source_paths_exported": False,
+        "filenames_exported": False,
+        "bucket_exported": False,
+        "external_connectivity_checked": False,
+        "hash_algorithm": "sha256",
+        "object_key_strategy": "grouped_by_content_sha256",
+        "key_prefix": prefix,
+        "group_count": len(group_summaries),
+        "object_count": len(objects),
+        "unique_object_count": len(unique_keys),
+        "duplicate_content_references": len(objects) - len(unique_keys),
+        "total_bytes": sum(int(item.get("bytes", 0) or 0) for item in objects),
+        "groups": group_summaries,
+        "objects": objects,
+    }
+
+
+def _object_manifest_summary(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": manifest.get("schema_version"),
+        "mode": manifest.get("mode", ""),
+        "content_exported": bool(manifest.get("content_exported")),
+        "secrets_exported": bool(manifest.get("secrets_exported")),
+        "source_paths_exported": bool(manifest.get("source_paths_exported")),
+        "filenames_exported": bool(manifest.get("filenames_exported")),
+        "bucket_exported": bool(manifest.get("bucket_exported")),
+        "external_connectivity_checked": bool(manifest.get("external_connectivity_checked")),
+        "hash_algorithm": manifest.get("hash_algorithm", ""),
+        "object_key_strategy": manifest.get("object_key_strategy", ""),
+        "group_count": int(manifest.get("group_count", 0) or 0),
+        "object_count": int(manifest.get("object_count", 0) or 0),
+        "unique_object_count": int(manifest.get("unique_object_count", 0) or 0),
+        "duplicate_content_references": int(
+            manifest.get("duplicate_content_references", 0) or 0
+        ),
+        "total_bytes": int(manifest.get("total_bytes", 0) or 0),
+    }
+
+
 def run_storage_migration_rehearsal(
     *,
     project_root: Path = config.PROJECT_ROOT,
     staging_root: Path,
     overwrite_staging: bool = False,
     include_runtime_dependencies: bool = False,
+    include_object_manifest: bool = False,
+    object_key_prefix: str = DEFAULT_OBJECT_KEY_PREFIX,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
     """Copy local runtime state into staging and verify it with no-secret checks."""
@@ -253,6 +388,16 @@ def run_storage_migration_rehearsal(
         generated_at=generated_at,
     ) if staging_prepared else {}
     staged_schema = storage_schema_status_for_root(target_root) if staging_prepared else {}
+    object_manifest = (
+        collect_object_storage_migration_manifest(
+            project_root=target_root,
+            include_runtime_dependencies=include_runtime_dependencies,
+            key_prefix=object_key_prefix,
+            generated_at=generated_at,
+        )
+        if staging_prepared and include_object_manifest
+        else {}
+    )
     if source_preflight.get("preflight_ok") is not True:
         blockers.append("source_preflight_failed")
     if staging_prepared and not restore_check.get("ok"):
@@ -289,6 +434,11 @@ def run_storage_migration_rehearsal(
             "skipped_symlinks": skipped_symlinks,
             "restore_check_ok": bool(restore_check.get("ok")),
             "staged_storage_schema_ok": bool(staged_schema.get("ok")),
+            "object_manifest_ready": bool(object_manifest.get("mode")),
+            "object_manifest_objects": int(object_manifest.get("object_count", 0) or 0),
+            "object_manifest_unique_objects": int(
+                object_manifest.get("unique_object_count", 0) or 0
+            ),
         },
         "source_preflight": {
             "preflight_ok": bool(source_preflight.get("preflight_ok")),
@@ -305,6 +455,10 @@ def run_storage_migration_rehearsal(
         },
         "staged_restore_check": _restore_summary(restore_check),
         "staged_storage_schema": _schema_summary(staged_schema),
+        "object_storage_manifest": object_manifest,
+        "object_storage_manifest_summary": _object_manifest_summary(object_manifest)
+        if object_manifest
+        else {},
     }
 
 
@@ -315,6 +469,7 @@ def _format_bool(value: Any) -> str:
 def format_storage_migration_rehearsal_markdown(status: dict[str, Any]) -> str:
     """Render a no-secret local migration rehearsal report."""
     summary = status.get("summary", {})
+    object_summary = status.get("object_storage_manifest_summary", {})
     lines = [
         "# FluxMind Runtime Migration Rehearsal",
         "",
@@ -341,6 +496,9 @@ def format_storage_migration_rehearsal_markdown(status: dict[str, Any]) -> str:
         f"- Skipped symlinks: {summary.get('skipped_symlinks', 0)}",
         f"- Restore check OK: {_format_bool(summary.get('restore_check_ok', False))}",
         f"- Staged storage schema OK: {_format_bool(summary.get('staged_storage_schema_ok', False))}",
+        f"- Object manifest ready: {_format_bool(summary.get('object_manifest_ready', False))}",
+        f"- Object manifest objects: {summary.get('object_manifest_objects', 0)}",
+        f"- Object manifest unique objects: {summary.get('object_manifest_unique_objects', 0)}",
         "",
         "## Blockers",
         "",
@@ -358,5 +516,59 @@ def format_storage_migration_rehearsal_markdown(status: dict[str, Any]) -> str:
             f"bytes={group.get('copied_bytes', 0)}, "
             f"skipped_symlinks={group.get('skipped_symlinks', 0)}, "
             f"errors={','.join(group.get('errors', [])) or 'none'}"
+        )
+    if object_summary:
+        lines.extend(
+            [
+                "",
+                "## Object Storage Migration Manifest",
+                "",
+                "Object keys, hashes, and byte counts are available in JSON output. Source paths, filenames, buckets, endpoints, credentials, and contents are not exported.",
+                "",
+                f"- Mode: {object_summary.get('mode', '')}",
+                f"- Content exported: {_format_bool(object_summary.get('content_exported', False))}",
+                f"- Secrets exported: {_format_bool(object_summary.get('secrets_exported', False))}",
+                f"- Source paths exported: {_format_bool(object_summary.get('source_paths_exported', False))}",
+                f"- Filenames exported: {_format_bool(object_summary.get('filenames_exported', False))}",
+                f"- Bucket exported: {_format_bool(object_summary.get('bucket_exported', False))}",
+                f"- Object count: {object_summary.get('object_count', 0)}",
+                f"- Unique object count: {object_summary.get('unique_object_count', 0)}",
+                f"- Duplicate content references: {object_summary.get('duplicate_content_references', 0)}",
+                f"- Total bytes: {object_summary.get('total_bytes', 0)}",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def format_object_storage_migration_manifest_markdown(manifest: dict[str, Any]) -> str:
+    """Render an object-storage migration manifest summary as no-secret Markdown."""
+    lines = [
+        "# FluxMind Object Storage Migration Manifest",
+        "",
+        "No runtime contents, source paths, filenames, buckets, endpoints, credentials, or secrets are exported.",
+        "",
+        f"- Generated at: {manifest.get('generated_at', '')}",
+        f"- Mode: {manifest.get('mode', '')}",
+        f"- Content exported: {_format_bool(manifest.get('content_exported', False))}",
+        f"- Secrets exported: {_format_bool(manifest.get('secrets_exported', False))}",
+        f"- Source paths exported: {_format_bool(manifest.get('source_paths_exported', False))}",
+        f"- Filenames exported: {_format_bool(manifest.get('filenames_exported', False))}",
+        f"- Bucket exported: {_format_bool(manifest.get('bucket_exported', False))}",
+        f"- External connectivity checked: {_format_bool(manifest.get('external_connectivity_checked', False))}",
+        f"- Hash algorithm: {manifest.get('hash_algorithm', '')}",
+        f"- Object key strategy: {manifest.get('object_key_strategy', '')}",
+        f"- Object count: {manifest.get('object_count', 0)}",
+        f"- Unique object count: {manifest.get('unique_object_count', 0)}",
+        f"- Duplicate content references: {manifest.get('duplicate_content_references', 0)}",
+        f"- Total bytes: {manifest.get('total_bytes', 0)}",
+        "",
+        "## Runtime Groups",
+        "",
+    ]
+    for group in manifest.get("groups", []):
+        lines.append(
+            f"- {group.get('name', '')}: priority={group.get('restore_priority', '')}, "
+            f"source_exists={_format_bool(group.get('source_exists', False))}, "
+            f"objects={group.get('object_count', 0)}, bytes={group.get('bytes', 0)}"
         )
     return "\n".join(lines)

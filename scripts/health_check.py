@@ -233,6 +233,13 @@ def main() -> int:
         "storage migration rehearsal no-secret guards installed",
         failures,
     )
+    check(
+        "collect_object_storage_migration_manifest" in storage_migration_source
+        and "source_paths_exported" in storage_migration_source
+        and "object_key_strategy" in storage_migration_source,
+        "object storage migration manifest installed",
+        failures,
+    )
     storage_migration_cli = (
         PROJECT_ROOT / "scripts" / "platform_migration_rehearsal.py"
     ).read_text(encoding="utf-8")
@@ -241,6 +248,12 @@ def main() -> int:
         and "--overwrite-staging" in storage_migration_cli
         and "TemporaryDirectory" in storage_migration_cli,
         "platform migration rehearsal CLI installed",
+        failures,
+    )
+    check(
+        "--include-object-manifest" in storage_migration_cli
+        and "--object-key-prefix" in storage_migration_cli,
+        "platform migration rehearsal object manifest CLI installed",
         failures,
     )
     product_readiness_source = (PROJECT_ROOT / "src" / "product_readiness.py").read_text(

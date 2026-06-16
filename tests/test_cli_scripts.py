@@ -504,6 +504,39 @@ def test_platform_migration_rehearsal_cli_uses_temporary_staging(monkeypatch, ca
     assert str(seen["project_root"]) == "/tmp/root"
     assert seen["overwrite_staging"] is False
     assert seen["include_runtime_dependencies"] is False
+    assert seen["include_object_manifest"] is False
+    assert seen["object_key_prefix"] == "fluxmind-runtime"
+
+
+def test_platform_migration_rehearsal_cli_can_include_object_manifest(monkeypatch, capsys):
+    seen = {}
+
+    def fake_rehearsal(**kwargs):
+        seen.update(kwargs)
+        return {
+            "rehearsal_ok": True,
+            "summary": {"object_manifest_ready": True},
+            "object_storage_manifest": {"mode": "object_storage_migration_manifest"},
+        }
+
+    monkeypatch.setattr(platform_migration_rehearsal_cli, "run_storage_migration_rehearsal", fake_rehearsal)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--target-root",
+            "/tmp/root",
+            "--include-object-manifest",
+            "--object-key-prefix",
+            "lab-runtime",
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["object_storage_manifest"]["mode"] == "object_storage_migration_manifest"
+    assert seen["include_object_manifest"] is True
+    assert seen["object_key_prefix"] == "lab-runtime"
 
 
 def test_platform_migration_rehearsal_cli_retained_staging_can_fail(monkeypatch, capsys):

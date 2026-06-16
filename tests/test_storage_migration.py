@@ -3,6 +3,8 @@ import json
 import src.storage_migration as storage_migration
 from src.jobs import LocalJobStore
 from src.storage_migration import (
+    collect_object_storage_migration_manifest,
+    format_object_storage_migration_manifest_markdown,
     format_storage_migration_rehearsal_markdown,
     run_storage_migration_rehearsal,
 )
@@ -60,6 +62,84 @@ def test_storage_migration_rehearsal_copies_and_verifies_runtime_without_secrets
     assert (staging / "jobs" / "jobs.sqlite3").exists()
     assert not (staging / ".env").exists()
     assert "do-not-copy" not in payload
+
+
+def test_object_storage_migration_manifest_uses_opaque_keys_without_paths_or_secrets(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    _seed_runtime(source)
+    private_upload = source / "papers" / "uploads" / "private-study.pdf"
+    private_upload.write_bytes(b"%PDF-private")
+
+    manifest = collect_object_storage_migration_manifest(
+        project_root=source,
+        key_prefix="s3://hidden-bucket/private-prefix",
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+
+    payload = json.dumps(manifest, ensure_ascii=False, sort_keys=True)
+    assert manifest["mode"] == "object_storage_migration_manifest"
+    assert manifest["content_exported"] is False
+    assert manifest["secrets_exported"] is False
+    assert manifest["source_paths_exported"] is False
+    assert manifest["filenames_exported"] is False
+    assert manifest["bucket_exported"] is False
+    assert manifest["external_connectivity_checked"] is False
+    assert manifest["key_prefix"] == "fluxmind-runtime"
+    assert manifest["object_count"] >= 6
+    assert manifest["unique_object_count"] >= 1
+    assert all(item["object_key"].startswith("fluxmind-runtime/") for item in manifest["objects"])
+    assert all(item["sha256"] in item["object_key"] for item in manifest["objects"])
+    assert all(item["source_path_token"] for item in manifest["objects"])
+    assert "private-study.pdf" not in payload
+    assert "paper.pdf" not in payload
+    assert "corpus.json" not in payload
+    assert "do-not-copy" not in payload
+    assert "hidden-bucket" not in payload
+    assert "s3://" not in payload
+
+
+def test_object_storage_migration_manifest_markdown_is_no_secret(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    _seed_runtime(source)
+
+    manifest = collect_object_storage_migration_manifest(
+        project_root=source,
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+    markdown = format_object_storage_migration_manifest_markdown(manifest)
+
+    assert "# FluxMind Object Storage Migration Manifest" in markdown
+    assert "Content exported: false" in markdown
+    assert "Source paths exported: false" in markdown
+    assert "paper.pdf" not in markdown
+    assert "do-not-copy" not in markdown
+
+
+def test_storage_migration_rehearsal_can_include_object_manifest(tmp_path):
+    source = tmp_path / "source"
+    staging = tmp_path / "staging"
+    source.mkdir()
+    _seed_runtime(source)
+
+    status = run_storage_migration_rehearsal(
+        project_root=source,
+        staging_root=staging,
+        include_object_manifest=True,
+        object_key_prefix="lab-runtime",
+        generated_at="2026-06-16T00:00:00+00:00",
+    )
+
+    payload = json.dumps(status, ensure_ascii=False, sort_keys=True)
+    assert status["rehearsal_ok"] is True
+    assert status["summary"]["object_manifest_ready"] is True
+    assert status["summary"]["object_manifest_objects"] >= 5
+    assert status["object_storage_manifest"]["mode"] == "object_storage_migration_manifest"
+    assert status["object_storage_manifest"]["key_prefix"] == "lab-runtime"
+    assert status["object_storage_manifest"]["source_paths_exported"] is False
+    assert "do-not-copy" not in payload
+    assert "paper.pdf" not in payload
 
 
 def test_storage_migration_rehearsal_generates_timestamp_when_not_supplied(tmp_path):
