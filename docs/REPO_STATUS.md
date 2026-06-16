@@ -16,12 +16,12 @@ Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  e2dc1e3 feat: add product readiness preflight
 Implementation base            8191656 docs: refresh FluxMind sync status
-Remote status at verification  origin/main includes 8b81c57 after quality/docs push
+Remote status at verification  origin/main includes 79be409 after product-readiness push
 Current refresh scope          product-readiness preflight plus docs guard refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   current docs tree synced with deploy_sync --apply
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
-Latest deploy follow-up        9b1cbc5/8b81c57 synced without restart on 2026-06-16 17:39 CST
+Latest deploy follow-up        e2dc1e3/79be409 synced with restart on 2026-06-16 19:08 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -59,9 +59,9 @@ The latest platform-migration source/docs sync deployed to `/opt/fluxmind` is
 `dc2b71a` (`docs: record runtime migration rehearsal`), with implementation
 commits `8a4a76f` (`feat: add platform migration preflight`) and `366c1e7`
 (`feat: add runtime migration rehearsal`).
-The latest local implementation commit is `e2dc1e3` (`feat: add product
-readiness preflight`), which has not yet been recorded as a deployed live
-baseline in `docs/DEPLOYMENT_STATUS.md`.
+The latest product-readiness source/docs sync deployed to `/opt/fluxmind` is
+`79be409` (`docs: record product readiness status`), with implementation commit
+`e2dc1e3` (`feat: add product readiness preflight`).
 
 Current local verification on 2026-06-16 18:58 CST:
 
@@ -109,6 +109,14 @@ Product readiness smoke                                     local_foundation_rea
                                                             blockers include identity provider,
                                                             key lifecycle, quota store, billing
                                                             provider, and billing attribution
+Remote product readiness smoke                              `/opt/fluxmind/venv/bin/python
+                                                            scripts/product_readiness.py`
+                                                            returned local_foundation_ready=true,
+                                                            activation_ready=false;
+                                                            --require-activation exited 1;
+                                                            admin metrics include
+                                                            fluxmind_product_* and omit
+                                                            api_key/owner_id
 ```
 
 The earlier small-group quality work was deployed and live-verified through the

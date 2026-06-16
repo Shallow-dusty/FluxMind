@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 18:34 CST
+Last live check: 2026-06-16 19:08 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -14,10 +14,10 @@ Last verified source/eval baseline before this deployment record: `9b1cbc5`
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
-Last deployed implementation update: `8a4a76f`
-(`feat: add platform migration preflight`).
-Last deployed source/docs sync: `dc2b71a`
-(`docs: record runtime migration rehearsal`).
+Last deployed implementation update: `e2dc1e3`
+(`feat: add product readiness preflight`).
+Last deployed source/docs sync: `79be409`
+(`docs: record product readiness status`).
 
 ```
 Host          Trace-Twin
@@ -726,6 +726,7 @@ admin storage readiness  present in /opt/fluxmind/src/admin.py and /opt/fluxmind
 admin job-store readiness present in /opt/fluxmind/src/admin.py and /opt/fluxmind/src/config.py; SSH health on 2026-06-16 14:42 CST returned distributed_job_store backend=local available=true external_configured=false
 platform migration preflight present in /opt/fluxmind/src/platform_migration.py and /opt/fluxmind/scripts/platform_migration_preflight.py; SSH smoke on 2026-06-16 18:13 CST returned preflight_ok=true activation_ready=false local_blockers=none activation_blockers=[production_metadata_database_not_configured,production_object_storage_not_configured,distributed_job_store_not_configured]
 runtime migration rehearsal present in /opt/fluxmind/src/storage_migration.py and /opt/fluxmind/scripts/platform_migration_rehearsal.py; SSH smoke on 2026-06-16 18:34 CST returned rehearsal_ok=true copied_files=19 restore_check_ok=true staged_storage_schema_ok=true blockers=none
+product readiness       present in /opt/fluxmind/src/product_readiness.py and /opt/fluxmind/scripts/product_readiness.py; SSH smoke on 2026-06-16 19:08 CST using /opt/fluxmind/venv/bin/python returned local_foundation_ready=true activation_ready=false local_blockers=none activation_blockers=[multi_user_identity_not_configured,api_key_lifecycle_not_configured,identity_quota_store_not_configured,billing_provider_not_configured,billing_attribution_not_enabled]; --require-activation exited 1 as expected; authenticated admin status returned product_readiness local_foundation_ready=true activation_ready=false; metrics include fluxmind_product_* and still omit api_key/owner_id
 admin storage inventory  present in /opt/fluxmind/src/admin.py and /opt/fluxmind/app.py; authenticated admin smoke returned mode=local total_files=19 total_bytes=1886739 groups=[metadata,jobs,artifacts,uploads,faiss_index] content_scanned=false external_storage_configured=false
 deployed metadata layer  present in /opt/fluxmind/src/metadata.py
 corpus SQLite mirror     present in /opt/fluxmind/src/metadata.py; paper metadata mirrors into metadata/corpus.sqlite3
@@ -854,6 +855,9 @@ python scripts/health_check.py \
   --url https://api-smy.hyper-dusty.cloud/health
 
 python scripts/health_check.py --ssh-host root@100.100.233.26
+
+ssh -o BatchMode=yes root@100.100.233.26 \
+  'cd /opt/fluxmind && venv/bin/python scripts/product_readiness.py --format markdown'
 
 ssh -o BatchMode=yes root@100.100.233.26 \
   'systemctl is-active cloudflared-fluxmind-smy.service fluxmind-ui.service fluxmind-api.service fluxmind-worker.service docker.service;
