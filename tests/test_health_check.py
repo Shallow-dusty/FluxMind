@@ -99,7 +99,7 @@ def test_run_ssh_reports_timeout_without_traceback(monkeypatch):
 
     assert code == 124
     assert "partial" in output
-    assert "timed out after 45.0s" in output
+    assert "timed out after 180.0s" in output
 
 
 def test_run_ssh_uses_minimum_command_timeout(monkeypatch):
@@ -119,4 +119,4 @@ def test_run_ssh_uses_minimum_command_timeout(monkeypatch):
 
     assert code == 0
     assert output == "ok\n"
-    assert calls["timeout"] == 45.0
+    assert calls["timeout"] == 180.0

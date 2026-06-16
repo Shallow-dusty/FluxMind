@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SSH_COMMAND_TIMEOUT_FLOOR_S = 45.0
+SSH_COMMAND_TIMEOUT_FLOOR_S = 180.0
 
 
 def check(condition: bool, label: str, failures: list[str]) -> None:
