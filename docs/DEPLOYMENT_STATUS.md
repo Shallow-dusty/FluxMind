@@ -1,6 +1,6 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-16 14:42 CST
+Last live check: 2026-06-16 17:39 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
@@ -9,8 +9,8 @@ healthy at a later time.
 ## Current Deployment
 
 Workspace directory: `11.FluxMind/`
-Last verified source/eval baseline before this deployment record: `d80c083`
-(`test: tighten FluxMind small-group quality gates`). `/opt/fluxmind` is not a
+Last verified source/eval baseline before this deployment record: `9b1cbc5`
+(`test: expand FluxMind community quality eval`). `/opt/fluxmind` is not a
 git checkout, so the live deployment should be treated as a synchronized source
 tree rather than a deployed commit hash. Repo documentation commits may be newer
 than this application-code baseline.
@@ -97,6 +97,32 @@ depend on downloading from Hugging Face.
 
 ## Last Verification
 
+Community-quality eval/docs sync and live retrieval evaluation were refreshed
+on 2026-06-16 17:39 CST after pushing `9b1cbc5` and `8b81c57`.
+`.venv/bin/python scripts/deploy_sync.py --apply` synced README, docs, tests,
+`eval/rag_baseline.json`, and `scripts/health_check.py` to `/opt/fluxmind`
+without restarting services. `fluxmind-api.service`, `fluxmind-ui.service`, and
+`fluxmind-worker.service` stayed `active`, local API health returned
+`{"status":"ok"}`, and server-local `venv/bin/python scripts/health_check.py`
+passed with the local FAISS index non-empty and `active_papers=30`.
+
+Server-local
+`venv/bin/python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502
+--json-report /tmp/fluxmind-live-community-expansion-report.json` passed all
+107 live retrieval cases, with `minimum_live_retrieval_pass_rate=1.00`. The
+report metrics are `answer_case_count=42`, `retrieval_only_case_count=65`,
+`retrieval_eval_question_count=107`, `recorded_answer_count=42`,
+`code_output_case_count=12`, `pdf_structure_case_count=20`,
+`live_retrieval_result_count=107`, and `seed_paper_count=30`. Public HTTPS
+checks with bounded timeouts passed after the sync:
+`https://api-smy.hyper-dusty.cloud/health` returned `{"status":"ok"}` and
+`https://smy.hyper-dusty.cloud/` returned 200.
+
+Current community gaps remain: corpus growth toward 50 papers, 80 answer cases,
+80 recorded answers, 100 retrieval-only cases, 180 total retrieval questions,
+30 PDF structure cases, and live answer evidence. The 12-case code-output target
+and 100-case live retrieval target are now met.
+
 Production readiness foundation deploy was refreshed on 2026-06-16 14:42 CST
 after pushing `18200f6`.
 `.venv/bin/python scripts/deploy_sync.py --apply --restart` synced source,
@@ -145,10 +171,10 @@ remote corpus status `papers=30`, `active=30`, `indexed=30`, `chunks=1934`,
 `index=fresh`. The SSH health gate reported UI/API/worker/cloudflared/docker
 active, ports `18501` and `18502` listening, Docker execution still
 `configured=False available=False reason=not_configured`, local storage
-available, retrieval/admin smokes passing, and `/dev/vda3` at 36% used. Current
-small-group gaps are zero. Community gaps remain: corpus growth toward 50
-papers, 80 recorded answers, 180 retrieval questions, 30 PDF structure cases,
-12 code-output cases, and live answer evidence.
+available, retrieval/admin smokes passing, and `/dev/vda3` at 36% used. At that
+point, small-group gaps were zero and community gaps still included corpus
+growth toward 50 papers, 80 recorded answers, 180 retrieval questions, 30 PDF
+structure cases, 12 code-output cases, and live answer evidence.
 
 Corpus-expansion deploy and live retrieval evaluation were refreshed on
 2026-06-15 14:29 CST after pushing `b2f543e` and `d1e5326`. Four additional

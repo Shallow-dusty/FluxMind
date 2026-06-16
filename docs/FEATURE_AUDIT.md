@@ -33,7 +33,7 @@ Command                                                               Result
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
-server-local evaluate_rag.py --retrieval-url ... --json-report ...   14:17 snapshot, 100/100 live retrieval
+server-local evaluate_rag.py --retrieval-url ... --json-report ...   17:39 snapshot, 107/107 live retrieval
                                                                       cases and 24/24 regression gates pass
 .venv/bin/python scripts/runtime_manifest.py --output /tmp/...       pass, /tmp/fluxmind-runtime-manifest-storage-schema-cli.json
 .venv/bin/python scripts/runtime_manifest.py --restore-check ...     pass, ok=true, 6 groups, 5 checked files,

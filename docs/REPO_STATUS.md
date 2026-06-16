@@ -16,12 +16,12 @@ Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  9b1cbc5 test: expand FluxMind community quality eval
 Implementation base            8191656 docs: refresh FluxMind sync status
-Remote status at verification  local main is ahead of origin/main pending this quality/docs push
+Remote status at verification  origin/main includes 8b81c57 after quality/docs push
 Current refresh scope          community-quality eval expansion plus docs guard refresh
-Last deployed source/eval baseline 18200f6 feat: add distributed job store readiness
-Last deployed docs sync base   8191656 docs: refresh FluxMind sync status
-Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST
-Latest deploy follow-up        18200f6 synced/restarted on 2026-06-16 14:42 CST
+Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
+Last deployed docs sync base   current docs tree synced with deploy_sync --apply
+Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
+Latest deploy follow-up        9b1cbc5/8b81c57 synced without restart on 2026-06-16 17:39 CST
 Ignored runtime/cache state    .venv, __pycache__, .pytest_cache, jobs, metadata, runtime caches
 ```
 
@@ -50,10 +50,10 @@ Deployment/docs      guarded deploy sync, health-check expansion, deployment
 ```
 
 Earlier no-key platform deployment completed for `a51a060`; that live
-verification evidence was recorded in `32fca21`. The deployed small-group live
+verification evidence was recorded in `32fca21`. The previous small-group live
 retrieval baseline was built from the `d80c083` / `cc705dc` quality run. The
-current source/eval quality baseline is `9b1cbc5`, which has not yet had its
-expanded 107-question retrieval set re-run against the live deployment.
+current source/eval quality baseline is `9b1cbc5`, and its expanded
+107-question retrieval set has now passed against the live deployment.
 
 Current local verification on 2026-06-16 17:25 CST:
 
@@ -81,10 +81,10 @@ Admin status smoke                                          distributed_job_stor
 
 The earlier small-group quality work was deployed and live-verified through the
 100/100 retrieval snapshot on 2026-06-16 14:17 CST. The current source/eval
-baseline `9b1cbc5` advances the deterministic RAG baseline beyond that deployed
-snapshot into a 107-question no-LLM retrieval gate: 42 answer cases, 42 recorded
-answers, and 65 retrieval-only source/page cases with topic, lane, and ontology
-coverage gates.
+baseline `9b1cbc5` advances the deterministic RAG baseline beyond that snapshot
+and is now live-verified as a 107-question no-LLM retrieval gate: 42 answer
+cases, 42 recorded answers, and 65 retrieval-only source/page cases with topic,
+lane, and ontology coverage gates.
 It also adds a local paper-to-code handoff section to `/query/report` for
 implementation and code-generation report exports, plus local Python
 code-output eval cases that verify generated plot/text artifacts, reusable
@@ -503,11 +503,9 @@ scope                                                                  docs-only
 
 ## Latest Deployment Snapshot
 
-The latest live deployment snapshot was refreshed after syncing and restarting
-`18200f6`, then running SSH and public HTTPS health checks on
-2026-06-16 14:42 CST in `docs/DEPLOYMENT_STATUS.md`. The earlier guarded
-corpus sync, index rebuild, and live retrieval evaluation were refreshed on
-2026-06-16 14:17 CST. The platform/eval/API/runtime-restore/
+The latest live deployment snapshot was refreshed after syncing `9b1cbc5` and
+the current docs tree without restart, then running SSH, public HTTPS, and live
+retrieval checks on 2026-06-16 17:39 CST in `docs/DEPLOYMENT_STATUS.md`. The platform/eval/API/runtime-restore/
 job-idempotency/retry-dead-letter/ownership/Docker-execution/execution-policy/
 execution-observability/output-limits/artifact-limits/execution-alerts/
 query-latency/query-alerts/provider-alerts/job-alerts/API-access-audit/
@@ -519,7 +517,7 @@ exclude and the distributed job-store readiness foundation are now synced or
 rebuilt on Trace-Twin through the current source/runtime boundary. The latest
 remote corpus status is `papers=30`,
 `active=30`, `indexed=30`, `chunks=1934`, and `index=fresh`; live retrieval eval
-passes `100/100`, with `small_group=met`. External
+passes `107/107`, with `small_group=met`. External
 providers, hosted sandboxes, MATLAB,
 identity-backed quotas/billing, distributed storage, and distributed workers
 remain intentionally disabled or planned.

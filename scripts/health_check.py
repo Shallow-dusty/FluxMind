@@ -137,8 +137,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Last deployed source/eval baseline 18200f6 feat: add distributed job store readiness" in repo_status
-        and "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST"
+        and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
+        and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST"
         in repo_status,
         "repo status records current source and deployed baselines",
         failures,

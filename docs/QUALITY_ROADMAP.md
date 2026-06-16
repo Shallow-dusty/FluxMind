@@ -48,9 +48,9 @@ Target       Status
 self_use     met by the current no-key/local baseline
 small_group  met: 30 curated papers, 107 no-LLM retrieval questions,
              42 recorded answers, 12 code-output cases, 20 PDF structure
-             cases, and 100/100 live retrieval pass in the latest deployment run
-community    gap: corpus size, live answer evidence, live retrieval refresh,
-             and remaining answer/retrieval/PDF coverage depth
+             cases, and 107/107 live retrieval pass in the latest deployment run
+community    gap: corpus size, live answer evidence, and remaining
+             answer/retrieval/PDF coverage depth
 ```
 
 Latest measured source-quality snapshot on 2026-06-16 17:25 CST:
@@ -63,7 +63,7 @@ answer_case_count              42       40                  0
 retrieval_only_case_count      65       60                  0
 retrieval_eval_question_count  107      100                 0
 recorded_answer_count          42       40                  0
-live_retrieval_result_count    100      50                  0
+live_retrieval_result_count    107      50                  0
 code_output_case_count         12       8                   0
 pdf_structure_case_count       20       15                  0
 topic_group_count              4        4                   0
@@ -71,9 +71,8 @@ topic_group_count              4        4                   0
 
 The offline rows come from `scripts/evaluate_rag.py --json-report
 artifacts/eval/community-expansion-local.json` after `9b1cbc5`; live retrieval
-still comes from `/tmp/fluxmind-live-corpus30-report.json` on the deployed host
-and is recorded in `docs/DEPLOYMENT_STATUS.md`. Re-run live retrieval after the
-next deploy before claiming the new 107-question source set is live-verified.
+comes from `/tmp/fluxmind-live-community-expansion-report.json` on the deployed
+host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
 
 ## Near-Term Quality Lane
 

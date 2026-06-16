@@ -16,7 +16,7 @@ Languages: [English](#english) | [中文](#中文)
 Project number                 11.FluxMind
 Current maturity               small-group research baseline
 Deployment                     live on Trace-Twin, UI/API/worker services active
-Quality gate                   30 papers, 107 offline retrieval questions, 42 recorded answers
+Quality gate                   30 papers, 107 live retrieval questions, 42 recorded answers
 Runtime model                  no-key/local platform foundation with guarded external readiness
 Production platformization     not activated yet
 ```
@@ -165,7 +165,7 @@ The completed baseline covers no-key/local research use. Remaining work is stage
 项目编号                     11.FluxMind
 当前成熟度                   小组研究可用基线
 部署状态                     已部署在 Trace-Twin，UI/API/worker 服务可用
-质量门槛                     30 篇论文、107 个 offline retrieval 问题、42 个 recorded answers
+质量门槛                     30 篇论文、107 个 live retrieval 问题、42 个 recorded answers
 运行时形态                   no-key/local 平台基础，外部能力只做 readiness
 完整生产平台化               尚未激活
 ```

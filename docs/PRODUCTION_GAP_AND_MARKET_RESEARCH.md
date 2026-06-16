@@ -520,7 +520,7 @@ source refs, assumption/parameter guardrails, fenced code blocks, cited artifact
 IDs, and validation checklist fields. The self-use and small-group targets are
 met in the latest deployed live retrieval report; the community target still
 needs corpus growth toward 50 papers, 80 recorded answers, 180 retrieval
-questions, 30 PDF structure cases, 12 code-output cases, and live answer
+questions, 30 PDF structure cases, and live answer
 evidence. Broader Octave
 execution remains deferred until an Octave binary
 is available in CI/runtime. The 2026-06-15 and 2026-06-16 seed-library

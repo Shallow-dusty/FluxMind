@@ -8,8 +8,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Last deployed source/eval baseline 18200f6 feat: add distributed job store readiness" in text
-    assert "Live verification follow-up    30-paper corpus rebuild and 100/100 live retrieval refreshed on 2026-06-16 14:17 CST" in text
+    assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
+    assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST" in text
     assert "HEAD          a51a060" not in text
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
