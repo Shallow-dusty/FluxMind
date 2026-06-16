@@ -98,13 +98,15 @@
     "minimum_retrieval_only_case_count": 65,
     "minimum_retrieval_eval_question_count": 107,
     "minimum_retrieval_only_pass_rate": 1.0,
-    "minimum_code_output_case_count": 12,
+    "minimum_code_output_case_count": 13,
     "required_code_output_languages": [
-      "python"
+      "python",
+      "octave"
     ],
     "required_code_output_template_ids": [
       "smc_reaching_law",
-      "pmsm_current_step"
+      "pmsm_current_step",
+      "pmsm_current_decay"
     ],
     "required_code_output_execution_modes": [
       "provider",
@@ -682,6 +684,44 @@
         "provider_runtime": "python-local",
         "filesystem_isolation": "temporary_workdir",
         "network_policy_enforced": "false"
+      }
+    },
+    {
+      "id": "octave-pmsm-current-decay-template",
+      "language": "octave",
+      "template_id": "pmsm_current_decay",
+      "entrypoint": "main.m",
+      "timeout_s": 10,
+      "memory_mb": 256,
+      "required_stdout_terms": [
+        "wrote pmsm_current_decay.csv"
+      ],
+      "expected_artifacts": [
+        {
+          "title": "pmsm_current_decay.csv",
+          "kind": "text",
+          "mime_type": "text/csv",
+          "minimum_byte_count": 80
+        }
+      ],
+      "expected_runtime_metadata": {
+        "provider_runtime": "gnu-octave-local",
+        "runtime_available": "true",
+        "octave_available": "true",
+        "filesystem_isolation": "temporary_workdir",
+        "network_policy_enforced": "false"
+      },
+      "expected_runtime_unavailable": {
+        "exit_code": 127,
+        "stderr_contains": [
+          "GNU Octave executable not found"
+        ],
+        "runtime_metadata": {
+          "provider_runtime": "gnu-octave-local",
+          "runtime_available": "false",
+          "octave_available": "false",
+          "filesystem_isolation": "temporary_workdir"
+        }
       }
     }
   ],

@@ -748,20 +748,40 @@ def main() -> int:
         failures,
     )
     check(
-        eval_config.get("quality_gates", {}).get("minimum_code_output_case_count", 0) >= 8
-        and len(eval_config.get("code_output_cases", [])) >= 8,
+        eval_config.get("quality_gates", {}).get("minimum_code_output_case_count", 0) >= 13
+        and len(eval_config.get("code_output_cases", [])) >= 13,
         "RAG eval code-output case gate installed",
         failures,
     )
+    required_code_languages = eval_config.get("quality_gates", {}).get(
+        "required_code_output_languages", []
+    )
     check(
         eval_config.get("quality_gates", {}).get("minimum_code_output_pass_rate", 0) >= 1.0
-        and "python" in eval_config.get("quality_gates", {}).get("required_code_output_languages", []),
+        and "python" in required_code_languages
+        and "octave" in required_code_languages,
         "RAG eval code-output language/pass gates installed",
         failures,
     )
+    required_code_templates = eval_config.get("quality_gates", {}).get(
+        "required_code_output_template_ids", []
+    )
+    code_output_cases = eval_config.get("code_output_cases", [])
+    has_python_template_case = any(
+        case.get("template_id") == "smc_reaching_law"
+        for case in code_output_cases
+    )
+    has_octave_template_case = any(
+        case.get("template_id") == "pmsm_current_decay"
+        and case.get("language") == "octave"
+        and case.get("expected_runtime_unavailable")
+        for case in code_output_cases
+    )
     check(
-        "smc_reaching_law" in eval_config.get("quality_gates", {}).get("required_code_output_template_ids", [])
-        and any(case.get("template_id") == "smc_reaching_law" for case in eval_config.get("code_output_cases", [])),
+        "smc_reaching_law" in required_code_templates
+        and "pmsm_current_decay" in required_code_templates
+        and has_python_template_case
+        and has_octave_template_case,
         "RAG eval code-output template gate installed",
         failures,
     )

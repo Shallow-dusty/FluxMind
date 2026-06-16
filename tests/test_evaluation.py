@@ -815,6 +815,116 @@ def test_code_output_case_runs_python_template_and_verifies_plot_artifact():
     ]
 
 
+def test_code_output_case_accepts_expected_octave_runtime_unavailable(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+
+    result = evaluate_code_output_case(
+        {
+            "id": "octave-runtime-unavailable",
+            "language": "octave",
+            "template_id": "pmsm_current_decay",
+            "entrypoint": "main.m",
+            "expected_artifacts": [
+                {
+                    "title": "pmsm_current_decay.csv",
+                    "kind": "text",
+                    "mime_type": "text/csv",
+                },
+            ],
+            "expected_runtime_unavailable": {
+                "exit_code": 127,
+                "stderr_contains": ["GNU Octave executable not found"],
+                "runtime_metadata": {
+                    "provider_runtime": "gnu-octave-local",
+                    "runtime_available": "false",
+                    "octave_available": "false",
+                },
+            },
+        }
+    )
+
+    assert result.ok
+    assert result.exit_code == 127
+    assert result.artifact_results == []
+    assert result.message == "ok runtime_unavailable mode=provider"
+
+
+def test_code_output_case_reports_octave_runtime_unavailable_mismatch(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: None)
+
+    result = evaluate_code_output_case(
+        {
+            "id": "octave-runtime-unavailable-mismatch",
+            "language": "octave",
+            "template_id": "pmsm_current_decay",
+            "entrypoint": "main.m",
+            "expected_artifacts": [
+                {
+                    "title": "pmsm_current_decay.csv",
+                    "kind": "text",
+                    "mime_type": "text/csv",
+                },
+            ],
+            "expected_runtime_unavailable": {
+                "exit_code": 127,
+                "runtime_metadata": {"runtime_available": "true"},
+            },
+        }
+    )
+
+    assert not result.ok
+    assert result.exit_code == 127
+    assert result.artifact_results == []
+    assert result.missing_runtime_metadata == ["runtime_available=true"]
+    assert result.message == "runtime_unavailable_mismatch=['runtime_available=true']"
+
+
+def test_code_output_case_runs_octave_template_when_runtime_exists(tmp_path, monkeypatch):
+    fake_octave = tmp_path / "octave"
+    fake_octave.write_text(
+        "#!/bin/sh\n"
+        "echo wrote pmsm_current_decay.csv\n"
+        "printf '0,1,0,1\\n0.1,1,0.2,0.8\\n' > pmsm_current_decay.csv\n",
+        encoding="utf-8",
+    )
+    fake_octave.chmod(0o755)
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: str(fake_octave))
+
+    result = evaluate_code_output_case(
+        {
+            "id": "octave-template",
+            "language": "octave",
+            "template_id": "pmsm_current_decay",
+            "entrypoint": "main.m",
+            "required_stdout_terms": ["wrote pmsm_current_decay.csv"],
+            "expected_artifacts": [
+                {
+                    "title": "pmsm_current_decay.csv",
+                    "kind": "text",
+                    "mime_type": "text/csv",
+                    "minimum_byte_count": 16,
+                    "contains": "0.1,1,0.2,0.8",
+                },
+            ],
+            "expected_runtime_metadata": {
+                "provider_runtime": "gnu-octave-local",
+                "runtime_available": "true",
+                "octave_available": "true",
+                "filesystem_isolation": "temporary_workdir",
+            },
+            "expected_runtime_unavailable": {
+                "exit_code": 127,
+                "runtime_metadata": {"runtime_available": "false"},
+            },
+        }
+    )
+
+    assert result.ok
+    assert result.exit_code == 0
+    assert result.artifact_results[0].ok
+    assert result.message == "ok mode=provider artifacts=1"
+
+
 def test_code_output_case_runs_python_through_local_job_runner():
     result = evaluate_code_output_case(
         {

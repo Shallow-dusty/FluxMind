@@ -892,11 +892,48 @@ def _evaluate_code_output_artifact(
     )
 
 
+def _expected_runtime_unavailable(case: dict[str, Any]) -> dict[str, Any] | None:
+    expected = case.get("expected_runtime_unavailable")
+    if expected is True:
+        return {}
+    if isinstance(expected, dict):
+        return expected
+    return None
+
+
+def _matches_expected_runtime_unavailable(
+    expected: dict[str, Any],
+    result: CodeExecutionResult,
+) -> tuple[bool, list[str]]:
+    missing: list[str] = []
+    expected_exit_code = int(expected.get("exit_code", 127))
+    if result.exit_code != expected_exit_code:
+        missing.append(f"exit_code={expected_exit_code}")
+
+    for term in [str(value) for value in expected.get("stderr_contains", [])]:
+        if term not in result.stderr:
+            missing.append(f"stderr_contains={term}")
+
+    expected_metadata = {
+        str(key): str(value)
+        for key, value in expected.get(
+            "runtime_metadata",
+            {"runtime_available": "false"},
+        ).items()
+    }
+    for key, value in expected_metadata.items():
+        if result.runtime_metadata.get(key) != value:
+            missing.append(f"{key}={value}")
+
+    return not missing, missing
+
+
 def evaluate_code_output_case(case: dict[str, Any]) -> CodeOutputCaseResult:
     """Run one no-key local code-output eval and verify stdout/artifacts."""
     language = str(case.get("language", "python"))
     execution_mode = str(case.get("execution_mode", "provider"))
     expected_artifacts = case.get("expected_artifacts", [])
+    expected_runtime_unavailable = _expected_runtime_unavailable(case)
     try:
         entrypoint, files = _code_output_request_fields(case)
     except ValueError as exc:
@@ -916,7 +953,7 @@ def evaluate_code_output_case(case: dict[str, Any]) -> CodeOutputCaseResult:
             artifact_results=[],
             message=str(exc),
         )
-    if not expected_artifacts:
+    if not expected_artifacts and expected_runtime_unavailable is None:
         return CodeOutputCaseResult(
             case_id=case["id"],
             ok=False,
@@ -977,6 +1014,66 @@ def evaluate_code_output_case(case: dict[str, Any]) -> CodeOutputCaseResult:
                 missing_job_metadata=[],
                 artifact_results=[],
                 message=f"unsupported_code_output_execution_mode:{execution_mode}",
+            )
+        if expected_runtime_unavailable is not None and not result.success:
+            runtime_unavailable_ok, missing_runtime_unavailable = (
+                _matches_expected_runtime_unavailable(
+                    expected_runtime_unavailable,
+                    result,
+                )
+            )
+            if runtime_unavailable_ok:
+                return CodeOutputCaseResult(
+                    case_id=case["id"],
+                    ok=True,
+                    language=language,
+                    execution_mode=execution_mode,
+                    exit_code=result.exit_code,
+                    stdout_ok=True,
+                    missing_stdout_terms=[],
+                    runtime_metadata_ok=True,
+                    missing_runtime_metadata=[],
+                    job_status=job_status,
+                    job_metadata_ok=True,
+                    missing_job_metadata=[],
+                    artifact_results=[],
+                    message=f"ok runtime_unavailable mode={execution_mode}",
+                )
+            return CodeOutputCaseResult(
+                case_id=case["id"],
+                ok=False,
+                language=language,
+                execution_mode=execution_mode,
+                exit_code=result.exit_code,
+                stdout_ok=True,
+                missing_stdout_terms=[],
+                runtime_metadata_ok=False,
+                missing_runtime_metadata=missing_runtime_unavailable,
+                job_status=job_status,
+                job_metadata_ok=not missing_job_metadata,
+                missing_job_metadata=missing_job_metadata,
+                artifact_results=[],
+                message=(
+                    f"runtime_unavailable_mismatch="
+                    f"{missing_runtime_unavailable}"
+                ),
+            )
+        if result.success and not expected_artifacts:
+            return CodeOutputCaseResult(
+                case_id=case["id"],
+                ok=False,
+                language=language,
+                execution_mode=execution_mode,
+                exit_code=result.exit_code,
+                stdout_ok=True,
+                missing_stdout_terms=[],
+                runtime_metadata_ok=True,
+                missing_runtime_metadata=[],
+                job_status=job_status,
+                job_metadata_ok=not missing_job_metadata,
+                missing_job_metadata=missing_job_metadata,
+                artifact_results=[],
+                message="expected_artifacts_missing",
             )
         required_stdout_terms = [str(term) for term in case.get("required_stdout_terms", [])]
         missing_stdout_terms = [
