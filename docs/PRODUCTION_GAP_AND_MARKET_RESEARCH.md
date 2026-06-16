@@ -46,16 +46,19 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    334 passed, 2 known warnings
+pytest                                    379 passed, 2 known warnings
 coverage                                  88% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 12 code-output cases,
                                           20 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert anchors
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness anchors
 storage_schema.py                         pass, ok=true, 7 stores, 0 problems
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
+provider_readiness.py                     pass, local_foundation_ready=true,
+                                          activation_ready=false with expected
+                                          provider/MATLAB blockers
 HTTPS UI                                  14:17 snapshot: https://smy.hyper-dusty.cloud/ 200
 HTTPS API health                          14:17 snapshot: https://api-smy.hyper-dusty.cloud/health 200
 SSH health                                14:17 snapshot: pass on root@100.100.233.26
@@ -175,7 +178,9 @@ Execution               Local Python/Octave-compatible providers, request-level
                         local advisory alerts for execution failure rate,
                         slow duration, policy violations, and output/artifact
                         truncation. Docker execution is explicitly not configured
-                        on live deployment.
+                        on live deployment. Provider-readiness now exposes
+                        hosted execution and MATLAB backend activation blockers
+                        without enabling those backends.
 
 Gap to production       Live sandbox enablement, deeper malware/abuse controls,
                         production metrics/traces/alerts for execution,
@@ -209,7 +214,8 @@ Observability           No-secret admin status, runtime events, provider failure
                         code-execution advisory alerts, metadata-only API
                         access audit summaries, local API rate-limit status,
                         metadata-only retrieval trace summaries/alerts,
-                        no-secret local metrics text export, health checks.
+                        no-secret local metrics text export, provider-readiness
+                        blocker summaries, health checks.
 
 Gap to production       Production traces across retrieval/LLM/jobs, latency
                         SLOs, alerting, cost attribution per workspace,
@@ -581,6 +587,9 @@ owned without reading local JSON/SQLite files by hand.
 - Add prompt/version/eval dashboards and per-workspace cost attribution.
 - Decide MATLAB path: Octave-compatible only, MATLAB export only, or licensed
   MATLAB backend with isolated execution.
+- Keep `scripts/provider_readiness.py --require-activation` failing until the
+  selected sandbox, MATLAB path, external provider switch, and quota/cost guard
+  are all configured and verified.
 
 Success criterion: generated code can run in a controlled environment, and every
 expensive or risky operation is observable and attributable.
@@ -601,7 +610,8 @@ without mixing private corpora, jobs, artifacts, or costs.
 ### 120+ Days: Provider and Business Activation
 
 - Enable paid LLM/image/sandbox providers only after observability, quotas, and
-  spend attribution are implemented.
+  spend attribution are implemented, and only after provider-readiness
+  activation passes.
 - Add pricing model if public: per-seat, per-lab, or self-host support. Avoid
   usage-based billing until cost attribution is reliable.
 - Add connector/export integrations only where they support the domain wedge:

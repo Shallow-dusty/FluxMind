@@ -16,7 +16,7 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 371 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 379 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
 .venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 88% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
@@ -29,7 +29,8 @@ Command                                                               Result
                                                                       API-rate-limit/upload-scan/
                                                                       retention-delete/metrics-export/retrieval-trace/
                                                                       retrieval-alerts/storage-schema/artifact-limit/
-                                                                      execution-alert/readiness/log-noise anchors
+                                                                      execution-alert/provider-readiness/
+                                                                      readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py --format... pass, preflight_ok=true,
                                                                       activation_ready=false with expected
@@ -40,6 +41,10 @@ Command                                                               Result
                                                                       activation_ready=false with expected
                                                                       identity/quota/billing blockers
 .venv/bin/python scripts/product_readiness.py --require-activation   pass, exits 1 because activation_ready=false
+.venv/bin/python scripts/provider_readiness.py --format markdown     pass, local_foundation_ready=true,
+                                                                      activation_ready=false with expected
+                                                                      provider/MATLAB blockers
+.venv/bin/python scripts/provider_readiness.py --require-activation  pass, exits 1 because activation_ready=false
 .venv/bin/python scripts/evaluate_rag.py --json-report /tmp/...      pass, /tmp/fluxmind-eval-report-storage-schema-cli.json,
                                                                       includes quality_maturity targets
 server-local evaluate_rag.py --retrieval-url ... --json-report ...   17:39 snapshot, 107/107 live retrieval
@@ -86,7 +91,8 @@ Admin and runtime status      verified      status/report/retention/events/runti
                                             retention-delete controls, local advisory alerts, and
                                             no-secret metrics export text plus metadata-only
                                             retrieval trace summaries, retrieval-quality alerts,
-                                            and platform-readiness blocker summaries.
+                                            platform-readiness blocker summaries, and
+                                            provider-readiness blocker summaries.
                                             Identity-aware admin remains planned.
 No-key execution providers    verified      local Python, Octave-compatible, and opt-in Docker
                                             providers prove the job/artifact contract. Request-level
@@ -94,9 +100,11 @@ No-key execution providers    verified      local Python, Octave-compatible, and
                                             events exist; stdout/stderr capture and generated-artifact
                                             export are byte/count-bounded, with local alert summaries.
                                             Hosted execution, deeper abuse controls, and MATLAB
-                                            licensing remain planned.
+                                            licensing remain planned; provider-readiness now exposes
+                                            those activation blockers explicitly.
 Mock diagram generation       verified      local SVG templates and artifact capture exist. Real image
-                                            provider activation remains disabled.
+                                            provider activation remains disabled and is reported by
+                                            provider-readiness blocker codes.
 Deployment and health gates   verified      guarded deploy sync, local health, HTTPS health, and SSH
                                             health are present. Live facts must still be refreshed.
 Product platform layer        incomplete    local product-readiness CLI/admin/report/metrics/UI
@@ -203,8 +211,8 @@ Deployment hygiene      tests/test_deploy_sync.py, tests/test_health_check.py, a
                         health checks, and status drift
 Feature audit drift     tests/test_feature_audit_docs.py covers route-list completeness
 Admin metrics           tests/test_admin.py and tests/test_api.py cover no-secret metrics text
-                        formatting, platform-readiness gauges, and the
-                        authenticated metrics route
+                        formatting, platform-readiness gauges, provider-readiness
+                        gauges, and the authenticated metrics route
 Retrieval traces        tests/test_api.py and tests/test_admin.py cover metadata-only
                         retrieval trace event emission, admin summaries, and metrics
 Retrieval alerts        tests/test_admin.py covers metadata-only retrieval trace
@@ -247,6 +255,11 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   surface. The current local foundation passes, but activation remains blocked
   on real identity provider, API-key lifecycle, quota store, billing provider,
   and billing attribution decisions.
+- Provider activation readiness now has a no-secret CLI/admin/report/metrics/UI
+  surface. The current local foundation passes, but activation remains blocked
+  on real external image provider configuration, hosted execution provider
+  configuration, MATLAB backend/licensing, external-provider enablement, and
+  provider quota/cost guard decisions.
 - The bundled seed corpus has been expanded to 30 open-access papers, and the
   next content milestone is a curated 50+ paper library with richer
   topic coverage and more PDF-layout acceptance cases.

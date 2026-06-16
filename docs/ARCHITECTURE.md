@@ -57,7 +57,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/admin.py`: no-secret local admin/runtime status for queue, corpus,
   artifact, provider-failure history, API access audit/rate-limit summaries,
   retrieval trace summaries, platform-readiness blockers, local metrics export,
-  directory, and disabled-provider/productization switches.
+  provider-readiness/product-readiness blockers, runtime directory, and
+  disabled-provider/productization switches.
 - `src/jobs.py`: local JSONL job records, SQLite current-state and
   idempotency-claim mirrors, immediate runner, in-process background queue, and
   explicit durable worker loop for mock image generation, development-only
@@ -83,6 +84,11 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   billing activation. It reports local foundation checks and blocker codes
   without exposing token values, owner IDs, billing credentials, or provider
   secrets.
+- `src/provider_readiness.py` and `scripts/provider_readiness.py`: no-secret
+  external provider activation readiness check for real image providers, hosted
+  execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
+  It reports safe backend names, local foundation checks, and activation blocker
+  codes without exporting prompts, content, URLs, credentials, or license data.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -103,7 +109,8 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   development should still proceed behind provider-neutral interfaces, local
   mocks, fixtures, and explicit runtime flags. This includes image generation,
   hosted code execution, real MATLAB integration, multi-user accounts, quotas,
-  and billing.
+  and billing. The provider-readiness and product-readiness checks make the
+  disabled state explicit as blocker codes; they do not activate providers.
 - `LocalPythonExecutionProvider` is a development provider only. It proves the
   execution request/result contract; `DockerExecutionProvider` is the local
   isolated backend, while hosted/distributed production execution still needs a
@@ -388,6 +395,15 @@ billing-attribution targets are configured. The CLI
 and exits nonzero under `--require-activation` until those product activation
 blockers are cleared. Reports expose only booleans, safe backend names, counts,
 and blocker codes.
+`src.provider_readiness` adds the same no-secret split for external provider
+activation. The current local foundation passes with local mock image
+generation, local Python execution, artifact registry, provider-failure
+observability, and optional Docker/Octave readiness checks. Activation remains
+blocked until `EXTERNAL_PROVIDERS_ENABLED` is set deliberately and external
+image, hosted execution, MATLAB backend/license, and provider quota/cost guard
+targets are configured. The CLI `scripts/provider_readiness.py` succeeds for
+local foundation readiness and exits nonzero under `--require-activation` until
+those provider activation blockers are cleared.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/index files without exporting file contents or `.env`
@@ -497,11 +513,13 @@ configured per-1M-token rates, recent query duration average/max from
 retrieval-quality advisory alerts, query latency advisory alerts,
 provider-failure advisory alerts, job-health advisory alerts
 for failed/dead-lettered jobs and expired queue/lease state, product-readiness
-local foundation and activation blockers, plus explicit disabled switches for
-external providers and identity/quotas/billing. The
+local foundation and activation blockers, provider-readiness local foundation
+and activation blockers, plus explicit disabled switches for external providers
+and identity/quotas/billing. The
 Streamlit sidebar renders the same status,
 including durable storage readiness, storage inventory, query-cost pricing
-status, platform-readiness and product-readiness status, query usage and latency status, API access audit status, upload-scan
+status, platform-readiness, product-readiness, and provider-readiness status,
+query usage and latency status, API access audit status, upload-scan
 status, local rate-limit status, and local metadata/object storage paths, so common
 operational questions do not require SSH or raw filesystem inspection.
 `GET /admin/status/report` renders the same snapshot as a Markdown operations

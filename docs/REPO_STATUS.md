@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-16 18:58 CST
+Snapshot time: 2026-06-16 19:42 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,10 +14,10 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Verified source/eval baseline  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  e2dc1e3 feat: add product readiness preflight
-Implementation base            8191656 docs: refresh FluxMind sync status
-Remote status at verification  origin/main includes 79be409 after product-readiness push
-Current refresh scope          product-readiness preflight plus docs guard refresh
+Current implementation commit  938e918 feat: add provider readiness preflight
+Implementation base            b0906df docs: record product readiness deployment
+Remote status at verification  origin/main at b0906df before provider-readiness push
+Current refresh scope          provider-readiness preflight plus docs guard refresh
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   current docs tree synced with deploy_sync --apply
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-16 17:39 CST
@@ -41,7 +41,7 @@ Platform readiness   separate metadata/object/job-store readiness targets,
                      blocker codes, and no-secret metrics/report fields
 Admin/product shell  status/report endpoints, retention preview, runtime
                      events, query usage/cost visibility, product-readiness
-                     blocker surface
+                     and provider-readiness blocker surfaces
 Artifacts/images     artifact metadata mirror/integrity, local SVG diagram
                      templates, stable artifact downloads
 Execution            local Python/Octave provider hardening, templates,
@@ -61,17 +61,21 @@ commits `8a4a76f` (`feat: add platform migration preflight`) and `366c1e7`
 (`feat: add runtime migration rehearsal`).
 The latest product-readiness source/docs sync deployed to `/opt/fluxmind` is
 `79be409` (`docs: record product readiness status`), with implementation commit
-`e2dc1e3` (`feat: add product readiness preflight`).
+`e2dc1e3` (`feat: add product readiness preflight`) and deployment record
+`b0906df` (`docs: record product readiness deployment`). The provider-readiness
+implementation exists locally at `938e918` and is not recorded as deployed in
+this snapshot.
 
-Current local verification on 2026-06-16 18:58 CST:
+Current local verification on 2026-06-16 19:42 CST:
 
 ```text
 Command                                                     Result
 ----------------------------------------------------------  ----------------------------------------
-.venv/bin/python -m pytest -q                               pass, 371 tests, 2 known warnings
-.venv/bin/python -m coverage run -m pytest                  pass, 371 tests, 2 known warnings
+.venv/bin/python -m pytest -q                               pass, 379 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest                  pass, 379 tests, 2 known warnings
 .venv/bin/python -m coverage report --fail-under=88         pass, 88% total branch coverage
 .venv/bin/python -m coverage report --sort=cover            pass, src/product_readiness.py at 97%,
+                                                            src/provider_readiness.py at 93%,
                                                             src/storage_migration.py at 94%
 .venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
                                                             cases, 12 code-output cases,
@@ -80,7 +84,7 @@ Command                                                     Result
 .venv/bin/python scripts/health_check.py                    pass, including distributed job-store,
                                                             migration-preflight,
                                                             migration-rehearsal, and
-                                                            product-readiness anchors
+                                                            product/provider-readiness anchors
 .venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 7 stores, 0 problems
 .venv/bin/python scripts/platform_migration_preflight.py     pass, preflight_ok=true,
                                                             activation_ready=false with expected
@@ -97,6 +101,12 @@ Command                                                     Result
 .venv/bin/python scripts/product_readiness.py                pass, --require-activation exits 1:
   --require-activation                                      local_foundation_ready=true but
                                                             activation_ready=false
+.venv/bin/python scripts/provider_readiness.py               pass, local_foundation_ready=true,
+                                                            activation_ready=false with expected
+                                                            external provider/MATLAB blockers
+.venv/bin/python scripts/provider_readiness.py               pass, --require-activation exits 1:
+  --require-activation                                      local_foundation_ready=true but
+                                                            activation_ready=false
 git diff --check                                            pass
 Admin status smoke                                          distributed_job_store backend=local,
                                                             available=true,
@@ -109,6 +119,12 @@ Product readiness smoke                                     local_foundation_rea
                                                             blockers include identity provider,
                                                             key lifecycle, quota store, billing
                                                             provider, and billing attribution
+Provider readiness smoke                                    local_foundation_ready=true,
+                                                            activation_ready=false,
+                                                            blockers include external providers
+                                                            disabled, external image provider,
+                                                            hosted execution provider, MATLAB
+                                                            backend, and provider quota guard
 Remote product readiness smoke                              `/opt/fluxmind/venv/bin/python
                                                             scripts/product_readiness.py`
                                                             returned local_foundation_ready=true,
@@ -117,6 +133,7 @@ Remote product readiness smoke                              `/opt/fluxmind/venv/
                                                             admin metrics include
                                                             fluxmind_product_* and omit
                                                             api_key/owner_id
+Remote provider readiness smoke                             pending until 938e918 is deployed
 ```
 
 The earlier small-group quality work was deployed and live-verified through the

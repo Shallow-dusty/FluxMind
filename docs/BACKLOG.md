@@ -22,12 +22,14 @@ WP1 RAG quality       complete for offline/recorded/live-retrieval no-key gates
 WP2 corpus/storage    complete for local JSON/SQLite/filesystem baseline
 WP3 job system        complete for local durable worker bridge and lease model
 WP4 image/diagrams    complete for provider-neutral no-key SVG/artifact flow
+                     plus external image-provider readiness blockers
 WP5 code execution    complete for local Python/Octave-compatible dev providers
+                     plus hosted execution/MATLAB readiness blockers
 WP6 product shell     complete for local no-secret admin/reporting foundation
-                     plus product-readiness preflight
+                     plus product/provider-readiness preflights
 ```
 
-Current hardening progress on 2026-06-16: the automated suite has 371 passing
+Current hardening progress on 2026-06-16: the automated suite has 379 passing
 tests, the repository now has a coverage command/gate with 88% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. The same hardening pass added
@@ -41,8 +43,10 @@ manifest, restore dry-run, and read-only local job-store contract checks into a
 single CLI gate. A local migration rehearsal now stages required runtime state
 into a temporary or explicit staging root, then verifies restore-check and
 schema integrity before any external backend is activated. The product shell now
-also has a no-secret product-readiness preflight that separates local foundations
-from real identity, quota, and billing activation. The eval report also
+also has no-secret product-readiness and provider-readiness preflights that
+separate local foundations from real identity/quota/billing activation and real
+image-provider, hosted sandbox, MATLAB, and provider quota/cost-guard
+activation. The eval report also
 carries staged quality-maturity targets for self-use, small-group, and community
 readiness; self-use and small-group are now met, so corpus/eval growth can be
 tracked before new platform features are prioritized.
@@ -483,7 +487,9 @@ Acceptance:
 Status: complete for the current no-key diagram/artifact baseline: provider-neutral plumbing, no-key mock provider, local SVG engineering
 diagram templates, local artifact export, artifact metadata with SQLite
 current-state mirror, and RAG artifact references implemented; real
-image-provider activation remains disabled until a key/account is configured
+image-provider activation remains disabled until a key/account is configured,
+but the provider-readiness surface now reports that disabled state as explicit
+activation blocker codes
 
 - `MockImageGenerationProvider` implements the `ImageGenerationProvider`
   contract with deterministic local SVG output.
@@ -509,6 +515,9 @@ image-provider activation remains disabled until a key/account is configured
 - RAG prompts include recent generated artifacts as stable `[Artifact:<id>]`
   references so answers can point to local diagrams, plots, or files.
 - Keep generated images as artifacts rather than inline chat-only blobs.
+- `scripts/provider_readiness.py`, admin status/report, metrics, and Streamlit
+  expose the external image-provider activation blocker without exporting keys
+  or enabling real image calls.
 
 Acceptance:
 
@@ -525,6 +534,8 @@ Acceptance:
 - Local artifact integrity can be inspected without reading or exporting raw
   artifact contents by hand.
 - Provider can be swapped without changing the UI flow.
+- External image-provider activation can be checked without exposing keys or
+  enabling real image calls.
 
 ## WP5: Code Execution
 
@@ -536,9 +547,9 @@ child-process memory/CPU limit metadata/enforcement, opt-in Docker
 container execution, Docker readiness reporting, request-level execution policy
 preflight, no-secret code-execution outcome events/admin summaries, and
 local code-execution advisory alerts, and Streamlit control-engineering
-execution templates implemented; real hosted
-execution and MATLAB activation remain disabled until infrastructure and
-license/account decisions are made
+execution templates implemented; real hosted execution and MATLAB activation
+remain disabled until infrastructure and license/account decisions are made,
+with activation blockers now exposed through provider readiness
 
 - `LocalPythonExecutionProvider` implements the `CodeExecutionProvider`
   contract for development-only Python snippets.
@@ -611,6 +622,9 @@ license/account decisions are made
   production metrics/tracing/alerts beyond the local advisory baseline, deeper
   malware/abuse controls, and true MATLAB activation if that product path is
   chosen.
+- The provider-readiness preflight reports hosted execution and MATLAB backend
+  activation blockers without exporting sandbox URLs, credentials, or license
+  data.
 
 Acceptance:
 
@@ -625,6 +639,8 @@ Acceptance:
   metadata.
 - Docker/container execution readiness can be inspected without granting Docker
   access or running user code.
+- Hosted execution and MATLAB activation readiness can be inspected as blocker
+  codes without configuring a sandbox URL, account key, or license in docs.
 - When `CODE_EXECUTION_BACKEND=docker` and Docker is available, code jobs run
   inside a container and persist Docker runtime metadata plus generated
   artifacts through the same job/artifact contract.
@@ -642,8 +658,8 @@ query-usage history, metadata-only API access audit summaries,
 local API rate-limit status, local job/provider/query/retrieval/code advisory alerts,
 metadata-only retrieval trace summaries, no-secret local metrics export,
 local storage-readiness dashboard, and local storage
-inventory dashboard plus no-secret runtime backup manifest and restore dry-run
-verifier implemented; keep
+inventory dashboard plus no-secret runtime backup manifest, restore dry-run
+verifier, and provider-readiness preflight implemented; keep
 public identity, API-key lifecycle, quotas, and billing disabled until decisions
 are made
 
@@ -684,12 +700,22 @@ are made
   surfaces are present; `--require-activation` fails until identity provider,
   API-key registry, quota store, billing provider, and billing attribution
   targets are configured.
+- `scripts/provider_readiness.py` gives external image providers, hosted
+  execution, MATLAB backend/licensing, and provider quota/cost guards the same
+  no-secret CLI gate. Default mode passes when local provider foundations are
+  available; `--require-activation` fails until the real external targets are
+  explicitly configured.
 - Admin status/report, metrics, and the Streamlit status panel display a
   no-secret `platform_readiness` summary for production storage migration and
   distributed worker acceptance. It reports only booleans, counts, and blocker
   codes; the current local runtime shows schema/inventory and local worker
   bridge readiness while keeping production activation blocked on external
   metadata database, object storage, and distributed job-store configuration.
+- Admin status/report, metrics, and the Streamlit status panel display a
+  no-secret `provider_readiness` summary for external provider activation. It
+  reports only safe backend names, booleans, and blocker codes; the current
+  local runtime keeps external image providers, hosted execution, MATLAB, and
+  provider quota/cost guards disabled.
 - `GET /admin/runtime-manifest`, `GET /admin/runtime-manifest/report`, and the
   Streamlit runtime status panel expose a no-secret runtime backup manifest for
   the state trees that source deploys exclude.
@@ -773,6 +799,10 @@ are made
   no-secret product-readiness summary. It reports `local_foundation_ready=true`
   in the default local runtime and keeps `activation_ready=false` until product
   activation blockers are cleared.
+- Admin status/report, metrics, and the Streamlit status panel expose the same
+  no-secret provider-readiness summary. It reports `local_foundation_ready=true`
+  in the default local runtime and keeps `activation_ready=false` until external
+  provider, hosted execution, MATLAB, and quota/cost guard blockers are cleared.
 - Still planned: production durable storage dashboards beyond the local
   inventory/readiness/platform-readiness and local rehearsal views, real
   production storage and distributed worker migration execution after backend
