@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-17 02:14 CST
+Last updated: 2026-06-19 02:22 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,6 +23,12 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
+The 2026-06-19 02:22 refresh updates local verification counts, the local admin
+no-secret status/report/runtime-event boundary, the disposable local product
+activation rehearsal, the local provider runtime rehearsal, and the no-secret
+job-store migration manifest/verifier plus quality-readiness target gap summary
+only; dated live and external-research snapshots remain scoped to the times shown
+in their rows.
 
 ## Current Baseline
 
@@ -48,19 +54,21 @@ Current local verification from this pass plus the latest deployment snapshot:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    435 passed, 2 known warnings
-coverage                                  88% total branch coverage over api,
+pytest                                    602 passed, 2 known warnings
+coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
                                           cases, 13 code-output cases,
                                           30 PDF structure cases,
                                           42 recorded answers
-local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/quality-readiness/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier anchors
-storage_schema.py                         pass, ok=true, 9 stores, 0 problems
+local health_check.py                     pass, local/docs/query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/artifact-limit/execution-alert/provider-readiness/provider-runtime-rehearsal/quality-readiness/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/share-link-management/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier anchors
+storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 api_key_registry.py status                pass, backend=none, available=false,
                                           active_keys=0, secrets_exported=false
 product_registry.py status                pass, backend=none, available=false,
                                           workspaces=0, secrets_exported=false
+share_link_registry.py status             pass, backend=none, available=false,
+                                          active_links=0, secrets_exported=false
 runtime restore dry-run                   pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 object manifest smoke                     pass, rehearsal_ok=true,
                                           object_manifest_ready=true,
@@ -71,16 +79,32 @@ object manifest verify                    pass, ok=true, checked=9,
                                           missing=0, mismatched=0, extra=0,
                                           paths/filenames/bucket/secrets
                                           exported=false
+job-store manifest smoke                  pass, rehearsal_ok=true,
+                                          job_store_manifest_ready=true,
+                                          jobs=0, claims=0 in current checkout;
+                                          payloads/raw IDs/secrets exported=false
+job-store manifest verify                 pass, ok=true, missing=0,
+                                          mismatched=0, extra=0 jobs or claims;
+                                          payloads/raw IDs/secrets exported=false
 product_readiness.py                      pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           identity/quota/billing blockers and
                                           product-quota/RBAC-guard disabled advisories
+product_activation_rehearsal.py           pass, ok=true, activation_ready=true
+                                          against disposable local SQLite stores;
+                                          raw tokens and paths exported=false
 provider_readiness.py                     pass, local_foundation_ready=true,
                                           activation_ready=false with expected
                                           provider/MATLAB blockers
+provider_runtime_rehearsal.py             pass, ok=true, local mock image/Python
+                                          execution/Octave branch checked plus
+                                          allowed/blocked provider-guard
+                                          decisions;
+                                          external_activation_ready=false
 quality_readiness.py                      pass, local_foundation_ready=true,
                                           community_ready=false with measured
-                                          corpus/eval/live-evidence gaps
+                                          corpus/eval/live-evidence gaps and
+                                          target gap summary
 HTTPS UI                                  02:14 snapshot: https://smy.hyper-dusty.cloud/ 200
 HTTPS API health                          02:14 snapshot: https://api-smy.hyper-dusty.cloud/health 200
 SSH health                                02:14 snapshot: pass on root@100.100.233.26
@@ -294,9 +318,10 @@ Area                    Current FluxMind state
 ----------------------  ------------------------------------------------------
 Security/compliance     Simple API token, runtime excludes, no-secret manifests,
                         metadata-only API access audit events, configurable
-                        local API rate-limit guard, local metadata-only upload
-                        scan guard, guarded local retention-delete switch,
-                        public UI intentionally open in current deployment.
+                        local API rate-limit guard, safe request-ID cleaning,
+                        local metadata-only upload scan guard, guarded local
+                        retention-delete switch, public UI intentionally open
+                        in current deployment.
 
 Gap to production       Authentication, production antivirus/sandbox upload
                         scanning, distributed or identity-backed rate limits,
@@ -585,9 +610,10 @@ across retrieval, answer quality, equation fidelity, code generation,
 forum-style debugging, failure modes, and paper-to-code reports, and includes
 13 local code-output gates that verify expected stdout plus plot/text artifacts
 in a temporary artifact store, including reusable execution-template coverage,
-paper-specific examples, four local Python job-backed execution paths, and an
-Octave-compatible PMSM current-decay case with structured runtime-unavailable
-fallback when no `octave` binary is installed.
+store-level symlink write/source guards, paper-specific examples, four local
+Python job-backed execution paths, and an Octave-compatible PMSM current-decay
+case with structured runtime-unavailable fallback when no `octave` binary is
+installed.
 The evaluator also has 30 seeded PDF structure gates for
 equation/table/figure/algorithm markers on representative
 source pages, and `GET /corpus/structure/report` exports filtered structure
@@ -661,7 +687,9 @@ owned without reading local JSON/SQLite files by hand.
   are all configured and verified.
 - Keep `scripts/quality_readiness.py --require-target community` failing until
   the community-quality corpus, answer/retrieval breadth, and live-answer
-  count/pass-rate/term-coverage gaps are closed.
+  count/pass-rate/term-coverage gaps are closed. Use its target gap summary to
+  plan the next corpus, retrieval, recorded-answer, and live-answer additions
+  from executable metric deltas.
 
 Success criterion: generated code can run in a controlled environment, and every
 expensive or risky operation is observable and attributable.

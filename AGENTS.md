@@ -31,13 +31,22 @@ python scripts/evaluate_rag.py --json-report artifacts/eval/latest.json
 python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502  # 调用 /query/retrieve 评检索
 python scripts/storage_schema.py --format markdown   # 存储 schema 漂移检测（drift 时非零退出）
 python scripts/api_key_registry.py status --format markdown # 本地 API key registry no-secret 状态
+python scripts/share_link_registry.py status --format markdown # 本地 share-link token registry no-secret 状态
 python scripts/product_registry.py status --format markdown # 本地 user/workspace/RBAC/quota/billing ledger 与 guard 状态
 python scripts/product_readiness.py --format markdown # identity/quota/billing product readiness
+python scripts/product_activation_rehearsal.py --format markdown --require-activation # 本地 SQLite product activation 演练
+python scripts/collaboration_readiness.py --format markdown # 私有语料/share-link collaboration readiness
 python scripts/provider_readiness.py --format markdown # 外部 provider/MATLAB activation readiness
+python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation # 本地 provider runtime 合约演练
 python scripts/quality_readiness.py --format markdown # self-use/small-group/community 质量 readiness
+python scripts/activation_suite.py --format markdown --require-target local_foundation # 聚合本地激活演练
+python scripts/openapi_contract.py --format markdown --require-local-contract # no-secret OpenAPI 合约检查
+python scripts/openapi_contract.py --verify-snapshot /tmp/fluxmind-openapi-contract.json --require-no-drift # 校验 no-secret OpenAPI 合约快照漂移
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown # 本地迁移演练 + opaque object-storage 清单
 python scripts/platform_migration_rehearsal.py --include-object-manifest --output /tmp/fluxmind-object-manifest.json # 写入可校验 JSON 清单
 python scripts/platform_migration_rehearsal.py --verify-object-manifest /tmp/fluxmind-object-manifest.json --format markdown # 校验 rehearsal/object 清单
+python scripts/platform_migration_rehearsal.py --include-object-manifest --include-job-store-manifest --output /tmp/fluxmind-object-and-job-rehearsal.json # 写入 object + job-store 清单
+python scripts/platform_migration_rehearsal.py --verify-job-store-manifest /tmp/fluxmind-object-and-job-rehearsal.json --format markdown # 校验 durable job-store 清单
 python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，--apply --restart 才真正执行）
 ```
 
@@ -48,15 +57,22 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 **"本地无密钥（no-key / no-secret）"是核心架构约束，不是临时状态。** 所有重活——图像生成、代码执行、向量存储、metadata、job 队列——都通过 provider-neutral 接口 + 本地 mock/真实实现完成，**不依赖任何外部 key**。真实外部 provider（图像、托管沙箱、真 MATLAB、多租户身份/配额/计费）被刻意禁用，只在 admin 里以"配置/可用"布尔位与 reason code 体现。新功能必须沿这条路走：接口 + 本地实现 + fixture + runtime flag，**绝不**把外部依赖硬塞进 UI 进程或同步 `/query` 路径。
 
 **Job / Storage / Artifact 子系统是为"未来迁移到分布式平台"预留的本地形态。** 关键模块：
-- `src/jobs.py` — append-only JSONL（`jobs/jobs.jsonl`）+ SQLite 当前态镜像（`jobs/jobs.sqlite3`）；即时 runner、进程内队列、显式 durable worker；幂等键、租约（lease）、重试/退避、死信、deadline。这是**本地**契约，不是分布式队列。
+- `src/jobs.py` — append-only JSONL（`jobs/jobs.jsonl`）+ SQLite 当前态镜像（`jobs/jobs.sqlite3`）；即时 runner、进程内队列、显式 durable worker；幂等键、租约（lease）、重试/退避、死信、deadline；`GET /jobs` 和 Streamlit 最近任务面板
+  只返回 no-secret summary 并用安全投影搜索，详情走精确 `GET /jobs/{job_id}`。这是**本地**契约，不是分布式队列。
 - `src/metadata.py` — `metadata/corpus.json`（+ `corpus.sqlite3`）语料注册表、`chunks.sqlite3` chunk 镜像、`corpus_profiles.json` 可复用选集。JSON 写入走同目录临时文件 + 原子替换。
-- `src/artifacts.py` — artifact 注册表（`artifacts/artifacts.sqlite3`）+ 安全导出；只导出落在 `ARTIFACTS_DIR` 下的 `file://` artifact。
+- `src/artifacts.py` — artifact 注册表（`artifacts/artifacts.sqlite3`）+ 公共 no-secret 投影 + 安全导出；只导出落在 `ARTIFACTS_DIR` 下的 `file://` artifact，API/UI/RAG 不展示 raw URI、路径、owner、prompt 或 source reference。
 - `src/api_keys.py` — 可选本地 SQLite API key 生命周期 registry；只持久化 token hash，原始 token 仅在创建时输出一次，API 鉴权可在 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 时使用它。
 - `src/product_registry.py` — 可选本地 SQLite product registry；提供 user/workspace/RBAC/quota/usage/billing attribution ledger、本地 `/admin/product-registry/*` 管理 API 和 Streamlit operator 面板，在显式启用 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 时供 `/query*` 路径做本地 quota guard，在显式启用 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 时按 workspace role 守护查询、job/corpus/admin 写路径；不连接外部身份或支付系统。
-- `src/storage_migration.py` — 本地 runtime migration rehearsal；可选生成并校验 opaque object-storage migration manifest（object key/hash/byte count/group/token only），不输出源路径、文件名、bucket、endpoint、credential 或内容。
+- `src/share_links.py` — 可选本地 SQLite share-link token registry；只持久化 token hash，创建时一次性返回 raw token，list/revoke/resolve/API 事件只输出 no-secret summary、presence/fingerprint、计数和布尔位，不导出 URL、resource ref、creator user ID、description、路径或内容；Streamlit 管理面还需要显式 `FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED=true`。
+- `src/storage_migration.py` — 本地 runtime migration rehearsal；可选生成并校验 opaque object-storage migration manifest（object key/hash/byte count/group/token only）和 durable job-store migration manifest（job/idempotency claim token + aggregate metadata only），不输出源路径、文件名、bucket、endpoint、credential、job payload、owner ID、request ID、worker ID、idempotency key 或内容。
 - `src/providers.py` + `src/capabilities.py` + `src/execution_policy.py` — 执行/图像 provider 与契约；执行前 `local-safe-v1` 策略用 `ast` 校验 Python、import 白名单、拦截 shell/绝对路径。`CODE_EXECUTION_BACKEND=local|docker`。
 - `src/product_readiness.py` + `src/provider_readiness.py` — no-secret activation readiness：前者覆盖身份/API-key/RBAC/配额/计费并能检查本地 SQLite key registry、product registry、本地 quota guard 与 RBAC guard，后者覆盖外部图像 provider、托管执行、MATLAB backend 和 provider quota guard。默认只报告 blocker code，不启用外部调用。
-- `src/quality_readiness.py` — no-secret 质量成熟度 readiness：复用 `eval/rag_baseline.json` 的 `quality_maturity_targets`，可合并显式传入的 no-secret live eval report 中的 live retrieval/live answer 数量、通过率和 live answer 术语覆盖，区分 self-use、small-group、community 缺口。
+- `src/provider_guard.py` — no-secret provider 调用前 quota/cost guard；默认关闭，启用后在 LLM/provider client 构造前检查估算 prompt tokens、请求 completion tokens 和可选 cost ceiling，只输出计数、阈值和 reason code。
+- `src/product_activation_rehearsal.py` + `src/provider_runtime_rehearsal.py` — disposable no-secret rehearsal：前者演练本地 SQLite API key/product registry/RBAC/跨 workspace 隔离/quota/billing attribution activation，后者演练 mock image、local Python、Octave 分支、执行 abuse-policy denial、Docker readiness、provider quota/cost guard 和 provider local foundation；都不导出 raw token、路径或外部账号。
+- `src/collaboration_readiness.py` — no-secret collaboration readiness：私有语料和 share links 默认关闭；上线前检查 product registry、RBAC guard、本地 share-link token registry 和角色矩阵，只输出 role/reason/count/boolean，不导出 workspace/user/corpus/share 标识或 URL。
+- `src/quality_readiness.py` — no-secret 质量成熟度 readiness：复用 `eval/rag_baseline.json` 的 `quality_maturity_targets`，可合并显式传入的 no-secret live eval report 中的 live retrieval/live answer 数量、通过率和 live answer 术语覆盖，区分 self-use、small-group、community 缺口，并输出 per-target current/expected/gap 摘要。
+- `src/activation_suite.py` — no-secret 聚合入口：复用 product activation、collaboration readiness、provider runtime、job-store migration manifest、quality readiness 的摘要；CLI/API/UI 传入生成的 OpenAPI schema 时也把 OpenAPI contract 纳入 local foundation gate；输出 local foundation/full activation/small-group/community gate，不包含 raw 子报告、token、路径、payload 或外部账号。
+- `src/openapi_contract.py` — no-secret OpenAPI contract readiness：检查 required route/method、operation summary/id、responses、protected auth header 声明和 route-group 覆盖，生成 stable operation fingerprint，并可用旧 no-secret JSON 报告校验 snapshot drift；FastAPI/Streamlit/CLI 只输出摘要，不导出 raw schema。
 - `src/admin.py`（最大模块）— 聚合上述所有状态为 `/admin/status`、`/admin/status/report`(Markdown)、`/admin/metrics`(Prometheus)、`/admin/events`。全部 no-secret：只出计数/布尔/code，绝不返回 prompt、答案、源路径、owner ID、文件内容。
 
 **runtime event 是横切观测层。** `metadata/runtime_events.jsonl` 记录 `retrieval_trace`、`query_usage`、`code_execution`、`upload_scan`、`provider_failure` 等元数据-only 事件；admin/Streamlit/metrics 从中派生 advisory alert。增量功能若产生可观测行为，应追加对应 event（同样不得含敏感内容）。

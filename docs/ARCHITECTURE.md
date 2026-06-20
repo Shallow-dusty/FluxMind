@@ -1,6 +1,6 @@
 # FluxMind Architecture
 
-Last updated: 2026-06-16
+Last updated: 2026-06-20
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -32,8 +32,9 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `app.py`: Streamlit UI, bilingual labels, PDF selection/upload controls, chat
   rendering, browser-translation guard, and local no-key job panel.
 - `api.py`: FastAPI request contract, constant-time token verification,
-  metadata-only API access audit and local rate-limit middleware, non-blocking
-  retrieval warmup, `/health` process liveness, and `/ready` retrieval readiness.
+  safe request-ID cleaning, metadata-only API access audit and local rate-limit
+  middleware, non-blocking retrieval warmup, `/health` process liveness, and
+  `/ready` retrieval readiness.
 - `src/chain.py`: RAG prompt, retrieval, non-streaming answer generation, and
   reasoning-aware streaming, answer modes, generated-answer inspection
   metadata, and numbered citation validation.
@@ -78,11 +79,23 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   readiness.
 - `scripts/platform_migration_rehearsal.py`: local runtime migration rehearsal
   that stages required runtime state, then verifies restore and schema checks
-  without exposing contents.
+  without exposing contents. It can also emit and verify opaque object-storage
+  and durable job-store migration manifests without exposing source paths, job
+  payloads, owner IDs, request IDs, worker IDs, idempotency keys, logs,
+  artifacts, stdout/stderr, or external storage details. FastAPI exposes the
+  same temporary local drill through explicit `/admin/platform-migration-rehearsal`
+  JSON/Markdown routes using a public projection that keeps full manifest lists
+  out of the response, and Streamlit surfaces it as an on-demand admin-panel
+  check with report download.
+- `scripts/_safe_cli.py`: shared no-secret CLI error projection for readiness
+  and rehearsal commands. OSError branches preserve safe diagnostic messages
+  while redacting paths, URLs, bearer/sk-style tokens, and token/secret-like
+  assignments.
 - `src/api_keys.py` and `scripts/api_key_registry.py`: optional local SQLite API
   key lifecycle registry. It persists token hashes only, returns raw tokens once
-  on create, supports list/verify/revoke, and can back FastAPI auth when
-  `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
+  on create through JSON output, rejects Markdown create output to avoid losing
+  the one-time token, supports list/verify/revoke, and can back FastAPI auth
+  when `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
 - `src/product_registry.py` and `scripts/product_registry.py`: optional local
   SQLite user/workspace/RBAC/quota/usage/billing-attribution ledger. It gives
   product-readiness a no-secret local contract for product identity state, role
@@ -97,16 +110,103 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
   registry, local quota guard, and local RBAC guard when enabled and reports
   local foundation checks and blocker codes without exposing token values, owner
   IDs, billing credentials, or provider secrets.
+- `src/product_activation_rehearsal.py` and
+  `scripts/product_activation_rehearsal.py`: disposable local SQLite rehearsal
+  for product activation. It creates and verifies hash-only API keys, workspace
+  RBAC, cross-workspace isolation denials, quota limiting, local billing
+  attribution, and product-readiness activation without returning raw tokens,
+  workspace/user identifiers, paths, prompts, answers, or external account data.
+  FastAPI exposes the same local drill through explicit
+  `/admin/product-activation-rehearsal` JSON/Markdown routes, and Streamlit
+  surfaces it as an on-demand admin-panel check with report download.
+- `src/collaboration_readiness.py` and `scripts/collaboration_readiness.py`:
+  no-secret pre-activation gate for private corpora and share links. The
+  default local runtime keeps both features disabled and reports that safe
+  default as passing local foundation. If an operator enables either feature,
+  the check requires the product registry, RBAC guard, and share-link token
+  registry gates before activation can pass. Reports contain only role names,
+  booleans, counts, and reason codes; workspace IDs, user IDs, corpus IDs,
+  share tokens, URLs, and paths are omitted. FastAPI exposes
+  `/admin/collaboration-readiness` JSON/Markdown routes, and Streamlit surfaces
+  the same explicit on-demand check.
+- `src/share_links.py` and `scripts/share_link_registry.py`: optional local
+  SQLite share-link token lifecycle registry. Tokens are persisted only as
+  hashes. `create` returns the raw token once, while list/revoke/resolve,
+  admin events, storage schema checks, runtime manifests, and the explicitly
+  enabled Streamlit operator panel expose only no-secret summaries, counts,
+  booleans, and presence/fingerprints.
 - `src/provider_readiness.py` and `scripts/provider_readiness.py`: no-secret
   external provider activation readiness check for real image providers, hosted
   execution sandboxes, MATLAB backend/licensing, and provider quota/cost guards.
   It reports safe backend names, local foundation checks, and activation blocker
   codes without exporting prompts, content, URLs, credentials, or license data.
+- `src/provider_runtime_rehearsal.py` and
+  `scripts/provider_runtime_rehearsal.py`: no-secret local provider contract
+  rehearsal. It exercises the deterministic SVG image provider, local Python
+  execution with artifact capture, the Octave-compatible available/unavailable
+  branch, Docker readiness reporting, execution abuse-policy denials for unsafe
+  Python/Octave snippets, and provider-readiness local foundation without
+  claiming real external provider activation or exporting the unsafe snippets,
+  stdout/stderr, or paths. FastAPI exposes the same local drill through explicit
+  `/admin/provider-runtime-rehearsal` JSON/Markdown routes, and Streamlit
+  surfaces it as an on-demand admin-panel check with report download.
 - `src/quality_readiness.py` and `scripts/quality_readiness.py`: no-secret
   quality maturity readiness check for the staged self-use, small-group, and
   community targets. It reuses `eval/rag_baseline.json`, optionally merges
   explicit no-secret live eval reports, and reports only counts, booleans, and
-  blocker codes.
+  blocker codes, including per-target current/expected/gap summaries for the
+  maturity metrics. It also emits no-secret evidence requests that classify
+  remaining gaps by evidence source (`corpus_manifest`, `eval_baseline`, or
+  `live_eval_report`) plus evidence collection plans for the next target and
+  community target. Those plans use placeholder commands for live eval/report
+  verification and do not embed report paths, prompts, answers, source text,
+  tokens, or raw live report payloads.
+  FastAPI exposes the same check through explicit `/admin/quality-readiness`
+  JSON/Markdown routes, and the Streamlit admin panel can run it on demand with
+  an optional in-memory live eval JSON upload.
+- `src/activation_suite.py` and `scripts/activation_suite.py`: no-secret
+  aggregate activation suite for operator-facing local checks. It composes the
+  actual product readiness preflight, local product activation rehearsal,
+  collaboration readiness gate, provider runtime rehearsal, job-store migration
+  manifest rehearsal, and quality readiness summary into local foundation,
+  small-group, community, and full-activation gates without embedding raw child
+  reports, tokens, paths, job payloads, artifact URIs, or external account data.
+  Its quality summary also derives the next no-secret evidence target from the
+  quality gap summary, so operators can see whether the next missing item is
+  small-group live retrieval evidence or community count/quality evidence,
+  including the evidence source needed for each gap. It also emits a full
+  activation action plan that groups the remaining product-readiness, provider,
+  platform migration, and community-quality blockers into placeholder commands
+  and verification commands without activating external services or exporting
+  secrets. CLI/API/UI entrypoints pass the generated FastAPI OpenAPI schema into
+  the suite, so `openapi_contract.ok` is part of the local foundation gate
+  whenever the aggregate is run through those operator surfaces.
+- `src/openapi_contract.py` and `scripts/openapi_contract.py`: no-secret
+  OpenAPI contract readiness check for API/frontend split work. It validates
+  required route/method coverage, operation summaries and operation IDs,
+  response declarations, protected-route auth header declarations, and route
+  group coverage from the generated FastAPI schema. FastAPI exposes the same
+  check through `/admin/openapi-contract` JSON/Markdown routes. The collector
+  also emits a stable operation fingerprint built from method/path, operation
+  ID, parameter names, and response codes, and can compare the current
+  no-secret report with a prior no-secret JSON snapshot to flag contract drift
+  without requiring the raw schema. Snapshot verification normalizes only a
+  fixed whitelist of counts, booleans, and 64-hex fingerprints; malformed
+  snapshot fields or raw-schema-shaped inputs are reported as booleans/reason
+  codes rather than echoed. FastAPI exposes that comparison through
+  `/admin/openapi-contract/verify` JSON/Markdown routes, and Streamlit surfaces
+  both checks as on-demand admin-panel actions. Reports keep the raw OpenAPI
+  schema out of the payload and return only counts, booleans,
+  missing-operation codes, fingerprints, drift fields, and route-group
+  summaries. When API access auditing is enabled, the new readiness/rehearsal
+  admin routes also append metadata-only `admin_check` runtime events with
+  check names, ok/blocked state, counts, and booleans, but not uploaded
+  snapshots, raw reports, fingerprints, paths, prompts, answers, tokens, or
+  child payloads. Admin status/report, metrics, and the Streamlit status panel
+  aggregate those events by check name, event code, ok/blocked state, and
+  blocker-count totals. The aggregate normalizes unsafe legacy check/code
+  labels to `invalid` and clamps negative blocker counts to zero before
+  status/report/metrics emission.
 - `scripts/update_local_references.py`: local config path migration helper for
   the retired temporary `80` index.
 - `.github/workflows/ci.yml`: CI gate for tests and local health checks.
@@ -172,11 +272,19 @@ queued/running records as cancelled. Scheduled retries preserve
 `parent_job_id` and `not_before` metadata. Async jobs and scheduled retries can
 also carry `deadline_at`, derived from `queue_timeout_s`; the worker fails jobs
 that expire before execution with `job_deadline_exceeded` instead of starting
-the provider. `GET /jobs` and the Streamlit recent-job panel support local `q`,
-`status`, `kind`, and `owner_id` filters, so operators can find job records
-without reading JSONL/SQLite state directly. Job creation requests can include
-`idempotency_key`; for the same job kind and key, immediate and async routes
-return the existing persisted job instead of creating or executing a duplicate.
+the provider. `GET /jobs` returns latest job summaries and supports local `q`,
+`status`, `kind`, and `owner_id` filters, while `GET /jobs/{job_id}` returns the
+persisted detail record for an exact job ID. The free-text list/search path is
+applied to a no-secret projection of job IDs, status/kind, count/boolean fields,
+error codes, ownership source, and log statuses rather than raw request payloads,
+execution results, logs, owner IDs, owner labels, idempotency keys, or artifact
+metadata. Exact `owner_id` filtering remains available, but summaries return
+only owner ID/label presence flags.
+The Streamlit recent-job panel uses the same local job filters and no-secret
+summary projection for operator inspection without reading JSONL/SQLite state
+directly. Job creation requests
+can include `idempotency_key`; for the same job kind and key, immediate and async
+routes return the existing persisted job instead of creating or executing a duplicate.
 The durable SQLite `job_idempotency` claim table backs this lookup, and omitted
 keys still create new jobs. Query and job-creation API requests can carry
 optional `owner_id` and `owner_label` metadata; omitted values normalize to the
@@ -186,7 +294,9 @@ records, and admin summaries, but they are not authentication, tenant
 isolation, quota, or billing controls. Job records include no-secret transition
 logs for queued, running, terminal, and cancelled states. Job transitions are
 retained in append-only JSONL and mirrored into `jobs/jobs.sqlite3` as a local
-current-state index. Queued jobs can also carry `max_attempts` and
+current-state index. Malformed SQLite payload rows are skipped or refreshed from
+append-only JSONL, so bad mirror cache entries do not break list/get/idempotency
+lookup or worker claim paths. Queued jobs can also carry `max_attempts` and
 `retry_backoff_s`; failed
 attempts are returned to `queued` until the cap is reached, then the same job is
 marked `dead_lettered` with `dead_lettered_at`. This is a local bounded retry
@@ -257,15 +367,23 @@ for citation validity, expected-source retrieval coverage, key-term coverage,
 and configured live aggregate gates without storing API tokens in the
 repository. `--json-report` writes the same
 offline/retrieval-only/code-output/provider/recorded/live-retrieval/live-answer/gate
-result summary as no-secret JSON for CI or deployment evidence.
+result summary as no-secret JSON for CI or deployment evidence. Live result
+request IDs are reduced to `request_id_present`/`request_id_redacted` booleans
+instead of copying raw request identifiers into the report.
 `scripts/quality_readiness.py` is the small wrapper for reading that eval
 baseline as staged readiness. By default it proves the local source-quality
 foundation; when supplied with `--live-report`, it merges the no-secret live
 retrieval/live answer counts, pass rates, and live answer term-coverage metrics
 from an eval JSON report before deciding whether the small-group or community
-targets are met. `--require-target community` stays nonzero until the community
-bar has enough curated papers, answer cases, retrieval questions, PDF structure
-cases, and passing live answer evidence.
+targets are met. Its output includes a target gap summary so release planning can
+sort count gaps and live-answer quality gaps without reading raw report content.
+It also emits no-secret evidence collection plans that convert the next-target
+and community gaps into placeholder `evaluate_rag.py` and
+`quality_readiness.py` commands without exporting concrete report paths, URLs,
+credentials, prompts, answers, or source content.
+`--require-target community` stays nonzero until the community bar has enough
+curated papers, answer cases, retrieval questions, PDF structure cases, and
+passing live answer evidence.
 
 For retrieval-only checks, `src.chain.retrieve_with_metadata()` returns
 retrieved context refs, source/page completeness, and the citation guard without
@@ -315,9 +433,11 @@ replacement for broader live answer scoring.
 
 Recent generated artifacts are formatted by
 `src.artifacts.format_artifact_references()` and injected into the RAG prompt as
-`[Artifact:<id>]` references. The model can cite those IDs when a generated
-diagram, plot, or file is relevant, but it is explicitly instructed not to
-invent artifact IDs.
+`[Artifact:<id>]` references plus safe flags/counts. Raw artifact URIs, local
+paths, titles, owner IDs/labels, prompts, and source-reference values are not
+included in that prompt context. The model can cite those IDs when a generated
+diagram, plot, or file is relevant, but it is explicitly instructed not to invent
+artifact IDs.
 
 ## Corpus Metadata
 
@@ -340,7 +460,10 @@ named active-paper selections that can be listed, updated, and reactivated
 without copying PDFs or editing runtime files by hand. Chunk records include
 source path, page, chunk sequence, content hash, character count, and preview
 text. Uploads are deduplicated by SHA-256 against selectable local PDFs before
-writing a new file or adding duplicate chunks. Uploads also pass through a
+writing a new file or adding duplicate chunks. Selectable PDF discovery and
+active-paper persistence accept only project-local regular PDF files and skip
+symlinks; upload filename conflicts treat symlinks as occupied paths before
+creating a new file. Uploads also pass through a
 local pre-write scan before persistence: the scan validates PDF magic and
 PyMuPDF parseability, rejects encrypted PDFs by default, blocks common
 active-content markers, caps page count, and records only metadata-only
@@ -363,7 +486,10 @@ Profile status is read-only: it checks paper availability, active-selection
 match, profile-vs-chunk index freshness, and rebuild requirement without
 changing the active FAISS selection. The
 `GET /corpus/profiles/{profile_id}/report` route exports that same no-secret
-profile status as Markdown for handoff or offline review.
+profile status as Markdown for handoff or offline review. Its download filename
+is derived through the same API/UI helper from the normalized saved profile ID
+rather than the raw path parameter, with secret-like IDs hashed before filename
+use.
 `GET /admin/status` reports JSON/SQLite corpus and chunk storage state. Admin
 status also reports local index freshness by comparing the active paper source
 set with the distinct source paths represented in chunk metadata. Corpus status
@@ -380,7 +506,7 @@ known-file existence flags; it does not read or return runtime file contents.
 `src.storage_schema` provides the matching local storage-schema inventory for
 future migration work. Admin status/report, Streamlit, and metrics expose schema
 version, JSON/JSONL shape, and expected SQLite table/column presence for corpus,
-chunk, job, artifact, API-key registry, product registry, and runtime-event stores without
+chunk, job, artifact, API-key registry, product registry, share-link registry, and runtime-event stores without
 returning row contents, prompts, answers, filenames, owner IDs, request IDs,
 source paths, token values, or runtime file contents. `scripts/storage_schema.py`
 exposes the same check for local or target-root preflight use and exits nonzero
@@ -416,12 +542,23 @@ content hashes, byte counts, source-path tokens, and deterministic object keys,
 but does not export source paths, filenames, buckets, endpoints, credentials, or
 file contents. `--verify-object-manifest` can then check either the manifest
 JSON or a full rehearsal JSON against a local/staged runtime tree, returning
-only safe group/token/hash/count differences. This prepares object-storage
-migration validation without activating an external object store.
+only safe group/token/hash/count differences and rejecting unsafe manifest fields,
+including nested or camelCase path/filename/bucket/endpoint/credential variants.
+`--include-job-store-manifest`
+adds a no-secret durable job-store manifest for staged `jobs.sqlite3` state:
+job rows and idempotency claims are represented by SHA-256 tokens and aggregate
+counts, while job payloads, owner IDs, request IDs, worker IDs, idempotency keys,
+logs, artifacts, stdout/stderr, and secrets are omitted.
+`--verify-job-store-manifest` can then compare that manifest against local or
+staged durable job state and report only missing/mismatched/extra token counts
+and changed metadata fields, while rejecting unsafe nested or camelCase payload,
+owner, request, worker, idempotency, log, artifact, stdout/stderr, credential, or
+secret fields. This prepares object-storage and job-store migration validation
+without activating an external object store or distributed queue.
 Reports expose only group counts, byte totals, status
 codes, and blocker codes; `.env` is never copied, runtime dependencies such as
 models are skipped unless `--include-runtime-dependencies` is supplied, and
-staging roots inside the source project are rejected.
+staging roots that equal, sit inside, or contain the source project are rejected.
 `src.product_readiness` adds the equivalent no-secret productization check for
 identity, API-key lifecycle, quota-store, and billing-provider readiness. It
 separates `local_foundation_ready` from `activation_ready`: the current local
@@ -458,6 +595,19 @@ The local registry also has an operator API surface at
 the registry backend is configured as SQLite; mutating routes append
 metadata-only `product_registry_admin` events and still do not create external
 identity or payment accounts.
+`src.collaboration_readiness` adds the adjacent no-secret collaboration gate for
+private corpora and share links. The default runtime treats both capabilities as
+disabled-safe and activation-blocked. If the private-corpus or share-link flags
+are enabled later, the gate requires the product registry/RBAC foundation and a
+share-link token registry target before activation can pass. The adjacent local
+share-link registry stores token hashes in SQLite and exposes status/list/create/
+revoke/resolve through `scripts/share_link_registry.py`, `/admin/share-links*`,
+and an explicitly enabled Streamlit operator panel.
+Its policy matrix and registry projections report only roles, allowed/denied
+booleans, reason codes, counts, and presence/fingerprints; they never return
+workspace/user/corpus/share identifiers in readiness output, raw URLs, raw
+tokens after create, creator user IDs, descriptions, paths, prompts, or
+contents.
 `src.provider_readiness` adds the same no-secret split for external provider
 activation. The current local foundation passes with local mock image
 generation, local Python execution, artifact registry, provider-failure
@@ -467,10 +617,24 @@ image, hosted execution, MATLAB backend/license, and provider quota/cost guard
 targets are configured. The CLI `scripts/provider_readiness.py` succeeds for
 local foundation readiness and exits nonzero under `--require-activation` until
 those provider activation blockers are cleared.
+`src.provider_guard` is the shared no-secret provider quota/cost guard decision
+layer. It can be enabled with `PROVIDER_QUOTA_GUARD_ENABLED=true`, checks
+estimated prompt tokens, requested completion tokens, and optional configured
+cost ceilings before provider calls, and returns only counts, thresholds, and
+reason codes. `src.chain` applies that guard before RAG generation/streaming, so
+an over-limit request is denied before constructing the LLM client.
+Guard denials raise `ProviderQuotaGuardError` and API query endpoints record
+metadata-only `provider_quota_guard` runtime events instead of counting them as
+provider failures.
+`scripts/provider_runtime_rehearsal.py` exercises both an allowed and a blocked
+guard decision locally without exporting prompts, answers, paths, URLs, or
+credentials.
 `src.quality_readiness` applies the same no-secret reporting discipline to RAG
 quality maturity. It separates local source/eval readiness from live-evidence
-readiness, masks report paths down to filenames, and keeps prompts, answers,
-source paths, API keys, and runtime contents out of the output.
+readiness, replaces live report paths and filenames with generic labels, and
+keeps prompts, answers, source paths, API keys, and runtime contents out of the
+output. Its evidence collection plan uses only placeholders such as
+`<api-base-url>` and `<report.json>`.
 `src.storage_manifest` also owns the no-secret runtime backup manifest and
 restore dry-run verifier. The manifest records group totals and SHA-256 hashes
 for known metadata/job/API-key registry/index files without exporting file contents or `.env`
@@ -524,7 +688,12 @@ Generated-artifact export is also bounded by `CODE_EXECUTION_MAX_ARTIFACTS`,
 `CODE_EXECUTION_MAX_ARTIFACT_BYTES`, `CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES`,
 and `CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES`; metadata records scanned,
 exported, skipped, and truncated collection counts without copying skipped
-files.
+files. Artifact download/export resolves only regular files under
+`ARTIFACTS_DIR` and rejects symlink artifact paths before returning file
+responses. Local artifact writes validate relative targets under the artifact
+root, use atomic replacement so preexisting destination symlinks are not
+followed, reject symlink parent escapes, and reject symlink/non-regular copy
+sources.
 Each code-execution attempt also appends a no-secret `code_execution` runtime
 event with job id, owner metadata, language, selected backend, status/error
 code, duration, artifact count, exit code, output/artifact limit metadata, and
@@ -550,13 +719,19 @@ exposing raw filesystem paths. Export only supports local `file://` artifacts
 that resolve under `ARTIFACTS_DIR`. The local artifact registry mirrors current
 artifact metadata into `artifacts/artifacts.sqlite3` while still deriving records
 from persisted jobs, giving later durable artifact storage a concrete migration
-shape. The Streamlit sidebar also reads the local artifact registry and renders
-recent artifacts with stable IDs, metadata, local filters, and download buttons.
+shape. Malformed SQLite mirror payloads are treated as cache misses and stable-ID
+lookup falls back to persisted job history; registry limits are clamped at the
+helper layer before slicing. The Streamlit sidebar also reads the local artifact
+registry and renders recent artifacts with stable IDs, public no-secret metadata
+summaries, local filters, and download buttons that use artifact-ID-based
+filenames.
 `GET /artifacts` and the sidebar gallery support local `q`, `kind`, `job_kind`,
-and `owner_id` filters for narrowing generated diagrams, plots, and files. Local
-artifact records include byte counts and SHA-256 checksums, and mock diagram
-artifacts layer prompt, style, local SVG template, size, source references,
-provider/model, and zero-cost metadata on top. The local templates cover generic
+and `owner_id` filters for narrowing generated diagrams, plots, and files. The
+free-text query is applied to the public projection rather than raw owner/path/
+prompt/reference metadata. Local artifact records include byte counts and
+SHA-256 checksums, and mock diagram artifacts layer prompt, style, local SVG
+template, size, source references, provider/model, and zero-cost metadata on top
+for internal integrity/export bookkeeping. The local templates cover generic
 engineering diagrams, sliding-mode observers, PMSM control loops, and
 paper-figure redraft scaffolds before any real image provider is activated.
 Admin status verifies current local files against those
@@ -567,8 +742,9 @@ shape without using external keys.
 ## Admin Status
 
 `GET /admin/status` exposes a token-protected, no-secret operations snapshot for
-local development and production checks. It reports job counts by status/kind/
-owner, artifact counts by owner, durable queue health, latest failed local jobs,
+local development and production checks. It reports job counts by status/kind,
+distinct owner counts and ownership-source summaries for jobs/artifacts,
+durable queue health, latest failed local jobs without owner identifiers,
 corpus paper counts, artifact counts/bytes, recent `/query` provider failures,
 estimated no-secret query usage, metadata-only API access audit counts,
 local API rate-limit status, upload-scan counts/reason-code summaries, provider token usage when the upstream response exposes it, runtime
@@ -589,26 +765,66 @@ status, platform-readiness, product-readiness, and provider-readiness status,
 query usage and latency status, API access audit status, upload-scan
 status, local rate-limit status, and local metadata/object storage paths, so common
 operational questions do not require SSH or raw filesystem inspection.
+Platform migration rehearsal, product activation rehearsal, provider runtime
+rehearsal, and the aggregate activation suite are intentionally not collected
+as part of every status refresh because they run local rehearsal checks.
+`GET /admin/platform-migration-rehearsal`,
+`GET /admin/platform-migration-rehearsal/report`,
+`GET /admin/product-activation-rehearsal`,
+`GET /admin/product-activation-rehearsal/report`,
+`GET /admin/collaboration-readiness`,
+`GET /admin/collaboration-readiness/report`,
+`GET /admin/share-links/status`,
+`GET /admin/share-links`,
+`POST /admin/share-links`,
+`POST /admin/share-links/{link_id}/revoke`,
+`POST /admin/share-links/resolve`,
+`GET /admin/provider-runtime-rehearsal`,
+`GET /admin/provider-runtime-rehearsal/report`,
+`GET /admin/activation-suite`, `GET /admin/activation-suite/report`, and the
+Streamlit admin panel expose them as explicit on-demand checks instead. The
+activation-suite POST variants and Streamlit uploader can accept a no-secret
+`evaluate_rag.py --json-report` object as in-memory live quality evidence; the
+suite extracts only maturity counts/pass rates/coverage and never echoes the raw
+report, filenames, paths, prompts, answers, or source content. Its full
+activation action plan is an operator handoff for the remaining external and
+community gates, not an activation side effect.
 `GET /admin/status/report` renders the same snapshot as a Markdown operations
 report, and the Streamlit runtime panel exposes the report as a download for
-handoff or offline review. `GET /admin/metrics` exports the same local admin
-summaries as Prometheus/OpenMetrics-style text for local scraping. The metrics
-are metadata-only local-window gauges and omit owner IDs, request IDs, paths,
-prompts, answers, uploaded contents, filenames, and artifact contents. The
+handoff or offline review. Status/report latest-event summaries sanitize
+runtime-event metadata and replace request IDs with `request_id_present` and,
+when needed, `request_id_redacted` booleans. `GET /admin/metrics` exports the same local admin summaries as
+Prometheus/OpenMetrics-style text for local scraping. The status, report, and
+metrics surfaces are metadata-only local-window summaries and omit owner IDs,
+request IDs, paths, prompts, answers, uploaded contents, filenames, and artifact contents. The
 Streamlit admin panel exposes the same text as a download. `GET
 /admin/retention` provides the default preview of upload and artifact files that
 match local age-based retention thresholds.
 `POST /admin/retention/delete` can delete the same bounded candidate set only
 when `RETENTION_DELETE_ENABLED` is explicitly true; otherwise it returns a
 guarded disabled result. The delete path is authenticated, excludes artifact
-SQLite metadata files, reports paths/bytes for the deleted candidates in the
-response, and records only aggregate `retention_delete` runtime-event counts.
+SQLite metadata files and symlinks, rechecks candidates as regular files before
+unlinking, reports paths/bytes for the deleted candidates in the response, and
+records only aggregate `retention_delete` runtime-event counts.
 The Streamlit admin panel exposes the preview with local day/limit controls and
 only shows the delete button when the same config flag is enabled.
 `GET /admin/events` lists no-secret runtime events with local `kind`, `code`, and
 `q` filters, and the Streamlit admin panel exposes the same event viewer for
-provider-failure, query-usage, retrieval-trace, code-execution, API-access, and
-upload-scan inspection plus retention-delete events without reading raw JSONL.
+provider-failure, query-usage, retrieval-trace, code-execution, API-access,
+admin-check, and upload-scan inspection plus retention-delete events without
+reading raw JSONL.
+Admin status/report, metrics, and Streamlit also expose the same `admin_check`
+events as aggregate readiness-check summaries, with fixed-key latest-event
+projection so legacy or malformed event metadata cannot leak snapshots,
+fingerprints, paths, raw reports, prompts, answers, tokens, or child payloads.
+Unsafe legacy check/code labels are grouped as `invalid`, and negative blocker
+counts are clamped before totals are emitted.
+The API and Streamlit event viewers sanitize event metadata first and apply `q`
+search to that sanitized projection, so raw prompts, answers, owner
+identifiers, product user/workspace/API-key identifiers, source paths, tokens,
+filenames, and content cannot be returned or searched there. Count/status fields
+such as workspace and member totals remain visible as aggregate operational
+signals.
 Malformed runtime-event JSONL lines are skipped with warnings so one bad history
 line does not break the admin/event viewer path.
 Admin status also summarizes recent code execution events by code,

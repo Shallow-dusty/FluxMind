@@ -62,6 +62,13 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
+    assert "Current local app-code HEAD    b1212e2 feat: expose local activation admin surfaces" in text
+    assert "ba7c243 feat: add provider quota guard and safe runtime events" in text
+    assert "4ea219c fix: harden no-secret local projections" in text
+    assert "1ebfde3 feat: add durable job-store migration manifests" in text
+    assert "39ddaee feat: add local activation readiness tools" in text
+    assert "committed locally in the stack above, not pushed" in text
+    assert "not committed, pushed, or deployed" not in text
 
 
 def test_roadmap_near_term_plan_starts_from_deployed_baseline():
@@ -69,3 +76,41 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
+
+
+def test_agent_bootstrap_docs_include_current_no_secret_commands():
+    agents = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    claude = (PROJECT_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    docs_index = (PROJECT_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    required_snippets = [
+        "scripts/product_activation_rehearsal.py --format markdown --require-activation",
+        "scripts/share_link_registry.py status --format markdown",
+        "scripts/collaboration_readiness.py --format markdown",
+        "scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation",
+        "scripts/activation_suite.py --format markdown --require-target local_foundation",
+        "scripts/platform_migration_rehearsal.py --include-object-manifest --include-job-store-manifest",
+        "scripts/platform_migration_rehearsal.py --verify-job-store-manifest",
+        "durable job-store migration manifest",
+        "per-target current/expected/gap",
+    ]
+
+    for snippet in required_snippets:
+        assert snippet in agents
+        assert snippet in claude
+    assert "Project bootstrap         README.md, AGENTS.md, CLAUDE.md" in docs_index
+
+
+def test_readme_bilingual_verification_commands_include_current_no_secret_surface():
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    required_commands = [
+        "python scripts/product_activation_rehearsal.py --format markdown --require-activation",
+        "python scripts/share_link_registry.py status --format markdown",
+        "python scripts/collaboration_readiness.py --format markdown",
+        "python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation",
+        "python scripts/activation_suite.py --format markdown --require-target local_foundation",
+        "python scripts/platform_migration_rehearsal.py --include-object-manifest --include-job-store-manifest --output /tmp/fluxmind-object-and-job-rehearsal.json",
+        "python scripts/platform_migration_rehearsal.py --verify-job-store-manifest /tmp/fluxmind-object-and-job-rehearsal.json --format markdown",
+    ]
+
+    for command in required_commands:
+        assert readme.count(command) == 2

@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-17
+Last updated: 2026-06-20
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -31,7 +31,7 @@ RAG Q&A, corpus selection, PDF upload/indexing, Streamlit UI, and the
 token-protected FastAPI `/query` endpoint until those activation decisions are
 made.
 
-## Project Evaluation: 2026-06-17
+## Project Evaluation: 2026-06-20
 
 Current verified state: the no-key/local platform baseline is healthy and
 deployed, but the project is still a single-machine product foundation rather
@@ -46,21 +46,28 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 435 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 602 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
-coverage report --fail-under=88           pass, 88% total branch coverage
+coverage report --fail-under=88           pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
                                              30 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/product-quota/product-RBAC/product-registry-management/object-storage-manifest/object-storage-manifest-verifier/provider-readiness/quality-readiness and repo/roadmap drift checks
-storage_schema.py local preflight          pass, ok=true, 9 stores, 0 problems
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/share-link-management/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract and repo/roadmap drift checks
+storage_schema.py local preflight          pass, ok=true, 10 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
+product_activation_rehearsal.py local drill pass, ok=true, activation_ready=true against disposable SQLite stores with workspace-isolation denial; no tokens or paths exported
 provider_readiness.py local preflight      pass, local_foundation_ready=true, activation_ready=false
-quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false
+provider_runtime_rehearsal.py local drill  pass, ok=true, local mock image/Python execution/Octave branch and execution abuse-policy denial checked; external_activation_ready=false
+quality_readiness.py local preflight       pass, local_foundation_ready=true; community_ready=false with target gap/evidence-request summary and admin API/UI on-demand surface
+activation_suite.py local foundation       pass, local_foundation_ready=true; full_activation_ready=false with expected product/provider/platform/community blockers; admin API/UI on-demand surface, live-report evidence input, next-evidence source summary, and full activation action plan installed
+openapi_contract.py local contract         pass, local_contract_ready=true; 69 routes, 76 operations, 52 required operations, protected auth headers covered; operation fingerprint and snapshot drift verifier installed; raw schema not exported
+platform_migration_rehearsal admin surface pass, on-demand API/UI surface returns public summary only; raw manifests/paths/job payloads not exported
 platform_migration_rehearsal object manifest pass, rehearsal_ok=true, objects=9, unique=8, no paths/filenames/bucket/secrets exported
 platform_migration_rehearsal object verify pass, ok=true, checked=9, 0 missing/mismatched/extra, no paths/filenames/bucket/secrets exported
+platform_migration_rehearsal job-store manifest pass, rehearsal_ok=true, jobs=0, claims=0 in current checkout; no job payloads or raw IDs exported
+platform_migration_rehearsal job-store verify pass, ok=true, 0 missing/mismatched/extra jobs or claims
 health_check.py HTTPS endpoints            02:14 snapshot, UI/API 200
 health_check.py SSH runtime                02:14 snapshot, services active, active_papers=30, chunks=1934, index_fresh=True, retrieval/admin metrics smokes OK
 ```
@@ -99,10 +106,27 @@ are wired through immediate local job endpoints, async in-process job endpoints,
 artifact list/export endpoints, and the Streamlit local job panel. Generated
 artifact metadata is mirrored into local SQLite for current-state inspection.
 Generated artifacts now carry provider-neutral byte counts, SHA-256 checksums,
-prompt/style/source-reference/cost metadata, and admin status can verify local
-artifact integrity without exposing artifact contents. Recent artifacts are
-available to RAG answers as stable
-`[Artifact:<id>]` references, but not through any real external provider.
+prompt/style/source-reference/cost metadata internally, while API/UI/RAG surfaces
+use a public projection with stable IDs and safe flags/counts instead of raw
+URIs, titles, owners, prompts, or source-reference values. Download filenames
+reject unexpected artifact IDs, and public cost summaries accept bounded finite
+numeric values only. Admin status can
+verify local artifact integrity without exposing artifact contents. Recent
+artifacts are available to RAG answers as stable `[Artifact:<id>]` references,
+but not through any real external provider.
+`src.provider_guard` now adds a reusable no-secret provider quota/cost guard for
+future external activation. It is disabled by default, but when enabled it
+checks estimated prompt tokens, requested completion tokens, and optional cost
+ceilings before the RAG code constructs a provider client. The provider runtime
+rehearsal covers both an allowed local decision and an over-limit denial, while
+still leaving real external activation blocked. Non-finite or extreme-exponent
+local cost/rate settings are treated as invalid no-secret configuration instead
+of crashing readiness/status views or emitting unbounded public strings; artifact
+public cost metadata follows the same bounded output rule.
+Provider usage extraction treats upstream token counts as optional metadata:
+malformed fields fall back to the next valid provider field, zero counts remain
+valid, and totals are derived from prompt/completion counts when no valid total
+is present.
 
 Current RAG quality work includes an offline baseline in
 `eval/rag_baseline.json`, a no-network evaluator in `scripts/evaluate_rag.py`,
@@ -132,7 +156,31 @@ paper-to-code work.
 no-secret preflight: local foundation passes from the source/eval baseline, live
 report evidence can be supplied explicitly, and the community target remains
 nonzero until the corpus/eval/live-answer count, pass-rate, and term-coverage
-gaps are closed.
+gaps are closed. The preflight also emits per-target current/expected/gap
+summaries so the community lane can be audited without exporting prompts,
+answers, source paths, report paths, report filenames, or raw runtime content.
+The same readiness output classifies missing evidence by source, splitting the
+next work into corpus manifest, eval-baseline, and live eval report tasks.
+Operators can run the quality readiness surface directly through
+`/admin/quality-readiness` or the Streamlit admin panel without running the full
+activation suite.
+The activation suite now also emits a full activation action plan that groups
+actual product readiness, provider activation, platform migration activation,
+and community-quality blockers into placeholder command/verification steps.
+This keeps the remaining product/provider/platform/community work operationally
+explicit without treating placeholder commands as proof of activation.
+Operators can also run the local SQLite product activation drill directly
+through `/admin/product-activation-rehearsal` or the Streamlit admin panel when
+they only need API-key/product-registry/RBAC/quota/billing-attribution evidence
+instead of the full activation-suite aggregate.
+Operators can run the provider runtime drill directly through
+`/admin/provider-runtime-rehearsal` or the Streamlit admin panel when they only
+need local mock image/Python/Octave/Docker/quota-guard evidence instead of the
+full activation-suite aggregate.
+Operators can run the platform migration drill directly through
+`/admin/platform-migration-rehearsal` or the Streamlit admin panel when they only
+need local staging/restore/schema/object-manifest/job-store-manifest summary
+evidence instead of the full activation-suite aggregate.
 Retrieval now uses a local hybrid path: FAISS
 vector hits plus BM25-lite keyword matches from the indexed docstore, with
 dedupe, deterministic BM25-lite lexical reranking, optional no-key local
@@ -155,7 +203,9 @@ parse/index error fields. That state is now mirrored into
 is mirrored into `metadata/chunks.sqlite3` with source path, page, chunk
 sequence, content hash, character count, and preview text. Uploaded PDFs are
 deduplicated by SHA-256 against the selectable local corpus before creating a
-new local upload file or adding duplicate chunks to FAISS. `GET /corpus/papers`
+new local upload file or adding duplicate chunks to FAISS. Selectable corpus
+discovery skips symlink PDFs and upload filename conflicts treat symlinks as
+occupied paths before file creation. `GET /corpus/papers`
 exposes paper records through the API and supports local filters for query text,
 active state, source kind, and indexed status. `GET /corpus/chunks` exposes
 chunk records, and `GET /admin/status` reports JSON/SQLite corpus and chunk
@@ -193,7 +243,13 @@ With `--include-object-manifest`, the same rehearsal also emits an opaque
 object-storage migration manifest for staged files: deterministic object keys,
 SHA-256 hashes, byte counts, group names, and source-path tokens are available
 without exporting source paths, filenames, buckets, endpoints, credentials, or
-contents.
+contents. With `--include-job-store-manifest`, it emits the matching durable
+job-store migration evidence for staged `jobs.sqlite3`: job rows and
+idempotency claims are represented by SHA-256 tokens and aggregate metadata,
+while job payloads, owner IDs, request IDs, worker IDs, idempotency keys, logs,
+artifacts, stdout/stderr, and secrets are omitted. The `--verify-job-store-manifest`
+path compares that evidence against local or staged durable job state before any
+distributed queue is activated.
 The no-secret runtime manifest can also be checked against a target runtime root
 through the CLI or authenticated API without copying, deleting, or restoring
 files. This is still a local
@@ -277,7 +333,8 @@ Reference context:
 - Local embeddings reduce runtime dependency on remote embedding APIs.
 - The API token boundary is simple and appropriate for the current public
   endpoint; metadata-only API access audit events now make token-status outcomes
-  inspectable without storing credentials or request bodies, the local
+  inspectable without storing credentials or request bodies, unsafe request IDs
+  are suppressed before response/event reuse, the local
   rate-limit guard can return HTTP 429 before route handling when configured,
   and `/admin/metrics` can export the same no-secret admin summaries as local
   scrapeable metrics text.
@@ -300,7 +357,8 @@ Reference context:
   metadata-only reason-code events; this is still not a production antivirus,
   sandbox-scanning, or identity-backed abuse-control service. Local checksum
   deduplication avoids writing duplicate upload files or duplicate vector chunks
-  for already indexed PDFs, and admin retention preview shows age-based
+  for already indexed PDFs, skips symlinked selectable PDFs, and avoids following
+  broken upload symlinks when creating a same-name upload. Admin retention preview shows age-based
   upload/artifact cleanup candidates. A guarded local retention-delete route can
   remove those candidates only when explicitly enabled, but production
   identity-backed deletion/audit controls remain planned.
@@ -373,6 +431,20 @@ Storage
   - logs/traces
 ```
 
+Current local support: `scripts/openapi_contract.py` checks the generated
+FastAPI schema for required route/method coverage, operation summaries and IDs,
+responses, protected auth headers, and route-group coverage without exporting
+the raw schema. It also emits a stable operation fingerprint and can verify a
+prior no-secret JSON snapshot for contract drift. Snapshot verification projects
+only whitelisted counts, booleans, fingerprints, and valid flags; malformed or
+raw-schema-shaped snapshot input is reported through reason codes instead of
+being echoed. The same no-secret summary and snapshot verification are
+available through `/admin/openapi-contract`, `/admin/openapi-contract/verify`,
+and the Streamlit admin panel. The
+activation-suite CLI/API/UI entrypoints pass the generated schema into the
+aggregate so this contract check participates in the local foundation gate
+without making the raw schema part of the suite payload.
+
 ## Roadmap
 
 The roadmap below is directional. For phases that eventually require external
@@ -411,9 +483,17 @@ execution, and selected-PDF index rebuilds.
 List/status/retry/scheduled-retry/cancel endpoints exist. The Streamlit sidebar
 can trigger queued no-key jobs, display filtered latest job state, cancel
 queued/running jobs, and retry failed/cancelled jobs immediately or after a local
-backoff delay. `GET /jobs` and the sidebar recent-job panel support local `q`,
-`status`, `kind`, and `owner_id` filters for job inspection without raw
-JSONL/SQLite reads.
+backoff delay. `GET /jobs` returns latest job summaries and supports local `q`,
+`status`, `kind`, and `owner_id` filters over a no-secret search projection,
+while `GET /jobs/{job_id}` remains the exact-ID job detail path. The list/search
+path searches safe status/ID/count/code/ownership-source fields rather than raw
+request payloads, execution results, logs, owner IDs/labels, idempotency keys,
+or artifact metadata. Exact `owner_id` filtering remains available, but job
+summaries expose owner ID/label presence flags instead of raw owner values. The
+sidebar recent-job panel uses the same filtered local job store and no-secret
+summary projection for inspection without raw JSONL/SQLite reads. Bad SQLite job
+mirror payloads are skipped or refreshed from append-only JSONL rather than
+breaking list/get/idempotency/claim paths.
 Immediate and async job submissions can include `idempotency_key`; duplicate
 submissions for the same job kind and key return the existing persisted job, and
 missing keys still create fresh jobs.
@@ -527,12 +607,14 @@ sliding-mode-observer blocks, PMSM control loops, and paper-figure redraft
 scaffolds. Artifact metadata is mirrored into local SQLite as a current-state
 index, and admin status reports artifact integrity counts for
 ok/missing/unchecked/mismatched local files. The Streamlit artifact gallery
-exposes stable artifact IDs, metadata, local filters, and downloads, and
+exposes stable artifact IDs, public metadata summaries, local filters, and
+artifact-ID-based downloads, and
 `GET /artifacts` supports local `q`, `kind`, `job_kind`, and `owner_id` filters
-for generated diagrams, plots, and files. Artifact records inherit owner
-metadata from their source jobs. RAG prompts can include recent generated
-diagrams, plots, and files as
-`[Artifact:<id>]` references.
+over the public projection for generated diagrams, plots, and files. Artifact
+records inherit owner metadata from their source jobs for local status and
+explicit owner filtering, but list/search/RAG contexts do not expose raw owner,
+path, title, prompt, or source-reference values. RAG prompts can include recent
+generated diagrams, plots, and files as `[Artifact:<id>]` references.
 
 OpenAI's current image docs separate simple Image API generation/edits from
 Responses API image tools for conversational, iterative image workflows. That
@@ -562,7 +644,10 @@ out-of-workdir outputs are not exported as artifacts. File count, per-file bytes
 and total input bytes are capped before materialization. Generated-artifact
 export is also bounded by configurable artifact count, per-artifact bytes, total
 artifact bytes, and candidate scan limits, with exported/skipped/truncated
-metadata on execution results. The child-process providers remain development
+metadata on execution results. The local artifact store validates artifact-root
+containment, atomically writes without following preexisting destination
+symlinks, rejects symlink parent escapes, and rejects symlink/non-regular copy
+sources. The child-process providers remain development
 providers. `CODE_EXECUTION_BACKEND=docker` now
 switches code jobs to `DockerExecutionProvider`, which runs `docker run --rm`
 with network disabled, a bind-mounted per-run workdir, read-only root
@@ -594,10 +679,13 @@ rate, slow duration, policy violations, stdout/stderr truncation, and artifact
 collection truncation.
 
 Artifact progress: generated local artifacts can be listed and downloaded
-through `GET /artifacts` and `GET /artifacts/{artifact_id}`. This gives image
-and execution outputs an export path before real provider storage is configured.
-The Streamlit sidebar also includes a local artifact gallery for recent job
-outputs.
+through `GET /artifacts` and `GET /artifacts/{artifact_id}`; symlink artifact
+paths are rejected before export, and store-level writes do not follow
+destination symlinks. The local SQLite artifact mirror is treated as a cache:
+malformed payload rows do not block stable-ID lookup from persisted job history,
+and list limits are clamped before slicing. This gives image and execution
+outputs an export path before real provider storage is configured. The Streamlit
+sidebar also includes a local artifact gallery for recent job outputs.
 
 Remaining work is no longer "add an execution provider" or "add first package
 policy"; it is hardening the chosen execution backend for production operations:
@@ -628,6 +716,11 @@ Reference: https://developers.cloudflare.com/sandbox/
 Status: partial local foundation. Local API-key lifecycle is implemented through
 a hash-only SQLite registry, and local user/workspace/RBAC/quota/usage/billing
 attribution state is implemented through a separate SQLite product registry.
+Local share-link token lifecycle is implemented through a separate SQLite
+registry that stores token hashes only, returns the raw share token once on
+create, and exposes list/revoke/resolve through CLI, `/admin/share-links*`,
+and an explicitly enabled Streamlit operator panel without returning raw URLs,
+resource refs, creator user IDs, descriptions, paths, or contents.
 The local product registry can also enforce request quotas on `/query*` routes
 when the quota guard is explicitly enabled, and workspace-role permissions on
 query/job/corpus/admin write paths when the RBAC guard is explicitly enabled.
@@ -635,11 +728,21 @@ The same registry now has local operator management through
 `/admin/product-registry/*` and the Streamlit admin panel for workspace,
 member-role, quota, billing-attribution metadata, and permission-check actions
 when the SQLite backend is explicitly enabled.
+`scripts/product_activation_rehearsal.py` now exercises that local path in a
+temporary SQLite root: hash-only API-key lifecycle, workspace RBAC,
+cross-workspace isolation denial, quota over-limit behavior, billing
+attribution, and `product_readiness` activation are verified without exporting
+raw tokens, workspace/user identifiers, or paths.
 Public identity providers, external identity-backed quota infrastructure,
 external billing, and team workflows remain disabled until those product and
 operational decisions are made.
 FluxMind exposes no-secret product-readiness and provider-readiness preflights
 plus admin surfaces for the remaining blockers.
+The local provider runtime path now also has a rehearsal CLI that checks
+deterministic SVG generation, local Python execution with artifact capture, the
+Octave-compatible runtime branch, Docker readiness reason codes, and
+provider-readiness local foundation without connecting to or claiming external
+provider activation.
 
 - Replace or wrap Streamlit with a real frontend once user/workspace concepts
   outgrow the demo UI.
@@ -653,7 +756,7 @@ Current progress: the first no-key admin foundation exists through
 corpus, artifact, recent `/query` provider-failure events, estimated no-secret
 query usage with duration summaries, provider token usage when returned by the
 upstream response, optional configured query-cost estimates, runtime-directory,
-durable storage readiness, public model, job/artifact owner summaries,
+durable storage readiness, public model, job/artifact owner-count and ownership-source summaries,
 metadata-only API access audit summaries, local API rate-limit status,
 metadata-only retrieval trace summaries, no-secret storage-schema readiness,
 no-secret platform-readiness blockers, no-secret product-readiness blockers,
@@ -685,17 +788,22 @@ code-generation reports now include a paper-to-code handoff with source refs,
 assumption/parameter guardrails, fenced code blocks, cited artifact IDs, and
 validation checklist fields. The `GET /corpus/profiles/{profile_id}/report`
 route exports one saved local corpus profile's read-only status as a Markdown
-handoff report. `GET /corpus/structure/report` exports filtered
+handoff report with API/UI download filenames derived from the normalized saved
+profile ID and secret-like IDs hashed before filename use. `GET
+/corpus/structure/report` exports filtered
 equation/table/figure/algorithm layout anchors as a Markdown handoff report with
 kind/source summaries. `GET /admin/retention`
 previews upload/artifact files matching age-based retention thresholds.
 `POST /admin/retention/delete` can delete the same bounded candidate set only
 when explicitly enabled, and the Streamlit admin panel exposes the delete action
-only under that config flag. `GET /admin/events` lists no-secret runtime events with
-local `kind`, `code`, and `q` filters, and the Streamlit admin panel exposes the
+only under that config flag. Retention candidates skip symlinks and are rechecked
+as regular files before unlinking. `GET /admin/events` lists no-secret runtime
+events with local `kind`, `code`, and `q` filters, and the Streamlit admin panel exposes the
 same event viewer, including provider-failure, query-usage, retrieval-trace,
-code-execution, and API-access audit event kinds. Estimated query usage remains
-the fallback when provider
+code-execution, and API-access audit event kinds. Both viewers sanitize
+runtime-event metadata, including sensitive-key, camelCase/PascalCase path/URL,
+token-value variants, and sensitive top-level event messages, and search only
+the sanitized projection. Estimated query usage remains the fallback when provider
 usage data is absent; provider-specific pricing is available as local
 configuration only, while billing attribution and user cost dashboards remain
 blocked on external product decisions. The local product-registry admin panel

@@ -1,6 +1,6 @@
 # FluxMind Quality Roadmap
 
-Last updated: 2026-06-17
+Last updated: 2026-06-20
 
 For current repo state, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the health checks before making
@@ -31,7 +31,17 @@ targets directly. It reports self-use, small-group, and community readiness from
 the baseline and can merge explicit live eval evidence with `--live-report`.
 Live reports contribute live retrieval/answer counts, live pass rates, and live
 answer term-coverage evidence; these quality checks are not inferred from prose
-status notes.
+status notes. The same readiness output includes a target gap summary with each
+target's current count, expected count, and remaining gap, so the community lane
+can be planned from executable metrics instead of prose-only status. It also
+emits an evidence-request summary that labels each missing item as corpus
+manifest work, eval-baseline expansion, or live eval report evidence. The same
+preflight now also turns the next target and community target into no-secret
+evidence collection plans with placeholder commands for `evaluate_rag.py` and
+`quality_readiness.py`, so operators can collect live answer evidence without
+the readiness output exporting report paths, prompts, answers, or API tokens.
+The same preflight is available as explicit admin API/UI JSON and Markdown
+reports, with optional in-memory live eval JSON evidence.
 
 ```text
 Stage        Product meaning                 Main bar
@@ -85,10 +95,18 @@ host and is recorded in `docs/DEPLOYMENT_STATUS.md`.
 the source/eval baseline. Without a supplied live report, it intentionally marks
 `small_group=gap` because live evidence is not inferred from prose docs; passing
 the deployed no-secret retrieval report with `--live-report` is the executable
-way to re-prove the small-group lane. The same report path now carries live
+way to re-prove the small-group lane. The same live report evidence now carries live
 answer pass-rate and answer-term-coverage checks, so a future community report
 with enough live answer samples still fails readiness if the answers are not
-fully passing.
+fully passing. Its target gap summary currently makes the community shortfall
+explicit: live retrieval evidence, retrieval-question breadth, live answer
+evidence, answer/recorded-answer breadth, retrieval-only breadth, and corpus
+size remain the count gaps before the live-answer quality thresholds can prove a
+community release. The evidence-request summary classifies those gaps by source,
+so the next work can be split into corpus curation, offline eval expansion, and
+live answer/retrieval report collection. The evidence collection plan carries
+the matching no-secret commands with `<api-base-url>` and `<report.json>`
+placeholders rather than concrete URLs, local paths, or credentials.
 
 ## Near-Term Quality Lane
 

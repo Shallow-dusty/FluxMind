@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-17 02:59 CST
+Snapshot time: 2026-06-20 12:11 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -16,8 +16,43 @@ Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  95f1760 test: add octave-aware code-output eval
 Current docs/health sync       e4da2e9 docs: document octave-aware eval status
-Remote status at verification  main == origin/main at e4da2e9 before this deployment-record refresh
-Current refresh scope          Octave-aware code-output eval implemented, pushed, deployed, live-verified, and documented
+Current local app-code HEAD    b1212e2 feat: expose local activation admin surfaces
+Remote status at verification  origin/main remains at 675149b; local main is ahead
+                               by the five application/foundation commits below
+                               before this docs refresh
+Current local commit stack     ba7c243 feat: add provider quota guard and safe runtime events
+                               4ea219c fix: harden no-secret local projections
+                               1ebfde3 feat: add durable job-store migration manifests
+                               39ddaee feat: add local activation readiness tools
+                               b1212e2 feat: expose local activation admin surfaces
+Current refresh scope          local audit/forward-development commits for product activation
+                               rehearsal, provider runtime rehearsal, job-store migration manifest,
+                               standalone platform migration rehearsal admin API/UI,
+                               activation suite including in-memory live eval
+                               evidence input, OpenAPI contract local
+                               foundation gate, OpenAPI contract snapshot
+                               drift verifier, and full activation action plan,
+                               product activation rehearsal
+                               admin API/UI, provider runtime rehearsal
+                               admin API/UI, and quality gap/evidence-request
+                               summary plus evidence collection plan with
+                               standalone admin API/UI surface,
+                               admin readiness/rehearsal metadata-only
+                               runtime events and OpenAPI snapshot count
+                               shape hardening,
+                               artifact/admin/runtime/API-access hardening,
+                               product-registry read-RBAC and Streamlit management-flag
+                               hardening, API-key CLI one-time-token output guard,
+                               provider quota/cost numeric-config hardening,
+                               no-secret readiness CLI OSError path-sanitization,
+                               live eval request-ID redaction in JSON reports,
+                               provider runtime execution abuse-policy rehearsal,
+                               product activation workspace-isolation rehearsal,
+                               collaboration readiness CLI/API/UI policy-matrix gate
+                               for private corpora/share links,
+                               and docs;
+                               committed locally in the stack above, not pushed
+                               to origin and not deployed to Trace-Twin
 Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval
 Last deployed docs sync base   e4da2e9 docs: document octave-aware eval status
 Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST
@@ -44,7 +79,9 @@ Platform readiness   separate metadata/object/job-store readiness targets,
 Admin/product shell  status/report endpoints, retention preview, runtime
                      events, query usage/cost visibility, product-readiness
                      and provider-readiness blocker surfaces, local API-key
-                     lifecycle registry, local product registry
+                     lifecycle registry, local product registry, local
+                     share-link token registry, Streamlit share-link
+                     management flag
 Artifacts/images     artifact metadata mirror/integrity, local SVG diagram
                      templates, stable artifact downloads
 Execution            local Python/Octave provider hardening, templates,
@@ -149,7 +186,566 @@ gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
 
-Current local verification on 2026-06-17 03:11 CST:
+Local audit follow-up on 2026-06-20 11:04 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest                                  pass, 602 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest &&
+.venv/bin/python -m coverage report --fail-under=88         pass, 602 tests, 89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
+                                                            cases, 13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                    pass, local feature/documentation anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped;
+                                                            includes product-registry
+                                                            read-RBAC route anchor
+                                                            and explicit Streamlit
+                                                            product-registry
+                                                            management flag anchor
+                                                            and API-key create
+                                                            one-time-token
+                                                            JSON-output anchor
+                                                            and share-link
+                                                            registry/API/storage
+                                                            and Streamlit
+                                                            management flag
+                                                            anchors
+                                                            and activation-suite
+                                                            local foundation/API/UI anchors
+                                                            plus OpenAPI-contract
+                                                            suite gate anchors
+                                                            plus admin-check
+                                                            runtime event
+                                                            and status-summary
+                                                            anchors
+                                                            plus full activation
+                                                            action plan anchor
+                                                            and product activation
+                                                            rehearsal admin API/UI
+                                                            anchors
+                                                            and provider runtime
+                                                            rehearsal admin API/UI
+                                                            anchors
+                                                            and storage migration
+                                                            public projection
+                                                            plus platform migration
+                                                            rehearsal admin API/UI
+                                                            anchors
+                                                            and live-report
+                                                            admin/API upload anchors
+                                                            and next-quality-evidence
+                                                            summary anchor
+                                                            and quality evidence-request
+                                                            summary anchor
+                                                            and quality evidence
+                                                            collection plan anchor
+                                                            and quality-readiness
+                                                            admin API/UI anchors
+                                                            and remote SSH
+                                                            source anchors for
+                                                            the same deployed
+                                                            safety gates,
+                                                            provider-readiness
+                                                            invalid-limit
+                                                            blocker anchor
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems
+.venv/bin/python scripts/product_readiness.py               pass, local_foundation_ready=true,
+                                                            activation_ready=false with expected
+                                                            identity/quota/billing blockers
+.venv/bin/python scripts/product_activation_rehearsal.py    pass, ok=true and activation_ready=true
+  --format markdown --require-activation                    against disposable local SQLite stores;
+                                                            workspace-isolation denial checked;
+                                                            raw tokens and paths exported=false
+Product activation admin route smoke                        pass, HTTP 200 via FastAPI TestClient;
+                                                            `/admin/product-activation-rehearsal`
+                                                            and report download return
+                                                            no-secret JSON/Markdown;
+                                                            raw token, workspace ID, SQLite path,
+                                                            and file URI markers
+                                                            were not echoed
+.venv/bin/python scripts/collaboration_readiness.py          pass, ok=true, safe_default_ready=true,
+  --format markdown                                          activation_ready=false with expected
+                                                            private-corpus/share-link blockers;
+                                                            policy_scenario_count=13 and
+                                                            identifiers/share tokens/URLs/paths
+                                                            exported=false
+Collaboration readiness admin route smoke                    pass, HTTP 200 via FastAPI TestClient;
+                                                            `/admin/collaboration-readiness`
+                                                            and report download return
+                                                            no-secret JSON/Markdown;
+                                                            workspace/user/corpus/share markers
+                                                            were not echoed
+.venv/bin/python scripts/provider_readiness.py              pass, local_foundation_ready=true,
+                                                            activation_ready=false with expected
+                                                            external provider/MATLAB blockers
+.venv/bin/python scripts/provider_runtime_rehearsal.py      pass, ok=true, local mock image/Python
+  --format markdown --require-local-foundation              execution/Octave branch checked;
+                                                            execution abuse-policy denial
+                                                            checked without source/stdout/stderr;
+                                                            external_activation_ready=false
+Provider runtime admin route smoke                          pass, HTTP 200 via FastAPI TestClient;
+                                                            `/admin/provider-runtime-rehearsal`
+                                                            and report download run
+                                                            the actual local drill;
+                                                            raw path, file URI,
+                                                            and sk-like secret
+                                                            markers were not echoed
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, rehearsal_ok=true,
+  --include-job-store-manifest --format markdown            job_store_manifest_ready=true,
+                                                            jobs=0 and claims=0 in current
+                                                            checkout; payloads/raw IDs
+                                                            exported=false
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, ok=true,
+  --verify-job-store-manifest /tmp/... --format markdown    missing/mismatched/extra jobs
+                                                            or claims all 0; payloads/raw
+                                                            IDs exported=false
+Platform migration rehearsal admin route smoke              pass, HTTP 200 via FastAPI TestClient;
+                                                            `/admin/platform-migration-rehearsal`
+                                                            and report download run the
+                                                            staged local migration drill;
+                                                            object/job-store manifest
+                                                            summaries are ready while
+                                                            raw manifests, file URIs,
+                                                            temp paths, and sensitive
+                                                            job markers are not echoed
+.venv/bin/python scripts/quality_readiness.py               pass, local_foundation_ready=true,
+                                                            self_use=met, small_group=false
+                                                            without supplied live report,
+                                                            community=false with measured
+                                                            target gap summary;
+                                                            Evidence Requests list
+                                                            corpus_manifest,
+                                                            eval_baseline, and
+                                                            live_eval_report source
+                                                            gaps without paths;
+                                                            Evidence Collection Plan
+                                                            emits placeholder
+                                                            evaluate_rag.py and
+                                                            quality_readiness.py
+                                                            commands without
+                                                            concrete URLs, paths,
+                                                            prompts, answers,
+                                                            or tokens
+Quality readiness POST live-report smoke                    pass, HTTP 200 via FastAPI TestClient;
+                                                            uploaded 107/107 retrieval live
+                                                            report makes small_group_ready=true,
+                                                            next_evidence_request=community,
+                                                            and report download includes
+                                                            Evidence Requests and
+                                                            Evidence Collection Plan;
+                                                            private path and secret marker
+                                                            were not echoed
+.venv/bin/python scripts/activation_suite.py                pass, local_foundation_ready=true,
+  --format markdown --require-target local_foundation       full_activation_ready=false
+                                                            with expected product-readiness,
+                                                            collaboration-readiness,
+                                                            provider,
+                                                            platform-migration,
+                                                            and community-quality
+                                                            activation blockers;
+                                                            next_evidence_target=small_group
+                                                            and source=live_eval_report
+                                                            without supplied live report;
+                                                            Activation Action Plan
+                                                            groups product/provider/platform/
+                                                            community blockers plus the
+                                                            collaboration gate into
+                                                            placeholder command and
+                                                            verification steps;
+                                                            raw child reports,
+                                                            paths, and secrets
+                                                            exported=false
+.venv/bin/python scripts/openapi_contract.py                 pass, local_contract_ready=true,
+  --format json --require-local-contract                     69 routes, 76 operations,
+                                                            52 required operations,
+                                                            protected auth headers
+                                                            covered; operation fingerprint
+                                                            emitted; raw schema
+                                                            exported=false
+.venv/bin/python scripts/share_link_registry.py              pass, token_prefix=fms_,
+  --db /tmp/... create                                       link_id_prefix=share_,
+                                                            resource_ref_present=true,
+                                                            raw_ref_exported=false
+.venv/bin/python scripts/openapi_contract.py                 pass, ok=true,
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                       diff_count=0 against the
+                                                            just-exported no-secret
+                                                            snapshot; raw schema,
+                                                            paths, content, and
+                                                            secrets exported=false
+printf malicious OpenAPI snapshot |                          pass, ok=false with
+  .venv/bin/python scripts/openapi_contract.py                snapshot_contract_shape_invalid,
+  --verify-snapshot - --format json                           snapshot_raw_schema_included,
+                                                            snapshot_valid=false fields;
+                                                            injected path/component/
+                                                            hunter2 values not echoed
+.venv/bin/python scripts/openapi_contract.py                  pass, exits 2 with explicit
+  --require-no-drift                                          "--verify-snapshot required"
+                                                            error instead of ambiguous
+                                                            current-contract output
+printf non-object JSON |                                      pass, exits 2 with explicit
+  .venv/bin/python scripts/openapi_contract.py                "snapshot JSON must be an object"
+  --verify-snapshot -                                        error
+Activation suite POST live-report smoke                     pass, HTTP 200 via FastAPI TestClient;
+                                                            uploaded 107/107 retrieval live
+                                                            report makes small_group_ready=true
+                                                            and next_evidence_target=community
+                                                            with corpus_manifest/
+                                                            eval_baseline/
+                                                            live_eval_report sources;
+                                                            activation action plan
+                                                            remains placeholder-only;
+                                                            private path and secret marker
+                                                            were not echoed
+git diff --check                                            pass
+Focused API/admin/artifact/job tests                        pass, tests/test_api.py,
+                                                            tests/test_admin.py,
+                                                            tests/test_artifacts.py, and
+                                                            tests/test_jobs.py cover blank
+                                                            request-id sanitation,
+                                                            unsafe request-id
+                                                            suppression,
+                                                            /query/report header retention,
+                                                            full-history artifact-ID export,
+                                                            artifact public projection,
+                                                            safe artifact/profile
+                                                            download filenames,
+                                                            shared API/UI profile
+                                                            report filename helper,
+                                                            sanitized public cost
+                                                            summaries with bounded
+                                                            finite numeric output,
+                                                            safe job-list summaries
+                                                            and job search
+                                                            projections,
+                                                            owner-label presence
+                                                            flags instead of raw
+                                                            owner labels in
+                                                            `/jobs` summaries,
+                                                            runtime-event request-id
+                                                            redaction,
+                                                            artifact SQLite sibling
+                                                            preservation, and sanitized
+                                                            /admin/events metadata/search,
+                                                            runtime-event sensitive-key,
+                                                            camelCase path/URL, and
+                                                            token-value/message redaction,
+                                                            including bare sk-like secret
+                                                            tokens in event messages,
+                                                            including product user/workspace
+                                                            identifiers while preserving
+                                                            aggregate counts,
+                                                            plus no-secret Streamlit
+                                                            latest-job summaries,
+                                                            runtime-event viewing, and
+                                                            admin status/report
+                                                            ownership/request-id summaries,
+                                                            plus route-fingerprint
+                                                            API-access audit events
+                                                            without raw request paths,
+                                                            plus local product-registry
+                                                            workspace list/detail/
+                                                            permission-check read
+                                                            routes guarded by
+                                                            admin-write RBAC when
+                                                            the product RBAC guard
+                                                            is enabled,
+                                                            plus explicit
+                                                            opt-in flag for
+                                                            Streamlit
+                                                            product-registry
+                                                            management forms
+Focused product activation rehearsal tests                  pass, tests/test_product_activation_rehearsal.py
+                                                            and CLI coverage verify hash-only
+                                                            API-key lifecycle, local RBAC,
+                                                            quota limiting, billing
+                                                            attribution, readiness activation,
+                                                            no token/path export, and
+                                                            fixed-root state isolation
+                                                            without deleting caller-root
+                                                            SQLite files, plus
+                                                            rejection of markdown
+                                                            create output before an
+                                                            unrecoverable one-time
+                                                            token can be generated
+Focused collaboration readiness tests                       pass, tests/test_collaboration_readiness.py
+                                                            plus API endpoint/report and
+                                                            CLI coverage verify the
+                                                            disabled-safe default,
+                                                            activation blockers,
+                                                            product-registry/RBAC/token-store
+                                                            prerequisites, role policy matrix,
+                                                            and no workspace/user/corpus/share
+                                                            identifier, token, URL, or path export
+Focused provider runtime rehearsal tests                    pass, tests/test_provider_runtime_rehearsal.py
+                                                            and provider-runtime API smoke tests
+                                                            and CLI coverage verify local mock
+                                                            image generation, Python artifact
+                                                            capture, Octave runtime branch,
+                                                            Docker readiness code, provider
+                                                            quota/cost guard allowed and
+                                                            denied decisions, local
+                                                            provider foundation, and no
+                                                            path/secret export, plus
+                                                            fixed-root artifact isolation
+                                                            with stale hidden-artifact
+                                                            cleanup and without changing caller-root
+                                                            artifacts
+Focused activation suite tests                              pass, tests/test_activation_suite.py
+                                                            plus API/UI source anchors
+                                                            and CLI coverage verify the
+                                                            aggregate no-secret local
+                                                            foundation gate, expected
+                                                            full-activation blockers,
+                                                            in-memory live eval
+                                                            evidence input and
+                                                            next-quality-evidence
+                                                            target/gap/source
+                                                            summary plus legacy
+                                                            gap-summary fallback,
+                                                            full activation
+                                                            action plan grouped
+                                                            by product/provider/platform/
+                                                            community area,
+                                                            OpenAPI contract
+                                                            participation in the
+                                                            local foundation gate,
+                                                            and failure projection
+                                                            as an openapi_contract
+                                                            local blocker,
+                                                            target-root/eval-file
+                                                            CLI semantics, Markdown
+                                                            output, nonzero
+                                                            full-activation require
+                                                            behavior, on-demand
+                                                            admin JSON/Markdown
+                                                            GET/POST routes,
+                                                            Streamlit button/download
+                                                            panel and live-report
+                                                            upload, and no path/token/
+                                                            payload/live-report/
+                                                            raw-child-report export
+Focused quality readiness API/UI tests                      pass, tests/test_api.py and
+                                                            tests/test_health_check.py
+                                                            verify GET/POST
+                                                            /admin/quality-readiness,
+                                                            Markdown report download,
+                                                            live-report input,
+                                                            Streamlit run/upload/download
+                                                            anchors, evidence-request
+                                                            source output,
+                                                            evidence collection
+                                                            plan output, and no
+                                                            path/secret echo
+Focused provider quota/cost guard tests                     pass, tests/test_costs.py,
+                                                            tests/test_provider_guard.py, and
+                                                            chain/streaming regressions verify
+                                                            disabled-by-default behavior,
+                                                            prompt/completion/cost limit
+                                                            denials, no-secret policy output,
+                                                            non-finite and extreme-exponent
+                                                            cost/rate config sanitation,
+                                                            denial before provider client
+                                                            construction, and separate
+                                                            provider_quota_guard events
+                                                            instead of provider_failure
+                                                            pollution
+Focused provider usage extraction tests                     pass, tests/test_evaluation.py,
+                                                            tests/test_api.py, and
+                                                            tests/test_admin.py verify
+                                                            provider token usage
+                                                            metadata extraction,
+                                                            malformed usage-field
+                                                            fallback, zero-token
+                                                            preservation, derived
+                                                            totals, query usage
+                                                            events, and admin
+                                                            cost aggregation
+Focused provider readiness tests                            pass, invalid provider quota
+                                                            guard limits block activation
+                                                            instead of reporting readiness
+Focused job-store manifest tests                            pass, tests/test_storage_migration.py
+                                                            and CLI coverage verify durable
+                                                            job-store manifest/verify,
+                                                            job/idempotency claim token
+                                                            matching, changed job-state
+                                                            detection, nested/camelCase unsafe
+                                                            manifest-field rejection, explicit
+                                                            staging-root overlap rejection,
+                                                            and no payload/
+                                                            owner/request/worker/idempotency
+                                                            export
+Focused platform migration API/UI tests                     pass, tests/test_storage_migration.py,
+                                                            tests/test_api.py, and
+                                                            tests/test_health_check.py verify
+                                                            standalone
+                                                            `/admin/platform-migration-rehearsal`,
+                                                            Markdown report download,
+                                                            Streamlit button/download
+                                                            anchors, public projection
+                                                            flags, object/job-store
+                                                            manifest summaries, and no
+                                                            raw manifest/path/secret/
+                                                            payload export
+Focused quality-readiness tests                             pass, tests/test_quality_readiness.py
+                                                            and CLI/health anchors verify
+                                                            per-target count gaps and
+                                                            live-answer quality gaps,
+                                                            evidence-request
+                                                            source classification,
+                                                            next/community evidence
+                                                            collection plans with
+                                                            placeholder commands,
+                                                            plus in-memory live report
+                                                            summaries without exporting
+                                                            report paths, prompts,
+                                                            answers, or source content
+Focused bootstrap-doc tests                                 pass, tests/test_docs_status.py
+                                                            now guards AGENTS/CLAUDE
+                                                            current no-secret command
+                                                            snippets
+Focused README command tests                                pass, tests/test_docs_status.py
+                                                            now guards bilingual README
+                                                            current no-secret command
+                                                            snippets
+```
+
+This local audit hardens API request ID normalization, `/query/report` download
+headers, artifact export lookup/metadata mirror behavior, and no-secret
+runtime-event viewing across the API and Streamlit, plus admin status/report
+latest-event summaries. Runtime-event admin projections now also redact common
+sensitive metadata key variants such as access-token, API-key, token-value,
+camelCase/PascalCase path or URL fields, raw prompt, and raw answer fields while
+preserving safe status/count/token metrics for diagnostics.
+Top-level runtime-event messages with URL/path/token/prompt/answer-like value
+assignments or bare `sk-...` secret-like tokens are also replaced in the
+admin-facing projection before events are returned or searched. Unsafe legacy
+runtime-event request IDs are also hidden behind
+`request_id_present`/`request_id_redacted` booleans.
+Admin status/report now use owner counts, ownership-source buckets, sanitized
+runtime-event metadata, and `request_id_present` booleans instead of returning
+owner IDs or raw request IDs. API-access audit runtime events now report only
+route presence and a short route-template fingerprint, not raw request paths or
+route strings. `GET /jobs` summaries now expose only `owner_id_present` and
+`owner_label_present` instead of raw owner values while preserving exact local
+`owner_id` filtering.
+Live answer/retrieval eval JSON reports also redact request identifiers into
+`request_id_present` and `request_id_redacted` booleans, so deployable quality
+evidence can be archived without copying raw request IDs from live API
+responses.
+The same local pass adds a disposable product
+activation rehearsal for the SQLite API-key/product-registry path, exposes it
+through `GET /admin/product-activation-rehearsal`,
+`GET /admin/product-activation-rehearsal/report`, and a Streamlit
+admin-panel button/download path, and now proves cross-workspace access denial
+without exporting workspace/user identifiers before private corpora or share
+links are enabled. It also adds a local provider runtime rehearsal
+for the no-key provider contracts with `GET /admin/provider-runtime-rehearsal`,
+`GET /admin/provider-runtime-rehearsal/report`, and a Streamlit
+admin-panel button/download path. The provider runtime rehearsal now includes
+Python/Octave execution abuse-policy denial checks and exports only counts and
+booleans for those unsafe cases. The migration
+rehearsal now also emits and verifies a no-secret durable job-store migration manifest for staged
+`jobs.sqlite3` state, using hashed job/idempotency-claim tokens and aggregate
+status metadata instead of job payloads, owner IDs, request IDs, worker IDs,
+idempotency keys, logs, artifacts, or execution output. `quality_readiness.py`
+now also emits a no-secret target gap summary for self-use, small-group, and
+community maturity targets, including current/expected/gap values and live-answer
+quality gaps without exporting report paths, prompts, answers, or source paths.
+Live report filenames are also replaced by a generic report label in the
+readiness output. The same readiness output now turns the next-target and
+community evidence requests into no-secret evidence collection plans with
+placeholder `evaluate_rag.py` and `quality_readiness.py` commands, so operators
+can collect live retrieval/answer reports and re-check readiness without the
+status payload embedding concrete URLs, report paths, prompts, answers, source
+content, raw report payloads, or API tokens.
+The staged platform migration rehearsal is now also exposed as a standalone
+operator surface through `GET /admin/platform-migration-rehearsal`,
+`GET /admin/platform-migration-rehearsal/report`, and a Streamlit admin-panel
+button/download path. The public projection reports readiness flags, copy/check
+summaries, storage-schema status, and object/job-store manifest summaries, but
+does not include raw manifests, source paths, temp staging paths, file URIs, job
+payloads, owner IDs, request IDs, worker IDs, idempotency keys, logs, artifacts,
+or external storage coordinates.
+The same local pass now adds `scripts/activation_suite.py` as a single
+operator-facing no-secret local gate. It aggregates actual product readiness,
+local product activation rehearsal, provider runtime, durable job-store
+migration rehearsal, and quality readiness summaries into local foundation,
+small-group, community, and full-activation targets without embedding raw child
+reports, local paths, tokens, job payloads, artifact URIs, prompts, answers, or
+external account data. Its aggregate quality summary also projects the next
+no-secret evidence target and metric gaps, so the operator can see the immediate
+small-group/community evidence delta without opening raw eval reports. Its full
+activation action plan now groups actual product readiness, provider
+activation, platform migration activation, and community-quality blockers into
+placeholder commands plus verification commands, without enabling external
+services or exporting concrete URLs, paths, prompts, answers, source content, or
+credentials.
+The activation suite is also exposed through explicit on-demand admin surfaces:
+`GET /admin/activation-suite`, `GET /admin/activation-suite/report`,
+`POST /admin/activation-suite`, `POST /admin/activation-suite/report`, and a
+Streamlit admin-panel button/download path. The POST routes and Streamlit
+uploader accept no-secret `evaluate_rag.py --json-report` objects as in-memory
+live evidence, so small-group quality can be proven without first writing a
+server-side report path into the suite. The public output keeps only aggregate
+counts/rates/gaps and does not echo live report paths, filenames, prompts,
+answers, source content, or raw report payloads. It is intentionally not folded
+into the default `/admin/status` refresh because the suite runs local
+rehearsals.
+The same local pass now adds a no-secret OpenAPI contract gate:
+`scripts/openapi_contract.py` checks generated FastAPI schema coverage for
+required route/method pairs, operation summaries and IDs, response declarations,
+protected auth header declarations, and route-group coverage without embedding
+the raw schema. It also emits a stable operation fingerprint and can compare the
+current no-secret report with a prior no-secret JSON snapshot for contract
+drift. `GET /admin/openapi-contract`, `GET /admin/openapi-contract/report`,
+`POST /admin/openapi-contract/verify`,
+`POST /admin/openapi-contract/verify/report`, and the Streamlit admin panel
+expose the same summary and drift verification for frontend/API split work. The
+activation suite CLI/API/UI entrypoints also pass the generated schema into the
+aggregate, so `openapi_contract.ok` is included in the local foundation gate
+when operators run the suite through those surfaces. The snapshot verifier now
+accepts only non-negative bounded JSON integer counts, valid booleans, and
+64-hex fingerprints for comparison; negative, stringified, extreme, malformed,
+or raw-schema-shaped snapshot values are treated as invalid shape and are not
+echoed into JSON/Markdown diffs.
+The same local API pass also adds `admin_check` runtime events for explicit
+readiness/rehearsal routes when API access auditing is enabled. Those events
+record check names, ok/blocked state, count fields, booleans, and blocker
+counts for OpenAPI contract, OpenAPI snapshot verification, quality readiness,
+product activation rehearsal, provider runtime rehearsal, platform migration
+rehearsal, and activation-suite runs. They do not carry uploaded snapshots,
+raw live reports, OpenAPI fingerprints, paths, prompts, answers, tokens, or
+child payloads, and the Streamlit runtime-event filter now includes
+`admin_check`. Admin status/report, metrics, and Streamlit now summarize the
+same events by check name, code, ok/blocked state, and blocker-count totals;
+latest admin-check event metadata is reduced to a fixed safe-key set so
+malformed legacy event fields such as snapshots, raw reports, fingerprints, and
+paths are not exposed through the status surface. Unsafe legacy code/check
+labels are grouped as `invalid`, and negative blocker counts are clamped before
+status/report/metrics totals are emitted.
+The agent bootstrap files `AGENTS.md` and `CLAUDE.md` now also list the current
+product activation rehearsal, provider runtime rehearsal, platform migration
+rehearsal, activation suite, OpenAPI contract, and object/job-store migration
+manifest commands, with a docs-status test guarding those snippets.
+The no-secret readiness and rehearsal CLI wrappers now share
+`scripts/_safe_cli.py` for OSError reporting, so output-path or local-file
+failures preserve safe diagnostic text while redacting paths, URLs,
+bearer/sk-style tokens, and token/secret-like assignments;
+`scripts/health_check.py` guards that wiring.
+The bilingual `README.md` verification section now mirrors the same current
+no-secret command set for external GitHub readers, with English and Chinese
+command blocks both guarded by `tests/test_docs_status.py`.
+It is not a deployment record;
+`docs/DEPLOYMENT_STATUS.md` remains the source of truth for live Trace-Twin
+state.
+
+Previous local verification on 2026-06-17 03:11 CST:
 
 ```text
 Command                                                     Result
@@ -188,7 +784,7 @@ Command                                                     Result
                                                             manifest_errors=0,
                                                             paths/filenames/bucket/secrets
                                                             exported=false
-.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 9 stores, 0 problems
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status          pass, backend=none, available=false,
   --format markdown                                          active_keys=0, secrets_exported=false
 .venv/bin/python scripts/product_registry.py status          pass, backend=none, available=false,
@@ -396,7 +992,7 @@ the same durable job until the configured cap is exhausted. API query and job
 requests now also accept optional local `owner_id` and `owner_label` metadata.
 Those values persist through durable job records, SQLite owner columns, job
 transition logs, query runtime events, generated artifact records, and admin
-status owner summaries, with default `local-user` / `Local user` values when
+status owner-count/ownership-source summaries, with default `local-user` / `Local user` values when
 omitted. The fields are local metadata only; they do not provide auth,
 tenant-isolation, quotas, or billing. The latest local slice also implements an
 opt-in no-key `DockerExecutionProvider` selected by
@@ -434,6 +1030,8 @@ across local Python, Octave-compatible, and Docker execution. Artifact
 collection now uses bounded directory traversal instead of materializing the
 entire output tree, skips oversized or over-limit files, and records scanned,
 exported, skipped, byte-count, and `artifact_collection_truncated` metadata.
+Artifact downloads also reject symlink artifact paths before `FileResponse`
+export, even when the symlink target stays inside the artifact root.
 The same no-secret metadata is carried through code-execution runtime events,
 admin status/report summaries, and the Streamlit execution-policy status panel.
 The latest execution-alert slice derives local advisory alerts from recent
@@ -497,7 +1095,9 @@ media, and XFA, and records only metadata-only `upload_scan` runtime events
 with reason codes, byte counts, page counts, and threshold config. Admin
 status/report and Streamlit summarize recent upload scan outcomes. The event
 payloads do not copy filenames, uploaded contents, checksums, request bodies,
-client IPs, prompts, or answers. This is a local abuse guardrail, not a
+client IPs, prompts, or answers. Selectable PDF discovery and active-paper
+persistence now skip symlink PDFs, and upload filename conflict handling treats
+symlinks as occupied paths before creating a new upload file. This is a local abuse guardrail, not a
 production antivirus, sandbox-scanning, identity-backed quota, or data deletion
 system.
 The latest retention-delete slice adds a guarded local deletion path behind
@@ -505,8 +1105,9 @@ The latest retention-delete slice adds a guarded local deletion path behind
 remains the preview path, while authenticated `POST /admin/retention/delete`
 can delete the same bounded local upload/artifact candidate set only when the
 flag is explicitly enabled. The delete path excludes artifact SQLite metadata
-files, records aggregate-only `retention_delete` runtime events, and the
-Streamlit admin panel only shows the delete action when the same flag is on.
+files and symlinks, rechecks candidates as regular files before unlinking,
+records aggregate-only `retention_delete` runtime events, and the Streamlit admin
+panel only shows the delete action when the same flag is on.
 This is local data-retention plumbing, not identity-backed deletion, legal
 hold, audit-log retention, or production privacy/compliance automation.
 The latest metrics-export slice adds authenticated `GET /admin/metrics` plus a
@@ -539,10 +1140,10 @@ API-key registry stores without returning row contents, prompts, answers,
 filenames, owner IDs, request IDs, token hashes, source paths, or runtime file
 contents. `scripts/storage_schema.py` exposes the same check as a local or
 target-root CLI preflight with JSON/Markdown output and a nonzero exit code on
-drift. The current local CLI/admin snapshot reports `ok=true`, 9 stores, and 0
-schema problems; `api_key_registry_sqlite` and `product_registry_sqlite` are
-allowed to be absent when their backends are left at the production-safe default
-`none`.
+drift. The current local CLI/admin snapshot reports `ok=true`, 10 stores, and 0
+schema problems; `api_key_registry_sqlite`, `product_registry_sqlite`, and
+`share_link_registry_sqlite` are allowed to be absent when their backends are
+left at the production-safe default `none`.
 
 The 2026-06-13 pass also refreshed the agent-facing bootstrap docs `CLAUDE.md`
 and `AGENTS.md` so they describe the current dual-entrypoint (Streamlit + FastAPI)

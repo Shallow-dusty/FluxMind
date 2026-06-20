@@ -56,6 +56,8 @@ Jobs                       local durable JSONL + SQLite job state, worker servic
 Admin/status               no-secret status, events, metrics, retention preview
 API keys                   optional local SQLite registry with hashed tokens only
 Product registry           optional local users/workspaces/RBAC/quotas/billing ledger, admin API/UI, query quota guard, and write-path RBAC guard
+Share links                optional local hash-only share-token registry with admin API/CLI
+Collaboration readiness    private-corpus/share-link preflight with no-secret policy matrix
 Migration readiness        local restore rehearsal and opaque object-storage manifest verifier
 Readiness gates            quality, platform, product, provider, migration checks
 ```
@@ -86,6 +88,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 optional hashed API-key registry
 optional product registry SQLite ledger
+optional share-link token registry
 local product registry admin API/UI
 optional query quota and local RBAC guards
 local migration rehearsal and object manifest verifier
@@ -133,13 +136,22 @@ python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --output /tmp/fluxmind-object-manifest.json
 python scripts/platform_migration_rehearsal.py --verify-object-manifest /tmp/fluxmind-object-manifest.json --format markdown
+python scripts/platform_migration_rehearsal.py --include-object-manifest --include-job-store-manifest --output /tmp/fluxmind-object-and-job-rehearsal.json
+python scripts/platform_migration_rehearsal.py --verify-job-store-manifest /tmp/fluxmind-object-and-job-rehearsal.json --format markdown
 python scripts/api_key_registry.py status --format markdown
+python scripts/share_link_registry.py status --format markdown
 python scripts/product_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
+python scripts/product_activation_rehearsal.py --format markdown --require-activation
+python scripts/collaboration_readiness.py --format markdown
 python scripts/provider_readiness.py --format markdown
+python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation
 python scripts/quality_readiness.py --format markdown
+python scripts/activation_suite.py --format markdown --require-target local_foundation
+python scripts/openapi_contract.py --format markdown --require-local-contract
+python scripts/openapi_contract.py --verify-snapshot /tmp/fluxmind-openapi-contract.json --require-no-drift
 ```
 
 Deployment checks:
@@ -170,15 +182,19 @@ IMAGE_PROVIDER_BACKEND=local-mock
 HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
+PROVIDER_QUOTA_MAX_PROMPT_TOKENS_PER_REQUEST=128000
+PROVIDER_QUOTA_MAX_COMPLETION_TOKENS_PER_REQUEST=4096
+PROVIDER_QUOTA_MAX_COST_USD_PER_REQUEST=0
 RETENTION_DELETE_ENABLED=false
 FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_REGISTRY_BACKEND=none
+FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=none
 FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
 FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger plus the local `/admin/product-registry/*` management API and Streamlit operator panel. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. These local registries do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
+Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger plus the local `/admin/product-registry/*` management API and Streamlit operator panel. Setting `FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=sqlite` enables the local hash-only share-link token registry and `/admin/share-links*` API/CLI lifecycle; create returns a one-time token, while list/revoke/resolve outputs omit raw tokens, URLs, resource refs, creator user IDs, descriptions, paths, and content. Streamlit share-link management remains additionally gated by `FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED=true` and is disabled by default. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. Setting `PROVIDER_QUOTA_GUARD_ENABLED=true` enables the no-secret provider pre-call guard for estimated prompt tokens, requested completion tokens, and optional cost ceilings before LLM/provider clients are constructed. These local registries and guards do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
 
 ### Documentation Map
 
@@ -251,6 +267,8 @@ Job 系统                  本地 durable JSONL + SQLite 状态和 worker 服�
 管理面                    no-secret status、events、metrics、retention preview
 API key                   可选本地 SQLite registry，只持久化 token hash
 Product registry          可选本地 user/workspace/RBAC/quota/billing ledger、admin API/UI、query quota guard 与写路径 RBAC guard
+Share links               可选本地 hash-only share-token registry，提供 admin API/CLI
+协作就绪检查              私有语料/share-link 预检，输出 no-secret policy matrix
 迁移准备                  本地 restore rehearsal 与 opaque object-storage manifest verifier
 Readiness 门禁            quality、platform、product、provider、migration 检查
 ```
@@ -281,6 +299,7 @@ artifact SQLite/filesystem
 runtime events JSONL
 可选 hashed API-key registry
 可选 product registry SQLite ledger
+可选 share-link token registry
 本地 product registry admin API/UI
 可选 query quota 与本地 RBAC guard
 本地 migration rehearsal 与 object manifest verifier
@@ -328,13 +347,22 @@ python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --output /tmp/fluxmind-object-manifest.json
 python scripts/platform_migration_rehearsal.py --verify-object-manifest /tmp/fluxmind-object-manifest.json --format markdown
+python scripts/platform_migration_rehearsal.py --include-object-manifest --include-job-store-manifest --output /tmp/fluxmind-object-and-job-rehearsal.json
+python scripts/platform_migration_rehearsal.py --verify-job-store-manifest /tmp/fluxmind-object-and-job-rehearsal.json --format markdown
 python scripts/api_key_registry.py status --format markdown
+python scripts/share_link_registry.py status --format markdown
 python scripts/product_registry.py status --format markdown
 python scripts/platform_migration_preflight.py --format markdown
 python scripts/platform_migration_rehearsal.py --format markdown
 python scripts/product_readiness.py --format markdown
+python scripts/product_activation_rehearsal.py --format markdown --require-activation
+python scripts/collaboration_readiness.py --format markdown
 python scripts/provider_readiness.py --format markdown
+python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation
 python scripts/quality_readiness.py --format markdown
+python scripts/activation_suite.py --format markdown --require-target local_foundation
+python scripts/openapi_contract.py --format markdown --require-local-contract
+python scripts/openapi_contract.py --verify-snapshot /tmp/fluxmind-openapi-contract.json --require-no-drift
 ```
 
 部署检查：
@@ -365,15 +393,19 @@ IMAGE_PROVIDER_BACKEND=local-mock
 HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
+PROVIDER_QUOTA_MAX_PROMPT_TOKENS_PER_REQUEST=128000
+PROVIDER_QUOTA_MAX_COMPLETION_TOKENS_PER_REQUEST=4096
+PROVIDER_QUOTA_MAX_COST_USD_PER_REQUEST=0
 RETENTION_DELETE_ENABLED=false
 FLUXMIND_API_KEY_REGISTRY_BACKEND=none
 FLUXMIND_PRODUCT_REGISTRY_BACKEND=none
+FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=none
 FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
 FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
 
-设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger，以及本地 `/admin/product-registry/*` 管理 API 和 Streamlit operator 面板。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。这些本地 registry 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
+设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger，以及本地 `/admin/product-registry/*` 管理 API 和 Streamlit operator 面板。设置 `FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=sqlite` 可以启用本地 hash-only share-link token registry 和 `/admin/share-links*` API/CLI 生命周期；create 只返回一次 raw token，list/revoke/resolve 不导出 raw token、URL、resource ref、creator user ID、description、路径或内容。Streamlit share-link 管理面还需要 `FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED=true`，默认关闭。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。设置 `PROVIDER_QUOTA_GUARD_ENABLED=true` 后，LLM/provider client 构造前会执行 no-secret provider 调用前 guard，检查估算 prompt token、请求 completion token 和可选 cost ceiling。这些本地 registry/guard 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
 
 ### 文档地图
 

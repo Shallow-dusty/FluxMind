@@ -1,6 +1,6 @@
 # FluxMind Documentation Index
 
-Last updated: 2026-06-17
+Last updated: 2026-06-20
 
 This directory separates current status, architecture, planning, deployment
 evidence, and demo handoff material. Prefer updating the document that owns the
@@ -41,7 +41,7 @@ Production/market gap     docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md
 Feature coverage audit    docs/FEATURE_AUDIT.md
 Demo speaking notes       docs/demo-script.md
 Visual delivery page      docs/handover.html
-Project bootstrap         README.md, AGENTS.md
+Project bootstrap         README.md, AGENTS.md, CLAUDE.md
 ```
 
 ## Update Rules
