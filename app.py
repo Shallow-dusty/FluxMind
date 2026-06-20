@@ -787,7 +787,7 @@ def render_latest_artifacts() -> None:
                     key=f"download_{artifact.artifact_id}",
                 )
             except (FileNotFoundError, ValueError) as exc:
-                st.caption(str(exc))
+                st.caption(safe_streamlit_error_message(exc))
 
 
 def render_product_registry_management() -> None:
@@ -1335,7 +1335,7 @@ def render_admin_status() -> None:
                 collect_platform_migration_rehearsal()
             )
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     platform_migration_rehearsal_status = st.session_state.get(
         "platform_migration_rehearsal_status"
     )
@@ -1388,7 +1388,7 @@ def render_admin_status() -> None:
                 collect_product_activation_rehearsal()
             )
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     product_activation_rehearsal_status = st.session_state.get(
         "product_activation_rehearsal_status"
     )
@@ -1432,7 +1432,7 @@ def render_admin_status() -> None:
                 collect_collaboration_readiness()
             )
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     collaboration_readiness_status = st.session_state.get(
         "collaboration_readiness_status"
     )
@@ -1487,7 +1487,7 @@ def render_admin_status() -> None:
                 collect_provider_runtime_rehearsal()
             )
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     provider_runtime_rehearsal_status = st.session_state.get(
         "provider_runtime_rehearsal_status"
     )
@@ -1534,7 +1534,7 @@ def render_admin_status() -> None:
         except json.JSONDecodeError as exc:
             st.error(text["quality_readiness_report_invalid"].format(error=exc))
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     quality_readiness_status = st.session_state.get("quality_readiness_status")
     if quality_readiness_status:
         st.json(quality_readiness_status)
@@ -1588,7 +1588,7 @@ def render_admin_status() -> None:
         except json.JSONDecodeError as exc:
             st.error(text["activation_suite_report_invalid"].format(error=exc))
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     activation_suite_status = st.session_state.get("activation_suite_status")
     if activation_suite_status:
         st.json(activation_suite_status)
@@ -1624,7 +1624,7 @@ def render_admin_status() -> None:
                 api.app.openapi()
             )
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     openapi_contract_status = st.session_state.get("openapi_contract_status")
     if openapi_contract_status:
         st.json(openapi_contract_status)
@@ -1659,7 +1659,7 @@ def render_admin_status() -> None:
         except json.JSONDecodeError as exc:
             st.error(text["openapi_contract_snapshot_invalid"].format(error=exc))
         except OSError as exc:
-            st.error(str(exc))
+            st.error(safe_streamlit_error_message(exc))
     openapi_contract_verify_status = st.session_state.get("openapi_contract_verify_status")
     if openapi_contract_verify_status:
         st.json(openapi_contract_verify_status)

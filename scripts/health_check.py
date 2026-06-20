@@ -1152,10 +1152,36 @@ def main() -> int:
         "Streamlit share-link management sanitizes error output",
         failures,
     )
+    admin_status_block = ""
+    if "def render_admin_status()" in app_source and "def render_retention_preview()" in app_source:
+        admin_status_block = app_source.split("def render_admin_status()", 1)[1].split(
+            "def render_retention_preview()", 1
+        )[0]
+    check(
+        "safe_streamlit_error_message" in app_source
+        and "st.error(str(exc))" not in admin_status_block
+        and admin_status_block.count("st.error(safe_streamlit_error_message(exc))") >= 8,
+        "Streamlit admin on-demand panels sanitize OS error output",
+        failures,
+    )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
     check("artifact_id" in app_source and "artifact_metadata" in app_source and "artifact_search" in app_source, "Streamlit artifact reference metadata installed", failures)
+    artifact_gallery_block = ""
+    if (
+        "def render_latest_artifacts()" in app_source
+        and "def render_product_registry_management()" in app_source
+    ):
+        artifact_gallery_block = app_source.split("def render_latest_artifacts()", 1)[
+            1
+        ].split("def render_product_registry_management()", 1)[0]
+    check(
+        "st.caption(str(exc))" not in artifact_gallery_block
+        and "st.caption(safe_streamlit_error_message(exc))" in artifact_gallery_block,
+        "Streamlit artifact gallery sanitizes download error output",
+        failures,
+    )
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
         "CorpusProfileStore" in app_source

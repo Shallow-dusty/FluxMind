@@ -45,6 +45,10 @@ def test_streamlit_latest_jobs_uses_no_secret_summary():
 
 
 def test_streamlit_artifact_gallery_is_installed():
+    artifact_block = APP_SOURCE.split("def render_latest_artifacts()", 1)[1].split(
+        "def render_product_registry_management()", 1
+    )[0]
+
     assert "LocalArtifactRegistry" in APP_SOURCE
     assert "render_latest_artifacts()" in APP_SOURCE
     assert "artifact_search" in APP_SOURCE
@@ -56,6 +60,8 @@ def test_streamlit_artifact_gallery_is_installed():
     assert "safe_artifact_download_filename" in APP_SOURCE
     assert 'st.code(artifact.get("uri", "")' not in APP_SOURCE
     assert "st.code(artifact.uri" not in APP_SOURCE
+    assert "st.caption(str(exc))" not in artifact_block
+    assert "st.caption(safe_streamlit_error_message(exc))" in artifact_block
 
 
 def test_streamlit_admin_status_panel_is_installed():
@@ -141,6 +147,16 @@ def test_streamlit_share_link_management_sanitizes_errors():
     assert "def safe_streamlit_error_message" in APP_SOURCE
     assert "st.error(str(exc))" not in share_link_block
     assert share_link_block.count("st.error(safe_streamlit_error_message(exc))") == 5
+
+
+def test_streamlit_admin_on_demand_panels_sanitize_os_errors():
+    admin_block = APP_SOURCE.split("def render_admin_status()", 1)[1].split(
+        "def render_retention_preview()", 1
+    )[0]
+
+    assert "def safe_streamlit_error_message" in APP_SOURCE
+    assert "st.error(str(exc))" not in admin_block
+    assert admin_block.count("st.error(safe_streamlit_error_message(exc))") >= 8
 
 
 def test_streamlit_runtime_event_filter_covers_guard_events():
