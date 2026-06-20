@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-21 00:03 CST
+Snapshot time: 2026-06-21 00:14 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  4a43f14 fix: sanitize share-link create errors
-Current docs/health sync       docs: record share-link create error audit status (this commit)
-Current local app-code HEAD    4a43f14 fix: sanitize share-link create errors
+Current implementation commit  e44f615 fix: sanitize deploy sync errors
+Current docs/health sync       docs: record deploy sync error audit status (this commit)
+Current local app-code HEAD    e44f615 fix: sanitize deploy sync errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the fifty-seven local commits below
-                               after this share-link create error docs refresh commit
-Current local commit stack     docs: record share-link create error audit status (this commit)
+                               by the fifty-nine local commits below
+                               after this deploy sync error docs refresh commit
+Current local commit stack     docs: record deploy sync error audit status (this commit)
+                               e44f615 fix: sanitize deploy sync errors
+                               c7d3ed0 docs: record share-link create error audit status
                                4a43f14 fix: sanitize share-link create errors
                                cfaf34f docs: record Streamlit profile report audit status
                                0bbf9ff fix: sanitize Streamlit profile report errors
@@ -97,6 +99,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                hardening, API-key CLI one-time-token output guard,
                                provider quota/cost numeric-config hardening,
                                no-secret readiness CLI OSError path-sanitization,
+                               deploy sync CLI project-root/runtime-exclude
+                               error output sanitization,
                                live eval request-ID redaction in JSON reports,
                                provider runtime execution abuse-policy rehearsal,
                                product activation workspace-isolation rehearsal,
@@ -303,6 +307,35 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Deploy sync CLI error-output follow-up on 2026-06-21 00:14 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_deploy_sync.py       pass, 10 selected
+  tests/test_health_check.py::test_main_local_health_check_passes -q
+.venv/bin/python scripts/health_check.py                   pass, including safe
+                                                            deploy sync CLI
+                                                            error sanitizer anchor
+.venv/bin/python -m pytest -q                              pass, 635 tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 635 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+git diff --check                                           pass; no whitespace drift
+git status --short --branch                                main...origin/main [ahead 58],
+                                                            only docs changes remain before
+                                                            this docs refresh
+```
+
+The follow-up closes a CLI no-secret gap in `scripts/deploy_sync.py`.
+Project-root and runtime-exclude validation failures no longer print
+`str(exc)` directly; they now print `error: {format_os_error(exc)}` through the
+shared CLI sanitizer. Regression coverage injects a path and secret-like token
+into a deployment preflight error and confirms the stderr output redacts both
+values. No production deployment was performed, and `docs/DEPLOYMENT_STATUS.md`
+remains unchanged because no live Trace-Twin service facts were refreshed in
+this pass.
 
 Share-link create error-detail follow-up on 2026-06-21 00:03 CST:
 

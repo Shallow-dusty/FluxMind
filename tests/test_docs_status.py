@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  4a43f14 fix: sanitize share-link create errors" in text
-    assert "Current docs/health sync       docs: record share-link create error audit status (this commit)" in text
-    assert "by the fifty-seven local commits below" in text
+    assert "Current implementation commit  e44f615 fix: sanitize deploy sync errors" in text
+    assert "Current docs/health sync       docs: record deploy sync error audit status (this commit)" in text
+    assert "by the fifty-nine local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    4a43f14 fix: sanitize share-link create errors" in text
-    assert "docs: record share-link create error audit status (this commit)" in text
+    assert "Current local app-code HEAD    e44f615 fix: sanitize deploy sync errors" in text
+    assert "docs: record deploy sync error audit status (this commit)" in text
+    assert "e44f615 fix: sanitize deploy sync errors" in text
+    assert "c7d3ed0 docs: record share-link create error audit status" in text
     assert "4a43f14 fix: sanitize share-link create errors" in text
     assert "cfaf34f docs: record Streamlit profile report audit status" in text
     assert "0bbf9ff fix: sanitize Streamlit profile report errors" in text
@@ -121,6 +123,11 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Deploy sync CLI error-output follow-up on 2026-06-21 00:14 CST" in text
+    assert "main...origin/main [ahead 58]" in text
+    assert "pass, 635 tests" in text
+    assert "format_os_error(exc)" in text
+    assert "secret-like token" in text
     assert "Share-link create error-detail follow-up on 2026-06-21 00:03 CST" in text
     assert "main...origin/main [ahead 56]" in text
     assert "pass, 634 tests" in text
@@ -262,7 +269,9 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 634 tests, 2 known warnings" in text
+    assert "pass, 635 tests, 2 known warnings" in text
+    assert "Deploy sync error-output audit" in text
+    assert "deploy-sync-error-sanitizer" in text
     assert "Share-link create error audit" in text
     assert "API-share-link-create-error-sanitizer" in text
     assert "Streamlit profile report error audit" in text

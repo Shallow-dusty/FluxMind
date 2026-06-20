@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-21 00:03 CST after the
-share-link create error-detail hardening. The command set below now passes
-with 634 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-21 00:14 CST after the
+deploy sync CLI error-output hardening. The command set below now passes with
+635 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ with 634 tests, 89% branch coverage, OpenAPI no-secret snapshot
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 634 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 635 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 634 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 635 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -47,6 +47,7 @@ Command                                                               Result
                                                                       Streamlit-job-result-error-sanitizer/
                                                                       Streamlit-corpus-profile-report-error-sanitizer/
                                                                       API-share-link-create-error-sanitizer/
+                                                                      deploy-sync-error-sanitizer/
                                                                       API-key-create-output-guard/
                                                                       share-link-registry/
                                                                       product-activation-rehearsal/
@@ -336,6 +337,16 @@ private resource reference and confirms the 400 response does not echo any of
 those values. The health checker now has an API share-link create error
 sanitizer anchor. Local verification passes with 634 tests and 89% branch
 coverage; no live deployment facts were refreshed.
+
+The 2026-06-21 00:14 CST deploy sync CLI error-output audit adds the same
+no-secret CLI sanitizer to `scripts/deploy_sync.py`. Deploy preflight failures
+for project-root and runtime-exclude validation no longer print `str(exc)`
+directly; the script now uses `format_os_error(exc)` and prefixes sanitized
+stderr with `error:`. Regression coverage injects a local path and secret-like
+token into the failure message and confirms both are redacted. The health
+checker now has a safe deploy sync CLI error sanitizer anchor. Local
+verification passes with 635 tests and 89% branch coverage; no live deployment
+facts were refreshed.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
