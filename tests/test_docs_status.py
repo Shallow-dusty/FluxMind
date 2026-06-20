@@ -9,7 +9,8 @@ def test_repo_status_records_post_deployment_git_boundary():
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Current implementation commit  1173ea8 fix: redact runtime event metadata values" in text
-    assert "Current docs/health sync       85eb2b5 docs: record execution input audit status" in text
+    assert "Current docs/health sync       docs: refresh git and drift status (this commit)" in text
+    assert "by the twenty-three local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,6 +64,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
     assert "Current local app-code HEAD    1173ea8 fix: redact runtime event metadata values" in text
+    assert "docs: refresh git and drift status (this commit)" in text
+    assert "6066547 docs: record runtime event redaction audit" in text
     assert "1173ea8 fix: redact runtime event metadata values" in text
     assert "85eb2b5 docs: record execution input audit status" in text
     assert "69bb9e7 fix: handle execution input path conflicts" in text
@@ -84,6 +87,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Git/docs drift refresh on 2026-06-20 16:08 CST" in text
+    assert "pass, 17 docs/feature-audit/" in text
+    assert "No production deployment was" in text
     assert "Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST" in text
     assert "pass, 616 tests, 2 known warnings" in text
     assert "sensitive string values under otherwise safe keys" in text

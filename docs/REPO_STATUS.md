@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 16:01 CST
+Snapshot time: 2026-06-20 16:08 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -15,12 +15,14 @@ Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  1173ea8 fix: redact runtime event metadata values
-Current docs/health sync       85eb2b5 docs: record execution input audit status
+Current docs/health sync       docs: refresh git and drift status (this commit)
 Current local app-code HEAD    1173ea8 fix: redact runtime event metadata values
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the twenty-one local commits below
-                               before this docs refresh
-Current local commit stack     1173ea8 fix: redact runtime event metadata values
+                               by the twenty-three local commits below
+                               after this docs refresh
+Current local commit stack     docs: refresh git and drift status (this commit)
+                               6066547 docs: record runtime event redaction audit
+                               1173ea8 fix: redact runtime event metadata values
                                85eb2b5 docs: record execution input audit status
                                69bb9e7 fix: handle execution input path conflicts
                                1f97b7b docs: record product registry audit status
@@ -83,6 +85,7 @@ Current refresh scope          local audit/forward-development commits for produ
                                and regular-file entrypoint guards,
                                runtime event metadata-value redaction for
                                legacy and newly written events,
+                               git/docs drift refresh,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -218,6 +221,42 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Git/docs drift refresh on 2026-06-20 16:08 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_docs_status.py        pass, 17 docs/feature-audit/
+  tests/test_feature_audit_docs.py tests/test_translation_guard.py
+                                                            translation guard tests
+.venv/bin/python scripts/health_check.py                    pass, repo-status, feature-audit,
+                                                            and roadmap drift anchors; local
+                                                            FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+git status --short --branch                                 main...origin/main [ahead 22],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+This refresh keeps the git/worktree source of truth current after the
+runtime-event metadata-value redaction docs commit. No production deployment was
+performed, and `docs/DEPLOYMENT_STATUS.md` remains unchanged because no live
+Trace-Twin service facts were refreshed in this pass.
 
 Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST:
 

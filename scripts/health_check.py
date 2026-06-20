@@ -166,13 +166,17 @@ def main() -> int:
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Current implementation commit  1173ea8 fix: redact runtime event metadata values" in repo_status
-        and "Current docs/health sync       85eb2b5 docs: record execution input audit status" in repo_status
+        and "Current docs/health sync       docs: refresh git and drift status (this commit)" in repo_status
+        and "by the twenty-three local commits below" in repo_status
+        and "6066547 docs: record runtime event redaction audit" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
         and "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST"
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
+        and "Git/docs drift refresh on 2026-06-20 16:08 CST" in repo_status
+        and "pass, 17 docs/feature-audit/" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
         and "Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST" in repo_status
         and "pass, 616 tests, 2 known warnings" in repo_status
