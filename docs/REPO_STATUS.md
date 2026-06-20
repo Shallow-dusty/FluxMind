@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:05 CST
+Snapshot time: 2026-06-20 15:18 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,23 +14,25 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  bae5f88 fix: guard terminal job lease release
-Current docs/health sync       fac2c6b docs: record share-link event evidence audit
-Current local app-code HEAD    bae5f88 fix: guard terminal job lease release
+Current implementation commit  5065418 fix: preserve same-name corpus metadata
+Current docs/health sync       830d05d docs: record job lease audit status
+Current local app-code HEAD    5065418 fix: preserve same-name corpus metadata
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the eleven local commits below
+                               by the thirteen local commits below
                                before this docs refresh
-Current local commit stack     bae5f88 fix: guard terminal job lease release
+Current local commit stack     5065418 fix: preserve same-name corpus metadata
+                               830d05d docs: record job lease audit status
+                               bae5f88 fix: guard terminal job lease release
                                fac2c6b docs: record share-link event evidence audit
                                ea8a7a2 fix: preserve share-link workspace event evidence
                                3ae6842 docs: refresh share-link audit status
                                c56c285 fix: redact share-link workspace identifiers
                                e93dba5 docs: refresh FluxMind activation status
-                               ba7c243 feat: add provider quota guard and safe runtime events
-                               4ea219c fix: harden no-secret local projections
-                               1ebfde3 feat: add durable job-store migration manifests
-                               39ddaee feat: add local activation readiness tools
                                b1212e2 feat: expose local activation admin surfaces
+                               39ddaee feat: add local activation readiness tools
+                               1ebfde3 feat: add durable job-store migration manifests
+                               4ea219c fix: harden no-secret local projections
+                               ba7c243 feat: add provider quota guard and safe runtime events
 Current refresh scope          local audit/forward-development commits for product activation
                                rehearsal, provider runtime rehearsal, job-store migration manifest,
                                standalone platform migration rehearsal admin API/UI,
@@ -63,6 +65,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                and share-link terminal-state/status regression coverage,
                                durable job lease-release state guard preserving
                                completed-job worker provenance,
+                               source-path-specific corpus metadata for same-filename
+                               library/upload PDFs,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -198,6 +202,41 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Corpus same-name metadata follow-up on 2026-06-20 15:18 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_ingestion.py          pass, 46 selected ingestion/metadata
+  tests/test_metadata.py -q                                 tests, 1 known warning
+.venv/bin/python -m pytest tests/test_api.py                pass, 18 selected corpus/API tests,
+  -k "corpus or query_retrieval or artifact" -q             89 deselected, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q               pass, 606 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up fixes corpus metadata enrichment for selectable PDFs that share
+the same filename across `papers/library` and `papers/uploads`. The metadata
+store now prefers source-path-specific entries and only applies legacy filename
+manifest fallback to curated library/root papers, so an uploaded `paper.pdf`
+does not inherit the curated library `paper.pdf` title/authors. Regression
+coverage builds same-name library/upload PDFs and verifies that each record
+keeps its own source-path metadata. The same local sweep confirms no OpenAPI
+no-secret snapshot drift, no storage-schema drift, and no
+repo-status/feature-anchor drift in the current checkout.
 
 Job lease-release follow-up on 2026-06-20 15:05 CST:
 

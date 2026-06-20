@@ -165,8 +165,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  bae5f88 fix: guard terminal job lease release" in repo_status
-        and "Current docs/health sync       fac2c6b docs: record share-link event evidence audit" in repo_status
+        and "Current implementation commit  5065418 fix: preserve same-name corpus metadata" in repo_status
+        and "Current docs/health sync       830d05d docs: record job lease audit status" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
@@ -174,6 +174,9 @@ def main() -> int:
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
+        and "Corpus same-name metadata follow-up on 2026-06-20 15:18 CST" in repo_status
+        and "pass, 606 tests, 2 known warnings" in repo_status
+        and "source-path-specific entries" in repo_status
         and "Job lease-release follow-up on 2026-06-20 15:05 CST" in repo_status
         and "pass, 605 tests, 2 known warnings" in repo_status
         and "fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c" in repo_status

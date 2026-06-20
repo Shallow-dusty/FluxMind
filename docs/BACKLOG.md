@@ -29,14 +29,18 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 602
+Current hardening progress through 2026-06-20: the automated suite has 606
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
 API token comparison, tolerant runtime JSON/JSONL state parsing, atomic
 active-paper selection writes, `.coverage` deploy-sync exclusion, blank and
 unsafe request-ID sanitation, `/query/report` download header preservation, and
-full-history stable artifact-ID export from the local job history. Unsafe
+full-history stable artifact-ID export from the local job history. Corpus
+metadata enrichment now keys extracted paper metadata by project-relative
+source path and restricts legacy filename manifest fallback to curated
+library/root papers, so same-name uploads do not inherit library manifest
+metadata. Unsafe
 request IDs with bearer/token/secret-like values or invalid correlation-id
 characters are not echoed into response IDs or API-access runtime events, and
 unsafe legacy runtime-event request IDs are projected as
