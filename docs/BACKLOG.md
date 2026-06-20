@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-21: the automated suite has 640
+Current hardening progress through 2026-06-21: the automated suite has 641
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -204,6 +204,13 @@ activation-suite, OpenAPI-contract, quality-readiness, and platform-migration
 rehearsal CLIs use it for JSON/ValueError data-error paths. It was a local CLI
 projection hardening pass; no production deployment or live Trace-Twin service
 facts were refreshed.
+A 2026-06-21 00:37 CST Streamlit query error-output audit confirms the updated
+local checkout with 641 tests passing, 89% branch coverage, local health/docs
+anchors passing, and `git diff --check` clean. The main Streamlit query error
+path now sanitizes `normalize_exception(exc).message` with
+`safe_streamlit_status_message()` before rendering the request-ID-bearing
+message. It was a local UI projection hardening pass; no production deployment
+or live Trace-Twin service facts were refreshed.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
