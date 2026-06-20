@@ -804,6 +804,46 @@ def test_job_store_releases_worker_lease(tmp_path: Path):
     assert store.claim_job(due.job_id, worker_id="worker-b", lease_seconds=30).worker_id == "worker-b"
 
 
+def test_job_store_release_lease_preserves_mismatched_and_terminal_jobs(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    queued = runner._enqueue(
+        "image_generation",
+        {"prompt": "lease guard"},
+        "req-lease-guard",
+    )
+    claimed = store.claim_job(queued.job_id, worker_id="worker-a", lease_seconds=30)
+
+    mismatch = store.release_job_lease(claimed.job_id, worker_id="worker-b")
+
+    assert mismatch.worker_id == "worker-a"
+    assert mismatch.leased_at == claimed.leased_at
+    assert mismatch.lease_expires_at == claimed.lease_expires_at
+
+    succeeded = runner.run_local_python(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py": "print('leased-terminal')"},
+        )
+    )
+    succeeded.worker_id = "worker-terminal"
+    succeeded.leased_at = "2026-01-01T00:00:00+00:00"
+    succeeded.lease_expires_at = "2026-01-01T01:00:00+00:00"
+    store.append(succeeded)
+
+    released_terminal = store.release_job_lease(
+        succeeded.job_id,
+        worker_id="worker-terminal",
+    )
+
+    assert released_terminal.status == "succeeded"
+    assert released_terminal.worker_id == "worker-terminal"
+    assert released_terminal.leased_at == "2026-01-01T00:00:00+00:00"
+    assert released_terminal.lease_expires_at == "2026-01-01T01:00:00+00:00"
+    assert store.get(succeeded.job_id).worker_id == "worker-terminal"
+
+
 def test_async_manager_runs_zero_delay_scheduled_retry(tmp_path: Path):
     store = LocalJobStore(tmp_path / "jobs.jsonl")
     manager = AsyncJobManager(store)

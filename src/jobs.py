@@ -643,6 +643,8 @@ class LocalJobStore:
         record = self.get(job_id)
         if record is None:
             return None
+        if record.status != "queued":
+            return record
         if worker_id is not None and record.worker_id != worker_id:
             return record
         record.worker_id = None
