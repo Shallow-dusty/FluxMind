@@ -23,10 +23,46 @@ from src.admin import (
     format_admin_status_report,
     format_corpus_profile_status_report,
 )
+from src.activation_suite import collect_activation_suite, format_activation_suite_markdown
+from src.collaboration_readiness import (
+    collect_collaboration_readiness,
+    format_collaboration_readiness_markdown,
+)
+from src.openapi_contract import (
+    collect_openapi_contract,
+    format_openapi_contract_markdown,
+    format_openapi_contract_snapshot_verify_markdown,
+    verify_openapi_contract_snapshot,
+)
+from src.quality_readiness import collect_quality_readiness, format_quality_readiness_markdown
+from src.product_activation_rehearsal import (
+    collect_product_activation_rehearsal,
+    format_product_activation_rehearsal_markdown,
+)
+from src.provider_runtime_rehearsal import (
+    collect_provider_runtime_rehearsal,
+    format_provider_runtime_rehearsal_markdown,
+)
+from src.storage_migration import (
+    collect_platform_migration_rehearsal,
+    format_storage_migration_rehearsal_markdown,
+)
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
-from src.artifacts import LocalArtifactRegistry, local_artifact_path
+from src.artifacts import (
+    LocalArtifactRegistry,
+    artifact_to_public_dict,
+    job_artifact_to_public_dict,
+    local_artifact_path,
+    safe_artifact_download_filename,
+)
 from src.chain import query_stream
-from src.config import MAX_UPLOAD_SIZE_MB, PAPERS_LIBRARY_DIR, PROJECT_ROOT
+from src.config import (
+    MAX_UPLOAD_SIZE_MB,
+    PAPERS_LIBRARY_DIR,
+    PROJECT_ROOT,
+    STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED,
+    STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED,
+)
 from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
 from src.ingestion import (
     build_vector_store,
@@ -37,10 +73,17 @@ from src.ingestion import (
     rebuild_vector_store_from_pdfs,
     set_active_paper_source_paths,
 )
-from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager
-from src.metadata import CorpusProfileStore
+from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager, job_search_projection
+from src.metadata import CorpusProfileStore, safe_corpus_profile_report_filename
 from src.product_registry import LocalProductRegistry, product_registry_backend_status
-from src.runtime import list_runtime_events, logger, new_request_id, normalize_exception
+from src.runtime import (
+    list_runtime_events,
+    logger,
+    new_request_id,
+    normalize_exception,
+    runtime_event_to_safe_dict,
+)
+from src.share_links import LocalShareLinkRegistry, share_link_registry_backend_status
 from src.storage_manifest import (
     collect_runtime_backup_manifest,
     collect_runtime_restore_check,
@@ -49,6 +92,23 @@ from src.storage_manifest import (
 )
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
+
+RUNTIME_EVENT_KIND_FILTER_OPTIONS = (
+    "",
+    "provider_failure",
+    "provider_quota_guard",
+    "product_quota",
+    "product_rbac",
+    "product_registry_admin",
+    "share_link_admin",
+    "query_usage",
+    "retrieval_trace",
+    "code_execution",
+    "api_access",
+    "admin_check",
+    "upload_scan",
+    "retention_delete",
+)
 
 
 @st.dialog("演示导览", width="large")
@@ -128,6 +188,26 @@ I18N = {
         "product_registry_permission_action": "权限动作",
         "product_registry_check_permission": "检查权限",
         "product_registry_disabled": "本地产品 registry 未启用",
+        "product_registry_management_disabled": "本地产品 registry 管理面未启用",
+        "share_link_registry_management": "本地 Share Link Registry",
+        "share_link_workspace_id": "Workspace ID",
+        "share_link_created_by_user_id": "创建者 user ID",
+        "share_link_resource_kind": "资源类型",
+        "share_link_resource_ref": "资源引用",
+        "share_link_description": "描述",
+        "share_link_expires_in_s": "有效秒数",
+        "share_link_max_redemptions": "最大兑换次数",
+        "share_link_create": "创建 Share Link",
+        "share_link_list": "列出 Share Links",
+        "share_link_include_revoked": "包含已撤销",
+        "share_link_limit": "返回上限",
+        "share_link_token": "Share token",
+        "share_link_resolve": "解析 Share token",
+        "share_link_record_redeem": "记录一次兑换",
+        "share_link_id": "Share link ID",
+        "share_link_revoke": "撤销 Share Link",
+        "share_link_registry_disabled": "本地 share-link registry 未启用",
+        "share_link_management_disabled": "本地 share-link 管理面未启用",
         "download_status_report": "下载状态报告",
         "download_metrics": "下载指标文本",
         "download_runtime_manifest": "下载运行时备份清单",
@@ -156,14 +236,45 @@ I18N = {
         "status_cost_pricing": "成本估算配置",
         "status_code_execution": "代码执行事件",
         "status_api_access": "API 访问审计",
+        "status_admin_checks": "Admin 检查事件",
         "status_upload_scan": "上传扫描",
         "status_execution_policy": "执行策略",
         "status_storage": "存储就绪状态",
         "status_storage_inventory": "本地存储盘点",
         "status_storage_schemas": "本地存储模式",
         "status_platform_readiness": "平台化就绪状态",
+        "status_platform_migration_rehearsal": "本地平台迁移演练",
+        "run_platform_migration_rehearsal": "运行平台迁移演练",
+        "download_platform_migration_rehearsal_report": "下载平台迁移演练报告",
         "status_product_readiness": "产品化就绪状态",
+        "status_product_activation_rehearsal": "本地产品激活演练",
+        "run_product_activation_rehearsal": "运行产品激活演练",
+        "download_product_activation_rehearsal_report": "下载产品激活演练报告",
+        "status_collaboration_readiness": "协作能力就绪状态",
+        "run_collaboration_readiness": "运行协作就绪检查",
+        "download_collaboration_readiness_report": "下载协作就绪报告",
         "status_provider_readiness": "Provider 激活就绪状态",
+        "status_provider_runtime_rehearsal": "本地 Provider 运行时演练",
+        "run_provider_runtime_rehearsal": "运行 Provider 运行时演练",
+        "download_provider_runtime_rehearsal_report": "下载 Provider 运行时演练报告",
+        "status_quality_readiness": "质量成熟度就绪状态",
+        "run_quality_readiness": "运行质量就绪检查",
+        "quality_readiness_live_report": "可选 quality live eval JSON 报告",
+        "download_quality_readiness_report": "下载质量就绪报告",
+        "quality_readiness_report_invalid": "quality live eval JSON 无法解析：{error}",
+        "status_activation_suite": "本地激活套件",
+        "run_activation_suite": "运行本地激活套件",
+        "activation_suite_live_report": "可选 live eval JSON 报告",
+        "download_activation_suite_report": "下载激活套件报告",
+        "activation_suite_report_invalid": "live eval JSON 无法解析：{error}",
+        "status_openapi_contract": "OpenAPI 合约检查",
+        "run_openapi_contract": "运行 OpenAPI 合约检查",
+        "download_openapi_contract_report": "下载 OpenAPI 合约报告",
+        "openapi_contract_snapshot": "可选 OpenAPI 合约 JSON 快照",
+        "run_openapi_contract_verify": "校验 OpenAPI 合约快照",
+        "download_openapi_contract_verify_report": "下载 OpenAPI 合约校验报告",
+        "openapi_contract_snapshot_missing": "请先上传 OpenAPI 合约 JSON 快照。",
+        "openapi_contract_snapshot_invalid": "OpenAPI 合约 JSON 无法解析：{error}",
         "status_runtime_manifest": "运行时备份清单",
         "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
@@ -288,6 +399,26 @@ I18N = {
         "product_registry_permission_action": "Permission action",
         "product_registry_check_permission": "Check permission",
         "product_registry_disabled": "Local product registry is not enabled",
+        "product_registry_management_disabled": "Local product registry management is not enabled",
+        "share_link_registry_management": "Local share-link registry",
+        "share_link_workspace_id": "Workspace ID",
+        "share_link_created_by_user_id": "Creator user ID",
+        "share_link_resource_kind": "Resource kind",
+        "share_link_resource_ref": "Resource reference",
+        "share_link_description": "Description",
+        "share_link_expires_in_s": "Expires in seconds",
+        "share_link_max_redemptions": "Max redemptions",
+        "share_link_create": "Create share link",
+        "share_link_list": "List share links",
+        "share_link_include_revoked": "Include revoked",
+        "share_link_limit": "Limit",
+        "share_link_token": "Share token",
+        "share_link_resolve": "Resolve share token",
+        "share_link_record_redeem": "Record redemption",
+        "share_link_id": "Share link ID",
+        "share_link_revoke": "Revoke share link",
+        "share_link_registry_disabled": "Local share-link registry is not enabled",
+        "share_link_management_disabled": "Local share-link management is not enabled",
         "download_status_report": "Download status report",
         "download_metrics": "Download metrics text",
         "download_runtime_manifest": "Download runtime manifest",
@@ -316,14 +447,45 @@ I18N = {
         "status_cost_pricing": "Cost estimate pricing",
         "status_code_execution": "Code execution events",
         "status_api_access": "API access audit",
+        "status_admin_checks": "Admin check events",
         "status_upload_scan": "Upload scan",
         "status_execution_policy": "Execution policy",
         "status_storage": "Storage readiness",
         "status_storage_inventory": "Local storage inventory",
         "status_storage_schemas": "Local storage schemas",
         "status_platform_readiness": "Platform readiness",
+        "status_platform_migration_rehearsal": "Local platform migration rehearsal",
+        "run_platform_migration_rehearsal": "Run platform migration rehearsal",
+        "download_platform_migration_rehearsal_report": "Download platform migration rehearsal report",
         "status_product_readiness": "Product readiness",
+        "status_product_activation_rehearsal": "Local product activation rehearsal",
+        "run_product_activation_rehearsal": "Run product activation rehearsal",
+        "download_product_activation_rehearsal_report": "Download product activation rehearsal report",
+        "status_collaboration_readiness": "Collaboration readiness",
+        "run_collaboration_readiness": "Run collaboration readiness",
+        "download_collaboration_readiness_report": "Download collaboration readiness report",
         "status_provider_readiness": "Provider activation readiness",
+        "status_provider_runtime_rehearsal": "Local provider runtime rehearsal",
+        "run_provider_runtime_rehearsal": "Run provider runtime rehearsal",
+        "download_provider_runtime_rehearsal_report": "Download provider runtime rehearsal report",
+        "status_quality_readiness": "Quality maturity readiness",
+        "run_quality_readiness": "Run quality readiness",
+        "quality_readiness_live_report": "Optional quality live eval JSON report",
+        "download_quality_readiness_report": "Download quality readiness report",
+        "quality_readiness_report_invalid": "Quality live eval JSON could not be parsed: {error}",
+        "status_activation_suite": "Local activation suite",
+        "run_activation_suite": "Run local activation suite",
+        "activation_suite_live_report": "Optional live eval JSON report",
+        "download_activation_suite_report": "Download activation suite report",
+        "activation_suite_report_invalid": "Live eval JSON could not be parsed: {error}",
+        "status_openapi_contract": "OpenAPI contract",
+        "run_openapi_contract": "Run OpenAPI contract check",
+        "download_openapi_contract_report": "Download OpenAPI contract report",
+        "openapi_contract_snapshot": "Optional OpenAPI contract JSON snapshot",
+        "run_openapi_contract_verify": "Verify OpenAPI contract snapshot",
+        "download_openapi_contract_verify_report": "Download OpenAPI contract verify report",
+        "openapi_contract_snapshot_missing": "Upload an OpenAPI contract JSON snapshot first.",
+        "openapi_contract_snapshot_invalid": "OpenAPI contract JSON could not be parsed: {error}",
         "status_runtime_manifest": "Runtime backup manifest",
         "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
@@ -505,6 +667,16 @@ def render_job_result(job) -> None:
         st.error(text["job_failed"].format(message=message))
 
 
+def job_sidebar_summary(job) -> dict:
+    """Return a no-secret summary for the Streamlit latest-jobs panel."""
+    summary = job_search_projection(job)
+    summary["artifacts"] = [
+        job_artifact_to_public_dict(job, artifact)
+        for artifact in job.artifacts
+    ]
+    return summary
+
+
 def render_latest_jobs() -> None:
     job_query = st.text_input(text["job_search"], value="", key="job_search")
     col_status, col_kind = st.columns(2)
@@ -534,14 +706,7 @@ def render_latest_jobs() -> None:
     for job in jobs:
         label = f"{job.status} · {job.kind} · {job.job_id}"
         with st.expander(label):
-            st.caption(job.updated_at)
-            if job.result:
-                st.json(job.result)
-            if job.artifacts:
-                for artifact in job.artifacts:
-                    st.code(artifact.get("uri", ""), language="text")
-            if job.error:
-                st.json(job.error)
+            st.json(job_sidebar_summary(job))
             if job.status in {"queued", "running"}:
                 if st.button(
                     text["cancel_job"],
@@ -597,20 +762,19 @@ def render_latest_artifacts() -> None:
         st.caption(text["no_artifacts"])
         return
     for artifact in artifacts:
-        label = f"{artifact.kind} · {artifact.title or artifact.artifact_id}"
+        public_artifact = artifact_to_public_dict(artifact)
+        label = f"{public_artifact['kind']} · {artifact.artifact_id}"
         with st.expander(label):
-            st.caption(f"{artifact.job_kind} · {artifact.job_id}")
+            st.caption(str(public_artifact["job_kind"]))
             st.caption(f"{text['artifact_id']}: {artifact.artifact_id}")
-            if artifact.metadata:
-                st.caption(text["artifact_metadata"])
-                st.json(artifact.metadata)
-            st.code(artifact.uri, language="text")
+            st.caption(text["artifact_metadata"])
+            st.json(public_artifact["metadata"])
             try:
                 path = local_artifact_path(artifact.uri)
                 st.download_button(
                     text["download_artifact"],
                     data=path.read_bytes(),
-                    file_name=artifact.title or path.name,
+                    file_name=safe_artifact_download_filename(artifact, path),
                     mime=artifact.mime_type,
                     use_container_width=True,
                     key=f"download_{artifact.artifact_id}",
@@ -633,11 +797,15 @@ def render_product_registry_management() -> None:
             "quota_limits": status.get("quota_limit_count", 0),
             "usage_events": status.get("usage_event_count", 0),
             "billing_accounts": status.get("billing_account_count", 0),
+            "management_enabled": STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED,
             "secrets_exported": status.get("secrets_exported", False),
         }
     )
     if not status.get("available", False):
         st.caption(text["product_registry_disabled"])
+        return
+    if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:
+        st.caption(text["product_registry_management_disabled"])
         return
 
     registry = LocalProductRegistry()
@@ -790,6 +958,195 @@ def render_product_registry_management() -> None:
                 st.error(str(exc))
 
 
+def render_share_link_registry_management() -> None:
+    status = share_link_registry_backend_status()
+    st.caption(text["share_link_registry_management"])
+    st.json(
+        {
+            "backend": status.get("backend", ""),
+            "available": status.get("available", False),
+            "reason": status.get("reason", ""),
+            "active_links": status.get("active_link_count", 0),
+            "revoked_links": status.get("revoked_link_count", 0),
+            "expired_links": status.get("expired_link_count", 0),
+            "total_links": status.get("total_link_count", 0),
+            "management_enabled": STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED,
+            "secrets_exported": status.get("secrets_exported", False),
+            "share_tokens_exported": status.get("share_tokens_exported", False),
+            "share_urls_exported": status.get("share_urls_exported", False),
+        }
+    )
+    if not status.get("available", False):
+        st.caption(text["share_link_registry_disabled"])
+        return
+    if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:
+        st.caption(text["share_link_management_disabled"])
+        return
+
+    registry = LocalShareLinkRegistry()
+    try:
+        links = [record.to_public_dict() for record in registry.list_links(include_revoked=True, limit=20)]
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        st.error(str(exc))
+        return
+    st.json({"share_links": links})
+    default_workspace_id = links[0]["workspace_id"] if links else "local-workspace"
+
+    with st.form("share_link_create_form"):
+        workspace_id = st.text_input(
+            text["share_link_workspace_id"],
+            value=default_workspace_id,
+            key="share_link_create_workspace_id",
+        )
+        created_by_user_id = st.text_input(
+            text["share_link_created_by_user_id"],
+            value="local-user",
+            key="share_link_created_by_user_id",
+        )
+        resource_kind = st.selectbox(
+            text["share_link_resource_kind"],
+            options=["corpus_profile", "paper", "artifact", "job", "report"],
+            key="share_link_resource_kind",
+        )
+        resource_ref = st.text_input(
+            text["share_link_resource_ref"],
+            value="local-corpus-profile",
+            key="share_link_resource_ref",
+        )
+        description = st.text_input(
+            text["share_link_description"],
+            value="",
+            key="share_link_description",
+        )
+        expires_in_s = st.number_input(
+            text["share_link_expires_in_s"],
+            min_value=60,
+            max_value=31_536_000,
+            value=604800,
+            step=60,
+            key="share_link_expires_in_s",
+        )
+        max_redemptions = st.number_input(
+            text["share_link_max_redemptions"],
+            min_value=0,
+            max_value=1_000_000,
+            value=1,
+            step=1,
+            key="share_link_max_redemptions",
+        )
+        if st.form_submit_button(text["share_link_create"], use_container_width=True):
+            try:
+                st.json(
+                    registry.create_link(
+                        workspace_id=workspace_id,
+                        created_by_user_id=created_by_user_id,
+                        resource_kind=resource_kind,
+                        resource_ref=resource_ref,
+                        description=description,
+                        expires_in_s=int(expires_in_s),
+                        max_redemptions=int(max_redemptions),
+                    )
+                )
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("share_link_list_form"):
+        list_workspace_id = st.text_input(
+            text["share_link_workspace_id"],
+            value=default_workspace_id,
+            key="share_link_list_workspace_id",
+        )
+        include_revoked = st.checkbox(
+            text["share_link_include_revoked"],
+            value=True,
+            key="share_link_include_revoked",
+        )
+        limit = st.number_input(
+            text["share_link_limit"],
+            min_value=1,
+            max_value=200,
+            value=50,
+            step=1,
+            key="share_link_limit",
+        )
+        if st.form_submit_button(text["share_link_list"], use_container_width=True):
+            try:
+                st.json(
+                    {
+                        "share_links": [
+                            record.to_public_dict()
+                            for record in registry.list_links(
+                                workspace_id=list_workspace_id,
+                                include_revoked=include_revoked,
+                                limit=int(limit),
+                            )
+                        ],
+                        "content_exported": False,
+                        "secrets_exported": False,
+                        "share_tokens_exported": False,
+                        "share_urls_exported": False,
+                    }
+                )
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("share_link_resolve_form"):
+        token = st.text_input(
+            text["share_link_token"],
+            value="",
+            type="password",
+            key="share_link_resolve_token",
+        )
+        record_redeem = st.checkbox(
+            text["share_link_record_redeem"],
+            value=False,
+            key="share_link_record_redeem",
+        )
+        if st.form_submit_button(text["share_link_resolve"], use_container_width=True):
+            try:
+                st.json(
+                    {
+                        "resolution": registry.resolve_token(
+                            token,
+                            record_redeem=record_redeem,
+                        )
+                    }
+                )
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+    with st.form("share_link_revoke_form"):
+        link_id = st.text_input(
+            text["share_link_id"],
+            value=links[0]["link_id"] if links else "",
+            key="share_link_revoke_link_id",
+        )
+        if st.form_submit_button(text["share_link_revoke"], use_container_width=True):
+            try:
+                record = registry.revoke_link(link_id)
+                if record is None:
+                    st.json(
+                        {
+                            "ok": False,
+                            "reason": "share_link_not_found",
+                            "secrets_exported": False,
+                            "share_tokens_exported": False,
+                        }
+                    )
+                else:
+                    st.json(
+                        {
+                            "ok": True,
+                            "share_link": record.to_public_dict(),
+                            "secrets_exported": False,
+                            "share_tokens_exported": False,
+                            "share_urls_exported": False,
+                        }
+                    )
+            except (OSError, sqlite3.Error, ValueError) as exc:
+                st.error(str(exc))
+
+
 def render_admin_status() -> None:
     status = collect_admin_status().to_dict()
     jobs = status["jobs"]
@@ -803,6 +1160,7 @@ def render_admin_status() -> None:
     retrieval_traces = status["retrieval_traces"]
     code_execution = status["code_execution"]
     api_access = status["api_access"]
+    admin_checks = status["admin_checks"]
     upload_scans = status["upload_scans"]
     config = status["config"]
     storage_readiness = config.get("storage_readiness", {})
@@ -885,6 +1243,18 @@ def render_admin_status() -> None:
             "rate_limit": api_access.get("rate_limit", {}),
         }
     )
+    st.caption(text["status_admin_checks"])
+    st.json(
+        {
+            "audit_enabled": admin_checks.get("audit_enabled", False),
+            "total_recent": admin_checks.get("total_recent", 0),
+            "by_check": admin_checks.get("by_check", {}),
+            "by_status": admin_checks.get("by_status", {}),
+            "ok_recent": admin_checks.get("ok_recent", 0),
+            "blocked_recent": admin_checks.get("blocked_recent", 0),
+            "blocker_count_total": admin_checks.get("blocker_count_total", 0),
+        }
+    )
     st.caption(text["status_upload_scan"])
     st.json(
         {
@@ -932,6 +1302,47 @@ def render_admin_status() -> None:
     st.json(storage_schemas)
     st.caption(text["status_platform_readiness"])
     st.json(platform_readiness)
+    st.caption(text["status_platform_migration_rehearsal"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/platform-migration-rehearsal",
+            "local_only": True,
+            "raw_manifests_included": False,
+            "checks": [
+                "runtime_backup_manifest",
+                "staged_restore_check",
+                "storage_schema",
+                "object_storage_manifest_summary",
+                "job_store_manifest_summary",
+            ],
+        }
+    )
+    if st.button(
+        text["run_platform_migration_rehearsal"],
+        key="run_platform_migration_rehearsal",
+        use_container_width=True,
+    ):
+        try:
+            st.session_state["platform_migration_rehearsal_status"] = (
+                collect_platform_migration_rehearsal()
+            )
+        except OSError as exc:
+            st.error(str(exc))
+    platform_migration_rehearsal_status = st.session_state.get(
+        "platform_migration_rehearsal_status"
+    )
+    if platform_migration_rehearsal_status:
+        st.json(platform_migration_rehearsal_status)
+        st.download_button(
+            text["download_platform_migration_rehearsal_report"],
+            data=format_storage_migration_rehearsal_markdown(
+                platform_migration_rehearsal_status
+            ),
+            file_name="fluxmind-platform-migration-rehearsal.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
     st.caption(text["status_product_readiness"])
     st.json(
         {
@@ -945,6 +1356,90 @@ def render_admin_status() -> None:
             "secrets_exported": product_readiness.get("secrets_exported", False),
         }
     )
+    st.caption(text["status_product_activation_rehearsal"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/product-activation-rehearsal",
+            "local_only": True,
+            "checks": [
+                "api_key_lifecycle",
+                "local_product_registry",
+                "local_rbac",
+                "local_quota",
+                "billing_attribution",
+            ],
+        }
+    )
+    if st.button(
+        text["run_product_activation_rehearsal"],
+        key="run_product_activation_rehearsal",
+        use_container_width=True,
+    ):
+        try:
+            st.session_state["product_activation_rehearsal_status"] = (
+                collect_product_activation_rehearsal()
+            )
+        except OSError as exc:
+            st.error(str(exc))
+    product_activation_rehearsal_status = st.session_state.get(
+        "product_activation_rehearsal_status"
+    )
+    if product_activation_rehearsal_status:
+        st.json(product_activation_rehearsal_status)
+        st.download_button(
+            text["download_product_activation_rehearsal_report"],
+            data=format_product_activation_rehearsal_markdown(
+                product_activation_rehearsal_status
+            ),
+            file_name="fluxmind-product-activation-rehearsal.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    st.caption(text["status_collaboration_readiness"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/collaboration-readiness",
+            "local_only": True,
+            "safe_default": {
+                "private_corpora_enabled": False,
+                "share_links_enabled": False,
+            },
+            "checks": [
+                "private_corpus_policy_matrix",
+                "share_link_policy_matrix",
+                "product_registry_prerequisite",
+                "product_rbac_guard_prerequisite",
+                "share_link_token_store_prerequisite",
+            ],
+        }
+    )
+    if st.button(
+        text["run_collaboration_readiness"],
+        key="run_collaboration_readiness",
+        use_container_width=True,
+    ):
+        try:
+            st.session_state["collaboration_readiness_status"] = (
+                collect_collaboration_readiness()
+            )
+        except OSError as exc:
+            st.error(str(exc))
+    collaboration_readiness_status = st.session_state.get(
+        "collaboration_readiness_status"
+    )
+    if collaboration_readiness_status:
+        st.json(collaboration_readiness_status)
+        st.download_button(
+            text["download_collaboration_readiness_report"],
+            data=format_collaboration_readiness_markdown(
+                collaboration_readiness_status
+            ),
+            file_name="fluxmind-collaboration-readiness.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
     st.caption(text["status_provider_readiness"])
     st.json(
         {
@@ -960,6 +1455,216 @@ def render_admin_status() -> None:
             "connectivity_checked": provider_readiness.get("connectivity_checked", False),
         }
     )
+    st.caption(text["status_provider_runtime_rehearsal"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/provider-runtime-rehearsal",
+            "local_only": True,
+            "checks": [
+                "mock_image_generation",
+                "local_python_execution",
+                "octave_runtime_branch",
+                "docker_readiness",
+                "provider_quota_guard",
+            ],
+        }
+    )
+    if st.button(
+        text["run_provider_runtime_rehearsal"],
+        key="run_provider_runtime_rehearsal",
+        use_container_width=True,
+    ):
+        try:
+            st.session_state["provider_runtime_rehearsal_status"] = (
+                collect_provider_runtime_rehearsal()
+            )
+        except OSError as exc:
+            st.error(str(exc))
+    provider_runtime_rehearsal_status = st.session_state.get(
+        "provider_runtime_rehearsal_status"
+    )
+    if provider_runtime_rehearsal_status:
+        st.json(provider_runtime_rehearsal_status)
+        st.download_button(
+            text["download_provider_runtime_rehearsal_report"],
+            data=format_provider_runtime_rehearsal_markdown(
+                provider_runtime_rehearsal_status
+            ),
+            file_name="fluxmind-provider-runtime-rehearsal.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    st.caption(text["status_quality_readiness"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/quality-readiness",
+            "live_report_input": "evaluate_rag_json_report",
+            "targets": ["self_use", "small_group", "community"],
+            "evidence_sources": [
+                "corpus_manifest",
+                "eval_baseline",
+                "live_eval_report",
+            ],
+        }
+    )
+    quality_readiness_live_report = st.file_uploader(
+        text["quality_readiness_live_report"],
+        type=["json"],
+        key="quality_readiness_live_report",
+    )
+    if st.button(text["run_quality_readiness"], key="run_quality_readiness", use_container_width=True):
+        try:
+            live_reports = []
+            if quality_readiness_live_report is not None:
+                live_reports.append(
+                    json.loads(quality_readiness_live_report.getvalue().decode("utf-8"))
+                )
+            st.session_state["quality_readiness_status"] = collect_quality_readiness(
+                live_reports=live_reports,
+            )
+        except json.JSONDecodeError as exc:
+            st.error(text["quality_readiness_report_invalid"].format(error=exc))
+        except OSError as exc:
+            st.error(str(exc))
+    quality_readiness_status = st.session_state.get("quality_readiness_status")
+    if quality_readiness_status:
+        st.json(quality_readiness_status)
+        st.download_button(
+            text["download_quality_readiness_report"],
+            data=format_quality_readiness_markdown(quality_readiness_status),
+            file_name="fluxmind-quality-readiness.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    st.caption(text["status_activation_suite"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/activation-suite",
+            "live_report_input": "evaluate_rag_json_report",
+            "default_gate": "local_foundation",
+            "local_foundation_requires": [
+                "product local foundation",
+                "provider local foundation",
+                "storage migration rehearsal",
+                "quality local foundation",
+                "OpenAPI contract",
+            ],
+            "full_activation_requires": [
+                "product activation",
+                "provider activation",
+                "platform migration activation",
+                "community quality readiness",
+            ],
+        }
+    )
+    activation_suite_live_report = st.file_uploader(
+        text["activation_suite_live_report"],
+        type=["json"],
+        key="activation_suite_live_report",
+    )
+    if st.button(text["run_activation_suite"], key="run_activation_suite", use_container_width=True):
+        try:
+            live_reports = []
+            if activation_suite_live_report is not None:
+                live_reports.append(
+                    json.loads(activation_suite_live_report.getvalue().decode("utf-8"))
+                )
+            import api
+
+            st.session_state["activation_suite_status"] = collect_activation_suite(
+                live_reports=live_reports,
+                openapi_schema=api.app.openapi(),
+            )
+        except json.JSONDecodeError as exc:
+            st.error(text["activation_suite_report_invalid"].format(error=exc))
+        except OSError as exc:
+            st.error(str(exc))
+    activation_suite_status = st.session_state.get("activation_suite_status")
+    if activation_suite_status:
+        st.json(activation_suite_status)
+        st.download_button(
+            text["download_activation_suite_report"],
+            data=format_activation_suite_markdown(activation_suite_status),
+            file_name="fluxmind-activation-suite.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    st.caption(text["status_openapi_contract"])
+    st.json(
+        {
+            "on_demand": True,
+            "route": "/admin/openapi-contract",
+            "verify_route": "/admin/openapi-contract/verify",
+            "raw_schema_included": False,
+            "checks": [
+                "required_path_methods",
+                "operation_summary_ids",
+                "operation_responses",
+                "protected_auth_headers",
+                "route_group_coverage",
+                "snapshot_drift",
+            ],
+        }
+    )
+    if st.button(text["run_openapi_contract"], key="run_openapi_contract", use_container_width=True):
+        try:
+            import api
+
+            st.session_state["openapi_contract_status"] = collect_openapi_contract(
+                api.app.openapi()
+            )
+        except OSError as exc:
+            st.error(str(exc))
+    openapi_contract_status = st.session_state.get("openapi_contract_status")
+    if openapi_contract_status:
+        st.json(openapi_contract_status)
+        st.download_button(
+            text["download_openapi_contract_report"],
+            data=format_openapi_contract_markdown(openapi_contract_status),
+            file_name="fluxmind-openapi-contract.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    openapi_contract_snapshot = st.file_uploader(
+        text["openapi_contract_snapshot"],
+        type=["json"],
+        key="openapi_contract_snapshot",
+    )
+    if st.button(
+        text["run_openapi_contract_verify"],
+        key="run_openapi_contract_verify",
+        use_container_width=True,
+    ):
+        try:
+            if openapi_contract_snapshot is None:
+                st.error(text["openapi_contract_snapshot_missing"])
+            else:
+                snapshot = json.loads(openapi_contract_snapshot.getvalue().decode("utf-8"))
+                import api
+
+                current = collect_openapi_contract(api.app.openapi())
+                st.session_state["openapi_contract_verify_status"] = (
+                    verify_openapi_contract_snapshot(current, snapshot)
+                )
+        except json.JSONDecodeError as exc:
+            st.error(text["openapi_contract_snapshot_invalid"].format(error=exc))
+        except OSError as exc:
+            st.error(str(exc))
+    openapi_contract_verify_status = st.session_state.get("openapi_contract_verify_status")
+    if openapi_contract_verify_status:
+        st.json(openapi_contract_verify_status)
+        st.download_button(
+            text["download_openapi_contract_verify_report"],
+            data=format_openapi_contract_snapshot_verify_markdown(
+                openapi_contract_verify_status
+            ),
+            file_name="fluxmind-openapi-contract-verify.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
     runtime_manifest = collect_runtime_backup_manifest()
     st.caption(text["status_runtime_manifest"])
     st.json(
@@ -1115,22 +1820,34 @@ def render_runtime_events() -> None:
     with col_kind:
         event_kind = st.selectbox(
             text["event_kind_filter"],
-            options=["", "provider_failure", "query_usage", "retrieval_trace", "code_execution", "api_access", "upload_scan", "retention_delete"],
+            options=RUNTIME_EVENT_KIND_FILTER_OPTIONS,
             format_func=lambda value: value or "all",
             key="event_kind_filter",
         )
     with col_code:
         event_code = st.text_input(text["event_code_filter"], value="", key="event_code_filter")
-    events = list_runtime_events(
+    safe_query = (event_query or "").strip()
+    raw_events = list_runtime_events(
         kind=event_kind or None,
         code=event_code or None,
-        q=event_query or None,
-        limit=10,
+        q=None,
+        limit=1000 if safe_query else 10,
     )
+    events = [
+        runtime_event_to_safe_dict(event, include_request_id=False)
+        for event in raw_events
+    ]
+    if safe_query:
+        events = [
+            event
+            for event in events
+            if safe_query.casefold()
+            in json.dumps(event, ensure_ascii=False, sort_keys=True).casefold()
+        ][:10]
     if not events:
         st.caption(text["no_jobs"])
         return
-    st.json([event.__dict__ for event in events])
+    st.json(events)
 
 
 # ── Sidebar: Knowledge Base Management ──
@@ -1230,7 +1947,7 @@ with st.sidebar:
                     st.download_button(
                         text["download_profile_report"],
                         data=profile_report,
-                        file_name=f"fluxmind-corpus-profile-{selected_profile}.md",
+                        file_name=safe_corpus_profile_report_filename(selected_profile),
                         mime="text/markdown",
                         key="corpus_profile_report_download",
                         use_container_width=True,
@@ -1373,6 +2090,8 @@ with st.sidebar:
         render_admin_status()
         st.divider()
         render_product_registry_management()
+        st.divider()
+        render_share_link_registry_management()
         st.divider()
         st.caption(text["retention_preview"])
         render_retention_preview()

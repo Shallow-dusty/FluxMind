@@ -2,12 +2,62 @@ import scripts.health_check as health_check
 import subprocess
 
 
+def test_remote_ssh_checks_include_recent_safety_anchors():
+    source = (health_check.PROJECT_ROOT / "scripts" / "health_check.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        "grep -q 'STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' "
+        "/opt/fluxmind/app.py"
+    ) in source
+    assert (
+        "grep -q 'product_registry_management_disabled' /opt/fluxmind/app.py"
+    ) in source
+    assert (
+        "grep -q 'STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' "
+        "/opt/fluxmind/app.py"
+    ) in source
+    assert (
+        "grep -q 'share_link_management_disabled' /opt/fluxmind/app.py"
+    ) in source
+    assert (
+        "grep -q 'enforce_product_registry_admin_read' /opt/fluxmind/api.py"
+    ) in source
+    assert (
+        "grep -q 'endpoint=\\\"/admin/product-registry/workspaces\\\"' "
+        "/opt/fluxmind/api.py"
+    ) in source
+    assert (
+        "grep -q 'endpoint=\\\"/admin/product-registry/permissions/check\\\"' "
+        "/opt/fluxmind/api.py"
+    ) in source
+    assert (
+        "grep -q 'requires --format json' /opt/fluxmind/scripts/api_key_registry.py"
+    ) in source
+    assert (
+        "grep -q 'share_link_registry_backend_status' "
+        "/opt/fluxmind/src/share_links.py"
+    ) in source
+    assert (
+        "grep -q '/admin/share-links/status' /opt/fluxmind/api.py"
+    ) in source
+    assert (
+        "grep -q 'share_link_registry_sqlite' /opt/fluxmind/src/storage_schema.py"
+    ) in source
+    assert (
+        "grep -q 'provider_quota_guard_invalid_limit' "
+        "/opt/fluxmind/src/provider_readiness.py"
+    ) in source
+
+
 def test_main_local_health_check_passes(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["health_check.py"])
 
     assert health_check.main() == 0
     output = capsys.readouterr().out
     assert "ok   required file: app.py" in output
+    assert "ok   no-secret readiness CLI OS errors omit raw paths" in output
     assert "ok   API startup warmup readiness route installed" in output
     assert "skip local FAISS index is absent" in output or "ok   local FAISS index is non-empty" in output
 

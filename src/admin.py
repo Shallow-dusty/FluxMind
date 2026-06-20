@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import re
+import stat
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -71,6 +73,7 @@ from src.config import (
     RETENTION_DELETE_ENABLED,
     RERANKER_MODEL,
     RUNTIME_EVENTS_FILE,
+    SHARE_LINK_TOKEN_STORE_FILE,
     UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
     UPLOAD_SCAN_ENABLED,
     UPLOAD_SCAN_MAX_PAGES,
@@ -83,8 +86,44 @@ from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileS
 from src.product_readiness import collect_product_readiness
 from src.provider_readiness import collect_provider_readiness
 from src.providers import docker_execution_status
-from src.runtime import append_runtime_event, list_runtime_events
+from src.runtime import append_runtime_event, list_runtime_events, runtime_event_to_safe_dict
 from src.storage_schema import storage_schema_status
+
+ADMIN_CHECK_LATEST_METADATA_KEYS = {
+    "active_key_count",
+    "activation_ready",
+    "activation_step_count",
+    "blocker_count",
+    "blocked_recent",
+    "check",
+    "compared_field_count",
+    "copied_files",
+    "diff_count",
+    "docker_available",
+    "external_activation_ready",
+    "failed_check_count",
+    "full_activation_ready",
+    "full_activation_blocker_count",
+    "job_store_manifest_ready",
+    "local_foundation_ready",
+    "object_manifest_ready",
+    "ok",
+    "ok_recent",
+    "operation_count",
+    "protected_auth_header_operation_count",
+    "protected_operation_count",
+    "required_operation_missing_count",
+    "response_missing_operation_count",
+    "restore_check_ok",
+    "route_count",
+    "snapshot_raw_schema_included",
+    "snapshot_shape_valid",
+    "source_preflight_ok",
+    "status_code",
+    "undocumented_operation_count",
+    "workspace_count",
+}
+ADMIN_CHECK_LABEL_RE = re.compile(r"^[a-z0-9][a-z0-9_:-]{0,79}$")
 
 
 def refresh_paper_metadata():
@@ -122,6 +161,7 @@ class AdminStatus:
     retrieval_traces: dict[str, Any]
     code_execution: dict[str, Any]
     api_access: dict[str, Any]
+    admin_checks: dict[str, Any]
     upload_scans: dict[str, Any]
     config: dict[str, Any]
 
@@ -157,6 +197,35 @@ def _event_int_metadata(event: Any, key: str) -> int:
         return int(event.metadata.get(key, 0) or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _admin_check_label(value: Any, *, fallback: str = "unknown") -> str:
+    text = str(value or "").strip().casefold()
+    if not text:
+        return fallback
+    if ADMIN_CHECK_LABEL_RE.fullmatch(text):
+        return text
+    return "invalid"
+
+
+def _runtime_event_admin_dict(event: Any) -> dict[str, Any]:
+    """Project runtime events for admin status without correlation identifiers."""
+    return runtime_event_to_safe_dict(event, include_request_id=False)
+
+
+def _admin_check_event_admin_dict(event: Any) -> dict[str, Any]:
+    """Project admin check events through a fixed metadata summary."""
+    projected = _runtime_event_admin_dict(event)
+    projected["code"] = _admin_check_label(projected.get("code"))
+    metadata = projected.get("metadata", {}) or {}
+    projected["metadata"] = {
+        key: value
+        for key, value in metadata.items()
+        if key in ADMIN_CHECK_LATEST_METADATA_KEYS
+    }
+    if "check" in projected["metadata"]:
+        projected["metadata"]["check"] = _admin_check_label(projected["metadata"]["check"])
+    return projected
 
 
 def _dict_int(data: dict[str, Any], key: str) -> int:
@@ -561,6 +630,7 @@ def storage_inventory_status() -> dict[str, Any]:
                 "chunks_sqlite": CHUNK_METADATA_DB_FILE,
                 "api_key_registry_sqlite": API_KEY_REGISTRY_FILE,
                 "product_registry_sqlite": PRODUCT_REGISTRY_FILE,
+                "share_link_registry_sqlite": SHARE_LINK_TOKEN_STORE_FILE,
                 "runtime_events_jsonl": RUNTIME_EVENTS_FILE,
             },
         ),
@@ -904,6 +974,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
     retrieval_traces = data.get("retrieval_traces", {})
     code_execution = data.get("code_execution", {})
     api_access = data.get("api_access", {})
+    admin_checks = data.get("admin_checks", {})
     upload_scans = data.get("upload_scans", {})
     worker_leases = jobs.get("worker_leases", {})
     config = data.get("config", {})
@@ -924,7 +995,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         f"- Total: {jobs.get('total', 0)}",
         f"- By status: {_format_counts(jobs.get('by_status', {}))}",
         f"- By kind: {_format_counts(jobs.get('by_kind', {}))}",
-        f"- By owner: {_format_counts(jobs.get('by_owner_id', {}))}",
+        f"- Owner count: {jobs.get('owner_count', 0)}",
+        f"- By ownership source: {_format_counts(jobs.get('by_ownership_source', {}))}",
         f"- Failed: {jobs.get('failed', 0)}",
         f"- Dead lettered: {jobs.get('dead_lettered', 0)}",
         f"- Scheduled: {jobs.get('scheduled', 0)}",
@@ -950,7 +1022,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         "## Artifacts",
         "",
         f"- Total: {artifacts.get('total', 0)}",
-        f"- By owner: {_format_counts(artifacts.get('by_owner_id', {}))}",
+        f"- Owner count: {artifacts.get('owner_count', 0)}",
+        f"- By ownership source: {_format_counts(artifacts.get('by_ownership_source', {}))}",
         f"- Bytes: {artifacts.get('bytes', 0)}",
         f"- Storage: {_format_counts(artifacts.get('storage', {}))}",
         f"- Integrity: {_format_counts(artifacts.get('integrity', {}))}",
@@ -1083,6 +1156,15 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Missing credentials: {api_access.get('missing_recent', 0)}",
             f"- Rate limited: {api_access.get('rate_limited_recent', 0)}",
             "",
+            "## Admin Check Events",
+            "",
+            f"- Recent total: {admin_checks.get('total_recent', 0)}",
+            f"- By check: {_format_counts(admin_checks.get('by_check', {}))}",
+            f"- By code: {_format_counts(admin_checks.get('by_code', {}))}",
+            f"- OK checks: {admin_checks.get('ok_recent', 0)}",
+            f"- Blocked checks: {admin_checks.get('blocked_recent', 0)}",
+            f"- Blocker count total: {admin_checks.get('blocker_count_total', 0)}",
+            "",
             "## Upload Scans",
             "",
             f"- Scan enabled: {_format_bool(upload_scans.get('scan_enabled', False))}",
@@ -1150,7 +1232,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             status_code = metadata.get("status_code", "unknown")
             lines.append(
                 f"- {event.get('created_at', '')}: {event.get('code', '')} "
-                f"request_id={event.get('request_id', '')} endpoint={endpoint} "
+                f"request_id_present={_format_bool(event.get('request_id_present', False))} "
+                f"endpoint={endpoint} "
                 f"status_code={status_code}"
             )
 
@@ -1161,7 +1244,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             error = job.get("error", {}) or {}
             lines.append(
                 f"- {job.get('updated_at', '')}: {job.get('job_id', '')} "
-                f"kind={job.get('kind', '')} owner={job.get('owner_id', '')} "
+                f"kind={job.get('kind', '')} "
+                f"ownership_source={job.get('ownership_source', '')} "
                 f"code={error.get('code', '')}"
             )
 
@@ -1171,7 +1255,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         for event in latest_usage[:5]:
             metadata = event.get("metadata", {}) or {}
             lines.append(
-                f"- {event.get('created_at', '')}: request_id={event.get('request_id', '')} "
+                f"- {event.get('created_at', '')}: "
+                f"request_id_present={_format_bool(event.get('request_id_present', False))} "
                 f"endpoint={metadata.get('endpoint', '')} "
                 f"answer_mode={metadata.get('answer_mode', '')} "
                 f"estimated_total_tokens={metadata.get('estimated_total_tokens', 0)}"
@@ -1196,7 +1281,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         for event in latest_code_execution[:5]:
             metadata = event.get("metadata", {}) or {}
             lines.append(
-                f"- {event.get('created_at', '')}: request_id={event.get('request_id', '')} "
+                f"- {event.get('created_at', '')}: "
+                f"request_id_present={_format_bool(event.get('request_id_present', False))} "
                 f"job_id={metadata.get('job_id', '')} "
                 f"status={metadata.get('status', '')} "
                 f"backend={metadata.get('backend', '')} "
@@ -1209,11 +1295,24 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
         for event in latest_api_access[:5]:
             metadata = event.get("metadata", {}) or {}
             lines.append(
-                f"- {event.get('created_at', '')}: request_id={event.get('request_id', '')} "
+                f"- {event.get('created_at', '')}: "
+                f"request_id_present={_format_bool(event.get('request_id_present', False))} "
                 f"method={metadata.get('method', '')} "
-                f"path={metadata.get('path', '')} "
+                f"route_present={_format_bool(metadata.get('route_present', False))} "
                 f"status_code={metadata.get('status_code', '')} "
                 f"token_status={metadata.get('token_status', '')}"
+            )
+
+    latest_admin_checks = admin_checks.get("latest", [])
+    if latest_admin_checks:
+        lines.extend(["", "Latest admin check events:"])
+        for event in latest_admin_checks[:5]:
+            metadata = event.get("metadata", {}) or {}
+            lines.append(
+                f"- {event.get('created_at', '')}: code={event.get('code', '')} "
+                f"check={metadata.get('check', '')} "
+                f"ok={_format_bool(metadata.get('ok', False))} "
+                f"blocker_count={metadata.get('blocker_count', 0)}"
             )
 
     latest_upload_scans = upload_scans.get("latest", [])
@@ -1223,7 +1322,7 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             metadata = event.get("metadata", {}) or {}
             lines.append(
                 f"- {event.get('created_at', '')}: code={event.get('code', '')} "
-                f"request_id={event.get('request_id', '')} "
+                f"request_id_present={_format_bool(event.get('request_id_present', False))} "
                 f"status={metadata.get('status', '')} "
                 f"reasons={','.join(metadata.get('reason_codes', [])) or 'none'} "
                 f"pages={metadata.get('page_count', 0)}"
@@ -1360,6 +1459,7 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     retrieval_traces = data.get("retrieval_traces", {})
     code_execution = data.get("code_execution", {})
     api_access = data.get("api_access", {})
+    admin_checks = data.get("admin_checks", {})
     upload_scans = data.get("upload_scans", {})
     config = data.get("config", {})
     product_readiness = config.get("product_readiness", {}) or {}
@@ -1677,6 +1777,23 @@ def format_admin_metrics(status: AdminStatus | dict[str, Any]) -> str:
     emit("fluxmind_api_access_valid_recent", api_access.get("valid_recent", 0), "Recent valid API credentials.")
     emit("fluxmind_api_access_rate_limited_recent", api_access.get("rate_limited_recent", 0), "Recent API rate-limited responses.")
 
+    emit("fluxmind_admin_checks_recent_total", admin_checks.get("total_recent", 0), "Recent metadata-only admin readiness check events.")
+    emit_counts(
+        "fluxmind_admin_checks_by_check",
+        "Recent admin readiness check events by check name.",
+        admin_checks.get("by_check", {}),
+        "check",
+    )
+    emit_counts(
+        "fluxmind_admin_checks_by_code",
+        "Recent admin readiness check events by code.",
+        admin_checks.get("by_code", {}),
+        "code",
+    )
+    emit("fluxmind_admin_checks_ok_recent", admin_checks.get("ok_recent", 0), "Recent successful admin readiness checks.")
+    emit("fluxmind_admin_checks_blocked_recent", admin_checks.get("blocked_recent", 0), "Recent blocked admin readiness checks.")
+    emit("fluxmind_admin_checks_blocker_count_total", admin_checks.get("blocker_count_total", 0), "Recent admin readiness blocker counts summed across checks.")
+
     emit("fluxmind_upload_scan_enabled", upload_scans.get("scan_enabled", False), "Whether local upload scanning is enabled.")
     emit("fluxmind_upload_scans_recent_total", upload_scans.get("total_recent", 0), "Recent upload scan events.")
     emit_counts(
@@ -1854,34 +1971,33 @@ def _retention_candidates(
     cutoff_ts = now_ts - retention_days * 24 * 60 * 60
     candidates: list[dict[str, Any]] = []
     total_bytes = 0
+    total_candidates = 0
     for path in sorted(root.rglob("*"), key=lambda item: item.as_posix()):
-        if not path.is_file() or path.name in exclude_names:
+        if path.name in exclude_names:
             continue
-        stat = path.stat()
-        if stat.st_mtime > cutoff_ts:
+        try:
+            path_stat = path.lstat()
+        except OSError:
             continue
-        total_bytes += stat.st_size
+        if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+            continue
+        if path_stat.st_mtime > cutoff_ts:
+            continue
+        total_candidates += 1
+        total_bytes += path_stat.st_size
         if len(candidates) < limit:
             candidates.append(
                 {
                     "path": _relative_runtime_path(path),
-                    "bytes": stat.st_size,
-                    "age_days": round((now_ts - stat.st_mtime) / (24 * 60 * 60), 2),
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                    "bytes": path_stat.st_size,
+                    "age_days": round((now_ts - path_stat.st_mtime) / (24 * 60 * 60), 2),
+                    "modified_at": datetime.fromtimestamp(path_stat.st_mtime, timezone.utc).isoformat(),
                 }
             )
     return {
         "enabled": True,
         "retention_days": retention_days,
-        "total_candidates": len(candidates)
-        if len(candidates) < limit
-        else sum(
-            1
-            for path in root.rglob("*")
-            if path.is_file()
-            and path.name not in exclude_names
-            and path.stat().st_mtime <= cutoff_ts
-        ),
+        "total_candidates": total_candidates,
         "bytes": total_bytes,
         "candidates": candidates,
     }
@@ -1918,8 +2034,11 @@ def collect_retention_preview(
 
 
 def _retention_candidate_path(path_value: str, root: Path) -> Path:
-    path = (PROJECT_ROOT / path_value).resolve()
-    path.relative_to(root.resolve())
+    relative_path = Path(path_value)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        raise ValueError("retention_candidate_path_outside_root")
+    path = PROJECT_ROOT / relative_path
+    path.parent.resolve().relative_to(root.resolve())
     return path
 
 
@@ -1945,7 +2064,10 @@ def _delete_retention_candidates(
         path_text = str(candidate.get("path", ""))
         try:
             path = _retention_candidate_path(path_text, root)
-            bytes_before = path.stat().st_size
+            path_stat = path.lstat()
+            if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+                raise ValueError("retention_candidate_not_regular_file")
+            bytes_before = path_stat.st_size
             path.unlink()
         except (OSError, ValueError) as exc:
             failures.append(
@@ -2260,7 +2382,8 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     jobs = job_store.list_latest(limit=job_limit)
     job_status_counts = Counter(job.status for job in jobs)
     job_kind_counts = Counter(job.kind for job in jobs)
-    job_owner_counts = Counter(job.owner_id for job in jobs)
+    job_owner_count = len({job.owner_id for job in jobs if job.owner_id})
+    job_ownership_source_counts = Counter(job.ownership_source for job in jobs)
     failed_jobs = [job for job in jobs if job.status == "failed"]
     dead_lettered_jobs = [
         job for job in jobs if job.status == "dead_lettered" or job.dead_lettered_at
@@ -2512,6 +2635,19 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         if event.metadata.get("rate_limited") is True
         or event.metadata.get("status_code") == 429
     )
+    admin_check_events = list_runtime_events(kind="admin_check", limit=100)
+    admin_check_by_code = Counter(_admin_check_label(event.code) for event in admin_check_events)
+    admin_check_by_check = Counter(
+        _admin_check_label(event.metadata.get("check")) for event in admin_check_events
+    )
+    admin_check_by_status = Counter(
+        "ok" if event.metadata.get("ok") is True else "blocked"
+        for event in admin_check_events
+    )
+    admin_check_blocker_count_total = sum(
+        max(0, _event_int_metadata(event, "blocker_count"))
+        for event in admin_check_events
+    )
     upload_scan_events = list_runtime_events(kind="upload_scan", limit=100)
     upload_scan_by_code = Counter(event.code for event in upload_scan_events)
     upload_scan_by_status = Counter(
@@ -2542,7 +2678,8 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     papers = refresh_paper_metadata()
     artifact_registry = LocalArtifactRegistry(job_store, db_path=ARTIFACTS_DIR / "artifacts.sqlite3")
     artifacts = artifact_registry.list_artifacts(limit=job_limit)
-    artifact_owner_counts = Counter(artifact.owner_id for artifact in artifacts)
+    artifact_owner_count = len({artifact.owner_id for artifact in artifacts if artifact.owner_id})
+    artifact_ownership_source_counts = Counter(artifact.ownership_source for artifact in artifacts)
     corpus_status = corpus_status_from_state(papers, chunk_metadata_store, jobs, metadata_store, profile_store)
     storage_status = storage_inventory_status()
     storage_schemas_status = storage_schema_status()
@@ -2597,7 +2734,8 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "total": len(jobs),
             "by_status": dict(sorted(job_status_counts.items())),
             "by_kind": dict(sorted(job_kind_counts.items())),
-            "by_owner_id": dict(sorted(job_owner_counts.items())),
+            "owner_count": job_owner_count,
+            "by_ownership_source": dict(sorted(job_ownership_source_counts.items())),
             "failed": len(failed_jobs),
             "cancelled": len(cancelled_jobs),
             "scheduled": len(scheduled_jobs),
@@ -2619,8 +2757,6 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 {
                     "job_id": job.job_id,
                     "kind": job.kind,
-                    "owner_id": job.owner_id,
-                    "owner_label": job.owner_label,
                     "ownership_source": job.ownership_source,
                     "updated_at": job.updated_at,
                     "error": job.error,
@@ -2631,7 +2767,8 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
         corpus=corpus_status,
         artifacts={
             "total": len(artifacts),
-            "by_owner_id": dict(sorted(artifact_owner_counts.items())),
+            "owner_count": artifact_owner_count,
+            "by_ownership_source": dict(sorted(artifact_ownership_source_counts.items())),
             "bytes": directory_size_bytes(ARTIFACTS_DIR),
             "storage": artifact_registry.storage_status(),
             "integrity": artifact_registry.integrity_status(limit=job_limit),
@@ -2651,14 +2788,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "event_log_exists": RUNTIME_EVENTS_FILE.exists(),
             "event_log_bytes": RUNTIME_EVENTS_FILE.stat().st_size if RUNTIME_EVENTS_FILE.exists() else 0,
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "request_id": event.request_id,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in provider_failure_events[:5]
             ],
         },
@@ -2688,14 +2818,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
             "cost_completion_tokens": query_cost["cost_completion_tokens"],
             "pricing": query_cost["pricing"],
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "request_id": event.request_id,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in query_usage_events[:5]
             ],
         },
@@ -2736,13 +2859,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "max": max(retrieval_duration_ms) if retrieval_duration_ms else 0,
             },
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in retrieval_trace_events[:5]
             ],
         },
@@ -2772,14 +2889,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "max": code_execution_max_duration_ms,
             },
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "request_id": event.request_id,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in code_execution_events[:5]
             ],
         },
@@ -2800,15 +2910,22 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "window_s": API_RATE_LIMIT_WINDOW_S,
             },
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "request_id": event.request_id,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in api_access_events[:5]
+            ],
+        },
+        admin_checks={
+            "audit_enabled": API_ACCESS_AUDIT_ENABLED,
+            "total_recent": len(admin_check_events),
+            "by_code": dict(sorted(admin_check_by_code.items())),
+            "by_check": dict(sorted(admin_check_by_check.items())),
+            "by_status": dict(sorted(admin_check_by_status.items())),
+            "ok_recent": admin_check_by_status.get("ok", 0),
+            "blocked_recent": admin_check_by_status.get("blocked", 0),
+            "blocker_count_total": admin_check_blocker_count_total,
+            "latest": [
+                _admin_check_event_admin_dict(event)
+                for event in admin_check_events[:5]
             ],
         },
         upload_scans={
@@ -2828,14 +2945,7 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
                 "block_active_content": UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT,
             },
             "latest": [
-                {
-                    "event_id": event.event_id,
-                    "code": event.code,
-                    "message": event.message,
-                    "created_at": event.created_at,
-                    "request_id": event.request_id,
-                    "metadata": event.metadata,
-                }
+                _runtime_event_admin_dict(event)
                 for event in upload_scan_events[:5]
             ],
         },

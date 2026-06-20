@@ -37,6 +37,13 @@ def test_streamlit_local_job_panel_is_installed():
     assert "set_active_paper_source_paths(selected)" in APP_SOURCE
 
 
+def test_streamlit_latest_jobs_uses_no_secret_summary():
+    assert "job_search_projection" in APP_SOURCE
+    assert "job_sidebar_summary(job)" in APP_SOURCE
+    assert "st.json(job.result)" not in APP_SOURCE
+    assert "st.json(job.error)" not in APP_SOURCE
+
+
 def test_streamlit_artifact_gallery_is_installed():
     assert "LocalArtifactRegistry" in APP_SOURCE
     assert "render_latest_artifacts()" in APP_SOURCE
@@ -44,6 +51,11 @@ def test_streamlit_artifact_gallery_is_installed():
     assert "artifact_kind_filter" in APP_SOURCE
     assert "artifact_job_kind_filter" in APP_SOURCE
     assert "st.download_button" in APP_SOURCE
+    assert "artifact_to_public_dict" in APP_SOURCE
+    assert "job_artifact_to_public_dict" in APP_SOURCE
+    assert "safe_artifact_download_filename" in APP_SOURCE
+    assert 'st.code(artifact.get("uri", "")' not in APP_SOURCE
+    assert "st.code(artifact.uri" not in APP_SOURCE
 
 
 def test_streamlit_admin_status_panel_is_installed():
@@ -75,16 +87,64 @@ def test_streamlit_admin_status_panel_is_installed():
     assert "external_storage_configured" in APP_SOURCE
     assert "status_api_access" in APP_SOURCE
     assert "api_access" in APP_SOURCE
+    assert "status_admin_checks" in APP_SOURCE
+    assert "admin_checks" in APP_SOURCE
     assert "rate_limited_recent" in APP_SOURCE
     assert "status_upload_scan" in APP_SOURCE
     assert "upload_scans" in APP_SOURCE
     assert '"upload_scan"' in APP_SOURCE
     assert "format_admin_metrics" in APP_SOURCE
     assert "download_admin_metrics" in APP_SOURCE
+    assert "runtime_event_to_safe_dict(event, include_request_id=False)" in APP_SOURCE
+    assert "event.__dict__" not in APP_SOURCE
+
+
+def test_streamlit_product_registry_management_requires_explicit_flag():
+    assert "STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED" in APP_SOURCE
+    assert '"management_enabled": STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' in APP_SOURCE
+    assert "if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:" in APP_SOURCE
+    assert "product_registry_management_disabled" in APP_SOURCE
+    guard_index = APP_SOURCE.index("if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:")
+    registry_index = APP_SOURCE.index("registry = LocalProductRegistry()")
+    assert guard_index < registry_index
+
+
+def test_streamlit_share_link_management_requires_explicit_flag():
+    assert "STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED" in APP_SOURCE
+    assert '"management_enabled": STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' in APP_SOURCE
+    assert "if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:" in APP_SOURCE
+    assert "share_link_management_disabled" in APP_SOURCE
+    assert "type=\"password\"" in APP_SOURCE
+    guard_index = APP_SOURCE.index("if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:")
+    registry_index = APP_SOURCE.index("registry = LocalShareLinkRegistry()")
+    assert guard_index < registry_index
+
+
+def test_streamlit_runtime_event_filter_covers_guard_events():
+    assert "RUNTIME_EVENT_KIND_FILTER_OPTIONS" in APP_SOURCE
+    for event_kind in [
+        "provider_failure",
+        "provider_quota_guard",
+        "product_quota",
+        "product_rbac",
+        "product_registry_admin",
+        "share_link_admin",
+        "query_usage",
+        "retrieval_trace",
+        "code_execution",
+        "api_access",
+        "admin_check",
+        "upload_scan",
+        "retention_delete",
+    ]:
+        assert f'"{event_kind}"' in APP_SOURCE
+    assert "options=RUNTIME_EVENT_KIND_FILTER_OPTIONS" in APP_SOURCE
 
 
 def test_streamlit_corpus_profile_report_download_is_installed():
     assert "collect_corpus_profile_status" in APP_SOURCE
     assert "format_corpus_profile_status_report" in APP_SOURCE
+    assert "safe_corpus_profile_report_filename" in APP_SOURCE
     assert "download_profile_report" in APP_SOURCE
     assert "corpus_profile_report_download" in APP_SOURCE
+    assert 'file_name=f"fluxmind-corpus-profile-{selected_profile}.md"' not in APP_SOURCE

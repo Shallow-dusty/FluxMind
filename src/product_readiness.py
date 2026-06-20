@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from src import config
@@ -95,6 +96,8 @@ def collect_product_readiness(
     product_quota_guard_enabled: bool | None = None,
     product_rbac_guard_enabled: bool | None = None,
     product_registry_backend: str | None = None,
+    api_key_registry_file: Path | None = None,
+    product_registry_file: Path | None = None,
     owner_metadata_supported: bool = True,
 ) -> dict[str, Any]:
     """Collect productization readiness without exposing secrets or identities."""
@@ -164,7 +167,8 @@ def collect_product_readiness(
             product_registry_backend
             if product_registry_backend is not None
             else config.PRODUCT_REGISTRY_BACKEND
-        )
+        ),
+        db_path=product_registry_file,
     )
 
     identity = _backend_status(
@@ -199,6 +203,7 @@ def collect_product_readiness(
     if api_key_registry["backend"] == "sqlite":
         local_registry = api_key_registry_backend_status(
             backend=api_key_registry["backend"],
+            db_path=api_key_registry_file,
         )
         api_key_registry.update(
             {

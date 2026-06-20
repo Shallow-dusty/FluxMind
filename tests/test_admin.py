@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 
+import src.admin as admin
 from src.admin import (
     apply_retention_delete,
     collect_admin_status,
@@ -547,7 +548,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         request_id="req-access",
         metadata={
             "method": "GET",
-            "path": "/admin/status",
+            "route_present": True,
+            "route_fingerprint": "route-admin",
             "status_code": 401,
             "duration_ms": 5,
             "token_status": "invalid",
@@ -563,7 +565,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         request_id="req-rate-limit",
         metadata={
             "method": "GET",
-            "path": "/health",
+            "route_present": True,
+            "route_fingerprint": "route-health",
             "status_code": 429,
             "duration_ms": 1,
             "token_status": "not_configured",
@@ -576,6 +579,49 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
             "rate_limit_remaining": 0,
             "rate_limit_window_s": 60,
             "rate_limit_reset_after_s": 59,
+        },
+    )
+    append_runtime_event(
+        kind="admin_check",
+        code="openapi_contract_ok",
+        message="Metadata-only admin readiness check event.",
+        request_id="req-admin-check-ok",
+        metadata={
+            "check": "openapi_contract",
+            "ok": True,
+            "status_code": 200,
+            "route_count": 63,
+            "operation_count": 69,
+            "blocker_count": 0,
+            "operation_fingerprint": "private-fingerprint",
+            "snapshot_path": "/private/hunter2-openapi.json",
+        },
+    )
+    append_runtime_event(
+        kind="admin_check",
+        code="activation_suite_blocked",
+        message="Metadata-only admin readiness check event.",
+        request_id="req-admin-check-blocked",
+        metadata={
+            "check": "activation_suite",
+            "ok": False,
+            "status_code": 200,
+            "failed_check_count": 4,
+            "blocker_count": 4,
+            "raw_report": {"secret_path": "/private/hunter2-live-report.json"},
+        },
+    )
+    append_runtime_event(
+        kind="admin_check",
+        code="secret-/private/hunter2",
+        message="Metadata-only admin readiness check event.",
+        request_id="req-admin-check-secret",
+        metadata={
+            "check": "/private/hunter2",
+            "ok": False,
+            "status_code": 200,
+            "blocker_count": -3,
+            "raw_report": {"secret_path": "/private/hunter2-legacy-report.json"},
         },
     )
     append_runtime_event(
@@ -603,7 +649,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["jobs"]["total"] == 2
     assert status["jobs"]["by_status"] == {"failed": 1, "succeeded": 1}
     assert status["jobs"]["by_kind"] == {"code_execution": 1, "image_generation": 1}
-    assert status["jobs"]["by_owner_id"] == {"lab-admin": 1, "local-user": 1}
+    assert status["jobs"]["owner_count"] == 2
+    assert status["jobs"]["by_ownership_source"] == {"default": 1, "request": 1}
     assert status["jobs"]["dead_lettered"] == 0
     assert status["jobs"]["alert_thresholds"] == {
         "failed_min_events": 1,
@@ -614,7 +661,9 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         for alert in status["jobs"]["alerts"]
     } == {"job_failures_recent"}
     assert status["jobs"]["latest_failed"][0]["job_id"] == "job-fail"
-    assert status["jobs"]["latest_failed"][0]["owner_id"] == "local-user"
+    assert status["jobs"]["latest_failed"][0]["ownership_source"] == "default"
+    assert "owner_id" not in status["jobs"]["latest_failed"][0]
+    assert "owner_label" not in status["jobs"]["latest_failed"][0]
     assert status["jobs"]["storage"]["jsonl_exists"] is True
     assert status["jobs"]["storage"]["sqlite_exists"] is True
     assert status["jobs"]["queue_health"] == {
@@ -639,7 +688,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "latest": [],
     }
     assert status["artifacts"]["total"] == 1
-    assert status["artifacts"]["by_owner_id"] == {"lab-admin": 1}
+    assert status["artifacts"]["owner_count"] == 1
+    assert status["artifacts"]["by_ownership_source"] == {"request": 1}
     assert status["artifacts"]["bytes"] >= 4
     assert status["artifacts"]["storage"]["sqlite_exists"] is True
     assert status["artifacts"]["integrity"]["checked"] == 1
@@ -670,7 +720,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "provider_failure_rate_high",
         "provider_failure_code_repeated",
     }
-    assert status["provider_failures"]["latest"][0]["request_id"] == "req-provider"
+    assert status["provider_failures"]["latest"][0]["request_id_present"] is True
+    assert "request_id" not in status["provider_failures"]["latest"][0]
     assert status["query_usage"]["total_recent"] == 1
     assert status["query_usage"]["by_endpoint"] == {"/query": 1}
     assert status["query_usage"]["by_answer_mode"] == {"explanation": 1}
@@ -692,6 +743,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["query_usage"]["cost_source"] == "not_configured"
     assert status["query_usage"]["pricing"]["configured"] is False
     assert status["query_usage"]["pricing"]["external_billing_enabled"] is False
+    assert status["query_usage"]["latest"][0]["request_id_present"] is True
+    assert "request_id" not in status["query_usage"]["latest"][0]
     assert status["retrieval_traces"]["total_recent"] == 1
     assert status["retrieval_traces"]["by_code"] == {"retrieval_source_page_incomplete": 1}
     assert status["retrieval_traces"]["by_endpoint"] == {"/query/inspect": 1}
@@ -720,6 +773,7 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["retrieval_traces"]["context_count"] == {"avg": 2, "max": 2}
     assert status["retrieval_traces"]["duration_ms"] == {"avg": 21, "max": 21}
     assert status["retrieval_traces"]["latest"][0]["metadata"]["context_count"] == 2
+    assert status["retrieval_traces"]["latest"][0]["request_id_present"] is False
     assert "request_id" not in status["retrieval_traces"]["latest"][0]
     assert status["code_execution"]["total_recent"] == 1
     assert status["code_execution"]["by_code"] == {"execution_policy_violation": 1}
@@ -745,7 +799,10 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "code_execution_artifacts_truncated_recent",
     }
     assert status["code_execution"]["duration_ms"] == {"avg": 37, "max": 37}
-    assert status["code_execution"]["latest"][0]["request_id"] == "req-code"
+    assert status["code_execution"]["latest"][0]["request_id_present"] is True
+    assert status["code_execution"]["latest"][0]["metadata_redacted_fields"] == 1
+    assert "request_id" not in status["code_execution"]["latest"][0]
+    assert "owner_id" not in status["code_execution"]["latest"][0]["metadata"]
     assert status["api_access"]["audit_enabled"] is True
     assert status["api_access"]["total_recent"] == 2
     assert status["api_access"]["by_code"] == {"auth_invalid": 1, "auth_not_configured": 1}
@@ -761,8 +818,35 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "max_requests": 300,
         "window_s": 60,
     }
-    assert status["api_access"]["latest"][0]["request_id"] == "req-rate-limit"
+    assert status["api_access"]["latest"][0]["request_id_present"] is True
+    assert "request_id" not in status["api_access"]["latest"][0]
+    assert "path" not in status["api_access"]["latest"][0]["metadata"]
     assert "secret" not in str(status["api_access"]).casefold()
+    assert status["admin_checks"]["audit_enabled"] is True
+    assert status["admin_checks"]["total_recent"] == 3
+    assert status["admin_checks"]["by_code"] == {
+        "activation_suite_blocked": 1,
+        "invalid": 1,
+        "openapi_contract_ok": 1,
+    }
+    assert status["admin_checks"]["by_check"] == {
+        "activation_suite": 1,
+        "invalid": 1,
+        "openapi_contract": 1,
+    }
+    assert status["admin_checks"]["by_status"] == {"blocked": 2, "ok": 1}
+    assert status["admin_checks"]["ok_recent"] == 1
+    assert status["admin_checks"]["blocked_recent"] == 2
+    assert status["admin_checks"]["blocker_count_total"] == 4
+    assert status["admin_checks"]["latest"][0]["request_id_present"] is False
+    assert status["admin_checks"]["latest"][0]["code"] == "invalid"
+    assert status["admin_checks"]["latest"][0]["metadata"]["check"] == "invalid"
+    assert "request_id" not in status["admin_checks"]["latest"][0]
+    assert "operation_fingerprint" not in str(status["admin_checks"])
+    assert "raw_report" not in str(status["admin_checks"])
+    assert "hunter2" not in str(status["admin_checks"])
+    assert "/private" not in str(status["admin_checks"])
+    assert "secret" not in str(status["admin_checks"]).casefold()
     assert status["upload_scans"]["scan_enabled"] is True
     assert status["upload_scans"]["total_recent"] == 1
     assert status["upload_scans"]["by_code"] == {"upload_scan_blocked": 1}
@@ -778,7 +862,8 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
         "reject_encrypted": True,
         "block_active_content": True,
     }
-    assert status["upload_scans"]["latest"][0]["request_id"] == "req-upload-scan"
+    assert status["upload_scans"]["latest"][0]["request_id_present"] is True
+    assert "request_id" not in status["upload_scans"]["latest"][0]
     assert "secret" not in str(status["upload_scans"]).casefold()
     assert status["corpus"]["status"] == "indexed"
     assert status["corpus"]["papers"] == 1
@@ -878,15 +963,33 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert status["platform_readiness"]["distributed_workers"]["checks"]["distributed_job_store_external_ready"] is False
     assert "distributed_job_store_not_configured" in status["platform_readiness"]["distributed_workers"]["blockers"]
     assert all("path" in item for item in status["runtime_dirs"])
+    serialized_status = str(status).casefold()
+    for sensitive in (
+        "lab-admin",
+        "admin lab",
+        "owner_id",
+        "owner_label",
+        "by_owner_id",
+        "req-provider",
+        "req-usage",
+        "req-code",
+        "req-access",
+        "req-rate-limit",
+        "req-upload-scan",
+        "/admin/status",
+        "/health",
+    ):
+        assert sensitive not in serialized_status
 
     report = format_admin_status_report(status)
     assert "# FluxMind Admin Status" in report
     assert "No-secret local runtime snapshot" in report
     assert "- Total: 2" in report
-    assert "By owner: lab-admin=1, local-user=1" in report
+    assert "Owner count: 2" in report
+    assert "By ownership source: default=1, request=1" in report
     assert "Job alerts:" in report
     assert "job_failures_recent" in report
-    assert "By owner: lab-admin=1" in report
+    assert "Owner count: 1" in report
     assert "job-fail" in report
     assert "provider_timeout" in report
     assert "Estimated total tokens: 9" in report
@@ -904,12 +1007,11 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "Code execution alerts:" in report
     assert "code_execution_policy_violations_recent" in report
     assert "Latest code execution events:" in report
-    assert "req-code" in report
+    assert "request_id_present=true" in report
     assert "## API Access Audit" in report
     assert "By auth status: invalid=1, not_configured=1" in report
     assert "Rate limited: 1" in report
     assert "Latest API access audit events:" in report
-    assert "req-rate-limit" in report
     assert "API access audit enabled: true" in report
     assert "API rate limit enabled: false" in report
     assert "Product quota guard enabled: false" in report
@@ -918,7 +1020,6 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "## Upload Scans" in report
     assert "By reason: active_content_javascript=1" in report
     assert "Latest upload scan events:" in report
-    assert "req-upload-scan" in report
     assert "Upload scan enabled: true" in report
     assert "Upload scan max pages: 500" in report
     assert "Cost source: not_configured" in report
@@ -965,11 +1066,38 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert "retrieval_source_page_incomplete_rate_high" in report
     assert "Retrieval trace alert min events: 1" in report
     assert "Retrieval trace alert source/page incomplete rate: 0.5" in report
+    assert "## Admin Check Events" in report
+    assert "By check: activation_suite=1, invalid=1, openapi_contract=1" in report
+    assert "By code: activation_suite_blocked=1, invalid=1, openapi_contract_ok=1" in report
+    assert "Blocked checks: 2" in report
+    assert "Latest admin check events:" in report
     assert "Content scanned: false" in report
     assert "faiss_index" in report
-    assert "req-usage" in report
     assert "postgres://" not in report
     assert "api_key" not in report.lower()
+    for sensitive in (
+        "lab-admin",
+        "admin lab",
+        "owner_id",
+        "owner_label",
+        "by_owner_id",
+        "req-provider",
+        "req-usage",
+        "req-code",
+        "req-access",
+        "req-rate-limit",
+        "req-admin-check-ok",
+        "req-admin-check-blocked",
+        "req-admin-check-secret",
+        "req-upload-scan",
+        "path=/admin/status",
+        "path=/health",
+        "private-fingerprint",
+        "/private",
+        "secret-/private",
+        "hunter2",
+    ):
+        assert sensitive not in report.casefold()
 
     metrics = format_admin_metrics(status)
     assert "# HELP fluxmind_jobs_total" in metrics
@@ -996,6 +1124,15 @@ def test_collect_admin_status_summarizes_local_runtime(tmp_path, monkeypatch):
     assert 'fluxmind_code_execution_by_code{code="execution_policy_violation"} 1' in metrics
     assert 'fluxmind_api_access_by_token_status{token_status="invalid"} 1' in metrics
     assert 'fluxmind_api_access_by_status_code{status_code="429"} 1' in metrics
+    assert "fluxmind_admin_checks_recent_total 3" in metrics
+    assert 'fluxmind_admin_checks_by_check{check="openapi_contract"} 1' in metrics
+    assert 'fluxmind_admin_checks_by_check{check="activation_suite"} 1' in metrics
+    assert 'fluxmind_admin_checks_by_check{check="invalid"} 1' in metrics
+    assert 'fluxmind_admin_checks_by_code{code="activation_suite_blocked"} 1' in metrics
+    assert 'fluxmind_admin_checks_by_code{code="invalid"} 1' in metrics
+    assert "fluxmind_admin_checks_ok_recent 1" in metrics
+    assert "fluxmind_admin_checks_blocked_recent 2" in metrics
+    assert "fluxmind_admin_checks_blocker_count_total 4" in metrics
     assert 'fluxmind_upload_scans_by_reason{reason="active_content_javascript"} 1' in metrics
     assert "fluxmind_retention_delete_enabled 0" in metrics
     assert "fluxmind_provider_local_foundation_ready 1" in metrics
@@ -1188,7 +1325,13 @@ def test_storage_inventory_status_reports_local_counts_without_content(tmp_path,
     assert {
         item["name"]
         for item in groups["metadata"]["known_files"]
-    } >= {"corpus_json", "api_key_registry_sqlite", "product_registry_sqlite", "runtime_events_jsonl"}
+    } >= {
+        "corpus_json",
+        "api_key_registry_sqlite",
+        "product_registry_sqlite",
+        "share_link_registry_sqlite",
+        "runtime_events_jsonl",
+    }
     assert groups["uploads"]["files"] == 1
     assert groups["faiss_index"]["bytes"] == 5
 
@@ -1227,6 +1370,32 @@ def test_collect_retention_preview_lists_old_uploads_and_artifacts(tmp_path, mon
     assert preview["uploads"]["candidates"][0]["path"] == "papers/uploads/old.pdf"
     assert preview["artifacts"]["total_candidates"] == 1
     assert preview["artifacts"]["candidates"][0]["path"] == "artifacts/old.txt"
+
+
+def test_collect_retention_preview_skips_symlinks_without_exposing_targets(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    outside = tmp_path / "outside-secret.pdf"
+    uploads_dir = root / "papers" / "uploads"
+    artifacts_dir = root / "artifacts"
+    uploads_dir.mkdir(parents=True)
+    artifacts_dir.mkdir(parents=True)
+    outside.write_bytes(b"outside")
+    (uploads_dir / "linked.pdf").symlink_to(outside)
+    now = 1_800_000_000.0
+    old = now - 10 * 24 * 60 * 60
+    os.utime(outside, (old, old))
+
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.admin.PAPERS_UPLOADS_DIR", uploads_dir)
+    monkeypatch.setattr("src.admin.ARTIFACTS_DIR", artifacts_dir)
+
+    preview = collect_retention_preview(upload_days=7, artifact_days=7, now_ts=now)
+    payload = json.dumps(preview, ensure_ascii=False, sort_keys=True)
+
+    assert preview["uploads"]["total_candidates"] == 0
+    assert preview["uploads"]["candidates"] == []
+    assert "outside-secret" not in payload
+    assert "linked.pdf" not in payload
 
 
 def test_apply_retention_delete_disabled_keeps_candidates(tmp_path, monkeypatch):
@@ -1307,6 +1476,46 @@ def test_apply_retention_delete_removes_only_age_matched_candidates(tmp_path, mo
     assert event["metadata"]["upload_deleted_files"] == 1
     assert event["metadata"]["artifact_deleted_files"] == 1
     assert "old.pdf" not in json.dumps(event, ensure_ascii=False)
+
+
+def test_delete_retention_candidates_rejects_symlink_candidate_without_following(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    uploads_dir = root / "papers" / "uploads"
+    uploads_dir.mkdir(parents=True)
+    protected = uploads_dir / "protected.pdf"
+    linked = uploads_dir / "old.pdf"
+    protected.write_bytes(b"protected")
+    linked.symlink_to(protected)
+
+    def fake_candidates(*_args, **_kwargs):
+        return {
+            "enabled": True,
+            "retention_days": 7,
+            "total_candidates": 1,
+            "bytes": 9,
+            "candidates": [
+                {
+                    "path": "papers/uploads/old.pdf",
+                    "bytes": 9,
+                    "age_days": 10,
+                }
+            ],
+        }
+
+    monkeypatch.setattr("src.admin.PROJECT_ROOT", root)
+    monkeypatch.setattr(admin, "_retention_candidates", fake_candidates)
+
+    result = admin._delete_retention_candidates(
+        uploads_dir,
+        retention_days=7,
+        limit=100,
+        now_ts=1_800_000_000.0,
+    )
+
+    assert result["deleted_files"] == 0
+    assert result["failed_files"] == 1
+    assert protected.read_bytes() == b"protected"
+    assert linked.is_symlink()
 
 
 def test_corpus_index_status_reports_stale_chunks(tmp_path, monkeypatch):

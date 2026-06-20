@@ -108,28 +108,42 @@ def main() -> int:
         "src/admin.py",
         "src/runtime.py",
         "src/api_keys.py",
+        "src/share_links.py",
         "src/metadata.py",
+        "src/activation_suite.py",
+        "src/collaboration_readiness.py",
+        "src/openapi_contract.py",
         "src/storage_manifest.py",
         "src/storage_schema.py",
         "src/platform_migration.py",
         "src/storage_migration.py",
         "src/product_readiness.py",
+        "src/product_activation_rehearsal.py",
         "src/product_registry.py",
+        "src/provider_guard.py",
         "src/provider_readiness.py",
+        "src/provider_runtime_rehearsal.py",
         "src/quality_readiness.py",
         "src/evaluation.py",
         "src/execution_templates.py",
         "eval/rag_baseline.json",
+        "scripts/_safe_cli.py",
         "scripts/evaluate_rag.py",
+        "scripts/activation_suite.py",
+        "scripts/collaboration_readiness.py",
+        "scripts/openapi_contract.py",
         "scripts/runtime_manifest.py",
         "scripts/storage_schema.py",
         "scripts/platform_migration_preflight.py",
         "scripts/platform_migration_rehearsal.py",
         "scripts/product_readiness.py",
+        "scripts/product_activation_rehearsal.py",
         "scripts/product_registry.py",
         "scripts/provider_readiness.py",
+        "scripts/provider_runtime_rehearsal.py",
         "scripts/quality_readiness.py",
         "scripts/api_key_registry.py",
+        "scripts/share_link_registry.py",
         "scripts/deploy_sync.py",
         "scripts/run_job_worker.py",
         "deploy/systemd/fluxmind-worker.service",
@@ -237,6 +251,14 @@ def main() -> int:
         failures,
     )
     check(
+        "collect_platform_migration_rehearsal" in storage_migration_source
+        and "storage_migration_rehearsal_public_status" in storage_migration_source
+        and "raw_manifests_included" in storage_migration_source
+        and "paths_exported" in storage_migration_source,
+        "storage migration rehearsal public projection installed",
+        failures,
+    )
+    check(
         "collect_object_storage_migration_manifest" in storage_migration_source
         and "source_paths_exported" in storage_migration_source
         and "object_key_strategy" in storage_migration_source,
@@ -248,6 +270,21 @@ def main() -> int:
         and "object_storage_migration_manifest_verify" in storage_migration_source
         and "object_differences" in storage_migration_source,
         "object storage migration manifest verifier installed",
+        failures,
+    )
+    check(
+        "collect_job_store_migration_manifest" in storage_migration_source
+        and "job_store_migration_manifest" in storage_migration_source
+        and "payload_exported" in storage_migration_source
+        and "owner_ids_exported" in storage_migration_source,
+        "job-store migration manifest installed",
+        failures,
+    )
+    check(
+        "verify_job_store_migration_manifest" in storage_migration_source
+        and "job_store_migration_manifest_verify" in storage_migration_source
+        and "job_differences" in storage_migration_source,
+        "job-store migration manifest verifier installed",
         failures,
     )
     storage_migration_cli = (
@@ -265,6 +302,22 @@ def main() -> int:
         and "--object-key-prefix" in storage_migration_cli
         and "--verify-object-manifest" in storage_migration_cli,
         "platform migration rehearsal object manifest CLI installed",
+        failures,
+    )
+    check(
+        "--include-job-store-manifest" in storage_migration_cli
+        and "--verify-job-store-manifest" in storage_migration_cli
+        and "verify_job_store_migration_manifest" in storage_migration_cli,
+        "platform migration rehearsal job-store manifest CLI installed",
+        failures,
+    )
+    api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
+    check(
+        "collect_platform_migration_rehearsal" in api_source
+        and '"/admin/platform-migration-rehearsal"' in api_source
+        and '"/admin/platform-migration-rehearsal/report"' in api_source
+        and "fluxmind-platform-migration-rehearsal.md" in api_source,
+        "platform migration rehearsal admin API installed",
         failures,
     )
     product_readiness_source = (PROJECT_ROOT / "src" / "product_readiness.py").read_text(
@@ -293,6 +346,87 @@ def main() -> int:
         "product readiness CLI installed",
         failures,
     )
+    product_rehearsal_source = (
+        PROJECT_ROOT / "src" / "product_activation_rehearsal.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "collect_product_activation_rehearsal" in product_rehearsal_source
+        and "quota_exceeded" in product_rehearsal_source
+        and "product_role_forbidden" in product_rehearsal_source
+        and "token_exported" in product_rehearsal_source,
+        "product activation rehearsal collector installed",
+        failures,
+    )
+    check(
+        "workspace_isolation" in product_rehearsal_source
+        and "viewer_cross_workspace_query_denied" in product_rehearsal_source
+        and "owner_cross_workspace_admin_denied" in product_rehearsal_source
+        and "share_links_enabled" in product_rehearsal_source
+        and "private_corpora_enabled" in product_rehearsal_source,
+        "product activation rehearsal exercises workspace isolation",
+        failures,
+    )
+    check(
+        "format_product_activation_rehearsal_markdown" in product_rehearsal_source
+        and "secrets_exported" in product_rehearsal_source
+        and "paths_exported" in product_rehearsal_source,
+        "product activation rehearsal no-secret markdown installed",
+        failures,
+    )
+    check(
+        "collect_product_activation_rehearsal" in api_source
+        and '"/admin/product-activation-rehearsal"' in api_source
+        and '"/admin/product-activation-rehearsal/report"' in api_source
+        and "fluxmind-product-activation-rehearsal.md" in api_source,
+        "product activation rehearsal admin API installed",
+        failures,
+    )
+    product_rehearsal_cli = (
+        PROJECT_ROOT / "scripts" / "product_activation_rehearsal.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "--require-activation" in product_rehearsal_cli
+        and "collect_product_activation_rehearsal" in product_rehearsal_cli,
+        "product activation rehearsal CLI installed",
+        failures,
+    )
+    collaboration_source = (
+        PROJECT_ROOT / "src" / "collaboration_readiness.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "collect_collaboration_readiness" in collaboration_source
+        and "private_corpora_disabled" in collaboration_source
+        and "share_links_disabled" in collaboration_source
+        and "share_link_registry_backend_status" in collaboration_source
+        and "collaboration_guard_not_ready" in collaboration_source,
+        "collaboration readiness collector installed",
+        failures,
+    )
+    check(
+        "format_collaboration_readiness_markdown" in collaboration_source
+        and "share_tokens_exported" in collaboration_source
+        and "share_urls_exported" in collaboration_source
+        and "identifiers_exported" in collaboration_source,
+        "collaboration readiness no-secret markdown installed",
+        failures,
+    )
+    collaboration_cli = (
+        PROJECT_ROOT / "scripts" / "collaboration_readiness.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "--require-activation" in collaboration_cli
+        and "collect_collaboration_readiness" in collaboration_cli,
+        "collaboration readiness CLI installed",
+        failures,
+    )
+    check(
+        "collect_collaboration_readiness" in api_source
+        and '"/admin/collaboration-readiness"' in api_source
+        and '"/admin/collaboration-readiness/report"' in api_source
+        and "fluxmind-collaboration-readiness.md" in api_source,
+        "collaboration readiness admin API installed",
+        failures,
+    )
     api_keys_source = (PROJECT_ROOT / "src" / "api_keys.py").read_text(encoding="utf-8")
     check(
         "LocalApiKeyRegistry" in api_keys_source
@@ -316,6 +450,48 @@ def main() -> int:
         and "verify" in api_key_registry_cli
         and "list" in api_key_registry_cli,
         "local API key registry CLI installed",
+        failures,
+    )
+    check(
+        'args.command == "create" and args.format != "json"' in api_key_registry_cli
+        and "requires --format json" in api_key_registry_cli,
+        "local API key registry create requires JSON one-time token output",
+        failures,
+    )
+    share_link_source = (PROJECT_ROOT / "src" / "share_links.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "LocalShareLinkRegistry" in share_link_source
+        and "token_hash" in share_link_source
+        and "revoke_link" in share_link_source
+        and "resolve_token" in share_link_source,
+        "local share-link registry installed",
+        failures,
+    )
+    check(
+        "share_link_registry_backend_status" in share_link_source
+        and "share_tokens_exported" in share_link_source
+        and "share_urls_exported" in share_link_source
+        and "resource_ref_fingerprint" in share_link_source,
+        "local share-link registry no-secret status installed",
+        failures,
+    )
+    share_link_registry_cli = (PROJECT_ROOT / "scripts" / "share_link_registry.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "create" in share_link_registry_cli
+        and "revoke" in share_link_registry_cli
+        and "resolve" in share_link_registry_cli
+        and "list" in share_link_registry_cli,
+        "local share-link registry CLI installed",
+        failures,
+    )
+    check(
+        'args.command == "create" and args.format != "json"' in share_link_registry_cli
+        and "one-time share token" in share_link_registry_cli,
+        "local share-link registry create requires JSON one-time token output",
         failures,
     )
     product_registry_source = (PROJECT_ROOT / "src" / "product_registry.py").read_text(
@@ -375,7 +551,8 @@ def main() -> int:
     check(
         "collect_provider_readiness" in provider_readiness_source
         and "external_image_provider_not_configured" in provider_readiness_source
-        and "matlab_backend_not_configured" in provider_readiness_source,
+        and "matlab_backend_not_configured" in provider_readiness_source
+        and "provider_quota_guard_invalid_limit" in provider_readiness_source,
         "provider readiness collector installed",
         failures,
     )
@@ -393,6 +570,81 @@ def main() -> int:
         "--require-activation" in provider_readiness_cli
         and "local_foundation_ready" in provider_readiness_cli,
         "provider readiness CLI installed",
+        failures,
+    )
+    provider_guard_source = (PROJECT_ROOT / "src" / "provider_guard.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "provider_quota_guard_decision" in provider_guard_source
+        and "provider_prompt_token_limit_exceeded" in provider_guard_source
+        and "provider_cost_limit_exceeded" in provider_guard_source,
+        "provider quota/cost guard decision installed",
+        failures,
+    )
+    chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
+    runtime_source = (PROJECT_ROOT / "src" / "runtime.py").read_text(encoding="utf-8")
+    check(
+        "ProviderQuotaGuardError" in runtime_source
+        and "ProviderQuotaGuardError" in chain_source,
+        "provider quota/cost guard denial error installed",
+        failures,
+    )
+    check(
+        "sanitize_runtime_event_message" in runtime_source
+        and "sk-[A-Za-z0-9_-]{8,}" in runtime_source
+        and "SAFE_RUNTIME_EVENT_MESSAGE_REDACTION" in runtime_source,
+        "runtime event messages redact bare secret-like tokens",
+        failures,
+    )
+    provider_rehearsal_source = (
+        PROJECT_ROOT / "src" / "provider_runtime_rehearsal.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "collect_provider_runtime_rehearsal" in provider_rehearsal_source
+        and "MockImageGenerationProvider" in provider_rehearsal_source
+        and "LocalPythonExecutionProvider" in provider_rehearsal_source
+        and "LocalOctaveExecutionProvider" in provider_rehearsal_source,
+        "provider runtime rehearsal collector installed",
+        failures,
+    )
+    check(
+        "format_provider_runtime_rehearsal_markdown" in provider_rehearsal_source
+        and "external_activation_ready" in provider_rehearsal_source
+        and "paths_exported" in provider_rehearsal_source,
+        "provider runtime rehearsal no-secret markdown installed",
+        failures,
+    )
+    check(
+        "provider_quota_guard_decision" in provider_rehearsal_source
+        and "provider_prompt_token_limit_exceeded" in provider_rehearsal_source,
+        "provider runtime rehearsal exercises quota guard",
+        failures,
+    )
+    check(
+        "_policy_violation_summary" in provider_rehearsal_source
+        and "python_import_not_allowed" in provider_rehearsal_source
+        and "python_call_not_allowed" in provider_rehearsal_source
+        and "octave_shell_call" in provider_rehearsal_source
+        and "Execution Abuse Policy" in provider_rehearsal_source,
+        "provider runtime rehearsal exercises execution abuse policy",
+        failures,
+    )
+    provider_rehearsal_cli = (
+        PROJECT_ROOT / "scripts" / "provider_runtime_rehearsal.py"
+    ).read_text(encoding="utf-8")
+    check(
+        "--require-local-foundation" in provider_rehearsal_cli
+        and "collect_provider_runtime_rehearsal" in provider_rehearsal_cli,
+        "provider runtime rehearsal CLI installed",
+        failures,
+    )
+    check(
+        "collect_provider_runtime_rehearsal" in api_source
+        and '"/admin/provider-runtime-rehearsal"' in api_source
+        and '"/admin/provider-runtime-rehearsal/report"' in api_source
+        and "fluxmind-provider-runtime-rehearsal.md" in api_source,
+        "provider runtime rehearsal admin API installed",
         failures,
     )
     quality_readiness_source = (PROJECT_ROOT / "src" / "quality_readiness.py").read_text(
@@ -415,8 +667,31 @@ def main() -> int:
     check(
         "format_quality_readiness_markdown" in quality_readiness_source
         and "secrets_exported" in quality_readiness_source
-        and "paths_exported" in quality_readiness_source,
+        and "paths_exported" in quality_readiness_source
+        and "Target Gap Summary" in quality_readiness_source,
         "quality readiness no-secret markdown installed",
+        failures,
+    )
+    check(
+        "_target_gap_summary" in quality_readiness_source
+        and "count_gaps" in quality_readiness_source
+        and "quality_gaps" in quality_readiness_source,
+        "quality readiness target gap summary installed",
+        failures,
+    )
+    check(
+        "_evidence_requests" in quality_readiness_source
+        and "next_evidence_request" in quality_readiness_source
+        and "## Evidence Requests" in quality_readiness_source,
+        "quality readiness evidence request summary installed",
+        failures,
+    )
+    check(
+        "_evidence_collection_plan" in quality_readiness_source
+        and "community_evidence_plan" in quality_readiness_source
+        and "next_evidence_plan" in quality_readiness_source
+        and "## Evidence Collection Plan" in quality_readiness_source,
+        "quality readiness evidence collection plan installed",
         failures,
     )
     quality_readiness_cli = (PROJECT_ROOT / "scripts" / "quality_readiness.py").read_text(
@@ -427,6 +702,207 @@ def main() -> int:
         and "--live-report" in quality_readiness_cli
         and "local_foundation_ready" in quality_readiness_cli,
         "quality readiness CLI installed",
+        failures,
+    )
+    check(
+        "collect_quality_readiness" in api_source
+        and '"/admin/quality-readiness"' in api_source
+        and '"/admin/quality-readiness/report"' in api_source
+        and "fluxmind-quality-readiness.md" in api_source,
+        "quality readiness admin API installed",
+        failures,
+    )
+    check(
+        "admin_quality_readiness_with_report" in api_source
+        and "QualityReadinessRequest" in api_source
+        and "live_reports=live_reports" in api_source
+        and "QualityReadinessResponse" in api_source,
+        "quality readiness admin API live-report input installed",
+        failures,
+    )
+    activation_suite_source = (PROJECT_ROOT / "src" / "activation_suite.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "collect_activation_suite" in activation_suite_source
+        and "collect_product_readiness" in activation_suite_source
+        and "collect_product_activation_rehearsal" in activation_suite_source
+        and "collect_collaboration_readiness" in activation_suite_source
+        and "collect_provider_runtime_rehearsal" in activation_suite_source
+        and "run_storage_migration_rehearsal" in activation_suite_source
+        and "collect_quality_readiness" in activation_suite_source,
+        "activation suite collector installed",
+        failures,
+    )
+    check(
+        "collect_openapi_contract" in activation_suite_source
+        and "openapi_schema" in activation_suite_source
+        and '"openapi_contract.ok"' in activation_suite_source,
+        "activation suite OpenAPI contract gate installed",
+        failures,
+    )
+    check(
+        "format_activation_suite_markdown" in activation_suite_source
+        and "raw_reports_included" in activation_suite_source
+        and "paths_exported" in activation_suite_source
+        and "full_activation_ready" in activation_suite_source,
+        "activation suite no-secret markdown installed",
+        failures,
+    )
+    check(
+        "_next_quality_evidence" in activation_suite_source
+        and "next_evidence_target" in activation_suite_source
+        and "## Next Quality Evidence" in activation_suite_source,
+        "activation suite next quality evidence summary installed",
+        failures,
+    )
+    check(
+        "_activation_action_plan" in activation_suite_source
+        and "activation_action_plan" in activation_suite_source
+        and 'area="product_readiness"' in activation_suite_source
+        and 'area="collaboration_readiness"' in activation_suite_source
+        and 'area="openapi_contract"' in activation_suite_source
+        and "collaboration_activation_not_ready" in activation_suite_source
+        and "product_readiness_activation_not_ready" in activation_suite_source
+        and "## Activation Action Plan" in activation_suite_source,
+        "activation suite full activation action plan installed",
+        failures,
+    )
+    check(
+        "collect_activation_suite" in api_source
+        and '"/admin/activation-suite"' in api_source
+        and '"/admin/activation-suite/report"' in api_source
+        and "fluxmind-activation-suite.md" in api_source,
+        "activation suite admin API installed",
+        failures,
+    )
+    check(
+        "admin_activation_suite" in api_source
+        and "admin_activation_suite_with_report" in api_source
+        and "ActivationSuiteRequest" in api_source
+        and "live_reports=live_reports" in api_source
+        and "openapi_schema=app.openapi()" in api_source
+        and "verify_api_token" in api_source
+        and "ActivationSuiteResponse" in api_source,
+        "activation suite admin API auth and live-report input installed",
+        failures,
+    )
+    activation_suite_cli = (PROJECT_ROOT / "scripts" / "activation_suite.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "--require-target" in activation_suite_cli
+        and "full_activation" in activation_suite_cli
+        and "collect_activation_suite" in activation_suite_cli,
+        "activation suite CLI installed",
+        failures,
+    )
+    check(
+        "_load_openapi_schema" in activation_suite_cli
+        and "api.app.openapi()" in activation_suite_cli
+        and "openapi_schema=_load_openapi_schema()" in activation_suite_cli,
+        "activation suite CLI OpenAPI contract input installed",
+        failures,
+    )
+    openapi_contract_source = (PROJECT_ROOT / "src" / "openapi_contract.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "collect_openapi_contract" in openapi_contract_source
+        and "REQUIRED_PATH_METHODS" in openapi_contract_source
+        and "protected_auth_headers_missing" in openapi_contract_source
+        and "operation_fingerprint" in openapi_contract_source,
+        "OpenAPI contract collector installed",
+        failures,
+    )
+    check(
+        "verify_openapi_contract_snapshot" in openapi_contract_source
+        and "format_openapi_contract_snapshot_verify_markdown" in openapi_contract_source
+        and "snapshot_contract_drift" in openapi_contract_source,
+        "OpenAPI contract snapshot verifier installed",
+        failures,
+    )
+    check(
+        "snapshot_contract_shape_invalid" in openapi_contract_source
+        and "snapshot_raw_schema_included" in openapi_contract_source
+        and "snapshot_valid" in openapi_contract_source,
+        "OpenAPI contract snapshot verifier no-secret projection installed",
+        failures,
+    )
+    check(
+        "format_openapi_contract_markdown" in openapi_contract_source
+        and "raw_schema_exported" in openapi_contract_source
+        and "paths_exported" in openapi_contract_source
+        and "secrets_exported" in openapi_contract_source,
+        "OpenAPI contract no-secret markdown installed",
+        failures,
+    )
+    openapi_contract_cli = (PROJECT_ROOT / "scripts" / "openapi_contract.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "--require-local-contract" in openapi_contract_cli
+        and "--verify-snapshot" in openapi_contract_cli
+        and "--require-no-drift" in openapi_contract_cli
+        and "collect_openapi_contract" in openapi_contract_cli
+        and "api.app.openapi()" in openapi_contract_cli,
+        "OpenAPI contract CLI installed",
+        failures,
+    )
+    safe_cli_source = (PROJECT_ROOT / "scripts" / "_safe_cli.py").read_text(
+        encoding="utf-8"
+    )
+    no_secret_cli_sources = [
+        (PROJECT_ROOT / "scripts" / path).read_text(encoding="utf-8")
+        for path in (
+            "product_readiness.py",
+            "provider_readiness.py",
+            "quality_readiness.py",
+            "product_activation_rehearsal.py",
+            "collaboration_readiness.py",
+            "provider_runtime_rehearsal.py",
+            "activation_suite.py",
+            "openapi_contract.py",
+            "platform_migration_preflight.py",
+            "platform_migration_rehearsal.py",
+            "storage_schema.py",
+        )
+    ]
+    check(
+        "def format_os_error" in safe_cli_source
+        and "sanitize_cli_error_message" in safe_cli_source
+        and "SENSITIVE_CLI_ERROR_PATTERNS" in safe_cli_source
+        and "CLI_ERROR_REDACTION" in safe_cli_source
+        and all("format_os_error" in source for source in no_secret_cli_sources)
+        and all("error: {format_os_error(exc)}" in source for source in no_secret_cli_sources),
+        "no-secret readiness CLI OS errors omit raw paths",
+        failures,
+    )
+    check(
+        "collect_openapi_contract" in api_source
+        and '"/admin/openapi-contract"' in api_source
+        and '"/admin/openapi-contract/report"' in api_source
+        and '"/admin/openapi-contract/verify"' in api_source
+        and '"/admin/openapi-contract/verify/report"' in api_source
+        and "fluxmind-openapi-contract.md" in api_source,
+        "OpenAPI contract admin API installed",
+        failures,
+    )
+    check(
+        "record_admin_check_event" in api_source
+        and 'kind="admin_check"' in api_source
+        and "_record_openapi_contract_check" in api_source
+        and "_record_collaboration_readiness_check" in api_source
+        and "_record_activation_suite_check" in api_source,
+        "admin readiness check runtime events installed",
+        failures,
+    )
+    admin_source = (PROJECT_ROOT / "src" / "admin.py").read_text(encoding="utf-8")
+    check(
+        "admin_checks" in admin_source
+        and "fluxmind_admin_checks_recent_total" in admin_source
+        and "_admin_check_event_admin_dict" in admin_source,
+        "admin readiness check status summary installed",
         failures,
     )
 
@@ -440,15 +916,103 @@ def main() -> int:
     check("PYTHON_EXECUTION_TEMPLATES" in app_source and "python_execution_template" in app_source, "Streamlit Python execution templates installed", failures)
     check("OCTAVE_EXECUTION_TEMPLATES" in app_source and "octave_execution_template" in app_source, "Streamlit Octave execution templates installed", failures)
     check("render_admin_status" in app_source, "Streamlit admin status panel installed", failures)
+    check(
+        "collect_product_activation_rehearsal" in app_source
+        and "run_product_activation_rehearsal" in app_source
+        and "product_activation_rehearsal_status" in app_source
+        and "format_product_activation_rehearsal_markdown" in app_source,
+        "Streamlit product activation rehearsal on-demand panel installed",
+        failures,
+    )
+    check(
+        "collect_collaboration_readiness" in app_source
+        and "run_collaboration_readiness" in app_source
+        and "collaboration_readiness_status" in app_source
+        and "format_collaboration_readiness_markdown" in app_source,
+        "Streamlit collaboration readiness on-demand panel installed",
+        failures,
+    )
+    check(
+        "collect_provider_runtime_rehearsal" in app_source
+        and "run_provider_runtime_rehearsal" in app_source
+        and "provider_runtime_rehearsal_status" in app_source
+        and "format_provider_runtime_rehearsal_markdown" in app_source,
+        "Streamlit provider runtime rehearsal on-demand panel installed",
+        failures,
+    )
+    check(
+        "collect_quality_readiness" in app_source
+        and "run_quality_readiness" in app_source
+        and "quality_readiness_status" in app_source,
+        "Streamlit quality readiness on-demand panel installed",
+        failures,
+    )
+    check(
+        "quality_readiness_live_report" in app_source
+        and "json.loads(quality_readiness_live_report" in app_source
+        and "format_quality_readiness_markdown" in app_source,
+        "Streamlit quality readiness live-report upload installed",
+        failures,
+    )
+    check(
+        "collect_activation_suite" in app_source
+        and "run_activation_suite" in app_source
+        and "activation_suite_status" in app_source,
+        "Streamlit activation suite on-demand panel installed",
+        failures,
+    )
+    check(
+        "activation_suite_live_report" in app_source
+        and "json.loads(activation_suite_live_report" in app_source
+        and "live_reports=live_reports" in app_source,
+        "Streamlit activation suite live-report upload installed",
+        failures,
+    )
+    check(
+        "local_foundation_requires" in app_source
+        and "OpenAPI contract" in app_source
+        and "openapi_schema=api.app.openapi()" in app_source,
+        "Streamlit activation suite OpenAPI contract input installed",
+        failures,
+    )
+    check(
+        "collect_openapi_contract" in app_source
+        and "run_openapi_contract" in app_source
+        and "openapi_contract_status" in app_source
+        and "run_openapi_contract_verify" in app_source
+        and "openapi_contract_verify_status" in app_source
+        and "format_openapi_contract_markdown" in app_source,
+        "Streamlit OpenAPI contract on-demand panel installed",
+        failures,
+    )
     check("render_retention_preview" in app_source and "collect_retention_preview" in app_source, "Streamlit retention preview panel installed", failures)
     check("retention_delete" in app_source and "apply_retention_delete" in app_source, "Streamlit retention delete guard installed", failures)
-    check("render_runtime_events" in app_source and "event_kind_filter" in app_source, "Streamlit runtime events panel installed", failures)
+    check(
+        "render_runtime_events" in app_source
+        and "event_kind_filter" in app_source
+        and "runtime_event_to_safe_dict(event, include_request_id=False)" in app_source
+        and "event.__dict__" not in app_source,
+        "Streamlit runtime events panel installed",
+        failures,
+    )
+    check(
+        "RUNTIME_EVENT_KIND_FILTER_OPTIONS" in app_source
+        and "provider_quota_guard" in app_source
+        and "product_quota" in app_source
+        and "product_rbac" in app_source
+        and "product_registry_admin" in app_source
+        and "share_link_admin" in app_source
+        and "admin_check" in app_source,
+        "Streamlit runtime event guard filters installed",
+        failures,
+    )
     check("status_provider_failures" in app_source, "Streamlit provider failure status panel installed", failures)
     check("status_query_usage" in app_source, "Streamlit query usage status panel installed", failures)
     check("status_retrieval_traces" in app_source and "retrieval_trace" in app_source, "Streamlit retrieval trace status panel installed", failures)
     check("status_cost_pricing" in app_source, "Streamlit query cost pricing panel installed", failures)
     check("status_code_execution" in app_source and "alert_thresholds" in app_source, "Streamlit code execution alert status installed", failures)
     check("status_api_access" in app_source and '"api_access"' in app_source, "Streamlit API access audit status installed", failures)
+    check("status_admin_checks" in app_source and '"admin_checks"' in app_source, "Streamlit admin check status installed", failures)
     check("rate_limited_recent" in app_source and '"rate_limit"' in app_source, "Streamlit API rate-limit status installed", failures)
     check("download_admin_metrics" in app_source and "format_admin_metrics" in app_source, "Streamlit metrics download installed", failures)
     check("status_execution_policy" in app_source and "code_execution_allowed_imports" in app_source, "Streamlit execution policy status installed", failures)
@@ -457,11 +1021,38 @@ def main() -> int:
     check("status_storage_inventory" in app_source, "Streamlit storage inventory panel installed", failures)
     check("status_storage_schemas" in app_source and "storage_schemas" in app_source, "Streamlit storage schema panel installed", failures)
     check("status_platform_readiness" in app_source and "platform_readiness" in app_source, "Streamlit platform readiness panel installed", failures)
+    check(
+        "collect_platform_migration_rehearsal" in app_source
+        and "run_platform_migration_rehearsal" in app_source
+        and "platform_migration_rehearsal_status" in app_source
+        and "format_storage_migration_rehearsal_markdown" in app_source,
+        "Streamlit platform migration rehearsal on-demand panel installed",
+        failures,
+    )
     check("status_product_readiness" in app_source and "product_readiness" in app_source, "Streamlit product readiness panel installed", failures)
     check(
         "render_product_registry_management" in app_source
         and "product_registry_management" in app_source,
         "Streamlit product registry management panel installed",
+        failures,
+    )
+    check(
+        "STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED" in app_source
+        and '"management_enabled": STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' in app_source
+        and "if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:" in app_source
+        and app_source.find("if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:")
+        < app_source.find("registry = LocalProductRegistry()"),
+        "Streamlit product registry management requires explicit enable flag",
+        failures,
+    )
+    check(
+        "STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED" in app_source
+        and '"management_enabled": STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' in app_source
+        and "if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:" in app_source
+        and "type=\"password\"" in app_source
+        and app_source.find("if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:")
+        < app_source.find("registry = LocalShareLinkRegistry()"),
+        "Streamlit share-link management requires explicit enable flag",
         failures,
     )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
@@ -489,6 +1080,31 @@ def main() -> int:
         "API product registry management routes installed",
         failures,
     )
+    check(
+        "/admin/share-links/status" in api_source
+        and "/admin/share-links/{link_id}/revoke" in api_source
+        and "admin_share_link_create" in api_source
+        and "admin_share_link_resolve" in api_source,
+        "API share-link registry management routes installed",
+        failures,
+    )
+    check(
+        "record_share_link_admin_event" in api_source
+        and 'kind="share_link_admin"' in api_source
+        and "share_tokens_exported" in api_source
+        and "share_urls_exported" in api_source,
+        "API share-link admin events are no-secret",
+        failures,
+    )
+    check(
+        "def enforce_product_registry_admin_read" in api_source
+        and api_source.count("enforce_product_registry_admin_read(") >= 4
+        and 'endpoint="/admin/product-registry/workspaces"' in api_source
+        and 'endpoint="/admin/product-registry/workspaces/{workspace_id}"' in api_source
+        and 'endpoint="/admin/product-registry/permissions/check"' in api_source,
+        "API product registry read routes use local product RBAC guard",
+        failures,
+    )
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
     check("/admin/status" in api_source, "admin status route installed", failures)
@@ -504,6 +1120,12 @@ def main() -> int:
         "PRODUCT_REGISTRY_FILE" in storage_manifest_source
         and "product_registry_sqlite" in storage_manifest_source,
         "runtime manifest includes product registry state",
+        failures,
+    )
+    check(
+        "SHARE_LINK_TOKEN_STORE_FILE" in storage_manifest_source
+        and "share_link_registry_sqlite" in storage_manifest_source,
+        "runtime manifest includes share-link registry state",
         failures,
     )
     check("/admin/runtime-manifest/restore-check" in api_source and "collect_runtime_restore_check" in api_source, "admin runtime restore-check route installed", failures)
@@ -534,6 +1156,15 @@ def main() -> int:
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     check("status: str | None" in api_source and "kind: str | None" in api_source and "q=q" in api_source, "job metadata filters installed", failures)
+    job_summary_start = api_source.find("def job_summary_to_dict")
+    job_summary_end = api_source.find("\ndef existing_idempotent_job", job_summary_start)
+    job_summary_source = api_source[job_summary_start:job_summary_end]
+    check(
+        "owner_label_present" in job_summary_source
+        and '"owner_label":' not in job_summary_source,
+        "job list summaries avoid raw owner labels",
+        failures,
+    )
     check("idempotency_key" in api_source and "existing_idempotent_job" in api_source, "job idempotency API installed", failures)
     check("owner_id: str | None" in api_source and "request_ownership" in api_source, "API ownership metadata fields installed", failures)
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
@@ -541,7 +1172,36 @@ def main() -> int:
     check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
     check('"logs": record.logs' in api_source, "job transition logs exposed by API", failures)
     check("append_runtime_event" in api_source, "query provider failures are recorded", failures)
+    check(
+        "runtime_ownership_metadata" in api_source
+        and "metadata.update(runtime_ownership_metadata" in api_source
+        and "**ownership" not in api_source,
+        "query runtime events avoid raw owner metadata",
+        failures,
+    )
+    check(
+        "record_query_exception_event" in api_source
+        and "provider_quota_guard" in api_source
+        and "ProviderQuotaGuardError" in api_source,
+        "query provider quota guard denials are recorded separately",
+        failures,
+    )
+    check(
+        "product_workspace_present" in api_source
+        and "product_workspace_id" not in api_source,
+        "product runtime events avoid raw workspace IDs",
+        failures,
+    )
     check("api_access_audit_middleware" in api_source and "kind=\"api_access\"" in api_source, "API access audit events are recorded", failures)
+    check(
+        "_api_access_route_metadata" in api_source
+        and '"route_present"' in api_source
+        and '"route_fingerprint"' in api_source
+        and '"path": request.url.path' not in api_source
+        and "api_access.event_log_failed path=" not in api_source,
+        "API access audit events avoid raw request paths",
+        failures,
+    )
     check("api_rate_limit_decision" in api_source and "API rate limit exceeded" in api_source, "API rate-limit guard installed", failures)
     check("record_query_usage" in api_source and "query_usage" in api_source, "query usage estimates are recorded", failures)
     check("record_retrieval_trace" in api_source and 'kind="retrieval_trace"' in api_source, "query retrieval trace events are recorded", failures)
@@ -570,6 +1230,12 @@ def main() -> int:
     check("dead_lettered" in jobs_source and "max_attempts" in jobs_source and "retry_backoff_s" in jobs_source, "durable job retry/dead-letter policy installed", failures)
     check("normalize_ownership" in jobs_source and "owner_id TEXT" in jobs_source, "durable job ownership metadata installed", failures)
     check("kind=\"code_execution\"" in jobs_source and "_record_code_execution_event" in jobs_source, "code execution runtime events installed", failures)
+    check(
+        "runtime_ownership_metadata" in jobs_source
+        and "**runtime_ownership_metadata" in jobs_source,
+        "code execution runtime events avoid raw owner metadata",
+        failures,
+    )
     check("claim_next_due_job" in jobs_source and "lease_expires_at" in jobs_source, "durable worker lease foundation installed", failures)
     check("LocalDurableJobWorker" in jobs_source and "run_once" in jobs_source, "explicit durable worker loop installed", failures)
     check("_monitor_cancellation" in jobs_source and "cancel_poll_interval_s" in jobs_source, "durable worker cancellation polling installed", failures)
@@ -647,7 +1313,13 @@ def main() -> int:
     check("retrieval_traces" in admin_source and "retrieval_source_page_incomplete" in admin_source, "admin retrieval trace summary installed", failures)
     check("summarize_retrieval_trace_alerts" in admin_source and "retrieval_empty_rate_high" in admin_source, "admin retrieval trace alerts installed", failures)
     check("fluxmind_retrieval_traces_recent_total" in admin_source, "admin retrieval trace metrics installed", failures)
-    check("by_owner_id" in admin_source and "job_owner_counts" in admin_source, "admin ownership summaries installed", failures)
+    check(
+        "owner_count" in admin_source
+        and "by_ownership_source" in admin_source
+        and "job_ownership_source_counts" in admin_source,
+        "admin ownership-source summaries installed",
+        failures,
+    )
     check("summarize_job_alerts" in admin_source and "job_failures_recent" in admin_source, "admin job health alerts installed", failures)
     check("worker_leases" in admin_source and "worker_lease_health" in admin_source, "admin worker lease status installed", failures)
     check("provider_total_tokens" in admin_source and "provider_usage_events" in admin_source, "admin provider token usage summary installed", failures)
@@ -672,6 +1344,7 @@ def main() -> int:
     check("storage_inventory_status" in admin_source and "content_scanned" in admin_source, "admin storage inventory installed", failures)
     check("API_KEY_REGISTRY_FILE" in admin_source and "api_key_registry_sqlite" in admin_source, "admin storage inventory includes API key registry state", failures)
     check("PRODUCT_REGISTRY_FILE" in admin_source and "product_registry_sqlite" in admin_source, "admin storage inventory includes product registry state", failures)
+    check("SHARE_LINK_TOKEN_STORE_FILE" in admin_source and "share_link_registry_sqlite" in admin_source, "admin storage inventory includes share-link registry state", failures)
     check("storage_schema_status" in admin_source and "storage_schemas" in admin_source, "admin storage schema inventory installed", failures)
     check("distributed_job_store_status" in admin_source and "external_job_store_configured" in admin_source, "admin distributed job-store readiness installed", failures)
     check("platform_readiness_status" in admin_source and "distributed_worker_acceptance" in admin_source, "admin platform readiness installed", failures)
@@ -686,6 +1359,7 @@ def main() -> int:
     check("STORAGE_SCHEMA_VERSION" in storage_schema_source and "missing_required_columns" in storage_schema_source, "storage schema drift checks installed", failures)
     check("API_KEY_COLUMNS" in storage_schema_source and "api_key_registry_sqlite" in storage_schema_source, "API key registry storage schema installed", failures)
     check("PRODUCT_USER_COLUMNS" in storage_schema_source and "product_registry_sqlite" in storage_schema_source, "product registry storage schema installed", failures)
+    check("SHARE_LINK_COLUMNS" in storage_schema_source and "share_link_registry_sqlite" in storage_schema_source, "share-link registry storage schema installed", failures)
     check("storage_schema_status_for_root" in storage_schema_cli and "format_storage_schema_markdown" in storage_schema_cli, "storage schema CLI installed", failures)
     check("reranker_model_configured" in admin_source and "reranker_model_available" in admin_source, "admin reranker config status installed", failures)
     check('"storage": metadata_store.storage_status()' in admin_source, "admin corpus storage status installed", failures)
@@ -835,6 +1509,14 @@ def main() -> int:
     check("evaluate_regression_gates" in evaluation_source and "RegressionGateResult" in evaluation_source, "aggregate RAG regression gates installed", failures)
     check("build_evaluation_report" in evaluation_source and "schema_version" in evaluation_source, "RAG eval JSON report builder installed", failures)
     check(
+        "_request_id_evidence" in evaluation_source
+        and "request_id_present" in evaluation_source
+        and "request_id_redacted" in evaluation_source
+        and "request_id: str" not in evaluation_source,
+        "live eval JSON report request IDs are redacted",
+        failures,
+    )
+    check(
         "evaluate_quality_maturity_targets" in evaluation_source
         and "quality_maturity" in evaluation_source,
         "RAG eval quality maturity report installed",
@@ -847,6 +1529,13 @@ def main() -> int:
     check("PDF structure case" in evaluate_rag_source, "PDF structure eval CLI installed", failures)
     check("regression gate" in evaluate_rag_source and "evaluate_regression_gates" in evaluate_rag_source, "RAG aggregate regression gate CLI installed", failures)
     check("--json-report" in evaluate_rag_source and "build_evaluation_report" in evaluate_rag_source, "RAG eval JSON report CLI installed", failures)
+    check(
+        "request_id_present=" in evaluate_rag_source
+        and "request_id_redacted=" in evaluate_rag_source
+        and "request_id={result.request_id}" not in evaluate_rag_source,
+        "live eval CLI request IDs are redacted",
+        failures,
+    )
     deploy_sync_source = (PROJECT_ROOT / "scripts" / "deploy_sync.py").read_text(encoding="utf-8")
     check("--dry-run" in deploy_sync_source and "--apply" in deploy_sync_source, "safe deploy sync dry-run/apply guard installed", failures)
     check("REQUIRED_RUNTIME_EXCLUDES" in deploy_sync_source and "models/" in deploy_sync_source and "venv/" in deploy_sync_source, "safe deploy sync runtime excludes installed", failures)
@@ -912,6 +1601,10 @@ def main() -> int:
             "grep -q 'collect_corpus_profile_status' /opt/fluxmind/app.py; "
             "grep -q 'format_corpus_profile_status_report' /opt/fluxmind/app.py; "
             "grep -q 'corpus_profile_report_download' /opt/fluxmind/app.py; "
+            "grep -q 'STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' /opt/fluxmind/app.py; "
+            "grep -q 'product_registry_management_disabled' /opt/fluxmind/app.py; "
+            "grep -q 'STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' /opt/fluxmind/app.py; "
+            "grep -q 'share_link_management_disabled' /opt/fluxmind/app.py; "
             "grep -q '/artifacts' /opt/fluxmind/api.py; "
             "grep -q 'job_kind: str | None' /opt/fluxmind/api.py; "
             "grep -q '/admin/status' /opt/fluxmind/api.py; "
@@ -956,6 +1649,7 @@ def main() -> int:
             "test -f /opt/fluxmind/src/runtime.py; "
             "test -f /opt/fluxmind/src/api_keys.py; "
             "test -f /opt/fluxmind/src/product_registry.py; "
+            "test -f /opt/fluxmind/src/share_links.py; "
             "grep -q 'LocalApiKeyRegistry' /opt/fluxmind/src/api_keys.py; "
             "grep -q 'token_hash' /opt/fluxmind/src/api_keys.py; "
             "grep -q 'api_key_registry_backend_status' /opt/fluxmind/src/api_keys.py; "
@@ -963,20 +1657,33 @@ def main() -> int:
             "grep -q 'product_registry_backend_status' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'quota_decision' /opt/fluxmind/src/product_registry.py; "
             "grep -q 'permission_decision' /opt/fluxmind/src/product_registry.py; "
+            "grep -q 'LocalShareLinkRegistry' /opt/fluxmind/src/share_links.py; "
+            "grep -q 'share_link_registry_backend_status' /opt/fluxmind/src/share_links.py; "
             "grep -q 'verify_configured_api_key_token' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_configured' /opt/fluxmind/api.py; "
             "grep -q 'enforce_product_quota' /opt/fluxmind/api.py; "
             "grep -q 'enforce_product_rbac' /opt/fluxmind/api.py; "
+            "grep -q 'enforce_product_registry_admin_read' /opt/fluxmind/api.py; "
+            "grep -q 'endpoint=\"/admin/product-registry/workspaces\"' /opt/fluxmind/api.py; "
+            "grep -q 'endpoint=\"/admin/product-registry/permissions/check\"' /opt/fluxmind/api.py; "
+            "grep -q '/admin/share-links/status' /opt/fluxmind/api.py; "
+            "grep -q 'record_share_link_admin_event' /opt/fluxmind/api.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/admin.py; "
+            "grep -q 'share_link_registry_sqlite' /opt/fluxmind/src/admin.py; "
             "grep -q 'fluxmind_product_quota_guard_enabled' /opt/fluxmind/src/admin.py; "
             "grep -q 'fluxmind_product_rbac_guard_enabled' /opt/fluxmind/src/admin.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
+            "grep -q 'share_link_registry_sqlite' /opt/fluxmind/src/storage_schema.py; "
             "grep -q 'api_key_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
             "grep -q 'product_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
+            "grep -q 'share_link_registry_sqlite' /opt/fluxmind/src/storage_manifest.py; "
             "grep -q 'create' /opt/fluxmind/scripts/api_key_registry.py; "
+            "grep -q 'requires --format json' /opt/fluxmind/scripts/api_key_registry.py; "
             "grep -q 'revoke' /opt/fluxmind/scripts/api_key_registry.py; "
+            "test -f /opt/fluxmind/scripts/share_link_registry.py; "
+            "grep -q 'one-time share token' /opt/fluxmind/scripts/share_link_registry.py; "
             "grep -q 'bootstrap-local' /opt/fluxmind/scripts/product_registry.py; "
             "grep -q 'check-permission' /opt/fluxmind/scripts/product_registry.py; "
             "grep -q 'CREATE TABLE IF NOT EXISTS papers' /opt/fluxmind/src/metadata.py; "
@@ -1032,6 +1739,7 @@ def main() -> int:
             "grep -q 'python_version' /opt/fluxmind/src/providers.py; "
             "grep -q 'filesystem_isolation' /opt/fluxmind/src/providers.py; "
             "grep -q 'network_policy_enforced' /opt/fluxmind/src/providers.py; "
+            "grep -q 'provider_quota_guard_invalid_limit' /opt/fluxmind/src/provider_readiness.py; "
             "grep -q 'BoundedStreamReader' /opt/fluxmind/src/providers.py; "
             "grep -q 'stdout_truncated' /opt/fluxmind/src/providers.py; "
             "grep -q '_resolve_workdir_path' /opt/fluxmind/src/providers.py; "
