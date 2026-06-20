@@ -52,6 +52,51 @@ def test_verify_api_token_rejects_invalid_token(monkeypatch):
     assert exc.value.status_code == 401
 
 
+def test_request_validation_error_omits_submitted_secret_like_values(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    secret_value = "sk-secret-validation-" + ("x" * 150)
+
+    response = TestClient(api.app).post(
+        "/jobs/index/rebuild",
+        json={
+            "source_paths": ["papers/library/paper.pdf"],
+            "idempotency_key": secret_value,
+        },
+    )
+
+    assert response.status_code == 422
+    assert "sk-secret-validation" not in response.text
+    assert '"input"' not in response.text
+    detail = response.json()["detail"]
+    assert detail == [
+        {
+            "type": "string_too_long",
+            "loc": ["body", "idempotency_key"],
+            "msg": "Invalid request field.",
+        }
+    ]
+
+
+def test_request_validation_error_omits_nested_submitted_values(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    response = TestClient(api.app).post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {"main.py": ["print('sk-secret-code')"]},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "sk-secret-code" not in response.text
+    assert '"input"' not in response.text
+    detail = response.json()["detail"]
+    assert detail[0]["type"] == "string_type"
+    assert detail[0]["loc"] == ["body", "files", "main.py"]
+    assert detail[0]["msg"] == "Invalid request field."
+
+
 def test_api_token_status_does_not_return_token_values(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "secret")
 

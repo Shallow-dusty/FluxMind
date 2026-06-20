@@ -1271,6 +1271,15 @@ def main() -> int:
         "API validation errors sanitize exception text",
         failures,
     )
+    check(
+        "RequestValidationError" in api_source
+        and "def public_request_validation_errors" in api_source
+        and '"input"' not in api_source.split("def public_request_validation_errors", 1)[1].split(
+            "def api_auth_context", 1
+        )[0],
+        "API request validation errors omit submitted input values",
+        failures,
+    )
     check("/admin/status" in api_source, "admin status route installed", failures)
     check("/admin/runtime-manifest" in api_source and "collect_runtime_backup_manifest" in api_source, "admin runtime manifest route installed", failures)
     storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")

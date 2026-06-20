@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
@@ -226,6 +227,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def public_request_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Project request validation errors without echoing submitted values."""
+    public_errors: list[dict[str, Any]] = []
+    for error in errors:
+        loc = error.get("loc") or []
+        if not isinstance(loc, (list, tuple)):
+            loc = [loc]
+        public_errors.append(
+            {
+                "type": str(error.get("type") or "validation_error"),
+                "loc": [str(part) for part in loc],
+                "msg": "Invalid request field.",
+            }
+        )
+    return public_errors
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(_request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": public_request_validation_errors(exc.errors())},
+    )
 
 
 def api_auth_context(
