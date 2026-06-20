@@ -2,6 +2,7 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
 from langchain_core.documents import Document
 
 from src.chain import (
@@ -16,6 +17,8 @@ from src.chain import (
     learned_rerank_documents,
     neutralize_invalid_numbered_citations,
     normalize_answer_mode,
+    ProviderError,
+    ProviderQuotaGuardError,
     provider_usage_from_response,
     query_with_metadata,
     rerank_documents,
@@ -131,6 +134,37 @@ def test_query_with_metadata_validates_generated_answer_citations(monkeypatch):
     assert result.to_dict()["citation_validation"]["ok"] is True
 
 
+def test_query_with_metadata_blocks_before_provider_when_guard_denies(monkeypatch):
+    docs = [
+        Document(
+            page_content="sliding mode observer text",
+            metadata={"source": "paper.pdf", "source_path": "papers/library/paper.pdf", "page": 3},
+        )
+    ]
+
+    monkeypatch.setattr("src.chain.hybrid_retrieve", lambda _question, *, k: docs)
+    monkeypatch.setattr("src.chain.generated_artifact_context", lambda: "")
+    monkeypatch.setattr(
+        "src.chain.provider_quota_guard_decision",
+        lambda **_kwargs: {
+            "allowed": False,
+            "reason": "provider_prompt_token_limit_exceeded",
+            "status_code": 429,
+        },
+    )
+
+    def fail_get_llm():
+        raise AssertionError("provider should not be constructed after guard denial")
+
+    monkeypatch.setattr("src.chain.get_llm", fail_get_llm)
+
+    with pytest.raises(ProviderQuotaGuardError) as exc:
+        query_with_metadata("Explain SMC", answer_mode="literature_review")
+
+    assert exc.value.user_error.code == "provider_prompt_token_limit_exceeded"
+    assert exc.value.user_error.status_code == 429
+
+
 def test_provider_usage_from_response_reads_langchain_usage_metadata():
     response = type(
         "Response",
@@ -169,6 +203,57 @@ def test_provider_usage_from_response_reads_token_usage_metadata():
         "prompt_tokens": 5,
         "completion_tokens": 7,
         "total_tokens": 12,
+    }
+
+
+def test_provider_usage_from_response_ignores_malformed_token_counts():
+    response = type(
+        "Response",
+        (),
+        {
+            "usage_metadata": {
+                "input_tokens": "not-a-number",
+                "output_tokens": -2,
+                "total_tokens": "NaN",
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "prompt_tokens": 4,
+                    "completion_tokens": 6,
+                }
+            },
+        },
+    )()
+
+    assert provider_usage_from_response(response) == {
+        "prompt_tokens": 4,
+        "completion_tokens": 6,
+        "total_tokens": 10,
+    }
+
+
+def test_provider_usage_from_response_preserves_zero_and_derives_total():
+    response = type(
+        "Response",
+        (),
+        {
+            "usage_metadata": {
+                "input_tokens": 0,
+                "output_tokens": "8",
+            },
+            "response_metadata": {
+                "token_usage": {
+                    "prompt_tokens": 4,
+                    "completion_tokens": 6,
+                }
+            },
+        },
+    )()
+
+    assert provider_usage_from_response(response) == {
+        "prompt_tokens": 0,
+        "completion_tokens": 8,
+        "total_tokens": 8,
     }
 
 
@@ -362,7 +447,11 @@ def test_generated_artifact_context_formats_recent_artifacts(monkeypatch):
     context = generated_artifact_context()
 
     assert "[Artifact:abc123]" in context
-    assert "SMC diagram" in context
+    assert "kind=image" in context
+    assert "job_kind=image_generation" in context
+    assert "style_present=true" in context
+    assert "SMC diagram" not in context
+    assert "engineering" not in context
 
 
 def test_tokenize_query_supports_cjk_terms():
@@ -461,6 +550,72 @@ def test_evaluation_report_summarizes_results_without_secrets():
     assert report["results"]["pdf_structure_cases"][0]["case_id"]
     assert report["results"]["regression_gates"][0]["gate_id"]
     assert "api_key" not in str(report).lower()
+
+
+def test_evaluation_report_redacts_live_request_ids():
+    case = {
+        "id": "live-redaction",
+        "question": "Explain SMC",
+        "expected_refs": [
+            {"source": "a.pdf", "source_path": "papers/library/a.pdf", "page": 1},
+        ],
+        "live_required_answer_terms": ["observer"],
+        "minimum_live_answer_term_coverage": 1.0,
+    }
+    live_answer = evaluate_live_query_payload(
+        case,
+        {
+            "request_id": "req-/private/hunter2-sk-live",
+            "result": {
+                "answer": "observer answer [1]",
+                "citation_validation": {"ok": True, "invalid_refs": [], "missing_source_page_refs": []},
+                "context_refs": [
+                    {"ref": 1, "source_path": "papers/library/a.pdf", "page": 1},
+                ],
+            },
+        },
+        minimum_expected_context_ref_coverage=1.0,
+    )
+    live_retrieval = evaluate_live_retrieval_payload(
+        case,
+        {
+            "request_id": "retrieval-/private/hunter2-sk-live",
+            "retrieval": {
+                "ok": True,
+                "context_count": 1,
+                "context_refs": [
+                    {"ref": 1, "source_path": "papers/library/a.pdf", "page": 1},
+                ],
+                "missing_source_page_refs": [],
+            },
+        },
+        minimum_expected_context_ref_coverage=1.0,
+    )
+
+    report = build_evaluation_report(
+        {"cases": [case], "quality_maturity_targets": []},
+        case_results=[],
+        retrieval_only_results=[],
+        code_output_results=[],
+        pdf_structure_results=[],
+        provider_results=[],
+        recorded_results=[],
+        live_results=[live_answer],
+        live_retrieval_results=[live_retrieval],
+        regression_gate_results=[],
+    )
+
+    serialized = str(report)
+    assert "hunter2" not in serialized
+    assert "sk-live" not in serialized
+    live_answer_report = report["results"]["live_answers"][0]
+    live_retrieval_report = report["results"]["live_retrieval"][0]
+    assert "request_id" not in live_answer_report
+    assert "request_id" not in live_retrieval_report
+    assert live_answer_report["request_id_present"] is True
+    assert live_answer_report["request_id_redacted"] is True
+    assert live_retrieval_report["request_id_present"] is True
+    assert live_retrieval_report["request_id_redacted"] is True
 
 
 def test_default_rag_baseline_reaches_twenty_case_domain_gate():
@@ -1311,7 +1466,8 @@ def test_live_query_payload_scores_context_citations_and_terms():
     )
 
     assert result.ok
-    assert result.request_id == "req-live"
+    assert result.request_id_present is True
+    assert result.request_id_redacted is True
     assert result.expected_context_coverage == 0.5
     assert result.answer_term_coverage == 1.0
 
@@ -1372,7 +1528,8 @@ def test_live_retrieval_payload_scores_context_sources_without_answer():
     )
 
     assert result.ok
-    assert result.request_id == "req-retrieval"
+    assert result.request_id_present is True
+    assert result.request_id_redacted is True
     assert result.expected_context_coverage == 1.0
     assert result.context_count == 2
 

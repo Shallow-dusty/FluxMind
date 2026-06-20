@@ -37,6 +37,8 @@ def test_provider_readiness_reports_local_foundation_without_activation():
     assert "hosted_execution_provider_not_configured" in status["blockers"]["activation"]
     assert "matlab_backend_not_configured" in status["blockers"]["activation"]
     assert "provider_quota_guard_not_enabled" in status["blockers"]["activation"]
+    assert status["checks"]["provider_quota_guard"]["max_prompt_tokens_per_request"] > 0
+    assert status["checks"]["provider_quota_guard"]["max_completion_tokens_per_request"] > 0
     assert "code_execution_backend_local" in status["advisories"]
     assert "octave_runtime_not_available" in status["advisories"]
 
@@ -66,8 +68,43 @@ def test_provider_readiness_can_report_activation_ready_without_secrets():
     assert status["checks"]["external_image_provider"]["backend"] == "openai"
     assert status["checks"]["hosted_execution_provider"]["backend"] == "cloudflare-sandbox"
     assert status["checks"]["matlab_backend"]["backend"] == "matlab-engine"
+    assert status["checks"]["provider_quota_guard"]["enabled"] is True
+    assert status["checks"]["provider_quota_guard"]["pricing_configured"] in {True, False}
     assert "hunter2" not in payload
     assert "sk-test" not in payload
+
+
+def test_provider_readiness_blocks_invalid_quota_guard_limits(monkeypatch):
+    monkeypatch.setattr(
+        "src.config.PROVIDER_QUOTA_MAX_PROMPT_TOKENS_PER_REQUEST",
+        0,
+    )
+
+    status = collect_provider_readiness(
+        generated_at="2026-06-16T00:00:00+00:00",
+        external_providers_enabled=True,
+        llm_base_url_configured=True,
+        llm_api_key_configured=True,
+        image_provider_backend="openai",
+        image_provider_api_configured=True,
+        hosted_execution_backend="cloudflare-sandbox",
+        hosted_execution_configured=True,
+        matlab_backend="matlab-engine",
+        matlab_license_configured=True,
+        provider_quota_guard_enabled=True,
+        code_execution_backend="docker",
+        docker_status={"configured": True, "available": True, "reason": "ok", "backend": "docker"},
+        octave_available=True,
+    )
+
+    assert status["local_foundation_ready"] is True
+    assert status["activation_ready"] is False
+    assert "provider_quota_guard_invalid_limit" in status["blockers"]["activation"]
+    assert (
+        status["checks"]["provider_quota_guard"]["reason"]
+        == "provider_quota_guard_invalid_limit"
+    )
+    assert status["checks"]["provider_quota_guard"]["max_prompt_tokens_per_request"] == 0
 
 
 def test_provider_readiness_sanitizes_secret_like_backend_values():

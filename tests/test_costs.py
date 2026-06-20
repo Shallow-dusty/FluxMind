@@ -1,4 +1,11 @@
-from src.costs import summarize_query_cost
+from decimal import Decimal
+
+from src.costs import (
+    estimate_query_cost_usd,
+    format_usd,
+    query_pricing_status,
+    summarize_query_cost,
+)
 
 
 def test_summarize_query_cost_uses_provider_tokens_when_available():
@@ -62,3 +69,36 @@ def test_summarize_query_cost_supports_mixed_provider_and_estimated_tokens():
     assert summary["cost_source"] == "mixed_tokens"
     assert summary["cost_prompt_tokens"] == 14
     assert summary["cost_completion_tokens"] == 28
+
+
+def test_query_cost_rejects_nonfinite_rates_without_crashing():
+    for bad_rate in ("NaN", "sNaN", "Infinity", "-Infinity"):
+        pricing = query_pricing_status(
+            provider="test-provider",
+            prompt_usd_per_1m=bad_rate,
+            completion_usd_per_1m="1",
+        )
+
+        assert pricing["configured"] is False
+        assert pricing["reason"] == "invalid_rate"
+        assert pricing["prompt_usd_per_1m"] == "0"
+        assert estimate_query_cost_usd(
+            prompt_tokens=100,
+            completion_tokens=100,
+            prompt_usd_per_1m=bad_rate,
+            completion_usd_per_1m="1",
+        ) == "0"
+
+
+def test_query_cost_rejects_extreme_decimal_exponents_without_long_output():
+    pricing = query_pricing_status(
+        provider="test-provider",
+        prompt_usd_per_1m="1e999999",
+        completion_usd_per_1m="1e-999999",
+    )
+
+    assert pricing["configured"] is False
+    assert pricing["reason"] == "invalid_rate"
+    assert pricing["prompt_usd_per_1m"] == "0"
+    assert pricing["completion_usd_per_1m"] == "0"
+    assert format_usd(Decimal("Infinity")) == "0"

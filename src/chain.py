@@ -26,12 +26,14 @@ from src.config import (
     RERANKER_MODEL,
     TOP_K,
 )
+from src.provider_guard import provider_quota_guard_decision
 from src.embeddings import get_embedding_model
-from src.runtime import ProviderError, normalize_exception
+from src.runtime import ProviderError, ProviderQuotaGuardError, estimate_text_tokens, normalize_exception
 
 AnswerMode = Literal["explanation", "derivation", "implementation", "literature_review", "code_generation"]
 
 DEFAULT_ANSWER_MODE: AnswerMode = "explanation"
+GENERATION_MAX_TOKENS = 4096
 
 ANSWER_MODE_INSTRUCTIONS: dict[AnswerMode, str] = {
     "explanation": "Explain the concept clearly, define assumptions, and keep citations close to claims.",
@@ -157,7 +159,7 @@ def get_llm() -> ChatOpenAI:
         api_key=LLM_API_KEY,
         model=LLM_MODEL,
         temperature=0.3,
-        max_tokens=4096,
+        max_tokens=GENERATION_MAX_TOKENS,
     )
 
 
@@ -465,6 +467,40 @@ def generated_artifact_context(*, limit: int = 5) -> str:
     return format_artifact_references(artifacts, limit=limit)
 
 
+def enforce_provider_quota_guard(
+    *,
+    operation: str,
+    question: str,
+    context: str,
+    artifact_context: str,
+    answer_mode: str,
+    mode_instruction: str,
+    citation_guard: str,
+) -> dict[str, Any]:
+    """Apply no-secret provider quota/cost guard before LLM calls."""
+    prompt_text = SYSTEM_PROMPT.format(
+        context=context,
+        artifact_context=artifact_context,
+        answer_mode=answer_mode,
+        mode_instruction=mode_instruction,
+        citation_instruction=citation_guard,
+    )
+    decision = provider_quota_guard_decision(
+        operation=operation,
+        provider=LLM_MODEL,
+        estimated_prompt_tokens=estimate_text_tokens(f"{prompt_text}\n\n{question}"),
+        requested_completion_tokens=GENERATION_MAX_TOKENS,
+    )
+    if not decision.get("allowed", True):
+        raise ProviderQuotaGuardError(
+            "Provider quota guard denied this request.",
+            code=str(decision.get("reason", "provider_quota_denied")),
+            status_code=int(decision.get("status_code", 429) or 429),
+            decision=decision,
+        )
+    return decision
+
+
 def normalize_answer_mode(answer_mode: str | None) -> AnswerMode:
     """Return a supported answer mode, defaulting to explanation."""
     if answer_mode in ANSWER_MODE_INSTRUCTIONS:
@@ -543,30 +579,48 @@ def provider_usage_from_response(response: Any) -> dict[str, int] | None:
     response_metadata = getattr(response, "response_metadata", None) or {}
     token_usage = response_metadata.get("token_usage") or response_metadata.get("usage") or {}
 
-    prompt_tokens = (
-        usage_metadata.get("input_tokens")
-        or usage_metadata.get("prompt_tokens")
-        or token_usage.get("prompt_tokens")
-        or token_usage.get("input_tokens")
+    def safe_token_count(value: Any) -> int | None:
+        if isinstance(value, bool):
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if parsed < 0:
+            return None
+        return parsed
+
+    def first_token_count(*values: Any) -> int | None:
+        for value in values:
+            parsed = safe_token_count(value)
+            if parsed is not None:
+                return parsed
+        return None
+
+    prompt_count = first_token_count(
+        usage_metadata.get("input_tokens"),
+        usage_metadata.get("prompt_tokens"),
+        token_usage.get("prompt_tokens"),
+        token_usage.get("input_tokens"),
     )
-    completion_tokens = (
-        usage_metadata.get("output_tokens")
-        or usage_metadata.get("completion_tokens")
-        or token_usage.get("completion_tokens")
-        or token_usage.get("output_tokens")
+    completion_count = first_token_count(
+        usage_metadata.get("output_tokens"),
+        usage_metadata.get("completion_tokens"),
+        token_usage.get("completion_tokens"),
+        token_usage.get("output_tokens"),
     )
-    total_tokens = (
-        usage_metadata.get("total_tokens")
-        or token_usage.get("total_tokens")
+    total_count = first_token_count(
+        usage_metadata.get("total_tokens"),
+        token_usage.get("total_tokens"),
     )
 
     usage: dict[str, int] = {}
-    if prompt_tokens is not None:
-        usage["prompt_tokens"] = int(prompt_tokens)
-    if completion_tokens is not None:
-        usage["completion_tokens"] = int(completion_tokens)
-    if total_tokens is not None:
-        usage["total_tokens"] = int(total_tokens)
+    if prompt_count is not None:
+        usage["prompt_tokens"] = prompt_count
+    if completion_count is not None:
+        usage["completion_tokens"] = completion_count
+    if total_count is not None:
+        usage["total_tokens"] = total_count
     elif "prompt_tokens" in usage or "completion_tokens" in usage:
         usage["total_tokens"] = usage.get("prompt_tokens", 0) + usage.get("completion_tokens", 0)
     return usage or None
@@ -609,6 +663,17 @@ def query_with_metadata(
     context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
     artifact_context = generated_artifact_context()
+    citation_guard = citation_instruction(len(context_docs))
+    mode_instruction = ANSWER_MODE_INSTRUCTIONS[mode]
+    enforce_provider_quota_guard(
+        operation="rag_generation",
+        question=question,
+        context=context,
+        artifact_context=artifact_context,
+        answer_mode=mode,
+        mode_instruction=mode_instruction,
+        citation_guard=citation_guard,
+    )
 
     # Build prompt
     prompt = ChatPromptTemplate.from_messages([
@@ -626,8 +691,8 @@ def query_with_metadata(
                 "artifact_context": artifact_context,
                 "question": question,
                 "answer_mode": mode,
-                "mode_instruction": ANSWER_MODE_INSTRUCTIONS[mode],
-                "citation_instruction": citation_instruction(len(context_docs)),
+                "mode_instruction": mode_instruction,
+                "citation_instruction": citation_guard,
             }
         )
     except Exception as exc:
@@ -664,6 +729,17 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
     context_docs = hybrid_retrieve(question, k=TOP_K)
     context = format_context(context_docs)
     artifact_context = generated_artifact_context()
+    citation_guard = citation_instruction(len(context_docs))
+    mode_instruction = ANSWER_MODE_INSTRUCTIONS[mode]
+    enforce_provider_quota_guard(
+        operation="rag_stream",
+        question=question,
+        context=context,
+        artifact_context=artifact_context,
+        answer_mode=mode,
+        mode_instruction=mode_instruction,
+        citation_guard=citation_guard,
+    )
 
     messages = [
         {
@@ -672,8 +748,8 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
                 context=context,
                 artifact_context=artifact_context,
                 answer_mode=mode,
-                mode_instruction=ANSWER_MODE_INSTRUCTIONS[mode],
-                citation_instruction=citation_instruction(len(context_docs)),
+                mode_instruction=mode_instruction,
+                citation_instruction=citation_guard,
             ),
         },
         {"role": "user", "content": question},
@@ -685,7 +761,7 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
             model=LLM_MODEL,
             messages=messages,
             temperature=0.3,
-            max_tokens=4096,
+            max_tokens=GENERATION_MAX_TOKENS,
             stream=True,
         )
 

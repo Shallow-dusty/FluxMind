@@ -7,19 +7,36 @@ from typing import Any
 
 ONE_MILLION = Decimal("1000000")
 USD_QUANTUM = Decimal("0.000001")
+MIN_SAFE_DECIMAL_EXPONENT = -18
+MAX_SAFE_DECIMAL_EXPONENT = 18
+
+
+def _decimal_is_safe(value: Decimal) -> bool:
+    if not value.is_finite():
+        return False
+    if value.is_zero():
+        return True
+    adjusted = value.adjusted()
+    return MIN_SAFE_DECIMAL_EXPONENT <= adjusted <= MAX_SAFE_DECIMAL_EXPONENT
 
 
 def _parse_decimal(value: str | int | float | Decimal | None) -> tuple[Decimal, bool]:
     try:
-        parsed = Decimal(str(value or "0").strip())
-    except (InvalidOperation, ValueError):
+        raw = str(value if value is not None else "0").strip() or "0"
+        parsed = Decimal(raw)
+    except (InvalidOperation, TypeError, ValueError):
         return Decimal("0"), False
-    if parsed < 0:
+    try:
+        if not _decimal_is_safe(parsed) or parsed < 0:
+            return Decimal("0"), False
+    except InvalidOperation:
         return Decimal("0"), False
     return parsed, True
 
 
 def _format_decimal(value: Decimal) -> str:
+    if not _decimal_is_safe(value):
+        return "0"
     text = format(value.normalize(), "f")
     if "." not in text:
         return text
@@ -27,7 +44,12 @@ def _format_decimal(value: Decimal) -> str:
 
 
 def format_usd(value: Decimal) -> str:
-    rounded = value.quantize(USD_QUANTUM, rounding=ROUND_HALF_UP)
+    if not _decimal_is_safe(value):
+        return "0"
+    try:
+        rounded = value.quantize(USD_QUANTUM, rounding=ROUND_HALF_UP)
+    except InvalidOperation:
+        return "0"
     return _format_decimal(rounded)
 
 

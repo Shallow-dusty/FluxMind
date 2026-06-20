@@ -62,3 +62,29 @@ def test_query_stream_wraps_provider_errors(monkeypatch):
         assert exc.user_error.code == "provider_timeout"
     else:
         raise AssertionError("expected ProviderError")
+
+
+def test_query_stream_blocks_before_provider_when_guard_denies(monkeypatch):
+    monkeypatch.setattr(chain, "hybrid_retrieve", lambda question, *, k: [])
+    monkeypatch.setattr(
+        chain,
+        "provider_quota_guard_decision",
+        lambda **_kwargs: {
+            "allowed": False,
+            "reason": "provider_completion_token_limit_exceeded",
+            "status_code": 429,
+        },
+    )
+
+    def fail_openai(**_kwargs):
+        raise AssertionError("stream client should not be constructed after guard denial")
+
+    monkeypatch.setattr(chain, "OpenAI", fail_openai)
+
+    try:
+        list(chain.query_stream("Explain SMC"))
+    except chain.ProviderQuotaGuardError as exc:
+        assert exc.user_error.code == "provider_completion_token_limit_exceeded"
+        assert exc.user_error.status_code == 429
+    else:
+        raise AssertionError("expected ProviderError")

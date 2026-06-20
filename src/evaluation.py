@@ -97,7 +97,8 @@ class LiveAnswerResult:
 
     case_id: str
     ok: bool
-    request_id: str | None
+    request_id_present: bool
+    request_id_redacted: bool
     citation_ok: bool
     expected_context_coverage: float
     answer_term_coverage: float
@@ -114,7 +115,8 @@ class LiveRetrievalResult:
 
     case_id: str
     ok: bool
-    request_id: str | None
+    request_id_present: bool
+    request_id_redacted: bool
     retrieval_ok: bool
     context_count: int
     expected_context_coverage: float
@@ -440,6 +442,15 @@ def live_eval_settings(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _request_id_evidence(value: Any) -> dict[str, bool]:
+    """Return no-secret request-id evidence without copying the identifier."""
+    present = bool(str(value or "").strip())
+    return {
+        "request_id_present": present,
+        "request_id_redacted": present,
+    }
+
+
 def evaluate_live_query_payload(
     case: dict[str, Any],
     payload: dict[str, Any],
@@ -490,7 +501,7 @@ def evaluate_live_query_payload(
     return LiveAnswerResult(
         case_id=case["id"],
         ok=ok,
-        request_id=payload.get("request_id"),
+        **_request_id_evidence(payload.get("request_id")),
         citation_ok=citation_ok,
         expected_context_coverage=expected_coverage,
         answer_term_coverage=term_coverage,
@@ -546,7 +557,7 @@ def evaluate_live_retrieval_payload(
     return LiveRetrievalResult(
         case_id=case["id"],
         ok=ok,
-        request_id=payload.get("request_id"),
+        **_request_id_evidence(payload.get("request_id")),
         retrieval_ok=retrieval_ok,
         context_count=context_count,
         expected_context_coverage=expected_coverage,
@@ -639,7 +650,8 @@ def evaluate_live_config(
                 LiveAnswerResult(
                     case_id=case["id"],
                     ok=False,
-                    request_id=None,
+                    request_id_present=False,
+                    request_id_redacted=False,
                     citation_ok=False,
                     expected_context_coverage=0.0,
                     answer_term_coverage=0.0,
@@ -683,7 +695,8 @@ def evaluate_live_retrieval_config(
                 LiveRetrievalResult(
                     case_id=case["id"],
                     ok=False,
-                    request_id=None,
+                    request_id_present=False,
+                    request_id_redacted=False,
                     retrieval_ok=False,
                     context_count=0,
                     expected_context_coverage=0.0,

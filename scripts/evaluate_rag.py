@@ -128,7 +128,9 @@ def main() -> int:
             status = "ok" if result.ok else "fail"
             print(
                 f"{status:4} live answer {result.case_id}: "
-                f"{result.message} request_id={result.request_id}"
+                f"{result.message} "
+                f"request_id_present={result.request_id_present} "
+                f"request_id_redacted={result.request_id_redacted}"
             )
             if not result.ok:
                 failures.append(f"live answer {result.case_id}")
@@ -145,7 +147,9 @@ def main() -> int:
             status = "ok" if result.ok else "fail"
             print(
                 f"{status:4} live retrieval {result.case_id}: "
-                f"{result.message} request_id={result.request_id}"
+                f"{result.message} "
+                f"request_id_present={result.request_id_present} "
+                f"request_id_redacted={result.request_id_redacted}"
             )
             if not result.ok:
                 failures.append(f"live retrieval {result.case_id}")

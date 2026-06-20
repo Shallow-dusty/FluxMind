@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src import config
+from src.provider_guard import provider_quota_policy
 from src.providers import docker_execution_status, octave_runtime_details
 
 
@@ -177,6 +178,11 @@ def collect_provider_readiness(
         unsupported_reason="unsupported_matlab_backend",
         incomplete_reason="matlab_license_not_configured",
     )
+    quota_policy = provider_quota_policy(provider_quota_guard_enabled=quota_guard)
+    quota_limits_valid = (
+        int(quota_policy["max_prompt_tokens_per_request"]) > 0
+        and int(quota_policy["max_completion_tokens_per_request"]) > 0
+    )
 
     local_blockers: list[str] = []
     if not artifact_registry_available:
@@ -204,6 +210,8 @@ def collect_provider_readiness(
             activation_blockers.append(status["reason"])
     if not quota_guard:
         activation_blockers.append("provider_quota_guard_not_enabled")
+    elif not quota_limits_valid:
+        activation_blockers.append("provider_quota_guard_invalid_limit")
 
     advisories: list[str] = []
     if not base_url_configured:
@@ -243,6 +251,15 @@ def collect_provider_readiness(
             "hosted_execution_provider_configured": bool(hosted_execution["configured"]),
             "matlab_backend_configured": bool(matlab["configured"]),
             "provider_quota_guard_enabled": quota_guard,
+            "provider_quota_max_prompt_tokens_per_request": quota_policy[
+                "max_prompt_tokens_per_request"
+            ],
+            "provider_quota_max_completion_tokens_per_request": quota_policy[
+                "max_completion_tokens_per_request"
+            ],
+            "provider_quota_cost_limit_configured": quota_policy[
+                "cost_limit_configured"
+            ],
         },
         "checks": {
             "text_llm": {
@@ -273,7 +290,21 @@ def collect_provider_readiness(
             "matlab_backend": matlab,
             "provider_quota_guard": {
                 "enabled": quota_guard,
-                "reason": "enabled" if quota_guard else "provider_quota_guard_not_enabled",
+                "reason": (
+                    "provider_quota_guard_not_enabled"
+                    if not quota_guard
+                    else "provider_quota_guard_invalid_limit"
+                    if not quota_limits_valid
+                    else "enabled"
+                ),
+                "max_prompt_tokens_per_request": quota_policy[
+                    "max_prompt_tokens_per_request"
+                ],
+                "max_completion_tokens_per_request": quota_policy[
+                    "max_completion_tokens_per_request"
+                ],
+                "cost_limit_configured": quota_policy["cost_limit_configured"],
+                "pricing_configured": quota_policy["pricing_configured"],
             },
         },
         "blockers": {
@@ -327,6 +358,9 @@ def format_provider_readiness_markdown(status: dict[str, Any]) -> str:
         f"- Hosted execution provider: {checks.get('hosted_execution_provider', {}).get('backend', '')} ({checks.get('hosted_execution_provider', {}).get('reason', '')})",
         f"- MATLAB backend: {checks.get('matlab_backend', {}).get('backend', '')} ({checks.get('matlab_backend', {}).get('reason', '')})",
         f"- Provider quota guard: {_format_bool(checks.get('provider_quota_guard', {}).get('enabled', False))}",
+        f"- Provider max prompt tokens/request: {checks.get('provider_quota_guard', {}).get('max_prompt_tokens_per_request', 0)}",
+        f"- Provider max completion tokens/request: {checks.get('provider_quota_guard', {}).get('max_completion_tokens_per_request', 0)}",
+        f"- Provider cost limit configured: {_format_bool(checks.get('provider_quota_guard', {}).get('cost_limit_configured', False))}",
         "",
         "## Blockers",
         "",
