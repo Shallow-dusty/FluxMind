@@ -31,3 +31,9 @@ def format_os_error(exc: BaseException) -> str:
     """Return an exception summary without file paths or raw filenames."""
     message = getattr(exc, "strerror", None) or str(exc) or exc.__class__.__name__
     return sanitize_cli_error_message(message) or exc.__class__.__name__
+
+
+def format_cli_error(exc: BaseException) -> str:
+    """Return a public CLI exception summary without paths, URLs, or tokens."""
+    message = str(exc) or exc.__class__.__name__
+    return sanitize_cli_error_message(message) or exc.__class__.__name__

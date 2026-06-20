@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts._safe_cli import format_os_error
+from scripts._safe_cli import format_cli_error, format_os_error
 from src.storage_migration import (
     format_job_store_migration_verify_markdown,
     format_object_storage_migration_verify_markdown,
@@ -159,7 +159,7 @@ def main() -> int:
         print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
     except json.JSONDecodeError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {format_cli_error(exc)}", file=sys.stderr)
         return 2
 
 

@@ -18,6 +18,7 @@ from src.storage_manifest import (
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
+from scripts._safe_cli import format_cli_error, format_os_error
 
 
 def load_json_manifest(path_arg: str) -> dict:
@@ -79,8 +80,11 @@ def main() -> int:
         else:
             output = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         emit_output(output, args.output)
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    except OSError as exc:
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(f"error: {format_cli_error(exc)}", file=sys.stderr)
         return 2
     return 0
 

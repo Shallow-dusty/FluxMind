@@ -19,7 +19,7 @@ import scripts.product_registry as product_registry_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
 import scripts.share_link_registry as share_link_registry_cli
-from scripts._safe_cli import format_os_error
+from scripts._safe_cli import format_cli_error, format_os_error
 import scripts.storage_schema as storage_schema_cli
 import scripts.update_local_references as update_refs_cli
 
@@ -44,6 +44,25 @@ def test_format_os_error_redacts_paths_urls_and_token_values():
     )
 
     assert "cannot read" in message
+    assert "[redacted]" in message
+    for sensitive in (
+        "/private",
+        "hunter2",
+        "https://secret.example",
+        "sk-test-secret-token",
+    ):
+        assert sensitive not in message
+
+
+def test_format_cli_error_redacts_paths_urls_and_token_values():
+    message = format_cli_error(
+        ValueError(
+            "invalid /private/hunter2-report.json from https://secret.example/report "
+            "authorization=Bearer sk-test-secret-token"
+        )
+    )
+
+    assert "invalid" in message
     assert "[redacted]" in message
     for sensitive in (
         "/private",
@@ -192,10 +211,16 @@ def test_runtime_manifest_cli_restore_check_uses_stdin(monkeypatch, capsys):
 
 
 def test_runtime_manifest_cli_reports_read_errors(monkeypatch, capsys):
-    monkeypatch.setattr("sys.argv", ["runtime_manifest.py", "--restore-check", "/missing/manifest.json"])
+    monkeypatch.setattr(
+        "sys.argv",
+        ["runtime_manifest.py", "--restore-check", "/private/hunter2-manifest.json"],
+    )
 
     assert runtime_manifest_cli.main() == 2
-    assert "error:" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
 
 
 def test_api_key_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
@@ -1146,6 +1171,31 @@ def test_activation_suite_cli_reports_os_errors(monkeypatch, capsys):
     assert "hunter2" not in captured.err
 
 
+def test_activation_suite_cli_sanitizes_json_errors(monkeypatch, capsys):
+    def fail_collect(**kwargs):
+        raise json.JSONDecodeError(
+            "invalid token=sk-secret-suite in /private/hunter2-suite.json",
+            "",
+            0,
+        )
+
+    monkeypatch.setattr(activation_suite_cli, "collect_activation_suite", fail_collect)
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "_load_openapi_schema",
+        lambda: {"openapi": "3.1.0"},
+    )
+    monkeypatch.setattr("sys.argv", ["activation_suite.py"])
+
+    assert activation_suite_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "[redacted]" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+    assert "sk-secret-suite" not in captured.err
+
+
 def test_openapi_contract_cli_writes_markdown(monkeypatch, tmp_path):
     output_path = tmp_path / "openapi.md"
     monkeypatch.setattr(
@@ -1282,6 +1332,33 @@ def test_openapi_contract_cli_rejects_non_object_snapshot(monkeypatch, tmp_path,
 
     assert openapi_contract_cli.main() == 2
     assert "snapshot JSON must be an object" in capsys.readouterr().err
+
+
+def test_openapi_contract_cli_sanitizes_value_errors(monkeypatch, capsys):
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "collect_openapi_contract",
+        lambda schema: {"local_contract_ready": True, "operation_fingerprint": "abc"},
+    )
+
+    def fail_read_json(path):
+        raise ValueError(
+            "snapshot /private/hunter2-openapi.json contains token=sk-secret-openapi"
+        )
+
+    monkeypatch.setattr(openapi_contract_cli, "read_json_input", fail_read_json)
+    monkeypatch.setattr(
+        "sys.argv",
+        ["openapi_contract.py", "--verify-snapshot", "/tmp/snapshot.json"],
+    )
+
+    assert openapi_contract_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "[redacted]" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+    assert "sk-secret-openapi" not in captured.err
 
 
 def test_openapi_contract_cli_reports_sanitized_os_errors(monkeypatch, capsys):
@@ -1680,6 +1757,29 @@ def test_platform_migration_rehearsal_cli_reports_os_errors(monkeypatch, capsys)
     assert "hunter2" not in captured.err
 
 
+def test_platform_migration_rehearsal_cli_sanitizes_json_errors(monkeypatch, capsys):
+    def fail_read_json(path):
+        raise json.JSONDecodeError(
+            "invalid token=sk-secret-migration in /private/hunter2-manifest.json",
+            "",
+            0,
+        )
+
+    monkeypatch.setattr(platform_migration_rehearsal_cli, "_read_json", fail_read_json)
+    monkeypatch.setattr(
+        "sys.argv",
+        ["platform_migration_rehearsal.py", "--verify-object-manifest", "/tmp/manifest.json"],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "[redacted]" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+    assert "sk-secret-migration" not in captured.err
+
+
 def test_product_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
     monkeypatch.setattr(
         product_readiness_cli,
@@ -1889,6 +1989,26 @@ def test_quality_readiness_cli_reports_os_errors(monkeypatch, capsys):
     assert "error: Permission denied" in captured.err
     assert "/private" not in captured.err
     assert "hunter2" not in captured.err
+
+
+def test_quality_readiness_cli_sanitizes_json_errors(monkeypatch, capsys):
+    def fail_collect(**kwargs):
+        raise json.JSONDecodeError(
+            "invalid token=sk-secret-quality in /private/hunter2-quality.json",
+            "",
+            0,
+        )
+
+    monkeypatch.setattr(quality_readiness_cli, "collect_quality_readiness", fail_collect)
+    monkeypatch.setattr("sys.argv", ["quality_readiness.py"])
+
+    assert quality_readiness_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "[redacted]" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+    assert "sk-secret-quality" not in captured.err
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):

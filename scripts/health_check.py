@@ -1073,6 +1073,33 @@ def main() -> int:
         "no-secret readiness CLI OS errors omit raw paths",
         failures,
     )
+    data_error_cli_sources = [
+        (PROJECT_ROOT / "scripts" / path).read_text(encoding="utf-8")
+        for path in (
+            "runtime_manifest.py",
+            "quality_readiness.py",
+            "activation_suite.py",
+            "openapi_contract.py",
+            "platform_migration_rehearsal.py",
+        )
+    ]
+    cli_tests_source = (PROJECT_ROOT / "tests" / "test_cli_scripts.py").read_text(
+        encoding="utf-8"
+    )
+    check(
+        "def format_cli_error" in safe_cli_source
+        and all("format_cli_error" in source for source in data_error_cli_sources)
+        and all("error: {format_cli_error(exc)}" in source for source in data_error_cli_sources)
+        and all("print(f\"error: {exc}\"" not in source for source in data_error_cli_sources)
+        and "test_format_cli_error_redacts_paths_urls_and_token_values" in cli_tests_source
+        and "test_runtime_manifest_cli_reports_read_errors" in cli_tests_source
+        and "test_activation_suite_cli_sanitizes_json_errors" in cli_tests_source
+        and "test_openapi_contract_cli_sanitizes_value_errors" in cli_tests_source
+        and "test_platform_migration_rehearsal_cli_sanitizes_json_errors" in cli_tests_source
+        and "test_quality_readiness_cli_sanitizes_json_errors" in cli_tests_source,
+        "no-secret readiness CLI data errors omit raw paths",
+        failures,
+    )
     check(
         "collect_openapi_contract" in api_source
         and '"/admin/openapi-contract"' in api_source

@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts._safe_cli import format_os_error  # noqa: E402
+from scripts._safe_cli import format_cli_error, format_os_error  # noqa: E402
 from src.activation_suite import (  # noqa: E402
     collect_activation_suite,
     format_activation_suite_markdown,
@@ -102,7 +102,7 @@ def main() -> int:
         print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
     except json.JSONDecodeError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {format_cli_error(exc)}", file=sys.stderr)
         return 2
 
     return 0 if _required_target_ready(status, args.require_target) else 1
