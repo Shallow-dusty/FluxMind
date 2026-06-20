@@ -1309,6 +1309,13 @@ def main() -> int:
     check("/admin/status/report" in api_source and "format_admin_status_report" in api_source, "admin status report route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
+    check(
+        "def public_job_request" in api_source
+        and "def public_job_result" in api_source
+        and '"source_path_count"' in api_source,
+        "index rebuild job API projection redacts source paths",
+        failures,
+    )
     check("status: str | None" in api_source and "kind: str | None" in api_source and "q=q" in api_source, "job metadata filters installed", failures)
     job_summary_start = api_source.find("def job_summary_to_dict")
     job_summary_end = api_source.find("\ndef existing_idempotent_job", job_summary_start)

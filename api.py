@@ -1522,8 +1522,8 @@ def job_to_dict(record: JobRecord) -> dict:
         "status": record.status,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
-        "request": record.request,
-        "result": record.result,
+        "request": public_job_request(record),
+        "result": public_job_result(record),
         "artifacts": [
             job_artifact_to_public_dict(record, artifact)
             for artifact in record.artifacts
@@ -1543,6 +1543,32 @@ def job_to_dict(record: JobRecord) -> dict:
         "ownership_source": ownership["ownership_source"],
         "logs": record.logs,
     }
+
+
+def _source_path_count(value: Any) -> int:
+    return len(value) if isinstance(value, list) else 0
+
+
+def public_job_request(record: JobRecord) -> dict[str, Any]:
+    if record.kind != "index_rebuild":
+        return record.request
+    source_paths = (
+        record.request.get("source_paths")
+        if isinstance(record.request, dict)
+        else None
+    )
+    return {"source_path_count": _source_path_count(source_paths)}
+
+
+def public_job_result(record: JobRecord) -> dict[str, Any] | None:
+    if record.result is None:
+        return None
+    if record.kind != "index_rebuild":
+        return record.result
+    result = dict(record.result)
+    source_paths = result.pop("source_paths", None)
+    result["source_path_count"] = _source_path_count(source_paths)
+    return result
 
 
 def job_summary_to_dict(record: JobRecord) -> dict:

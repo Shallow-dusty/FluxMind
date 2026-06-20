@@ -3936,7 +3936,64 @@ def test_index_rebuild_job_endpoint(monkeypatch, tmp_path):
     assert job["kind"] == "index_rebuild"
     assert job["status"] == "succeeded"
     assert job["request_id"] == "req-index"
+    assert job["request"] == {"source_path_count": 1}
+    assert job["result"]["source_path_count"] == 1
     assert job["result"]["chunk_count"] == 9
+    assert "source_paths" not in job["result"]
+
+
+def test_index_rebuild_job_endpoint_redacts_invalid_source_path(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    monkeypatch.setattr("src.jobs.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("src.jobs.ingestion.discover_pdfs", lambda: [])
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/index/rebuild",
+        json={"source_paths": ["/tmp/sk-secret-index.pdf"]},
+    )
+
+    assert response.status_code == 200
+    assert "/tmp/sk-secret-index.pdf" not in response.text
+    assert "sk-secret-index" not in response.text
+    job = response.json()["job"]
+    assert job["kind"] == "index_rebuild"
+    assert job["status"] == "failed"
+    assert job["request"] == {"source_path_count": 1}
+    assert job["result"] is None
+    assert "source_paths" not in job["request"]
+
+
+def test_async_index_rebuild_job_response_redacts_source_paths(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    manager = AsyncJobManager(api.LocalJobStore())
+    monkeypatch.setattr(api, "get_async_job_manager", lambda: manager)
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/async/index/rebuild",
+        json={"source_paths": ["/tmp/sk-secret-async.pdf"]},
+    )
+
+    assert response.status_code == 200
+    assert "/tmp/sk-secret-async.pdf" not in response.text
+    assert "sk-secret-async" not in response.text
+    job = response.json()["job"]
+    assert job["kind"] == "index_rebuild"
+    assert job["status"] == "queued"
+    assert job["request"] == {"source_path_count": 1}
+    assert "source_paths" not in job["request"]
+    assert api.LocalJobStore().get(job["job_id"]).request == {
+        "source_paths": ["/tmp/sk-secret-async.pdf"]
+    }
+
+    loaded = client.get(f"/jobs/{job['job_id']}")
+    assert loaded.status_code == 200
+    assert "/tmp/sk-secret-async.pdf" not in loaded.text
+    assert "sk-secret-async" not in loaded.text
+    assert loaded.json()["job"]["request"] == {"source_path_count": 1}
 
 
 def test_async_python_job_endpoint_queues_job(tmp_path, monkeypatch):
