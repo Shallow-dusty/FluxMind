@@ -1439,6 +1439,15 @@ def main() -> int:
         "job detail API projection redacts raw owner metadata",
         failures,
     )
+    check(
+        "def public_request_id" in api_source
+        and "sanitize_runtime_event_request_id" in api_source
+        and "**request_id" in job_detail_source
+        and '"request_id": record.request_id' not in api_source
+        and "test_job_response_redacts_unsafe_request_id" in test_api_source,
+        "job detail API projection redacts unsafe request IDs",
+        failures,
+    )
     check("owner_id: str | None" in api_source and "request_ownership" in api_source, "API ownership metadata fields installed", failures)
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)

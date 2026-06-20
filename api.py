@@ -96,6 +96,7 @@ from src.runtime import (
     normalize_exception,
     runtime_event_to_safe_dict,
     runtime_ownership_metadata,
+    sanitize_runtime_event_request_id,
 )
 from src.share_links import LocalShareLinkRegistry, share_link_registry_backend_status
 from src.storage_manifest import (
@@ -1545,6 +1546,7 @@ def job_to_dict(record: JobRecord) -> dict:
     idempotency_key = record.idempotency_key or ""
     owner_id = ownership["owner_id"]
     owner_label = ownership["owner_label"]
+    request_id = public_request_id(record.request_id)
     return {
         "job_id": record.job_id,
         "kind": record.kind,
@@ -1559,7 +1561,7 @@ def job_to_dict(record: JobRecord) -> dict:
         ],
         "error": public_job_error(record),
         "attempts": record.attempts,
-        "request_id": record.request_id,
+        **request_id,
         "parent_job_id": record.parent_job_id,
         "not_before": record.not_before,
         "deadline_at": record.deadline_at,
@@ -1589,6 +1591,19 @@ def job_to_dict(record: JobRecord) -> dict:
         "ownership_source": ownership["ownership_source"],
         "logs": public_job_logs(record),
     }
+
+
+def public_request_id(value: Any) -> dict[str, Any]:
+    safe_request_id, request_id_present, request_id_redacted = (
+        sanitize_runtime_event_request_id(value)
+    )
+    payload: dict[str, Any] = {
+        "request_id_present": request_id_present,
+        "request_id_redacted": request_id_redacted,
+    }
+    if safe_request_id:
+        payload["request_id"] = safe_request_id
+    return payload
 
 
 def _source_path_count(value: Any) -> int:
@@ -1797,6 +1812,7 @@ def public_job_logs(record: JobRecord) -> list[dict[str, Any]]:
 
 def job_summary_to_dict(record: JobRecord) -> dict:
     ownership = ownership_from_record(record)
+    request_id = public_request_id(record.request_id)
     error_code = None
     if isinstance(record.error, dict):
         error_code = record.error.get("code")
@@ -1812,7 +1828,8 @@ def job_summary_to_dict(record: JobRecord) -> dict:
         ],
         "error": {"code": error_code} if error_code else None,
         "attempts": record.attempts,
-        "request_id_present": bool(record.request_id),
+        "request_id_present": request_id["request_id_present"],
+        "request_id_redacted": request_id["request_id_redacted"],
         "parent_job_id": record.parent_job_id,
         "not_before": record.not_before,
         "deadline_at": record.deadline_at,

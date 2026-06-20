@@ -4006,6 +4006,65 @@ def test_job_response_redacts_owner_metadata(tmp_path, monkeypatch):
     assert "owner_label" not in retried
 
 
+def test_job_response_redacts_unsafe_request_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    secret_request_id = "Bearer secret-request-token"
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    store.append_new(
+        api.JobRecord(
+            job_id="job-unsafe-request-id",
+            kind="code_execution",
+            status="failed",
+            created_at="2026-06-20T00:00:00+00:00",
+            updated_at="2026-06-20T00:00:00+00:00",
+            request={
+                "language": "python",
+                "entrypoint": "main.py",
+                "files": {"main.py": "raise SystemExit(3)"},
+            },
+            result={"stdout": "", "stderr": "secret traceback", "exit_code": 3},
+            error={"code": "execution_failed", "message": "secret traceback"},
+            request_id=secret_request_id,
+            owner_id="local-user",
+            owner_label="Local user",
+        )
+    )
+
+    client = TestClient(api.app)
+    loaded_response = client.get("/jobs/job-unsafe-request-id")
+
+    assert loaded_response.status_code == 200
+    assert secret_request_id not in loaded_response.text
+    loaded = loaded_response.json()["job"]
+    assert "request_id" not in loaded
+    assert loaded["request_id_present"] is True
+    assert loaded["request_id_redacted"] is True
+    assert loaded["error"] == {
+        "code": "execution_failed",
+        "message": "Execution failed.",
+        "message_redacted": True,
+    }
+
+    listed_response = client.get("/jobs")
+    assert listed_response.status_code == 200
+    assert secret_request_id not in listed_response.text
+    listed = listed_response.json()["jobs"][0]
+    assert "request_id" not in listed
+    assert listed["request_id_present"] is True
+    assert listed["request_id_redacted"] is True
+
+    retry_response = client.post("/jobs/job-unsafe-request-id/retry")
+    assert retry_response.status_code == 200
+    assert secret_request_id not in retry_response.text
+    retried = retry_response.json()["job"]
+    assert retried["request_id_present"] is True
+    assert retried["request_id_redacted"] is False
+    assert retried["request_id"]
+    assert secret_request_id != retried["request_id"]
+
+
 def test_missing_job_returns_404(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
