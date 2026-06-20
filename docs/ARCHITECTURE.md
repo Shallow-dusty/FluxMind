@@ -831,11 +831,12 @@ projection so legacy or malformed event metadata cannot leak snapshots,
 fingerprints, paths, raw reports, prompts, answers, tokens, or child payloads.
 Unsafe legacy check/code labels are grouped as `invalid`, and negative blocker
 counts are clamped before totals are emitted.
-The API and Streamlit event viewers sanitize event metadata first and apply `q`
-search to that sanitized projection, so raw prompts, answers, owner
-identifiers, product user/workspace/API-key identifiers, source paths, tokens,
-filenames, and content cannot be returned or searched there. Count/status fields
-such as workspace and member totals remain visible as aggregate operational
+The API and Streamlit event viewers sanitize event metadata keys and sensitive
+string values first, then apply `q` search to that sanitized projection, so raw
+prompts, answers, owner identifiers, product user/workspace/API-key
+identifiers, source paths, tokens, URLs, local runtime paths, filenames, and
+content cannot be returned or searched there. Count/status fields and safe route
+values such as `/query` and `/admin/status` remain visible as operational
 signals.
 Malformed runtime-event JSONL lines are skipped with warnings so one bad history
 line does not break the admin/event viewer path.

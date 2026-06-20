@@ -165,8 +165,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  69bb9e7 fix: handle execution input path conflicts" in repo_status
-        and "Current docs/health sync       1f97b7b docs: record product registry audit status" in repo_status
+        and "Current implementation commit  1173ea8 fix: redact runtime event metadata values" in repo_status
+        and "Current docs/health sync       85eb2b5 docs: record execution input audit status" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
@@ -174,6 +174,9 @@ def main() -> int:
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
+        and "Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST" in repo_status
+        and "pass, 616 tests, 2 known warnings" in repo_status
+        and "runtime event metadata-value redaction" in repo_status
         and "Execution input materialization follow-up on 2026-06-20 15:50 CST" in repo_status
         and "pass, 614 tests, 2 known warnings" in repo_status
         and "execution input materialization conflict handling" in repo_status
@@ -206,8 +209,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 614 tests, 2 known warnings" in roadmap
-        and "execution-input-materialization" in roadmap,
+        and "pass, 616 tests, 2 known warnings" in roadmap
+        and "execution-input-materialization" in roadmap
+        and "runtime-event-metadata-value-redaction" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
         failures,
     )
@@ -617,6 +621,13 @@ def main() -> int:
         and "sk-[A-Za-z0-9_-]{8,}" in runtime_source
         and "SAFE_RUNTIME_EVENT_MESSAGE_REDACTION" in runtime_source,
         "runtime event messages redact bare secret-like tokens",
+        failures,
+    )
+    check(
+        "SENSITIVE_RUNTIME_EVENT_METADATA_VALUE_PATTERNS" in runtime_source
+        and "SAFE_RUNTIME_EVENT_METADATA_VALUE_REDACTION" in runtime_source
+        and "file://\\S+" in runtime_source,
+        "runtime event metadata values redact secret-like strings",
         failures,
     )
     provider_rehearsal_source = (

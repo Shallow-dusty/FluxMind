@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:50 CST
+Snapshot time: 2026-06-20 16:01 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  69bb9e7 fix: handle execution input path conflicts
-Current docs/health sync       1f97b7b docs: record product registry audit status
-Current local app-code HEAD    69bb9e7 fix: handle execution input path conflicts
+Current implementation commit  1173ea8 fix: redact runtime event metadata values
+Current docs/health sync       85eb2b5 docs: record execution input audit status
+Current local app-code HEAD    1173ea8 fix: redact runtime event metadata values
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the nineteen local commits below
+                               by the twenty-one local commits below
                                before this docs refresh
-Current local commit stack     69bb9e7 fix: handle execution input path conflicts
+Current local commit stack     1173ea8 fix: redact runtime event metadata values
+                               85eb2b5 docs: record execution input audit status
+                               69bb9e7 fix: handle execution input path conflicts
                                1f97b7b docs: record product registry audit status
                                12f4205 fix: guard product registry orphan writes
                                05fae15 docs: record artifact path audit status
@@ -79,6 +81,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                and sanitized CLI member output,
                                execution input materialization conflict handling
                                and regular-file entrypoint guards,
+                               runtime event metadata-value redaction for
+                               legacy and newly written events,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -214,6 +218,41 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_runtime.py -q         pass, 20 runtime tests
+.venv/bin/python -m pytest tests/test_api.py                pass, 7 selected API/admin-event tests,
+  -k "admin_events or admin_check_event                     101 deselected, 2 known warnings
+  or runtime_event or api_access" -q
+.venv/bin/python -m pytest tests/test_admin.py              pass, 1 selected admin aggregation test,
+  -k "runtime or event or api_access or admin_check" -q     23 deselected
+.venv/bin/python -m coverage run -m pytest -q               pass, 616 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up extends the runtime-event sanitizer from sensitive metadata keys
+to sensitive string values under otherwise safe keys. Newly appended events and
+legacy JSONL event projections now replace Bearer tokens, `sk-...` secret-like
+tokens, URL/file URI values, and local runtime paths with a no-secret metadata
+value placeholder while preserving safe route values such as `/query` and
+`/admin/status`. The same sanitized projection remains the basis for
+`/admin/events` search, so hidden values cannot be rediscovered through `q`.
 
 Execution input materialization follow-up on 2026-06-20 15:50 CST:
 

@@ -8,8 +8,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  69bb9e7 fix: handle execution input path conflicts" in text
-    assert "Current docs/health sync       1f97b7b docs: record product registry audit status" in text
+    assert "Current implementation commit  1173ea8 fix: redact runtime event metadata values" in text
+    assert "Current docs/health sync       85eb2b5 docs: record execution input audit status" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -62,7 +62,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    69bb9e7 fix: handle execution input path conflicts" in text
+    assert "Current local app-code HEAD    1173ea8 fix: redact runtime event metadata values" in text
+    assert "1173ea8 fix: redact runtime event metadata values" in text
+    assert "85eb2b5 docs: record execution input audit status" in text
     assert "69bb9e7 fix: handle execution input path conflicts" in text
     assert "1f97b7b docs: record product registry audit status" in text
     assert "12f4205 fix: guard product registry orphan writes" in text
@@ -82,6 +84,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Runtime event metadata-value redaction follow-up on 2026-06-20 16:01 CST" in text
+    assert "pass, 616 tests, 2 known warnings" in text
+    assert "sensitive string values under otherwise safe keys" in text
+    assert "hidden values cannot be rediscovered through `q`" in text
     assert "Execution input materialization follow-up on 2026-06-20 15:50 CST" in text
     assert "pass, 614 tests, 2 known warnings" in text
     assert "execution input materialization conflict handling" in text
@@ -123,8 +129,9 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 614 tests, 2 known warnings" in text
+    assert "pass, 616 tests, 2 known warnings" in text
     assert "execution-input-materialization" in text
+    assert "runtime-event-metadata-value-redaction" in text
 
 
 def test_agent_bootstrap_docs_include_current_no_secret_commands():

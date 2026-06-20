@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 614
+Current hardening progress through 2026-06-20: the automated suite has 616
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -60,7 +60,10 @@ fields while preserving safe aggregate status/count/token metrics, and applies
 search to that sanitized projection rather than raw JSONL content. Top-level
 runtime-event messages with URL/path/token/prompt/answer-like value assignments
 or bare `sk-...` secret-like tokens are also replaced in the admin-facing
-projection. Artifact list/search
+projection. Runtime-event metadata string values under otherwise safe keys are
+also redacted when they contain Bearer tokens, `sk-...` secret-like tokens,
+URL/file URI values, or local runtime paths, while safe route values such as
+`/query` and `/admin/status` remain searchable. Artifact list/search
 responses, job artifact sub-objects, Streamlit artifact views,
 generated-artifact RAG context, and download filenames now use a public
 projection that omits raw artifact URIs, local paths, titles, owner IDs/labels,
@@ -1150,8 +1153,9 @@ identity-backed quotas, and external billing disabled until decisions are made
   delete action when the same config flag is enabled.
 - `GET /admin/events` lists no-secret runtime events with local `kind`, `code`,
   and `q` filters; the Streamlit status panel exposes the same event viewer.
-  Both event viewers sanitize event metadata and apply search to the sanitized
-  projection rather than raw JSONL. Code-execution outcomes are emitted as
+  Both event viewers sanitize event metadata keys and sensitive string values,
+  then apply search to the sanitized projection rather than raw JSONL.
+  Code-execution outcomes are emitted as
   `code_execution` events and summarized in admin status/report. The
   explicit admin readiness/rehearsal routes emit metadata-only `admin_check`
   events when API access auditing is enabled; those events contain check names,

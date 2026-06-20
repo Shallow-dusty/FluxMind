@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 614 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 616 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 614 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 616 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -48,6 +48,7 @@ Command                                                               Result
                                                                       activation-suite/
                                                                       OpenAPI-contract/
                                                                       execution-input-materialization/
+                                                                      runtime-event-metadata-value-redaction/
                                                                       quality-evidence-plan/
                                                                       readiness-CLI-error-sanitizer/
                                                                       live-eval-request-id-redaction/
@@ -211,7 +212,10 @@ camelCase/PascalCase path or URL fields, token values, filenames, and raw conten
 cannot be returned or searched through those viewers. Aggregate
 workspace/user/member counts remain visible.
 Top-level event messages with URL/path/token/prompt/answer-like value assignments
-are also redacted in the admin-facing projection.
+are also redacted in the admin-facing projection. Runtime-event metadata values
+under otherwise safe keys now apply the same no-secret boundary for Bearer
+tokens, `sk-...` secret-like tokens, URLs/file URIs, and local runtime paths
+without hiding safe route values such as `/query` and `/admin/status`.
 Artifact list/search responses, job artifact sub-objects, Streamlit artifact
 views, generated-artifact RAG context, and download filenames now use a public
 projection that omits raw artifact URIs, source paths, titles, owner IDs/labels,
@@ -525,7 +529,8 @@ Retrieval alerts        tests/test_admin.py covers metadata-only retrieval trace
                         alert thresholds, summaries, reports, and metrics
 Runtime events          tests/test_runtime.py covers no-secret event listing plus
                         malformed JSONL-line tolerance, sensitive key detection,
-                        and admin-facing event projection redaction
+                        sensitive metadata-value redaction, and admin-facing
+                        event projection redaction
 ```
 
 ## Known Evaluation Gaps
