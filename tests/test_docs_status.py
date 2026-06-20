@@ -8,8 +8,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  c56c285 fix: redact share-link workspace identifiers" in text
-    assert "Current docs/health sync       e93dba5 docs: refresh FluxMind activation status" in text
+    assert "Current implementation commit  ea8a7a2 fix: preserve share-link workspace event evidence" in text
+    assert "Current docs/health sync       3ae6842 docs: refresh share-link audit status" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -62,7 +62,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    c56c285 fix: redact share-link workspace identifiers" in text
+    assert "Current local app-code HEAD    ea8a7a2 fix: preserve share-link workspace event evidence" in text
+    assert "ea8a7a2 fix: preserve share-link workspace event evidence" in text
+    assert "3ae6842 docs: refresh share-link audit status" in text
     assert "c56c285 fix: redact share-link workspace identifiers" in text
     assert "e93dba5 docs: refresh FluxMind activation status" in text
     assert "ba7c243 feat: add provider quota guard and safe runtime events" in text
@@ -71,8 +73,11 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
     assert "Share-link no-secret follow-up on 2026-06-20 12:22 CST" in text
+    assert "Share-link event-evidence follow-up on 2026-06-20 15:00 CST" in text
     assert "workspace_present" in text
     assert "workspace_fingerprint" in text
+    assert "product_workspace_present=true" in text
+    assert "corrupted SQLite status fallback" in text
     assert "raw `workspace_id`" in text
     assert "committed locally in the stack above, not pushed" in text
     assert "not committed, pushed, or deployed" not in text

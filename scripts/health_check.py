@@ -165,14 +165,16 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  95f1760 test: add octave-aware code-output eval" in repo_status
-        and "Current docs/health sync       e4da2e9 docs: document octave-aware eval status" in repo_status
+        and "Current implementation commit  ea8a7a2 fix: preserve share-link workspace event evidence" in repo_status
+        and "Current docs/health sync       3ae6842 docs: refresh share-link audit status" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
         and "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST"
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
+        and "share-link admin runtime-event workspace-present" in repo_status
+        and "Share-link event-evidence follow-up on 2026-06-20 15:00 CST" in repo_status
         and "live answer count/pass-rate/term-coverage gates" in repo_status
         and "live_retrieval_pass_rate=1.0" in repo_status,
         "repo status records current source and deployed baselines",

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 12:22 CST
+Snapshot time: 2026-06-20 15:00 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  c56c285 fix: redact share-link workspace identifiers
-Current docs/health sync       e93dba5 docs: refresh FluxMind activation status
-Current local app-code HEAD    c56c285 fix: redact share-link workspace identifiers
+Current implementation commit  ea8a7a2 fix: preserve share-link workspace event evidence
+Current docs/health sync       3ae6842 docs: refresh share-link audit status
+Current local app-code HEAD    ea8a7a2 fix: preserve share-link workspace event evidence
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the seven local commits below
+                               by the nine local commits below
                                before this docs refresh
-Current local commit stack     c56c285 fix: redact share-link workspace identifiers
+Current local commit stack     ea8a7a2 fix: preserve share-link workspace event evidence
+                               3ae6842 docs: refresh share-link audit status
+                               c56c285 fix: redact share-link workspace identifiers
                                e93dba5 docs: refresh FluxMind activation status
                                ba7c243 feat: add provider quota guard and safe runtime events
                                4ea219c fix: harden no-secret local projections
@@ -54,6 +56,9 @@ Current refresh scope          local audit/forward-development commits for produ
                                for private corpora/share links,
                                share-link public projection hardening that replaces
                                raw workspace IDs with presence/fingerprint summaries,
+                               share-link admin runtime-event workspace-present
+                               evidence restoration after public projection redaction,
+                               and share-link terminal-state/status regression coverage,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -189,6 +194,45 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Share-link event-evidence follow-up on 2026-06-20 15:00 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_share_links.py        pass, 8 selected tests, 2 known warnings
+  tests/test_api.py::test_admin_share_link_registry_routes_use_local_backend
+  tests/test_cli_scripts.py::test_share_link_registry_cli_lifecycle
+  tests/test_cli_scripts.py::test_share_link_registry_cli_markdown_shapes_are_no_secret -q
+.venv/bin/python -m coverage run -m pytest -q &&            pass, 604 tests, 2 known warnings,
+  .venv/bin/python -m coverage report --fail-under=88       89% total branch coverage;
+                                                            src/share_links.py now 90%
+.venv/bin/python -m pytest tests/test_docs_status.py        pass, 18 selected docs/health tests
+  tests/test_feature_audit_docs.py tests/test_translation_guard.py
+  tests/test_health_check.py::test_main_local_health_check_passes -q
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors
+                                                            aligned with current local stack;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            52 required operations,
+                                                            protected auth headers covered
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up restores metadata-only observability for share-link resolution
+after raw workspace IDs were removed from the public projection. Valid and
+revoked resolve events now preserve `product_workspace_present=true` through an
+explicit boolean rather than by reading a raw workspace ID from the public
+payload. The regression test also asserts the event action sequence and that no
+raw workspace ID, token, resource ref, owner user, private path, or secret-like
+marker is emitted. Additional registry coverage exercises active, expired,
+exhausted, and revoked share-link states; status counts; empty resource-ref
+rejection; and corrupted SQLite status fallback without exporting DB paths or
+stored contents.
 
 Share-link no-secret follow-up on 2026-06-20 12:22 CST:
 
