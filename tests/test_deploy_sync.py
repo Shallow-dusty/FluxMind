@@ -125,3 +125,22 @@ def test_main_reports_project_root_error(monkeypatch, capsys):
 
     assert deploy_sync.main() == 2
     assert "bad root" in capsys.readouterr().err
+
+
+def test_main_sanitizes_project_root_error(monkeypatch, capsys):
+    secret_error = "bad root /private/hunter2-fluxmind token=sk-secret-deploy-sync"
+    monkeypatch.setattr(
+        deploy_sync,
+        "validate_project_root",
+        lambda root=deploy_sync.PROJECT_ROOT: (_ for _ in ()).throw(
+            RuntimeError(secret_error)
+        ),
+    )
+    monkeypatch.setattr("sys.argv", ["deploy_sync.py"])
+
+    assert deploy_sync.main() == 2
+    err = capsys.readouterr().err
+    assert "error:" in err
+    assert "[redacted]" in err
+    assert "/private/hunter2-fluxmind" not in err
+    assert "sk-secret-deploy-sync" not in err

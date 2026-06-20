@@ -14,6 +14,11 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts._safe_cli import format_os_error  # noqa: E402
+
 DEFAULT_HOST = "root@100.100.233.26"
 DEFAULT_REMOTE_PATH = "/opt/fluxmind/"
 DEFAULT_RESTART_SERVICES = (
@@ -121,7 +126,7 @@ def main() -> int:
             apply=args.apply,
         )
     except RuntimeError as exc:
-        print(str(exc), file=sys.stderr)
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
 
     if not args.apply:

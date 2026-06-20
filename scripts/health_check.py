@@ -1905,6 +1905,15 @@ def main() -> int:
     deploy_sync_source = (PROJECT_ROOT / "scripts" / "deploy_sync.py").read_text(encoding="utf-8")
     check("--dry-run" in deploy_sync_source and "--apply" in deploy_sync_source, "safe deploy sync dry-run/apply guard installed", failures)
     check("REQUIRED_RUNTIME_EXCLUDES" in deploy_sync_source and "models/" in deploy_sync_source and "venv/" in deploy_sync_source, "safe deploy sync runtime excludes installed", failures)
+    check(
+        "format_os_error" in deploy_sync_source
+        and "error: {format_os_error(exc)}" in deploy_sync_source
+        and "test_main_sanitizes_project_root_error" in (
+            PROJECT_ROOT / "tests" / "test_deploy_sync.py"
+        ).read_text(encoding="utf-8"),
+        "safe deploy sync CLI errors omit raw paths",
+        failures,
+    )
     if (PROJECT_ROOT / "artifacts").exists():
         print(f"info artifact bytes={directory_size_bytes(PROJECT_ROOT / 'artifacts')}")
     else:
