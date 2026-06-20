@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 23:12 CST
+Snapshot time: 2026-06-20 23:21 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  c9d1f38 fix: redact job owner metadata
-Current docs/health sync       docs: record job owner metadata audit status (this commit)
-Current local app-code HEAD    c9d1f38 fix: redact job owner metadata
+Current implementation commit  73be318 fix: redact unsafe job request ids
+Current docs/health sync       docs: record job request id audit status (this commit)
+Current local app-code HEAD    73be318 fix: redact unsafe job request ids
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the forty-eight local commits below
-                               after this job owner metadata docs refresh commit
-Current local commit stack     docs: record job owner metadata audit status (this commit)
+                               by the fifty local commits below
+                               after this job request id docs refresh commit
+Current local commit stack     docs: record job request id audit status (this commit)
+                               73be318 fix: redact unsafe job request ids
+                               a1a047e docs: record job owner metadata audit status
                                c9d1f38 fix: redact job owner metadata
                                887f53f docs: record job idempotency key audit status
                                d65a8de fix: redact job idempotency keys
@@ -146,6 +148,9 @@ Current refresh scope          local audit/forward-development commits for produ
                                job detail API owner metadata projection that
                                replaces raw owner IDs/labels with
                                presence/fingerprint/exported=false fields,
+                               job detail API request-id projection that
+                               redacts unsafe legacy request IDs while
+                               preserving safe correlation IDs,
                                full-suite code execution event test isolation
                                for background job event noise,
                                and docs;
@@ -283,6 +288,48 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Job request ID projection follow-up on 2026-06-20 23:21 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -q            pass, 119 API tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 631 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including job detail
+                                                            API unsafe request-ID
+                                                            projection anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+TestClient legacy job request-ID repro                      pass, leaked=false for
+                                                            Bearer secret-request-token;
+                                                            unsafe request_id exported=false;
+                                                            request_id_redacted=true
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 49],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up closes a public job projection gap for legacy or manually written
+job records that contain unsafe request IDs. Exact job responses and job-list
+summaries no longer echo unsafe persisted request IDs such as bearer/token-like
+headers; they expose `request_id_present` and `request_id_redacted` evidence
+instead. Safe correlation IDs created by current API entrypoints remain
+available for normal local debugging. No production deployment was performed,
+and `docs/DEPLOYMENT_STATUS.md` remains unchanged because no live Trace-Twin
+service facts were refreshed in this pass.
 
 Job owner metadata projection follow-up on 2026-06-20 23:12 CST:
 

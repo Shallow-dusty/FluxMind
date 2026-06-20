@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 23:12 CST after the
-job owner metadata projection hardening. The command set below now passes with
-630 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 23:21 CST after the
+job request ID projection hardening. The command set below now passes with
+631 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ job owner metadata projection hardening. The command set below now passes with
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 630 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 631 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 630 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 631 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -68,6 +68,7 @@ Command                                                               Result
                                                                       job-detail-code-output-projection/
                                                                       job-idempotency-key-projection/
                                                                       job-owner-metadata-projection/
+                                                                      job-request-id-projection/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -284,6 +285,17 @@ owner fingerprints; local verification passes with 630 tests, 89% branch
 coverage, offline RAG eval, OpenAPI no-secret snapshot `diff_count=0`, and
 storage-schema 0 problems.
 
+The 2026-06-20 23:21 CST job request ID projection audit adds focused coverage
+for public `JobResponse` request ID metadata. Exact job responses and job-list
+summaries now pass persisted request IDs through the same runtime request-ID
+sanitizer used by runtime-event projections. Safe current correlation IDs remain
+available, while unsafe legacy values such as bearer/token-like headers are
+reduced to `request_id_present=true` and `request_id_redacted=true` without a
+raw `request_id` field. Tests verify that a legacy `Bearer secret-request-token`
+job record is not echoed by exact fetch, list, or retry responses; local
+verification passes with 631 tests, 89% branch coverage, offline RAG eval,
+OpenAPI no-secret snapshot `diff_count=0`, and storage-schema 0 problems.
+
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
 `/query/report` download responses preserving request/quota headers, and stable
@@ -446,6 +458,11 @@ Local job and worker bridge   verified      immediate and async job routes, idem
                                             owner_exported=false fields
                                             preserve local attribution
                                             observability.
+                                            Unsafe legacy request IDs are
+                                            reduced to request_id_present and
+                                            request_id_redacted flags, while
+                                            safe current correlation IDs remain
+                                            available.
                                             Admin status/report include local job-health alerts.
                                             Distributed queue remains planned.
 Artifacts and exports         verified      artifact list/download, checksums, and metadata mirrors

@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 630
+Current hardening progress through 2026-06-20: the automated suite has 631
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -93,6 +93,11 @@ presence/fingerprint/exported=false fields instead of echoing raw submitted
 `owner_id` or `owner_label` values, while internal durable job records still
 retain normalized owner metadata for local filters, retries, artifact
 attribution, and product guard inputs.
+Exact job detail responses and job-list summaries now also project persisted
+request IDs through the runtime request-ID sanitizer, so unsafe legacy values
+are represented by `request_id_present`/`request_id_redacted` evidence rather
+than raw bearer/token-like header values while safe current correlation IDs
+remain usable for local debugging.
 FastAPI framework-level request validation errors now use one public no-secret
 projection as well: `RequestValidationError` responses keep validation `type`
 and field `loc`, but omit submitted `input` values, validation `ctx`, and raw
@@ -145,6 +150,12 @@ passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
 schema drift still at 0 problems, and TestClient repros showing
 `leaked=false` for secret-like owner IDs and labels in create, exact fetch, and
 retry responses.
+A 2026-06-20 23:21 CST job request ID projection audit confirms the updated
+local checkout with 631 tests passing, 89% branch coverage, offline RAG eval
+passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
+schema drift still at 0 problems, and TestClient repros showing
+`leaked=false` for bearer/token-like legacy request IDs in exact job fetch,
+job-list, and retry responses.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
@@ -731,13 +742,17 @@ and full running cancellation for every future worker type remain planned
   enqueue those local jobs through an in-process background worker.
 - `GET /jobs` lists latest job summaries with local `q`, `status`, `kind`, and
   `owner_id` filters over a no-secret search projection; raw owner IDs/labels
-  are reduced to `owner_id_present` and `owner_label_present`.
+  are reduced to `owner_id_present` and `owner_label_present`, and unsafe
+  request IDs are reduced to request-ID presence/redaction flags.
 - `GET /jobs/{job_id}` returns persisted job detail status for an exact job ID.
 - Job responses project submitted `idempotency_key` values as presence,
   fingerprint, and `idempotency_key_exported=false` fields instead of raw keys.
 - Job responses project normalized owner metadata as presence, fingerprint, and
   `owner_exported=false` fields. The internal values remain metadata only, not
   authentication, tenant isolation, quotas, or billing.
+- Job responses preserve safe request IDs for local correlation, but redact
+  unsafe legacy request IDs into `request_id_present` and `request_id_redacted`
+  flags instead of raw values.
 - `POST /jobs/{job_id}/retry` retries failed/cancelled local jobs with a new
   job ID.
 - `POST /jobs/{job_id}/retry-scheduled` queues failed/cancelled local jobs for
