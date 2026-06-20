@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 23:21 CST after the
-job request ID projection hardening. The command set below now passes with
-631 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 23:31 CST during the
+git/documentation drift refresh after the job request ID projection docs sync.
+The command set below now passes with 631 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -295,6 +295,13 @@ raw `request_id` field. Tests verify that a legacy `Bearer secret-request-token`
 job record is not echoed by exact fetch, list, or retry responses; local
 verification passes with 631 tests, 89% branch coverage, offline RAG eval,
 OpenAPI no-secret snapshot `diff_count=0`, and storage-schema 0 problems.
+
+The 2026-06-20 23:31 CST git/documentation drift refresh did not add feature
+code. It reconfirms the same local verification set after the job request-ID
+docs sync: 631 tests pass, coverage remains 89%, offline RAG eval passes,
+health/docs anchors pass, OpenAPI no-secret snapshot verification has
+`diff_count=0`, storage schema inventory reports 10 stores with 0 problems, and
+`git diff --check` is clean. No live deployment facts were refreshed.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,

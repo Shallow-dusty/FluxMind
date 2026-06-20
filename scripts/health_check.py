@@ -166,8 +166,9 @@ def main() -> int:
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Current implementation commit  73be318 fix: redact unsafe job request ids" in repo_status
-        and "Current docs/health sync       docs: record job request id audit status (this commit)" in repo_status
-        and "by the fifty local commits below" in repo_status
+        and "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in repo_status
+        and "by the fifty-one local commits below" in repo_status
+        and "848eef4 docs: record job request id audit status" in repo_status
         and "73be318 fix: redact unsafe job request ids" in repo_status
         and "a1a047e docs: record job owner metadata audit status" in repo_status
         and "c9d1f38 fix: redact job owner metadata" in repo_status
@@ -183,6 +184,10 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Git/documentation drift refresh on 2026-06-20 23:31 CST" in repo_status
+        and "main...origin/main [ahead 50]" in repo_status
+        and "after the job request-ID docs sync" in repo_status
+        and "no docs/health anchor drift" in repo_status
         and "Job request ID projection follow-up on 2026-06-20 23:21 CST" in repo_status
         and "main...origin/main [ahead 49]" in repo_status
         and "pass, 631 tests" in repo_status
@@ -300,6 +305,7 @@ def main() -> int:
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
         and "pass, 631 tests, 2 known warnings" in roadmap
+        and "Git/documentation drift refresh" in roadmap
         and "Job request ID projection audit" in roadmap
         and "job-request-id-projection" in roadmap
         and "Job owner metadata projection audit" in roadmap

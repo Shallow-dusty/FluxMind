@@ -9,8 +9,8 @@ def test_repo_status_records_post_deployment_git_boundary():
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Current implementation commit  73be318 fix: redact unsafe job request ids" in text
-    assert "Current docs/health sync       docs: record job request id audit status (this commit)" in text
-    assert "by the fifty local commits below" in text
+    assert "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in text
+    assert "by the fifty-one local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -64,7 +64,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
     assert "Current local app-code HEAD    73be318 fix: redact unsafe job request ids" in text
-    assert "docs: record job request id audit status (this commit)" in text
+    assert "docs: refresh git and documentation drift status (this commit)" in text
+    assert "848eef4 docs: record job request id audit status" in text
     assert "73be318 fix: redact unsafe job request ids" in text
     assert "a1a047e docs: record job owner metadata audit status" in text
     assert "c9d1f38 fix: redact job owner metadata" in text
@@ -114,6 +115,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Git/documentation drift refresh on 2026-06-20 23:31 CST" in text
+    assert "main...origin/main [ahead 50]" in text
+    assert "after the job request-ID docs sync" in text
+    assert "no docs/health anchor drift" in text
     assert "Job request ID projection follow-up on 2026-06-20 23:21 CST" in text
     assert "main...origin/main [ahead 49]" in text
     assert "pass, 631 tests" in text
@@ -235,6 +240,7 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
     assert "pass, 631 tests, 2 known warnings" in text
+    assert "Git/documentation drift refresh" in text
     assert "Job request ID projection audit" in text
     assert "job-request-id-projection" in text
     assert "Job owner metadata projection audit" in text

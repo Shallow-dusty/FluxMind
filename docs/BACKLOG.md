@@ -156,6 +156,12 @@ passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
 schema drift still at 0 problems, and TestClient repros showing
 `leaked=false` for bearer/token-like legacy request IDs in exact job fetch,
 job-list, and retry responses.
+A 2026-06-20 23:31 CST git/documentation drift refresh confirms the clean
+checkout after the job request-ID docs sync with 631 tests passing, 89% branch
+coverage, offline RAG eval passing, local health/docs anchors passing, OpenAPI
+no-secret snapshot drift still at `diff_count=0`, storage schema drift still at
+0 problems, and `git diff --check` clean. It was a docs/health-only status
+pass; no production deployment or live Trace-Twin service facts were refreshed.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

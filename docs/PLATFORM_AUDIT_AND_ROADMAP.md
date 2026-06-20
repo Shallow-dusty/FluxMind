@@ -43,13 +43,17 @@ gates, plus the opt-in no-key Docker execution backend, structured execution
 input materialization guards, runtime-event metadata-value redaction, and
 public request validation error projection plus Streamlit validation
 error-output sanitization plus public job detail code-output, idempotency-key,
-owner-metadata, and request-ID projection.
+owner-metadata, and request-ID projection. A docs/health-only drift refresh
+now reconfirms those boundaries without adding feature code.
 
 Current verification run:
 
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
+Git/documentation drift refresh           2026-06-20 23:31 CST, checkout at
+                                          848eef4 before this docs-only refresh;
+                                          no production deployment performed
 Job request ID projection audit           2026-06-20 23:21 CST, checkout at
                                           73be318 before this docs refresh;
                                           no production deployment performed

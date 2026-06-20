@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 23:21 CST
+Last updated: 2026-06-20 23:31 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,15 +23,16 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 23:21 refresh updates the current local repo verification counts,
-job detail API request-ID, owner-metadata, and idempotency-key projection
-boundaries, job detail API code-output projection boundary, Streamlit validation
-error-output sanitization boundary, API request validation error projection boundary, index rebuild job API
-projection redaction boundary, git/documentation drift evidence after the API
-validation docs sync, API validation/artifact download error-output redaction
-boundary, Streamlit admin/artifact error-output redaction boundary, and
-no-secret registry/readiness default state only. Dated live deployment and
-external research snapshots remain scoped to the times shown in their rows.
+The 2026-06-20 23:31 refresh updates the current local repo verification counts
+and git/documentation drift evidence after the job request-ID docs sync. It
+retains the job detail API request-ID, owner-metadata, and idempotency-key
+projection boundaries, job detail API code-output projection boundary,
+Streamlit validation error-output sanitization boundary, API request validation
+error projection boundary, index rebuild job API projection redaction boundary,
+API validation/artifact download error-output redaction boundary, Streamlit
+admin/artifact error-output redaction boundary, and no-secret registry/readiness
+default state only. Dated live deployment and external research snapshots
+remain scoped to the times shown in their rows.
 
 ## Current Baseline
 
@@ -45,12 +46,12 @@ Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Current implementation 73be318 fix: redact unsafe job request ids
-Current docs/health    docs: record job request id audit status
+Current docs/health    docs: refresh git and documentation drift status
 Status note     local no-key hardening through index rebuild job API projection,
                 API request validation projection, API validation/artifact
                 download, Streamlit admin/artifact/upload validation
                 error-output sanitization, and job detail code-output
-                plus idempotency-key, owner-metadata, and request-ID projection is implemented and locally verified; the 23:21
+                plus idempotency-key, owner-metadata, and request-ID projection is implemented and locally verified; the 23:31
                 refresh reconfirms no OpenAPI/storage/docs drift; the
                 local stack is not pushed to origin and not deployed to
                 Trace-Twin
@@ -58,7 +59,7 @@ Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 23:21 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 23:31 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
