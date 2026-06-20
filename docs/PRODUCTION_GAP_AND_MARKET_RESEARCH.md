@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 22:01 CST
+Last updated: 2026-06-20 22:10 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,12 +23,13 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 22:01 refresh updates the current local repo verification counts,
-git/documentation drift evidence after the API validation docs sync,
-API validation/artifact download error-output redaction boundary, Streamlit
-admin/artifact error-output redaction boundary, and no-secret registry/readiness
-default state only. Dated live deployment and external research snapshots remain
-scoped to the times shown in their rows.
+The 2026-06-20 22:10 refresh updates the current local repo verification counts,
+index rebuild job API projection redaction boundary, git/documentation drift
+evidence after the API validation docs sync, API validation/artifact download
+error-output redaction boundary, Streamlit admin/artifact error-output
+redaction boundary, and no-secret registry/readiness default state only. Dated
+live deployment and external research snapshots remain scoped to the times shown
+in their rows.
 
 ## Current Baseline
 
@@ -41,18 +42,19 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 52eff68 fix: sanitize API validation error details
-Current docs/health    docs: refresh FluxMind git and documentation drift status
-Status note     local no-key hardening through API validation/artifact download
-                and Streamlit admin/artifact error-output sanitization is
-                implemented and locally verified; the 22:01 docs-only refresh
-                reconfirms no OpenAPI/storage/docs drift; the local stack is
-                not pushed to origin and not deployed to Trace-Twin
+Current implementation 19de06f fix: redact index rebuild job source paths
+Current docs/health    docs: record index rebuild job projection audit status
+Status note     local no-key hardening through index rebuild job API projection,
+                API validation/artifact download, and Streamlit admin/artifact
+                error-output sanitization is implemented and locally verified;
+                the 22:10 refresh reconfirms no OpenAPI/storage/docs drift; the
+                local stack is not pushed to origin and not deployed to
+                Trace-Twin
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 22:01 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 22:10 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -61,7 +63,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    622 passed, 2 known warnings
+pytest                                    624 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only

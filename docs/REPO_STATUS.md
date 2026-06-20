@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 22:01 CST
+Snapshot time: 2026-06-20 22:10 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  52eff68 fix: sanitize API validation error details
-Current docs/health sync       docs: refresh FluxMind git and documentation drift status (this commit)
-Current local app-code HEAD    52eff68 fix: sanitize API validation error details
+Current implementation commit  19de06f fix: redact index rebuild job source paths
+Current docs/health sync       docs: record index rebuild job projection audit status (this commit)
+Current local app-code HEAD    19de06f fix: redact index rebuild job source paths
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the thirty-five local commits below
-                               after this git/documentation drift refresh commit
-Current local commit stack     docs: refresh FluxMind git and documentation drift status (this commit)
+                               by the thirty-seven local commits below
+                               after this index rebuild job projection docs refresh commit
+Current local commit stack     docs: record index rebuild job projection audit status (this commit)
+                               19de06f fix: redact index rebuild job source paths
+                               1115b02 docs: refresh FluxMind git and documentation drift status
                                b82c6c6 docs: record API validation error audit status
                                52eff68 fix: sanitize API validation error details
                                08c5984 docs: refresh FluxMind git and documentation status
@@ -115,6 +117,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                git/documentation drift refresh after the
                                API validation docs sync with current
                                no-drift gate evidence,
+                               index rebuild job API response projection
+                               redaction for raw source paths,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -250,6 +254,53 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Index rebuild job projection follow-up on 2026-06-20 22:10 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -k            pass, 3 selected API tests,
+  "index_rebuild" -q                                        110 deselected, 2 known warnings
+.venv/bin/python -m pytest tests/test_api.py -k            pass, 16 selected API tests,
+  "index_rebuild or job_endpoint or async_python_job" -q     97 deselected, 2 known warnings
+.venv/bin/python -m pytest tests/test_jobs.py -k           pass, 4 selected job tests,
+  "index_rebuild or job_store_list_cancel_and_retry" -q      43 deselected, 1 known warning
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 624 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including
+                                                            index rebuild job API projection
+                                                            source-path redaction anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+TestClient sync/async index rebuild repro                  pass, leaked=false for
+                                                            /tmp/sk-secret-index.pdf and
+                                                            /tmp/sk-secret-async.pdf
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 36],
+                                                            local code changes staged for
+                                                            this docs refresh afterward
+```
+
+The follow-up closes a public `JobResponse` projection gap for index rebuild
+jobs. The internal durable job request still stores raw `source_paths` so the
+worker, retry, and idempotency paths can execute queued rebuilds, but public
+`POST /jobs/index/rebuild`, `POST /jobs/async/index/rebuild`, existing
+idempotent job responses, and exact `GET /jobs/{job_id}` responses now expose
+only `source_path_count` for index rebuild request/result projection. Focused
+tests verify that secret-like absolute source paths are not echoed by sync or
+async API responses while the internal queued record remains executable. No
+production deployment was performed, and `docs/DEPLOYMENT_STATUS.md` remains
+unchanged because no live Trace-Twin service facts were refreshed in this pass.
 
 Git/documentation drift refresh on 2026-06-20 22:01 CST:
 

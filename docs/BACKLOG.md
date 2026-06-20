@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 622
+Current hardening progress through 2026-06-20: the automated suite has 624
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -69,6 +69,12 @@ principle for validation failures: corpus source-path and artifact-export
 raw exception text, so public HTTP errors do not echo submitted paths,
 secret-like path fragments, nonlocal artifact hosts, artifact titles, or
 symlink-resolution messages.
+Index rebuild job API responses now apply the same no-secret projection
+discipline: public job request/result payloads expose `source_path_count` for
+index rebuild jobs instead of raw `source_paths`, including sync failures,
+async queued jobs, idempotent existing-job responses, and exact job fetches,
+while the internal durable job request still retains source paths for worker
+execution and retry.
 A 2026-06-20 21:38 CST git/documentation status refresh confirms the current
 checkout remains clean before the docs-only refresh, with 619 tests passing,
 89% branch coverage, offline RAG eval passing, OpenAPI no-secret snapshot drift
@@ -83,6 +89,11 @@ coverage, offline RAG eval passing, local health/docs anchors passing, OpenAPI
 no-secret snapshot drift still at `diff_count=0`, storage schema drift still at
 0 problems, and `git diff --check` clean. It was a docs-only status pass; no
 production deployment or live Trace-Twin service facts were refreshed.
+A 2026-06-20 22:10 CST index rebuild job projection audit confirms the updated
+local checkout with 624 tests passing, 89% branch coverage, offline RAG eval
+passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
+schema drift still at 0 problems, and a TestClient sync/async repro showing
+`leaked=false` for secret-like index rebuild source paths.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

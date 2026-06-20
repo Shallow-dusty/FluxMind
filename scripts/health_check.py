@@ -165,9 +165,17 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  52eff68 fix: sanitize API validation error details" in repo_status
-        and "Current docs/health sync       docs: refresh FluxMind git and documentation drift status (this commit)" in repo_status
-        and "by the thirty-five local commits below" in repo_status
+        and "Current implementation commit  19de06f fix: redact index rebuild job source paths" in repo_status
+        and "Current docs/health sync       docs: record index rebuild job projection audit status (this commit)" in repo_status
+        and "by the thirty-seven local commits below" in repo_status
+        and "19de06f fix: redact index rebuild job source paths" in repo_status
+        and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Index rebuild job projection follow-up on 2026-06-20 22:10 CST" in repo_status
+        and "main...origin/main [ahead 36]" in repo_status
+        and "source_path_count" in repo_status
+        and "leaked=false" in repo_status
+        and "pass, 624 tests" in repo_status
+        and "index rebuild job API projection" in repo_status
         and "b82c6c6 docs: record API validation error audit status" in repo_status
         and "Git/documentation drift refresh on 2026-06-20 22:01 CST" in repo_status
         and "main...origin/main [ahead 34]" in repo_status
@@ -247,7 +255,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 622 tests, 2 known warnings" in roadmap
+        and "pass, 624 tests, 2 known warnings" in roadmap
+        and "Index rebuild job projection audit" in roadmap
+        and "index-rebuild-job-projection" in roadmap
         and "execution-input-materialization" in roadmap
         and "runtime-event-metadata-value-redaction" in roadmap
         and "admin-on-demand-error-sanitizer" in roadmap

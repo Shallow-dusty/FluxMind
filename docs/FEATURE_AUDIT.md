@@ -11,19 +11,19 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 22:01 CST as a
-docs-only drift pass after the API validation docs sync. The command set below
-still passes with 622 tests, 89% branch coverage, OpenAPI no-secret snapshot
-`diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
+Current local verification was refreshed on 2026-06-20 22:10 CST after the
+index rebuild job API projection hardening. The command set below now passes
+with 624 tests, 89% branch coverage, OpenAPI no-secret snapshot `diff_count=0`,
+storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
 
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 622 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 624 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 622 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 624 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -62,6 +62,7 @@ Command                                                               Result
                                                                       live-eval-request-id-redaction/
                                                                       Streamlit-share-link-error-sanitizer/
                                                                       API-validation-error-sanitizer/
+                                                                      index-rebuild-job-projection/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -210,6 +211,17 @@ above after the API validation docs sync: 622 tests pass, coverage remains 89%,
 offline RAG eval passes, health/docs anchors pass, OpenAPI no-secret snapshot
 verification has `diff_count=0`, storage schema inventory reports 10 stores
 with 0 problems, and `git diff --check` is clean.
+
+The 2026-06-20 22:10 CST index rebuild job API projection audit adds focused
+regression coverage for public `JobResponse` payloads from
+`/jobs/index/rebuild`, `/jobs/async/index/rebuild`, and exact `GET /jobs/{id}`
+responses. Index rebuild job request/result projections now expose
+`source_path_count` instead of raw `source_paths`, while the internal durable
+job record still retains source paths for queued worker execution and retry.
+Focused tests verify that secret-like absolute source paths are not echoed by
+sync or async public responses; local verification passes with 624 tests, 89%
+branch coverage, offline RAG eval, health anchors, OpenAPI no-secret snapshot
+`diff_count=0`, and storage-schema 0 problems.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
