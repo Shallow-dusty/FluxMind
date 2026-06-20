@@ -44,6 +44,18 @@ def test_streamlit_latest_jobs_uses_no_secret_summary():
     assert "st.json(job.error)" not in APP_SOURCE
 
 
+def test_streamlit_job_result_sanitizes_failure_message():
+    job_result_block = APP_SOURCE.split("def render_job_result(job)", 1)[1].split(
+        "def job_sidebar_summary(job)", 1
+    )[0]
+
+    assert "safe_streamlit_status_message" in APP_SOURCE
+    assert "sanitize_cli_error_message(str(message or \"\"))" in APP_SOURCE
+    assert "safe_streamlit_status_message(error_message, fallback=job.status)" in job_result_block
+    assert '(job.error or {}).get("message", job.status)' not in job_result_block
+    assert 'st.error(text["job_failed"].format(message=message))' in job_result_block
+
+
 def test_streamlit_artifact_gallery_is_installed():
     artifact_block = APP_SOURCE.split("def render_latest_artifacts()", 1)[1].split(
         "def render_product_registry_management()", 1

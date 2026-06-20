@@ -1292,6 +1292,17 @@ def main() -> int:
         "Streamlit artifact gallery sanitizes download error output",
         failures,
     )
+    job_result_block = ""
+    if "def render_job_result(job)" in app_source and "def job_sidebar_summary(job)" in app_source:
+        job_result_block = app_source.split("def render_job_result(job)", 1)[1].split(
+            "def job_sidebar_summary(job)", 1
+        )[0]
+    check(
+        "safe_streamlit_status_message(error_message, fallback=job.status)" in job_result_block
+        and '(job.error or {}).get("message", job.status)' not in job_result_block,
+        "Streamlit job result sanitizes failure message output",
+        failures,
+    )
     check("octave_job" in app_source and "enqueue_local_octave" in app_source, "Streamlit Octave job panel installed", failures)
     check(
         "CorpusProfileStore" in app_source

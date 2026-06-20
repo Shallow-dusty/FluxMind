@@ -122,6 +122,10 @@ def safe_streamlit_error_text(template: str, exc: BaseException) -> str:
     return template.format(error=safe_streamlit_error_message(exc))
 
 
+def safe_streamlit_status_message(message: object, *, fallback: str) -> str:
+    return sanitize_cli_error_message(str(message or "")) or fallback
+
+
 @st.dialog("演示导览", width="large")
 def show_demo_guide():
     """Presenter-only walkthrough. Sourced from docs/demo-script.md so the
@@ -674,7 +678,8 @@ def render_job_result(job) -> None:
     if job.status in {"queued", "running", "succeeded"}:
         st.success(text["job_created"].format(job_id=job.job_id, status=job.status))
     else:
-        message = (job.error or {}).get("message", job.status)
+        error_message = (job.error or {}).get("message") if isinstance(job.error, dict) else None
+        message = safe_streamlit_status_message(error_message, fallback=job.status)
         st.error(text["job_failed"].format(message=message))
 
 
