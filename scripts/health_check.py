@@ -1242,6 +1242,14 @@ def main() -> int:
     )
     check("/artifacts" in api_source, "artifact export route installed", failures)
     check("job_kind: str | None" in api_source and "kind: str | None" in api_source, "artifact metadata filters installed", failures)
+    check(
+        "def public_error_detail" in api_source
+        and "detail=str(exc)" not in api_source
+        and 'public_error_detail("artifact_export_denied")' in api_source
+        and api_source.count('public_error_detail("invalid_corpus_source_path")') >= 5,
+        "API validation errors sanitize exception text",
+        failures,
+    )
     check("/admin/status" in api_source, "admin status route installed", failures)
     check("/admin/runtime-manifest" in api_source and "collect_runtime_backup_manifest" in api_source, "admin runtime manifest route installed", failures)
     storage_manifest_source = (PROJECT_ROOT / "src" / "storage_manifest.py").read_text(encoding="utf-8")

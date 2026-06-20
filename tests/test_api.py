@@ -1454,6 +1454,26 @@ def test_corpus_structure_endpoint_returns_pdf_markers(tmp_path, monkeypatch):
     assert "Figure 2. PMSM block diagram" in report_response.text
 
 
+def test_corpus_structure_endpoint_rejects_invalid_source_without_echo(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+
+    def fail(_source_paths):
+        raise ValueError("PDF path is not in the selectable corpus: /tmp/sk-secret-paper.pdf")
+
+    monkeypatch.setattr(api, "resolve_selectable_source_paths", fail)
+
+    client = TestClient(api.app)
+    response = client.get(
+        "/corpus/structure",
+        params={"source_path": "/tmp/sk-secret-paper.pdf"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {"code": "invalid_corpus_source_path"}
+    assert "/tmp/sk-secret-paper.pdf" not in response.text
+    assert "sk-secret" not in response.text
+
+
 def test_corpus_status_endpoint_returns_lifecycle_status(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr(
@@ -1526,15 +1546,17 @@ def test_update_active_corpus_endpoint_rejects_invalid_selection(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
 
     def fail(_source_paths):
-        raise ValueError("PDF path is not in the selectable corpus: missing.pdf")
+        raise ValueError("PDF path is not in the selectable corpus: /tmp/sk-secret-missing.pdf")
 
     monkeypatch.setattr(api, "set_active_paper_source_paths", fail)
 
     client = TestClient(api.app)
-    response = client.put("/corpus/active", json={"source_paths": ["missing.pdf"]})
+    response = client.put("/corpus/active", json={"source_paths": ["/tmp/sk-secret-missing.pdf"]})
 
     assert response.status_code == 400
-    assert "selectable corpus" in response.json()["detail"]
+    assert response.json()["detail"] == {"code": "invalid_corpus_source_path"}
+    assert "/tmp/sk-secret-missing.pdf" not in response.text
+    assert "sk-secret" not in response.text
 
 
 def test_corpus_profile_endpoints_create_list_and_activate(tmp_path, monkeypatch):
@@ -1680,6 +1702,32 @@ def test_corpus_profile_rebuild_endpoint_activates_and_queues_job(tmp_path, monk
             "ownership_source": "default",
         },
     }
+
+
+def test_corpus_profile_activate_and_rebuild_reject_invalid_saved_path_without_echo(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    store = api.CorpusProfileStore(tmp_path / "corpus_profiles.json")
+    store.upsert_profile(
+        profile_id="secret-profile",
+        name="Secret Profile",
+        source_paths=["/tmp/sk-secret-profile.pdf"],
+    )
+
+    def fail(_source_paths):
+        raise ValueError("PDF path is not in the selectable corpus: /tmp/sk-secret-profile.pdf")
+
+    monkeypatch.setattr(api, "CorpusProfileStore", lambda: store)
+    monkeypatch.setattr(api, "set_active_paper_source_paths", fail)
+
+    client = TestClient(api.app)
+    activate_response = client.post("/corpus/profiles/secret-profile/activate")
+    rebuild_response = client.post("/corpus/profiles/secret-profile/rebuild", json={})
+
+    for response in (activate_response, rebuild_response):
+        assert response.status_code == 400
+        assert response.json()["detail"] == {"code": "invalid_corpus_source_path"}
+        assert "/tmp/sk-secret-profile.pdf" not in response.text
+        assert "sk-secret" not in response.text
 
 
 def test_corpus_profile_status_endpoint_reports_profile_index_state(tmp_path, monkeypatch):
@@ -1972,18 +2020,20 @@ def test_corpus_profile_endpoint_rejects_unselectable_path(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
 
     def fail(_source_paths):
-        raise ValueError("PDF path is not in the selectable corpus: missing.pdf")
+        raise ValueError("PDF path is not in the selectable corpus: /tmp/sk-secret-missing.pdf")
 
     monkeypatch.setattr(api, "validate_corpus_profile_source_paths", fail)
 
     client = TestClient(api.app)
     response = client.post(
         "/corpus/profiles",
-        json={"name": "Bad", "source_paths": ["missing.pdf"]},
+        json={"name": "Bad", "source_paths": ["/tmp/sk-secret-missing.pdf"]},
     )
 
     assert response.status_code == 400
-    assert "selectable corpus" in response.json()["detail"]
+    assert response.json()["detail"] == {"code": "invalid_corpus_source_path"}
+    assert "/tmp/sk-secret-missing.pdf" not in response.text
+    assert "sk-secret" not in response.text
 
 
 def test_admin_status_endpoint_returns_no_secret_status(monkeypatch):
@@ -3526,8 +3576,43 @@ def test_artifact_download_rejects_symlink_artifact(tmp_path, monkeypatch):
     response = client.get(f"/artifacts/{artifact_id_for_uri(uri)}")
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Artifact symlinks cannot be exported."
+    assert response.json()["detail"] == {"code": "artifact_export_denied"}
+    assert "Artifact symlinks" not in response.text
+    assert "linked.txt" not in response.text
     assert target.read_text(encoding="utf-8") == "target-body"
+
+
+def test_artifact_download_rejects_invalid_uri_without_echo(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    uri = "file://secret-host/tmp/sk-secret-artifact.txt"
+    store = api.LocalJobStore(tmp_path / "jobs.jsonl")
+    store.append_new(
+        api.JobRecord(
+            job_id="job-invalid-artifact-uri",
+            kind="code_execution",
+            status="succeeded",
+            created_at="2026-06-20T00:00:00+00:00",
+            updated_at="2026-06-20T00:00:00+00:00",
+            request={},
+            artifacts=[
+                {
+                    "kind": "text",
+                    "uri": uri,
+                    "mime_type": "text/plain",
+                    "title": "sk-secret-artifact.txt",
+                }
+            ],
+        )
+    )
+    monkeypatch.setattr("src.artifacts.LocalJobStore", lambda: store)
+
+    client = TestClient(api.app)
+    response = client.get(f"/artifacts/{artifact_id_for_uri(uri)}")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {"code": "artifact_export_denied"}
+    assert "secret-host" not in response.text
+    assert "sk-secret-artifact" not in response.text
 
 
 def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):

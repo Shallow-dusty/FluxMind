@@ -164,6 +164,11 @@ def set_active_paper_source_paths(*args, **kwargs):
     return _set_active_paper_source_paths(*args, **kwargs)
 
 
+def public_error_detail(code: str) -> dict[str, str]:
+    """Return a stable API error body without exception text or local paths."""
+    return {"code": code}
+
+
 def _set_startup_warmup_state(status: str, *, ready: bool, error: str = "") -> None:
     with _STARTUP_WARMUP_LOCK:
         _STARTUP_WARMUP_STATE.update({"status": status, "ready": ready, "error": error})
@@ -1673,7 +1678,10 @@ def collect_corpus_structure_markers(
         try:
             paths = resolve_selectable_source_paths([source_path])
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(
+                status_code=400,
+                detail=public_error_detail("invalid_corpus_source_path"),
+            ) from exc
     else:
         paths = discover_pdfs()
     clean_kind = kind.strip().casefold() if kind else ""
@@ -2124,7 +2132,10 @@ def download_artifact(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Artifact not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("artifact_export_denied"),
+        ) from exc
     return FileResponse(
         path,
         media_type=artifact.mime_type,
@@ -2268,7 +2279,10 @@ def update_active_corpus(
     try:
         papers = [record_to_dict(record) for record in set_active_paper_source_paths(req.source_paths)]
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("invalid_corpus_source_path"),
+        ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     return ActiveCorpusResponse(
         papers=papers,
@@ -2318,7 +2332,10 @@ def upsert_corpus_profile(
             source_paths=source_paths,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("invalid_corpus_source_path"),
+        ) from exc
     return CorpusProfileResponse(profile=record_to_dict(profile))
 
 
@@ -2393,7 +2410,10 @@ def activate_corpus_profile(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Corpus profile not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("invalid_corpus_source_path"),
+        ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     return ActiveCorpusResponse(
         papers=papers,
@@ -2434,7 +2454,10 @@ def rebuild_corpus_profile(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Corpus profile not found") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("invalid_corpus_source_path"),
+        ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     job = get_async_job_manager().enqueue_index_rebuild(
         profile.source_paths,
