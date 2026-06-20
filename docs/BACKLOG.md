@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 633
+Current hardening progress through 2026-06-21: the automated suite has 634
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -177,6 +177,15 @@ Profile report download failures in the Streamlit sidebar now use the shared
 sanitized error helper instead of rendering normalized exception messages
 directly, so local paths, URLs, bearer tokens, and secret-like values are
 redacted consistently with the rest of the operator UI. It was a local UI
+projection hardening pass; no production deployment or live Trace-Twin service
+facts were refreshed.
+A 2026-06-21 00:03 CST share-link create error-detail audit confirms the
+updated local checkout with 634 tests passing, 89% branch coverage, local
+health/docs anchors passing, and `git diff --check` clean. `POST
+/admin/share-links` now returns a fixed `invalid_share_link_request` public
+error code for registry `ValueError` failures instead of echoing
+`str(exc)` into `detail.code`, so raw resource references, local paths, and
+secret-like tokens are not reflected in 400 responses. It was a local API
 projection hardening pass; no production deployment or live Trace-Twin service
 facts were refreshed.
 The

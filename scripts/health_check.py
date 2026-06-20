@@ -165,9 +165,11 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  0bbf9ff fix: sanitize Streamlit profile report errors" in repo_status
-        and "Current docs/health sync       docs: record Streamlit profile report audit status (this commit)" in repo_status
-        and "by the fifty-five local commits below" in repo_status
+        and "Current implementation commit  4a43f14 fix: sanitize share-link create errors" in repo_status
+        and "Current docs/health sync       docs: record share-link create error audit status (this commit)" in repo_status
+        and "by the fifty-seven local commits below" in repo_status
+        and "4a43f14 fix: sanitize share-link create errors" in repo_status
+        and "cfaf34f docs: record Streamlit profile report audit status" in repo_status
         and "0bbf9ff fix: sanitize Streamlit profile report errors" in repo_status
         and "8b314a2 docs: record Streamlit job result audit status" in repo_status
         and "125664d fix: sanitize Streamlit job failure messages" in repo_status
@@ -188,6 +190,12 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Share-link create error-detail follow-up on 2026-06-21 00:03 CST" in repo_status
+        and "main...origin/main [ahead 56]" in repo_status
+        and "pass, 634 tests" in repo_status
+        and 'detail={"code": str(exc)}' in repo_status
+        and "invalid_share_link_request" in repo_status
+        and "secret-like token" in repo_status
         and "Streamlit corpus profile report failure-message follow-up on 2026-06-20 23:53 CST" in repo_status
         and "main...origin/main [ahead 54]" in repo_status
         and "pass, 633 tests" in repo_status
@@ -319,7 +327,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 633 tests, 2 known warnings" in roadmap
+        and "pass, 634 tests, 2 known warnings" in roadmap
+        and "Share-link create error audit" in roadmap
+        and "API-share-link-create-error-sanitizer" in roadmap
         and "Streamlit profile report error audit" in roadmap
         and "Streamlit-corpus-profile-report-error-sanitizer" in roadmap
         and "Streamlit job result error audit" in roadmap

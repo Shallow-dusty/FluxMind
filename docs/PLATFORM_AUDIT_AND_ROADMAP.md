@@ -1,6 +1,6 @@
 # FluxMind Platform Audit and Roadmap
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 For reading order and document ownership, see `docs/README.md`. Current git and
 verification state is tracked in `docs/REPO_STATUS.md`.
@@ -46,13 +46,17 @@ error-output sanitization plus public job detail code-output, idempotency-key,
 owner-metadata, and request-ID projection. A docs/health-only drift refresh
 reconfirmed those boundaries, and the Streamlit job-result panel now sanitizes
 failed job messages before display. The Streamlit corpus profile report panel
-also sanitizes profile-report generation failures before display.
+also sanitizes profile-report generation failures before display, and
+share-link create validation failures now use fixed public API error codes.
 
 Current verification run:
 
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
+Share-link create error audit             2026-06-21 00:03 CST, checkout at
+                                          4a43f14 before this docs refresh;
+                                          no production deployment performed
 Streamlit profile report error audit      2026-06-20 23:53 CST, checkout at
                                           0bbf9ff before this docs refresh;
                                           no production deployment performed
@@ -89,14 +93,14 @@ Git/documentation drift refresh           2026-06-20 22:01 CST, checkout at
 API validation error audit refresh        2026-06-20 21:50 CST, checkout at
                                           52eff68 before the API docs refresh;
                                           no production deployment performed
-.venv/bin/python -m pytest                pass, 633 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 634 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
                                              30 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/admin-on-demand-error-sanitizer/artifact-gallery-error-sanitizer/Streamlit-job-result-error-sanitizer/Streamlit-corpus-profile-report-error-sanitizer/API-validation-error-sanitizer/index-rebuild-job-projection/request-validation-error-projection/Streamlit-validation-error-sanitizer/job-detail-code-output-projection/job-idempotency-key-projection/job-owner-metadata-projection/job-request-id-projection/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/admin-on-demand-error-sanitizer/artifact-gallery-error-sanitizer/Streamlit-job-result-error-sanitizer/Streamlit-corpus-profile-report-error-sanitizer/API-share-link-create-error-sanitizer/API-validation-error-sanitizer/index-rebuild-job-projection/request-validation-error-projection/Streamlit-validation-error-sanitizer/job-detail-code-output-projection/job-idempotency-key-projection/job-owner-metadata-projection/job-request-id-projection/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 10 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 23:53 CST
+Snapshot time: 2026-06-21 00:03 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  0bbf9ff fix: sanitize Streamlit profile report errors
-Current docs/health sync       docs: record Streamlit profile report audit status (this commit)
-Current local app-code HEAD    0bbf9ff fix: sanitize Streamlit profile report errors
+Current implementation commit  4a43f14 fix: sanitize share-link create errors
+Current docs/health sync       docs: record share-link create error audit status (this commit)
+Current local app-code HEAD    4a43f14 fix: sanitize share-link create errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the fifty-five local commits below
-                               after this Streamlit profile report docs refresh commit
-Current local commit stack     docs: record Streamlit profile report audit status (this commit)
+                               by the fifty-seven local commits below
+                               after this share-link create error docs refresh commit
+Current local commit stack     docs: record share-link create error audit status (this commit)
+                               4a43f14 fix: sanitize share-link create errors
+                               cfaf34f docs: record Streamlit profile report audit status
                                0bbf9ff fix: sanitize Streamlit profile report errors
                                8b314a2 docs: record Streamlit job result audit status
                                125664d fix: sanitize Streamlit job failure messages
@@ -122,6 +124,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                hardening,
                                final git/documentation drift refresh with
                                current no-drift gate evidence,
+                               share-link create API ValueError detail
+                               sanitization,
                                Streamlit share-link management error output
                                sanitization,
                                Streamlit product registry management error output
@@ -299,6 +303,37 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Share-link create error-detail follow-up on 2026-06-21 00:03 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -k           pass, 3 selected,
+  "share_link" tests/test_health_check.py::                 118 deselected
+  test_main_local_health_check_passes -q
+.venv/bin/python scripts/health_check.py                   pass, including API
+                                                            share-link create error
+                                                            sanitizer anchor
+.venv/bin/python -m pytest -q                              pass, 634 tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 634 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+git diff --check                                           pass; no whitespace drift
+git status --short --branch                                main...origin/main [ahead 56],
+                                                            only docs changes remain before
+                                                            this docs refresh
+```
+
+The follow-up closes a FastAPI public error projection gap in
+`POST /admin/share-links`. Share-link creation `ValueError` exceptions no
+longer flow into `detail={"code": str(exc)}`; the route now returns the fixed
+public error code `invalid_share_link_request`. A regression test injects a
+ValueError containing a local path, secret-like token, and private resource
+reference and confirms none of those values are echoed in the 400 response.
+No production deployment was performed, and `docs/DEPLOYMENT_STATUS.md`
+remains unchanged because no live Trace-Twin service facts were refreshed in
+this pass.
 
 Streamlit corpus profile report failure-message follow-up on 2026-06-20 23:53 CST:
 
