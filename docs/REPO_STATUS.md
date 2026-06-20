@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 22:30 CST
+Snapshot time: 2026-06-20 22:43 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,16 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  673cd2f fix: sanitize Streamlit validation error output
-Current docs/health sync       docs: record Streamlit validation error audit status (this commit)
-Current local app-code HEAD    673cd2f fix: sanitize Streamlit validation error output
+Current implementation commit  ddd17b1 fix: redact job detail code outputs
+Current docs/health sync       docs: record job detail projection audit status (this commit)
+Current local app-code HEAD    ddd17b1 fix: redact job detail code outputs
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the forty-one local commits below
-                               after this Streamlit validation error docs refresh commit
-Current local commit stack     docs: record Streamlit validation error audit status (this commit)
+                               by the forty-four local commits below
+                               after this job detail projection docs refresh commit
+Current local commit stack     docs: record job detail projection audit status (this commit)
+                               de19eda test: isolate code execution event assertion
+                               ddd17b1 fix: redact job detail code outputs
+                               51230f8 docs: record Streamlit validation error audit status
                                673cd2f fix: sanitize Streamlit validation error output
                                384665a docs: record API request validation audit status
                                4bf9775 fix: sanitize API request validation errors
@@ -129,6 +132,12 @@ Current refresh scope          local audit/forward-development commits for produ
                                Streamlit user-upload/admin validation error
                                output sanitization for JSON/manifest/upload
                                exception rendering,
+                               job detail API request/result/error/log
+                               projection that redacts code files,
+                               stdout/stderr, tracebacks, and raw log owner
+                               metadata,
+                               full-suite code execution event test isolation
+                               for background job event noise,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -264,6 +273,54 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Job detail API projection follow-up on 2026-06-20 22:43 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -q            pass, 116 API tests,
+                                                            2 known warnings
+.venv/bin/python -m pytest tests/test_jobs.py -q           pass, 47 job tests,
+                                                            1 known warning
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 628 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including job detail
+                                                            API projection code-input/
+                                                            stdout/stderr/log redaction
+                                                            anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+TestClient code job response repro                          pass, leaked=false for
+                                                            sk-secret-job-output-verify,
+                                                            secret-main.py, stdout, stderr
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 43],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up closes a public `JobResponse` detail projection gap for local
+code-execution jobs. Exact job responses now project image, code, and index
+rebuild requests by counts/booleans instead of raw prompt, code files, or source
+paths; code results expose exit code, stdout/stderr presence, byte counts,
+truncation flags, public runtime metadata, and artifact count instead of raw
+stdout/stderr or traceback text. Job errors now expose stable reason codes with
+generic no-secret messages, and transition logs are filtered through a safe
+metadata allowlist rather than returning raw log ownership metadata. Internal
+`JobRecord` persistence, worker execution, retry, and artifact capture remain
+unchanged. No production deployment was performed, and
+`docs/DEPLOYMENT_STATUS.md` remains unchanged because no live Trace-Twin service
+facts were refreshed in this pass.
 
 Streamlit validation error-output follow-up on 2026-06-20 22:30 CST:
 

@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 627
+Current hardening progress through 2026-06-20: the automated suite has 628
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -79,6 +79,11 @@ index rebuild jobs instead of raw `source_paths`, including sync failures,
 async queued jobs, idempotent existing-job responses, and exact job fetches,
 while the internal durable job request still retains source paths for worker
 execution and retry.
+Exact job detail API responses now apply the same projection discipline to
+local code-execution jobs: public request/result/error/log payloads expose
+counts, booleans, byte totals, truncation flags, safe runtime metadata, and
+stable reason codes instead of raw code files, prompts, stdout/stderr,
+tracebacks, or raw log ownership metadata.
 FastAPI framework-level request validation errors now use one public no-secret
 projection as well: `RequestValidationError` responses keep validation `type`
 and field `loc`, but omit submitted `input` values, validation `ctx`, and raw
@@ -113,6 +118,12 @@ updated local checkout with 627 tests passing, 89% branch coverage, offline RAG
 eval passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
 schema drift still at 0 problems, and static UI guards showing
 `.format(error=exc)` has no matches in `app.py`.
+A 2026-06-20 22:43 CST job detail API projection audit confirms the updated
+local checkout with 628 tests passing, 89% branch coverage, offline RAG eval
+passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
+schema drift still at 0 problems, and TestClient repros showing `leaked=false`
+for secret-like code output, secret-like entrypoint names, and raw
+stdout/stderr fields in public job detail responses.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

@@ -165,15 +165,23 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  673cd2f fix: sanitize Streamlit validation error output" in repo_status
-        and "Current docs/health sync       docs: record Streamlit validation error audit status (this commit)" in repo_status
-        and "by the forty-one local commits below" in repo_status
+        and "Current implementation commit  ddd17b1 fix: redact job detail code outputs" in repo_status
+        and "Current docs/health sync       docs: record job detail projection audit status (this commit)" in repo_status
+        and "by the forty-four local commits below" in repo_status
+        and "de19eda test: isolate code execution event assertion" in repo_status
+        and "ddd17b1 fix: redact job detail code outputs" in repo_status
+        and "51230f8 docs: record Streamlit validation error audit status" in repo_status
         and "673cd2f fix: sanitize Streamlit validation error output" in repo_status
         and "384665a docs: record API request validation audit status" in repo_status
         and "4bf9775 fix: sanitize API request validation errors" in repo_status
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Job detail API projection follow-up on 2026-06-20 22:43 CST" in repo_status
+        and "main...origin/main [ahead 43]" in repo_status
+        and "pass, 628 tests" in repo_status
+        and "sk-secret-job-output-verify" in repo_status
+        and "secret-main.py, stdout, stderr" in repo_status
         and "Streamlit validation error-output follow-up on 2026-06-20 22:30 CST" in repo_status
         and "main...origin/main [ahead 40]" in repo_status
         and "pass, 627 tests" in repo_status
@@ -270,7 +278,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 627 tests, 2 known warnings" in roadmap
+        and "pass, 628 tests, 2 known warnings" in roadmap
+        and "Job detail API projection audit" in roadmap
+        and "job-detail-code-output-projection" in roadmap
         and "Streamlit validation error-output audit" in roadmap
         and "Streamlit-validation-error-sanitizer" in roadmap
         and "API request validation projection audit" in roadmap

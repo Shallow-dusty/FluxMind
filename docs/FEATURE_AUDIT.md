@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 22:30 CST after the
-Streamlit validation error-output hardening. The command set below now
-passes with 627 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 22:43 CST after the
+job detail API projection hardening. The command set below now passes with
+628 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ passes with 627 tests, 89% branch coverage, OpenAPI no-secret snapshot
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 627 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 628 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 627 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 628 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -65,6 +65,7 @@ Command                                                               Result
                                                                       index-rebuild-job-projection/
                                                                       request-validation-error-projection/
                                                                       Streamlit-validation-error-sanitizer/
+                                                                      job-detail-code-output-projection/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -246,6 +247,19 @@ exception text. Static UI guards and health anchors verify that
 627 tests, 89% branch coverage, offline RAG eval, OpenAPI no-secret snapshot
 `diff_count=0`, and storage-schema 0 problems.
 
+The 2026-06-20 22:43 CST job detail API projection audit adds focused coverage
+for exact public `JobResponse` payloads from local code execution. Public job
+request projections now use counts, booleans, and resource limits instead of raw
+prompt/code files/source paths; code result projections expose exit code,
+stdout/stderr presence, byte counts, truncation flags, public runtime metadata,
+and artifact count instead of raw stdout/stderr or traceback text. Public job
+errors expose stable reason codes and generic messages, and job logs filter
+metadata through a safe allowlist. Tests verify that secret-like code output,
+secret-like entrypoint names, raw stdout/stderr fields, and raw log owner
+metadata are not echoed; local verification passes with 628 tests, 89% branch
+coverage, offline RAG eval, OpenAPI no-secret snapshot `diff_count=0`, and
+storage-schema 0 problems.
+
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
 `/query/report` download responses preserving request/quota headers, and stable
@@ -391,6 +405,12 @@ Local job and worker bridge   verified      immediate and async job routes, idem
                                             Job-list search/listing uses no-secret
                                             summaries instead of raw request/result/log
                                             payloads or owner labels.
+                                            Exact job detail responses also
+                                            project code requests, execution
+                                            outputs, errors, and transition
+                                            logs without raw code files,
+                                            stdout/stderr, tracebacks, or raw
+                                            log owner metadata.
                                             Admin status/report include local job-health alerts.
                                             Distributed queue remains planned.
 Artifacts and exports         verified      artifact list/download, checksums, and metadata mirrors
