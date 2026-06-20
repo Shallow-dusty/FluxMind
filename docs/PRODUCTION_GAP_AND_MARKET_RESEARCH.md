@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-21 00:14 CST
+Last updated: 2026-06-21 00:27 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,12 +23,13 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-21 00:14 refresh updates the current local repo verification counts
-and the deploy sync CLI error-output sanitization boundary. It retains the
-share-link create error-detail sanitization boundary, Streamlit corpus profile
-report and job result failure-message sanitization boundaries, job detail API
-request-ID, owner-metadata, and idempotency-key projection boundaries, job
-detail API code-output projection boundary, Streamlit validation error-output
+The 2026-06-21 00:27 refresh updates the current local repo verification counts
+and the readiness CLI data-error sanitization boundary. It retains the deploy
+sync CLI error-output sanitization boundary, share-link create error-detail
+sanitization boundary, Streamlit corpus profile report and job result
+failure-message sanitization boundaries, job detail API request-ID,
+owner-metadata, and idempotency-key projection boundaries, job detail API
+code-output projection boundary, Streamlit validation error-output
 sanitization boundary, API request validation error projection boundary, index
 rebuild job API projection redaction boundary, API validation/artifact download
 error-output redaction boundary, Streamlit admin/artifact error-output
@@ -48,8 +49,8 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation e44f615 fix: sanitize deploy sync errors
-Current docs/health    docs: record deploy sync error audit status
+Current implementation 41ca43f fix: sanitize readiness cli data errors
+Current docs/health    docs: record readiness cli data error audit status
 Status note     local no-key hardening through index rebuild job API projection,
                 API request validation projection, API validation/artifact
                 download, Streamlit admin/artifact/upload validation
@@ -58,8 +59,9 @@ Status note     local no-key hardening through index rebuild job API projection,
                 Streamlit failed-job message sanitization, and Streamlit corpus
                 profile report failure-message sanitization, and share-link
                 create error-detail sanitization, and deploy sync CLI
-                error-output sanitization is implemented and locally verified;
-                the 00:14
+                error-output sanitization, and readiness CLI JSON/ValueError
+                data-error sanitization is implemented and locally verified;
+                the 00:27
                 refresh reconfirms no OpenAPI/storage/docs drift; the
                 local stack is not pushed to origin and not deployed to
                 Trace-Twin
@@ -67,7 +69,7 @@ Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-21 00:14 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-21 00:27 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -76,7 +78,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    635 passed, 2 known warnings
+pytest                                    640 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -116,7 +118,8 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           Streamlit-job-result-error-sanitizer/
                                           Streamlit-corpus-profile-report-error-
                                           sanitizer/API-share-link-create-error-
-                                          sanitizer/deploy-sync-error-sanitizer
+                                          sanitizer/deploy-sync-error-sanitizer/
+                                          readiness-CLI-data-error-sanitizer
                                           anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against

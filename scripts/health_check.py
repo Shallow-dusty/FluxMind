@@ -165,9 +165,11 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  e44f615 fix: sanitize deploy sync errors" in repo_status
-        and "Current docs/health sync       docs: record deploy sync error audit status (this commit)" in repo_status
-        and "by the fifty-nine local commits below" in repo_status
+        and "Current implementation commit  41ca43f fix: sanitize readiness cli data errors" in repo_status
+        and "Current docs/health sync       docs: record readiness cli data error audit status (this commit)" in repo_status
+        and "by the sixty-one local commits below" in repo_status
+        and "41ca43f fix: sanitize readiness cli data errors" in repo_status
+        and "fa9d482 docs: record deploy sync error audit status" in repo_status
         and "e44f615 fix: sanitize deploy sync errors" in repo_status
         and "c7d3ed0 docs: record share-link create error audit status" in repo_status
         and "4a43f14 fix: sanitize share-link create errors" in repo_status
@@ -192,6 +194,11 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Readiness CLI data-error output follow-up on 2026-06-21 00:27 CST" in repo_status
+        and "main...origin/main [ahead 60]" in repo_status
+        and "pass, 640 tests" in repo_status
+        and "format_cli_error(exc)" in repo_status
+        and "JSON/ValueError data errors" in repo_status
         and "Deploy sync CLI error-output follow-up on 2026-06-21 00:14 CST" in repo_status
         and "main...origin/main [ahead 58]" in repo_status
         and "pass, 635 tests" in repo_status
@@ -334,7 +341,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 635 tests, 2 known warnings" in roadmap
+        and "pass, 640 tests, 2 known warnings" in roadmap
+        and "Readiness CLI data-error audit" in roadmap
+        and "readiness-CLI-data-error-sanitizer" in roadmap
         and "Deploy sync error-output audit" in roadmap
         and "deploy-sync-error-sanitizer" in roadmap
         and "Share-link create error audit" in roadmap

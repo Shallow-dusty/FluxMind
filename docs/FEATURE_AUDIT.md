@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-21 00:14 CST after the
-deploy sync CLI error-output hardening. The command set below now passes with
-635 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-21 00:27 CST after the
+readiness CLI data-error output hardening. The command set below now passes with
+640 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ deploy sync CLI error-output hardening. The command set below now passes with
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 635 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 640 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 635 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 640 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -63,6 +63,7 @@ Command                                                               Result
                                                                       runtime-event-metadata-value-redaction/
                                                                       quality-evidence-plan/
                                                                       readiness-CLI-error-sanitizer/
+                                                                      readiness-CLI-data-error-sanitizer/
                                                                       live-eval-request-id-redaction/
                                                                       Streamlit-share-link-error-sanitizer/
                                                                       API-validation-error-sanitizer/
@@ -347,6 +348,19 @@ token into the failure message and confirms both are redacted. The health
 checker now has a safe deploy sync CLI error sanitizer anchor. Local
 verification passes with 635 tests and 89% branch coverage; no live deployment
 facts were refreshed.
+
+The 2026-06-21 00:27 CST readiness CLI data-error audit extends that CLI
+projection boundary beyond OSError failures. The shared helper now exposes
+`format_cli_error(exc)` for public non-OSError summaries, and
+`scripts/runtime_manifest.py`, `scripts/activation_suite.py`,
+`scripts/openapi_contract.py`, `scripts/quality_readiness.py`, and
+`scripts/platform_migration_rehearsal.py` use it for JSON/ValueError data-error
+stderr. Regression coverage injects local paths, URLs, and secret-like tokens
+into generic CLI, runtime-manifest, activation-suite, OpenAPI snapshot,
+quality-readiness, and migration-manifest failure paths and confirms those
+values are redacted. The health checker now has a no-secret readiness CLI data
+error sanitizer anchor. Local verification passes with 640 tests and 89% branch
+coverage; no live deployment facts were refreshed.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
