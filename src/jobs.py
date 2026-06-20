@@ -28,7 +28,7 @@ from src.providers import (
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
 )
-from src.runtime import append_runtime_event, new_request_id, normalize_exception
+from src.runtime import append_runtime_event, new_request_id, normalize_exception, runtime_ownership_metadata
 
 
 logger = logging.getLogger("fluxmind")
@@ -160,6 +160,56 @@ class JobRecord:
 _JOB_RECORD_FIELDS = set(JobRecord.__dataclass_fields__)
 
 
+def job_search_projection(record: JobRecord) -> dict[str, Any]:
+    """Return fields safe to use for local job free-text search."""
+    error_code = None
+    if isinstance(record.error, dict):
+        error_code = record.error.get("code")
+    log_statuses = [
+        str(entry.get("status"))
+        for entry in record.logs
+        if isinstance(entry, dict) and entry.get("status")
+    ]
+    return {
+        "job_id": record.job_id,
+        "kind": record.kind,
+        "status": record.status,
+        "created_at": record.created_at,
+        "updated_at": record.updated_at,
+        "parent_job_id": record.parent_job_id or "",
+        "ownership_source": record.ownership_source,
+        "attempts": record.attempts,
+        "max_attempts": record.max_attempts,
+        "retry_backoff_s": record.retry_backoff_s,
+        "request_id_present": bool(record.request_id),
+        "idempotency_key_present": bool(record.idempotency_key),
+        "result_present": bool(record.result),
+        "artifact_count": len(record.artifacts),
+        "error_code": error_code or "",
+        "log_statuses": log_statuses,
+    }
+
+
+def _search_values(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        values: list[str] = []
+        for nested in value.values():
+            values.extend(_search_values(nested))
+        return values
+    if isinstance(value, list):
+        values = []
+        for nested in value:
+            values.extend(_search_values(nested))
+        return values
+    if value in (None, ""):
+        return []
+    return [str(value)]
+
+
+def job_search_text(record: JobRecord) -> str:
+    return " ".join(_search_values(job_search_projection(record))).casefold()
+
+
 def _job_record_from_payload(payload: Any) -> JobRecord | None:
     if not isinstance(payload, dict):
         return None
@@ -171,10 +221,20 @@ def _job_record_from_payload(payload: Any) -> JobRecord | None:
                 if key in _JOB_RECORD_FIELDS
             }
         )
-    except TypeError:
+        apply_job_ownership(record)
+    except (TypeError, ValueError):
         return None
-    apply_job_ownership(record)
     return record
+
+
+def _job_record_from_json_payload(payload: Any) -> JobRecord | None:
+    if not isinstance(payload, str):
+        return None
+    try:
+        decoded = json.loads(payload)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return _job_record_from_payload(decoded)
 
 
 def append_job_log(record: JobRecord, status: str, message: str, **metadata: Any) -> None:
@@ -240,8 +300,8 @@ class LocalJobStore:
                     (claim["job_id"],),
                 ).fetchone()
                 if row is not None:
-                    existing = JobRecord(**json.loads(row["payload"]))
-                else:
+                    existing = _job_record_from_json_payload(row["payload"])
+                if existing is None:
                     conn.execute(
                         "DELETE FROM job_idempotency WHERE kind = ? AND idempotency_key = ?",
                         (record.kind, clean_key),
@@ -303,6 +363,7 @@ class LocalJobStore:
         owner_id: str | None = None,
         q: str | None = None,
     ) -> list[JobRecord]:
+        limit = max(limit, 0)
         self._ensure_sqlite()
         if self.db_path.exists():
             with self._connect() as conn:
@@ -315,10 +376,42 @@ class LocalJobStore:
                     """,
                     (max(limit, 1000),),
                 ).fetchall()
-            records = [JobRecord(**json.loads(row["payload"])) for row in rows]
+            records = [
+                record
+                for row in rows
+                if (record := _job_record_from_json_payload(row["payload"])) is not None
+            ]
             return self._filter_records(records, status=status, kind=kind, owner_id=owner_id, q=q)[:limit]
         records = self._list_latest_jsonl(limit=max(limit, 1000))
         return self._filter_records(records, status=status, kind=kind, owner_id=owner_id, q=q)[:limit]
+
+    def list_all_latest(
+        self,
+        *,
+        status: str | None = None,
+        kind: str | None = None,
+        owner_id: str | None = None,
+        q: str | None = None,
+    ) -> list[JobRecord]:
+        """Return all current job records newest first for exact local lookups."""
+        self._ensure_sqlite()
+        if self.path.exists():
+            records = self._list_latest_jsonl(limit=None)
+        else:
+            with self._connect() as conn:
+                rows = conn.execute(
+                    """
+                    SELECT payload
+                    FROM jobs
+                    ORDER BY updated_at DESC, created_at DESC
+                    """
+                ).fetchall()
+            records = [
+                record
+                for row in rows
+                if (record := _job_record_from_json_payload(row["payload"])) is not None
+            ]
+        return self._filter_records(records, status=status, kind=kind, owner_id=owner_id, q=q)
 
     def find_by_idempotency_key(self, *, kind: JobKind, key: str | None) -> JobRecord | None:
         """Return the durable job claimed for a kind/idempotency key pair."""
@@ -350,9 +443,7 @@ class LocalJobStore:
                 ).fetchone()
         if row is None:
             return None
-        record = JobRecord(**json.loads(row["payload"]))
-        apply_job_ownership(record)
-        return record
+        return _job_record_from_json_payload(row["payload"])
 
     @staticmethod
     def _filter_records(
@@ -377,32 +468,13 @@ class LocalJobStore:
             if owner_id and record.owner_id != owner_id:
                 continue
             if query:
-                searchable = " ".join(
-                    str(value or "")
-                    for value in (
-                        record.job_id,
-                        record.kind,
-                        record.status,
-                        record.request_id,
-                        record.parent_job_id,
-                        record.owner_id,
-                        record.owner_label,
-                        record.ownership_source,
-                        record.idempotency_key,
-                        json.dumps(record.request or {}, ensure_ascii=False, sort_keys=True),
-                        json.dumps(record.result or {}, ensure_ascii=False, sort_keys=True),
-                        json.dumps(record.error or {}, ensure_ascii=False, sort_keys=True),
-                        json.dumps(record.artifacts or [], ensure_ascii=False, sort_keys=True),
-                        json.dumps(record.logs or [], ensure_ascii=False, sort_keys=True),
-                    )
-                ).casefold()
-                if query not in searchable:
+                if query not in job_search_text(record):
                     continue
             filtered.append(record)
         return filtered
 
-    def _list_latest_jsonl(self, *, limit: int = 50) -> list[JobRecord]:
-        latest: dict[str, dict[str, Any]] = {}
+    def _list_latest_jsonl(self, *, limit: int | None = 50) -> list[JobRecord]:
+        latest: dict[str, JobRecord] = {}
         if not self.path.exists():
             return []
         with self.path.open(encoding="utf-8") as handle:
@@ -421,6 +493,8 @@ class LocalJobStore:
                 latest[record.job_id] = record
         records = list(latest.values())
         records.sort(key=lambda record: record.updated_at, reverse=True)
+        if limit is None:
+            return records
         return records[:limit]
 
     def cancel(self, job_id: str) -> JobRecord | None:
@@ -609,9 +683,11 @@ class LocalJobStore:
                     ORDER BY created_at ASC
                     LIMIT 1000
                     """
-                ).fetchall()
+            ).fetchall()
             for row in rows:
-                record = JobRecord(**json.loads(row["payload"]))
+                record = _job_record_from_json_payload(row["payload"])
+                if record is None:
+                    continue
                 if not self._is_claimable(record, worker_id=worker_id, now=now):
                     continue
                 record.worker_id = worker_id
@@ -842,9 +918,7 @@ class LocalJobStore:
             row = conn.execute("SELECT payload FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
         if row is None:
             return None
-        record = JobRecord(**json.loads(row["payload"]))
-        apply_job_ownership(record)
-        return record
+        return _job_record_from_json_payload(row["payload"])
 
 
 class LocalJobRunner:
@@ -909,9 +983,13 @@ class LocalJobRunner:
             "max_attempts": record.max_attempts,
             "duration_ms": max(duration_ms, 0),
             "artifact_count": len(result.artifacts) if result else 0,
-            "owner_id": record.owner_id,
-            "owner_label": record.owner_label,
-            "ownership_source": record.ownership_source,
+            **runtime_ownership_metadata(
+                {
+                    "owner_id": record.owner_id,
+                    "owner_label": record.owner_label,
+                    "ownership_source": record.ownership_source,
+                }
+            ),
         }
         if result is not None:
             metadata["exit_code"] = result.exit_code

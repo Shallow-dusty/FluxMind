@@ -140,6 +140,13 @@ def test_resolve_unique_path_adds_suffix(tmp_path: Path):
     assert ingestion._resolve_unique_path(target) == tmp_path / "paper-1.pdf"
 
 
+def test_resolve_unique_path_treats_broken_symlink_as_occupied(tmp_path: Path):
+    target = tmp_path / "paper.pdf"
+    target.symlink_to(tmp_path / "missing-target.pdf")
+
+    assert ingestion._resolve_unique_path(target) == tmp_path / "paper-1.pdf"
+
+
 def test_clear_directory_contents_keeps_runtime_directory(tmp_path: Path):
     runtime_dir = tmp_path / "faiss_index"
     nested = runtime_dir / "nested"
@@ -579,6 +586,27 @@ def test_save_active_paper_paths_writes_atomically_and_deduplicates(tmp_path: Pa
     assert list(index_dir.glob(".active_papers.json.*.tmp")) == []
 
 
+def test_discover_pdfs_skips_symlinks_without_resolving_outside_project(tmp_path: Path, monkeypatch):
+    root = tmp_path / "project"
+    upload_dir = root / "papers" / "uploads"
+    library_dir = root / "papers" / "library"
+    upload_dir.mkdir(parents=True)
+    library_dir.mkdir(parents=True)
+    outside = tmp_path / "outside-secret.pdf"
+    outside.write_bytes(b"%PDF-1.4 outside")
+    linked = upload_dir / "linked.pdf"
+    linked.symlink_to(outside)
+    regular = upload_dir / "regular.pdf"
+    regular.write_bytes(b"%PDF-1.4 regular")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library_dir)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", upload_dir)
+
+    assert ingestion.discover_pdfs() == [regular]
+
+
 def test_resolve_selectable_source_paths_strips_blanks_and_deduplicates(tmp_path: Path, monkeypatch):
     root = tmp_path
     library = root / "papers" / "library"
@@ -665,6 +693,32 @@ def test_ingest_uploaded_pdf_reuses_indexed_duplicate(tmp_path: Path, monkeypatc
     assert (index_dir / "active_papers.json").read_text(encoding="utf-8").strip() == (
         '[\n  "papers/uploads/existing.pdf"\n]'
     )
+
+
+def test_ingest_uploaded_pdf_does_not_follow_broken_upload_symlink(tmp_path: Path, monkeypatch):
+    root = tmp_path / "project"
+    upload_dir = root / "papers" / "uploads"
+    library = root / "papers" / "library"
+    upload_dir.mkdir(parents=True)
+    library.mkdir(parents=True)
+    outside_target = tmp_path / "outside-created.pdf"
+    linked = upload_dir / "paper.pdf"
+    linked.symlink_to(outside_target)
+    pdf_bytes = _minimal_pdf_bytes("broken symlink upload")
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", upload_dir)
+    monkeypatch.setattr(ingestion, "append_runtime_event", lambda **_kwargs: None)
+    monkeypatch.setattr(ingestion, "load_pdf", lambda _path: [])
+
+    with pytest.raises(ValueError, match="extractable text"):
+        ingestion.ingest_uploaded_pdf(pdf_bytes, "paper.pdf")
+
+    assert linked.is_symlink()
+    assert not outside_target.exists()
+    assert (upload_dir / "paper-1.pdf").read_bytes() == pdf_bytes
 
 
 def test_rebuild_vector_store_records_chunk_metadata(tmp_path: Path, monkeypatch):

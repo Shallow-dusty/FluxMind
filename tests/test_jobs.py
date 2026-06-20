@@ -70,6 +70,67 @@ def test_job_store_skips_malformed_jsonl_records(tmp_path: Path):
     assert loaded.request == {"prompt": "observer"}
 
 
+def test_job_store_clamps_negative_list_limit(tmp_path: Path):
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+    runner._enqueue("image_generation", {"prompt": "first"}, "req-first")
+    runner._enqueue("image_generation", {"prompt": "second"}, "req-second")
+
+    assert store.list_latest(limit=-1) == []
+
+
+def test_job_store_skips_malformed_sqlite_payload_rows(tmp_path: Path):
+    jobs_file = tmp_path / "jobs.jsonl"
+    store = LocalJobStore(jobs_file)
+    store._ensure_sqlite()
+    with sqlite3.connect(jobs_file.with_suffix(".sqlite3")) as conn:
+        conn.execute(
+            """
+            INSERT INTO jobs (
+                job_id, kind, status, created_at, updated_at, attempts, payload
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "job-bad-sqlite",
+                "image_generation",
+                "succeeded",
+                "2026-01-01T00:00:00+00:00",
+                "2026-01-01T00:00:00+00:00",
+                0,
+                "{bad-json",
+            ),
+        )
+
+    assert store.list_latest(limit=10) == []
+    assert store.get("job-bad-sqlite") is None
+    assert store.find_by_idempotency_key(kind="image_generation", key="missing") is None
+
+
+def test_job_store_recovers_from_bad_sqlite_payload_using_jsonl(tmp_path: Path):
+    jobs_file = tmp_path / "jobs.jsonl"
+    store = LocalJobStore(jobs_file)
+    job = LocalJobRunner(store)._enqueue(
+        "code_execution",
+        {"entrypoint": "main.py"},
+        "req-recover",
+        idempotency_key="idem-recover",
+    )
+    with sqlite3.connect(jobs_file.with_suffix(".sqlite3")) as conn:
+        conn.execute(
+            "UPDATE jobs SET payload = ? WHERE job_id = ?",
+            ("{bad-json", job.job_id),
+        )
+
+    recovered = store.get(job.job_id)
+    found = store.find_by_idempotency_key(kind="code_execution", key="idem-recover")
+
+    assert recovered is not None
+    assert recovered.job_id == job.job_id
+    assert found is not None
+    assert found.job_id == job.job_id
+
+
 def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
     store = LocalJobStore(tmp_path / "jobs.jsonl")
@@ -139,7 +200,13 @@ def test_local_python_job_records_no_secret_execution_event(tmp_path: Path, monk
     assert metadata["status"] == "succeeded"
     assert metadata["language"] == "python"
     assert metadata["backend"] == "local"
-    assert metadata["owner_id"] == "lab-code"
+    assert metadata["owner_id_present"] is True
+    assert metadata["owner_label_present"] is True
+    assert metadata["ownership_source"] == "request"
+    assert "owner_id" not in metadata
+    assert "owner_label" not in metadata
+    assert "lab-code" not in str(event)
+    assert "Code Lab" not in str(event)
     assert metadata["provider_runtime"] == "python-local"
     assert metadata["execution_policy"] == "local-safe-v1"
     assert metadata["policy_violation"] == "false"
@@ -304,8 +371,12 @@ def test_job_store_filters_latest_records(tmp_path: Path, monkeypatch):
 
     assert [job.job_id for job in store.list_latest(status="failed")] == [failed_job.job_id]
     assert [job.job_id for job in store.list_latest(kind="image_generation")] == [image_job.job_id]
-    assert [job.job_id for job in store.list_latest(q="observer filter")] == [image_job.job_id]
-    assert [job.job_id for job in store.list_latest(q="req-python-filter")] == [failed_job.job_id]
+    assert [job.job_id for job in store.list_latest(q=image_job.job_id)] == [image_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="image_generation")] == [image_job.job_id]
+    assert store.list_latest(q="observer filter") == []
+    assert store.list_latest(q="req-python-filter") == []
+    assert store.list_latest(q="main.py") == []
+    assert store.list_latest(q="SystemExit") == []
     assert store.list_latest(status="queued") == []
 
 
@@ -332,7 +403,9 @@ def test_job_store_persists_and_filters_local_ownership(tmp_path: Path):
     assert loaded_owned.ownership_source == "request"
     assert loaded_owned.logs[0]["metadata"]["owner_id"] == "lab-a"
     assert [job.job_id for job in store.list_latest(owner_id="lab-a")] == [owned_job.job_id]
-    assert [job.job_id for job in store.list_latest(q="Lab A")] == [owned_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="request")] == [owned_job.job_id]
+    assert store.list_latest(q="Lab A") == []
+    assert store.list_latest(q="lab-a") == []
 
     with sqlite3.connect(jobs_file.with_suffix(".sqlite3")) as conn:
         row = conn.execute(

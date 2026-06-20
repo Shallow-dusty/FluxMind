@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from scripts._safe_cli import format_os_error  # noqa: E402
 from src.api_keys import (  # noqa: E402
     LocalApiKeyRegistry,
     api_key_registry_backend_status,
@@ -97,6 +98,12 @@ def main() -> int:
     add_output_args(status_cmd)
 
     args = parser.parse_args()
+    if args.command == "create" and args.format != "json":
+        print(
+            "error: create outputs the one-time token and therefore requires --format json",
+            file=sys.stderr,
+        )
+        return 2
     registry = LocalApiKeyRegistry(db_path=args.db)
 
     try:
@@ -133,14 +140,18 @@ def main() -> int:
                 db_path=args.db,
             )
     except (OSError, sqlite3.Error) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
 
     if args.format == "markdown":
         output = render_markdown(payload) + "\n"
     else:
         output = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    emit_output(output, args.output)
+    try:
+        emit_output(output, args.output)
+    except OSError as exc:
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
+        return 2
 
     if args.command == "verify":
         return 0 if payload.get("valid") else 1

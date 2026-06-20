@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import shutil
+import stat
 import tempfile
 import threading
 import unicodedata
@@ -165,12 +166,12 @@ def _safe_pdf_name(filename: str) -> str:
 
 def _resolve_unique_path(target: Path) -> Path:
     """If target exists, append -1, -2, ... before the suffix until unique."""
-    if not target.exists():
+    if not target.exists() and not target.is_symlink():
         return target
     stem, suffix, parent = target.stem, target.suffix, target.parent
     for i in range(1, 1000):
         candidate = parent / f"{stem}-{i}{suffix}"
-        if not candidate.exists():
+        if not candidate.exists() and not candidate.is_symlink():
             return candidate
     raise ValueError("Too many uploads with conflicting names.")
 
@@ -334,6 +335,22 @@ def _safe_source_path(path: Path) -> str:
         return _relative(path)
     except ValueError:
         return path.resolve().as_posix()
+
+
+def _is_regular_project_pdf(path: Path) -> bool:
+    if path.suffix.lower() != ".pdf":
+        return False
+    try:
+        path_stat = path.lstat()
+    except OSError:
+        return False
+    if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+        return False
+    try:
+        path.resolve().relative_to(PROJECT_ROOT.resolve())
+    except ValueError:
+        return False
+    return True
 
 
 def _clean_metadata_value(value: Any) -> str | None:
@@ -618,7 +635,7 @@ def discover_pdfs() -> list[Path]:
     for directory in (PAPERS_LIBRARY_DIR, PAPERS_UPLOADS_DIR, PAPERS_DIR):
         if not directory.exists():
             continue
-        paths.extend(p for p in directory.glob("*.pdf") if p.is_file())
+        paths.extend(p for p in directory.glob("*.pdf") if _is_regular_project_pdf(p))
     return sorted(set(paths), key=lambda p: _relative(p).lower())
 
 
@@ -662,7 +679,7 @@ def save_active_paper_paths(paths: list[Path]) -> None:
     payload: list[str] = []
     seen: set[str] = set()
     for path in paths:
-        if not path.exists() or path.suffix.lower() != ".pdf":
+        if not _is_regular_project_pdf(path):
             continue
         source_path = _relative(path)
         if source_path in seen:
@@ -893,7 +910,8 @@ def ingest_uploaded_pdf(pdf_bytes: bytes, filename: str) -> tuple[Path, int]:
     pdf_path = _find_existing_pdf_by_checksum(checksum_sha256)
     if pdf_path is None:
         pdf_path = _resolve_unique_path(PAPERS_UPLOADS_DIR / _safe_pdf_name(filename))
-        pdf_path.write_bytes(pdf_bytes)
+        with pdf_path.open("xb") as handle:
+            handle.write(pdf_bytes)
     else:
         metadata_store = CorpusMetadataStore()
         existing_record = next(

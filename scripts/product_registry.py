@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from scripts._safe_cli import format_os_error  # noqa: E402
 from src.product_registry import (  # noqa: E402
     LocalProductRegistry,
     product_registry_backend_status,
@@ -256,14 +257,18 @@ def main() -> int:
                 "secrets_exported": False,
             }
     except (OSError, sqlite3.Error, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
 
     if args.format == "markdown":
         output = render_markdown(payload) + "\n"
     else:
         output = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    emit_output(output, args.output)
+    try:
+        emit_output(output, args.output)
+    except OSError as exc:
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
+        return 2
 
     if args.command == "status":
         return 0 if payload.get("available") or not payload.get("configured") else 1

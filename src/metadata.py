@@ -30,6 +30,10 @@ from src.config import (
 PaperSourceKind = Literal["library", "upload", "paper"]
 PaperIndexStatus = Literal["available", "active", "indexed", "failed"]
 _ARXIV_RE = re.compile(r"arxiv(?:\.org/(?:abs|pdf)/|-)(\d{4}\.\d{4,5})(?:v\d+)?", re.IGNORECASE)
+_SENSITIVE_PROFILE_FILENAME_RE = re.compile(
+    r"(authorization|bearer|api[-_\s]?key|token|secret|sk-[a-z0-9])",
+    re.IGNORECASE,
+)
 
 
 def utc_now() -> str:
@@ -433,6 +437,17 @@ def normalize_profile_id(value: str) -> str:
     if not normalized:
         raise ValueError("Corpus profile ID cannot be empty")
     return normalized[:80]
+
+
+def safe_corpus_profile_report_filename(profile_id: str) -> str:
+    """Return a header-safe no-secret filename for corpus profile reports."""
+    try:
+        safe_id = normalize_profile_id(profile_id)
+    except ValueError:
+        safe_id = ""
+    if not safe_id or _SENSITIVE_PROFILE_FILENAME_RE.search(safe_id):
+        safe_id = hashlib.sha256(profile_id.encode()).hexdigest()[:16]
+    return f"fluxmind-corpus-profile-{safe_id}.md"
 
 
 class CorpusProfileStore:

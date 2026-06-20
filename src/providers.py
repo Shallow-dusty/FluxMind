@@ -745,19 +745,48 @@ class LocalArtifactStore:
         self.root = root or ARTIFACTS_DIR
 
     def write_text(self, relative_path: str, content: str, mime_type: str) -> GeneratedArtifact:
-        path = self.root / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
-        return self._artifact_for(path, mime_type)
+        return self.write_bytes(relative_path, content.encode("utf-8"), mime_type)
 
     def write_bytes(self, relative_path: str, content: bytes, mime_type: str) -> GeneratedArtifact:
-        path = self.root / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(content)
+        path = self._resolve_target(relative_path)
+        self._atomic_write_bytes(path, content)
         return self._artifact_for(path, mime_type)
 
     def copy_file(self, relative_path: str, source: Path, mime_type: str) -> GeneratedArtifact:
+        if source.is_symlink() or not source.is_file():
+            raise ValueError("Artifact source is not a regular file.")
         return self.write_bytes(relative_path, source.read_bytes(), mime_type)
+
+    def _resolve_target(self, relative_path: str) -> Path:
+        relative = Path(relative_path)
+        if not relative_path or relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"Invalid artifact path: {relative_path}")
+        root = self.root.resolve()
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            path.parent.resolve().relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"Artifact path escapes artifact root: {relative_path}") from exc
+        return path
+
+    @staticmethod
+    def _atomic_write_bytes(path: Path, content: bytes) -> None:
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=path.parent,
+                prefix=f".{path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                temp_file.write(content)
+                temp_path = Path(temp_file.name)
+            temp_path.replace(path)
+        except Exception:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
+            raise
 
     @staticmethod
     def _artifact_for(path: Path, mime_type: str) -> GeneratedArtifact:

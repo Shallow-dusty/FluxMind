@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from scripts._safe_cli import format_os_error
 from src.storage_schema import format_storage_schema_markdown, storage_schema_status_for_root
 
 
@@ -47,7 +48,7 @@ def main() -> int:
             output = json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         emit_output(output, args.output)
     except OSError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"error: {format_os_error(exc)}", file=sys.stderr)
         return 2
     return 0 if status.get("ok") else 1
 

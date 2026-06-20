@@ -1,9 +1,16 @@
+import hashlib
 from pathlib import Path
 import sqlite3
 
 from langchain_core.documents import Document
 
-from src.metadata import ChunkMetadataStore, CorpusMetadataStore, CorpusProfileStore, atomic_write_json
+from src.metadata import (
+    ChunkMetadataStore,
+    CorpusMetadataStore,
+    CorpusProfileStore,
+    atomic_write_json,
+    safe_corpus_profile_report_filename,
+)
 
 
 def test_atomic_write_json_replaces_without_temp_file(tmp_path: Path):
@@ -223,6 +230,23 @@ def test_corpus_profile_store_persists_named_selection(tmp_path: Path):
     assert updated.paper_count == 1
     assert store.get_profile("SMC Core").source_paths == ["papers/library/second.pdf"]
     assert store.storage_status()["profiles"] == 1
+
+
+def test_corpus_profile_report_filename_is_safe():
+    assert (
+        safe_corpus_profile_report_filename("SMC Core")
+        == "fluxmind-corpus-profile-smc-core.md"
+    )
+
+    sensitive_id = 'abc"\r\nContent-Disposition: x-secret'
+    filename = safe_corpus_profile_report_filename(sensitive_id)
+    expected_id = hashlib.sha256(sensitive_id.encode()).hexdigest()[:16]
+
+    assert filename == f"fluxmind-corpus-profile-{expected_id}.md"
+    assert "secret" not in filename
+    assert '"' not in filename
+    assert "\r" not in filename
+    assert "\n" not in filename
 
 
 def test_chunk_metadata_store_replaces_source_chunks(tmp_path: Path):

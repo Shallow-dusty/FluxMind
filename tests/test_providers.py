@@ -3,6 +3,8 @@ import io
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
 from src.execution_policy import POLICY_VIOLATION_EXIT_CODE
@@ -187,6 +189,61 @@ def test_local_artifact_store_classifies_binary_file_artifacts(tmp_path: Path):
     assert artifact.kind == "file"
     assert artifact.title == "result.bin"
     assert artifact.metadata["byte_count"] == "2"
+
+
+def test_local_artifact_store_replaces_symlink_destination_without_following(
+    tmp_path: Path,
+):
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "outside.txt"
+    outside.write_text("outside", encoding="utf-8")
+    target = root / "binary" / "result.txt"
+    target.parent.mkdir(parents=True)
+    target.symlink_to(outside)
+
+    artifact = LocalArtifactStore(root).write_text(
+        "binary/result.txt",
+        "inside",
+        "text/plain",
+    )
+
+    assert outside.read_text(encoding="utf-8") == "outside"
+    assert target.is_symlink() is False
+    assert target.read_text(encoding="utf-8") == "inside"
+    assert artifact.metadata["byte_count"] == "6"
+
+
+def test_local_artifact_store_rejects_symlink_parent_escape(tmp_path: Path):
+    root = tmp_path / "artifacts"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (root / "escaped").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="escapes artifact root"):
+        LocalArtifactStore(root).write_text(
+            "escaped/result.txt",
+            "inside",
+            "text/plain",
+        )
+
+    assert not (outside / "result.txt").exists()
+
+
+def test_local_artifact_store_copy_file_rejects_symlink_source(tmp_path: Path):
+    outside = tmp_path / "outside.txt"
+    outside.write_text("outside", encoding="utf-8")
+    source = tmp_path / "source.txt"
+    source.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="not a regular file"):
+        LocalArtifactStore(tmp_path / "artifacts").copy_file(
+            "copied/source.txt",
+            source,
+            "text/plain",
+        )
+
+    assert not (tmp_path / "artifacts" / "copied" / "source.txt").exists()
 
 
 def test_docker_execution_provider_reports_missing_docker(monkeypatch):
