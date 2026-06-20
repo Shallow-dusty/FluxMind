@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 12:11 CST
+Snapshot time: 2026-06-20 12:22 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  95f1760 test: add octave-aware code-output eval
-Current docs/health sync       e4da2e9 docs: document octave-aware eval status
-Current local app-code HEAD    b1212e2 feat: expose local activation admin surfaces
+Current implementation commit  c56c285 fix: redact share-link workspace identifiers
+Current docs/health sync       e93dba5 docs: refresh FluxMind activation status
+Current local app-code HEAD    c56c285 fix: redact share-link workspace identifiers
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the five application/foundation commits below
+                               by the seven local commits below
                                before this docs refresh
-Current local commit stack     ba7c243 feat: add provider quota guard and safe runtime events
+Current local commit stack     c56c285 fix: redact share-link workspace identifiers
+                               e93dba5 docs: refresh FluxMind activation status
+                               ba7c243 feat: add provider quota guard and safe runtime events
                                4ea219c fix: harden no-secret local projections
                                1ebfde3 feat: add durable job-store migration manifests
                                39ddaee feat: add local activation readiness tools
@@ -50,6 +52,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                product activation workspace-isolation rehearsal,
                                collaboration readiness CLI/API/UI policy-matrix gate
                                for private corpora/share links,
+                               share-link public projection hardening that replaces
+                               raw workspace IDs with presence/fingerprint summaries,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -185,6 +189,82 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Share-link no-secret follow-up on 2026-06-20 12:22 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_share_links.py        pass, 82 tests, 2 known warnings
+  tests/test_api.py::test_admin_share_link_registry_routes_use_local_backend
+  tests/test_cli_scripts.py -q
+.venv/bin/python -m pytest -q                               pass, 602 tests, 2 known warnings
+.venv/bin/python scripts/evaluate_rag.py                    pass, 42 answer cases, 65 retrieval-only
+                                                            cases, 13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                    pass, local feature/documentation anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            52 required operations,
+                                                            protected auth headers covered
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format json                          just-exported no-secret snapshot
+.venv/bin/python scripts/product_readiness.py --format json pass, local_foundation_ready=true,
+                                                            activation_ready=false with expected
+                                                            identity/quota/billing blockers
+.venv/bin/python scripts/provider_readiness.py --format json pass, local_foundation_ready=true,
+                                                             activation_ready=false with expected
+                                                             provider/MATLAB/quota blockers
+.venv/bin/python scripts/collaboration_readiness.py         pass, ok=true, local_foundation_ready=true,
+  --format json                                             safe_default_ready=true,
+                                                            activation_ready=false with expected
+                                                            private-corpus/share-link blockers
+.venv/bin/python scripts/product_activation_rehearsal.py    pass, ok=true, activation_ready=true
+  --format json --require-activation
+.venv/bin/python scripts/provider_runtime_rehearsal.py      pass, ok=true, local mock image,
+  --format json --require-local-foundation                  local Python execution, Octave
+                                                            unavailable branch, Docker readiness,
+                                                            provider quota guard, and abuse-policy
+                                                            denial checked
+.venv/bin/python scripts/quality_readiness.py --format json pass, local_foundation_ready=true,
+                                                            self_use=met; small_group/community
+                                                            remain blocked on explicit live/corpus
+                                                            evidence gaps
+.venv/bin/python scripts/activation_suite.py --format json  pass, ok=true, local_foundation_ready=true,
+                                                            full_activation_ready=false with expected
+                                                            product/collaboration/provider/
+                                                            platform/community activation blockers
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, wrote object + job-store no-secret
+  --include-object-manifest --include-job-store-manifest    rehearsal manifest to /tmp
+  --output /tmp/fluxmind-object-and-job-rehearsal.json
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, ok=true, checked_objects=9,
+  --verify-object-manifest /tmp/fluxmind-object-and-job-rehearsal.json
+  --format json                                             missing/mismatched/extra all 0
+.venv/bin/python scripts/platform_migration_rehearsal.py    pass, ok=true, expected/current jobs=0,
+  --verify-job-store-manifest /tmp/fluxmind-object-and-job-rehearsal.json
+  --format json                                             expected/current idempotency claims=0,
+                                                            missing/mismatched/extra all 0
+.venv/bin/python scripts/share_link_registry.py             pass, backend=none, available=false,
+  --format markdown status                                  secrets/tokens/URLs exported=false
+.venv/bin/python scripts/api_key_registry.py                pass, backend=none, available=false,
+  --format markdown status                                  secrets exported=false
+git diff --check                                            pass
+```
+
+The follow-up hardens the local share-link public projection: list/create/
+resolve/revoke summaries now omit raw `workspace_id` and expose only
+`workspace_present` plus a short `workspace_fingerprint`. CLI Markdown uses the
+same no-secret fields, and the Streamlit management panel no longer derives its
+default workspace input from public share-link summaries. Regression tests now
+assert that API, CLI, and registry projections do not echo the sample raw
+workspace ID while preserving internal storage and RBAC decisions on the full
+record.
 
 Local audit follow-up on 2026-06-20 11:04 CST:
 

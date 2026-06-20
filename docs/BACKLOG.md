@@ -993,7 +993,7 @@ identity-backed quotas, and external billing disabled until decisions are made
 - `scripts/share_link_registry.py` gives share-link tokens a local no-secret
   lifecycle surface. `create` requires JSON so the one-time token is not hidden
   in Markdown output; list/revoke/resolve omit raw tokens, URLs, resource refs,
-  creator user IDs, descriptions, paths, prompts, answers, and contents. The
+  workspace IDs, creator user IDs, descriptions, paths, prompts, answers, and contents. The
   matching `/admin/share-links*` routes plus the explicitly enabled Streamlit
   operator panel use the same SQLite registry. API writes record metadata-only
   admin events.
