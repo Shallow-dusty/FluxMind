@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:00 CST
+Snapshot time: 2026-06-20 15:05 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  ea8a7a2 fix: preserve share-link workspace event evidence
-Current docs/health sync       3ae6842 docs: refresh share-link audit status
-Current local app-code HEAD    ea8a7a2 fix: preserve share-link workspace event evidence
+Current implementation commit  bae5f88 fix: guard terminal job lease release
+Current docs/health sync       fac2c6b docs: record share-link event evidence audit
+Current local app-code HEAD    bae5f88 fix: guard terminal job lease release
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the nine local commits below
+                               by the eleven local commits below
                                before this docs refresh
-Current local commit stack     ea8a7a2 fix: preserve share-link workspace event evidence
+Current local commit stack     bae5f88 fix: guard terminal job lease release
+                               fac2c6b docs: record share-link event evidence audit
+                               ea8a7a2 fix: preserve share-link workspace event evidence
                                3ae6842 docs: refresh share-link audit status
                                c56c285 fix: redact share-link workspace identifiers
                                e93dba5 docs: refresh FluxMind activation status
@@ -59,6 +61,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                share-link admin runtime-event workspace-present
                                evidence restoration after public projection redaction,
                                and share-link terminal-state/status regression coverage,
+                               durable job lease-release state guard preserving
+                               completed-job worker provenance,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -194,6 +198,41 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Job lease-release follow-up on 2026-06-20 15:05 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_jobs.py -q            pass, 47 tests, 1 known warning
+.venv/bin/python -m pytest tests/test_docs_status.py        pass, 18 selected docs/health tests
+  tests/test_feature_audit_docs.py tests/test_translation_guard.py
+  tests/test_health_check.py::test_main_local_health_check_passes -q
+.venv/bin/python -m coverage run -m pytest -q               pass, 605 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up tightens the durable local job-store state machine. `release_job_lease()`
+now only clears leases for queued jobs, matching its contract and preserving
+worker lease metadata on terminal jobs such as `succeeded`, `failed`,
+`cancelled`, or `dead_lettered`. Regression coverage now verifies that a
+mismatched worker ID cannot release another worker's active queued lease and
+that a completed job keeps its worker provenance even if a release call is made
+later. The same local sweep also confirms no OpenAPI no-secret snapshot drift,
+no storage-schema drift, and no repo-status/feature-anchor drift in the current
+checkout.
 
 Share-link event-evidence follow-up on 2026-06-20 15:00 CST:
 
