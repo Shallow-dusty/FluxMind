@@ -118,6 +118,10 @@ def safe_streamlit_error_message(exc: BaseException) -> str:
     return sanitize_cli_error_message(str(exc)) or exc.__class__.__name__
 
 
+def safe_streamlit_error_text(template: str, exc: BaseException) -> str:
+    return template.format(error=safe_streamlit_error_message(exc))
+
+
 @st.dialog("演示导览", width="large")
 def show_demo_guide():
     """Presenter-only walkthrough. Sourced from docs/demo-script.md so the
@@ -1532,7 +1536,9 @@ def render_admin_status() -> None:
                 live_reports=live_reports,
             )
         except json.JSONDecodeError as exc:
-            st.error(text["quality_readiness_report_invalid"].format(error=exc))
+            st.error(
+                safe_streamlit_error_text(text["quality_readiness_report_invalid"], exc)
+            )
         except OSError as exc:
             st.error(safe_streamlit_error_message(exc))
     quality_readiness_status = st.session_state.get("quality_readiness_status")
@@ -1586,7 +1592,9 @@ def render_admin_status() -> None:
                 openapi_schema=api.app.openapi(),
             )
         except json.JSONDecodeError as exc:
-            st.error(text["activation_suite_report_invalid"].format(error=exc))
+            st.error(
+                safe_streamlit_error_text(text["activation_suite_report_invalid"], exc)
+            )
         except OSError as exc:
             st.error(safe_streamlit_error_message(exc))
     activation_suite_status = st.session_state.get("activation_suite_status")
@@ -1657,7 +1665,9 @@ def render_admin_status() -> None:
                     verify_openapi_contract_snapshot(current, snapshot)
                 )
         except json.JSONDecodeError as exc:
-            st.error(text["openapi_contract_snapshot_invalid"].format(error=exc))
+            st.error(
+                safe_streamlit_error_text(text["openapi_contract_snapshot_invalid"], exc)
+            )
         except OSError as exc:
             st.error(safe_streamlit_error_message(exc))
     openapi_contract_verify_status = st.session_state.get("openapi_contract_verify_status")
@@ -1727,7 +1737,9 @@ def render_admin_status() -> None:
         try:
             restore_manifest = json.loads(uploaded_manifest.getvalue().decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            st.error(text["runtime_restore_invalid_manifest"].format(error=exc))
+            st.error(
+                safe_streamlit_error_text(text["runtime_restore_invalid_manifest"], exc)
+            )
         else:
             restore_check = collect_runtime_restore_check(restore_manifest)
             st.caption(text["runtime_restore_check"])
@@ -1995,7 +2007,7 @@ with st.sidebar:
                     saved_path, n_chunks = ingest_uploaded_pdf(uf.read(), uf.name)
                     st.success(text["indexed_chunks"].format(filename=saved_path.name, chunks=n_chunks))
                 except ValueError as exc:
-                    st.error(text["upload_failed"].format(error=exc))
+                    st.error(safe_streamlit_error_text(text["upload_failed"], exc))
 
     st.caption(f"Max upload: {MAX_UPLOAD_SIZE_MB} MB")
 

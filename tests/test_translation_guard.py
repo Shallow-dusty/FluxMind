@@ -155,8 +155,36 @@ def test_streamlit_admin_on_demand_panels_sanitize_os_errors():
     )[0]
 
     assert "def safe_streamlit_error_message" in APP_SOURCE
+    assert "def safe_streamlit_error_text" in APP_SOURCE
     assert "st.error(str(exc))" not in admin_block
+    assert ".format(error=exc)" not in admin_block
     assert admin_block.count("st.error(safe_streamlit_error_message(exc))") >= 8
+    assert (
+        'safe_streamlit_error_text(text["quality_readiness_report_invalid"], exc)'
+        in admin_block
+    )
+    assert (
+        'safe_streamlit_error_text(text["activation_suite_report_invalid"], exc)'
+        in admin_block
+    )
+    assert (
+        'safe_streamlit_error_text(text["openapi_contract_snapshot_invalid"], exc)'
+        in admin_block
+    )
+    assert (
+        'safe_streamlit_error_text(text["runtime_restore_invalid_manifest"], exc)'
+        in admin_block
+    )
+
+
+def test_streamlit_upload_errors_sanitize_exception_output():
+    upload_block = APP_SOURCE.split("# Upload PDFs", 1)[1].split(
+        'st.caption(f"Max upload:', 1
+    )[0]
+
+    assert "def safe_streamlit_error_text" in APP_SOURCE
+    assert ".format(error=exc)" not in APP_SOURCE
+    assert 'safe_streamlit_error_text(text["upload_failed"], exc)' in upload_block
 
 
 def test_streamlit_runtime_event_filter_covers_guard_events():

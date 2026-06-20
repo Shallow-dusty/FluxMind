@@ -1207,6 +1207,21 @@ def main() -> int:
         "Streamlit admin on-demand panels sanitize OS error output",
         failures,
     )
+    check(
+        "def safe_streamlit_error_text" in app_source
+        and ".format(error=exc)" not in app_source
+        and 'safe_streamlit_error_text(text["quality_readiness_report_invalid"], exc)'
+        in admin_status_block
+        and 'safe_streamlit_error_text(text["activation_suite_report_invalid"], exc)'
+        in admin_status_block
+        and 'safe_streamlit_error_text(text["openapi_contract_snapshot_invalid"], exc)'
+        in admin_status_block
+        and 'safe_streamlit_error_text(text["runtime_restore_invalid_manifest"], exc)'
+        in admin_status_block
+        and 'safe_streamlit_error_text(text["upload_failed"], exc)' in app_source,
+        "Streamlit user-upload/admin validation errors sanitize exception output",
+        failures,
+    )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
