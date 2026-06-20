@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 619 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 622 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 619 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 622 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -56,6 +56,7 @@ Command                                                               Result
                                                                       readiness-CLI-error-sanitizer/
                                                                       live-eval-request-id-redaction/
                                                                       Streamlit-share-link-error-sanitizer/
+                                                                      API-validation-error-sanitizer/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -186,6 +187,17 @@ surface or deployment facts. It reconfirmed the local feature evidence above:
 619 tests pass, coverage remains 89%, offline RAG eval passes, health anchors
 pass, OpenAPI no-secret snapshot verification has `diff_count=0`, and storage
 schema inventory reports 10 stores with 0 problems.
+
+The 2026-06-20 21:50 CST API validation error-output audit adds focused
+regression coverage for public FastAPI `ValueError` branches on
+`/corpus/structure`, `/corpus/active`, `/corpus/profiles`, profile
+activate/rebuild, and artifact download. Those branches now return stable
+no-secret `detail.code` values instead of raw exception text; tests verify that
+submitted source paths, secret-like path fragments, nonlocal artifact hosts,
+artifact titles, and symlink-resolution messages are not echoed. Local
+verification passes with 622 tests, 89% branch coverage, offline RAG eval,
+health anchors, OpenAPI no-secret snapshot `diff_count=0`, and storage-schema
+0 problems.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
@@ -318,6 +330,11 @@ Corpus and profile control    verified      30-paper curated seed library plus p
                                             JSON/SQLite store is inspectable. Multi-user ownership and
                                             production DB/object storage remain planned.
                                             Uploaded PDFs have a local pre-write scan guard.
+                                            Public API validation errors for
+                                            structure, active selection, and
+                                            profile create/activate/rebuild use
+                                            stable no-secret codes instead of
+                                            raw source-path exception text.
 Local job and worker bridge   verified      immediate and async job routes, idempotency keys,
                                             owner metadata, bounded retry/dead-letter state,
                                             cancellation, leases, and worker service exist.
@@ -337,7 +354,10 @@ Artifacts and exports         verified      artifact list/download, checksums, a
                                             artifact projections. Streamlit artifact
                                             download errors use the same no-secret
                                             sanitized UI projection instead of raw
-                                            path/URI exceptions. Durable
+                                            path/URI exceptions, and API artifact
+                                            download errors now return stable
+                                            no-secret codes instead of raw URI,
+                                            title, host, or symlink diagnostics. Durable
                                             object storage remains planned.
 Admin and runtime status      verified      status/report/retention/events/runtime-manifest and
                                             restore-check routes plus Streamlit upload/report UI

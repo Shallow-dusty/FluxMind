@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 21:38 CST
+Snapshot time: 2026-06-20 21:50 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors
-Current docs/health sync       docs: refresh FluxMind git and documentation status (this commit)
-Current local app-code HEAD    913ac43 fix: sanitize Streamlit admin UI errors
+Current implementation commit  52eff68 fix: sanitize API validation error details
+Current docs/health sync       docs: record API validation error audit status (this commit)
+Current local app-code HEAD    52eff68 fix: sanitize API validation error details
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the thirty-two local commits below
-                               after this git/documentation status refresh commit
-Current local commit stack     docs: refresh FluxMind git and documentation status (this commit)
+                               by the thirty-four local commits below
+                               after this API validation error docs refresh commit
+Current local commit stack     docs: record API validation error audit status (this commit)
+                               52eff68 fix: sanitize API validation error details
+                               08c5984 docs: refresh FluxMind git and documentation status
                                24413ad docs: record Streamlit admin UI error audit status
                                913ac43 fix: sanitize Streamlit admin UI errors
                                9573793 docs: record product registry UI error audit status
@@ -107,6 +109,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                error output sanitization,
                                git/documentation status refresh with current
                                no-drift gate evidence,
+                               API validation/artifact export HTTP error
+                               detail sanitization,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -242,6 +246,48 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+API validation error-output follow-up on 2026-06-20 21:50 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -k            pass, 16 selected API tests,
+  "corpus_structure or update_active_corpus or              95 deselected, 2 known warnings
+   corpus_profile or artifact_download" -q
+.venv/bin/python -m pytest -q                              pass, 622 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 622 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including
+                                                            API-validation-error-sanitizer anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+rg 'detail=str(exc)' api.py                                no matches
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 33],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up closes the API-side equivalent of the recent Streamlit error
+sanitizer work. `/corpus/structure`, `/corpus/active`,
+`/corpus/profiles`, profile activate/rebuild, and artifact download now map
+local `ValueError` branches to stable no-secret `detail.code` values
+(`invalid_corpus_source_path` and `artifact_export_denied`) instead of returning
+raw exception text. Focused API tests verify that source paths, secret-like path
+fragments, nonlocal artifact hosts, artifact titles, and symlink-resolution
+messages are not echoed in public HTTP error responses. No production deployment
+was performed, and `docs/DEPLOYMENT_STATUS.md` remains unchanged because no
+live Trace-Twin service facts were refreshed in this pass.
 
 Git/documentation status refresh on 2026-06-20 21:38 CST:
 

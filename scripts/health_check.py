@@ -165,9 +165,15 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors" in repo_status
-        and "Current docs/health sync       docs: refresh FluxMind git and documentation status (this commit)" in repo_status
-        and "by the thirty-two local commits below" in repo_status
+        and "Current implementation commit  52eff68 fix: sanitize API validation error details" in repo_status
+        and "Current docs/health sync       docs: record API validation error audit status (this commit)" in repo_status
+        and "by the thirty-four local commits below" in repo_status
+        and "API validation error-output follow-up on 2026-06-20 21:50 CST" in repo_status
+        and "pass, 622 tests, 2 known warnings" in repo_status
+        and "API-validation-error-sanitizer anchor" in repo_status
+        and "rg 'detail=str(exc)' api.py                                no matches" in repo_status
+        and "invalid_corpus_source_path" in repo_status
+        and "artifact_export_denied" in repo_status
         and "Git/documentation status refresh on 2026-06-20 21:38 CST" in repo_status
         and "main...origin/main [ahead 31]" in repo_status
         and "docs-only refresh" in repo_status
@@ -237,11 +243,12 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 619 tests, 2 known warnings" in roadmap
+        and "pass, 622 tests, 2 known warnings" in roadmap
         and "execution-input-materialization" in roadmap
         and "runtime-event-metadata-value-redaction" in roadmap
         and "admin-on-demand-error-sanitizer" in roadmap
         and "artifact-gallery-error-sanitizer" in roadmap
+        and "API-validation-error-sanitizer" in roadmap
         and "product-registry-error-sanitizer" in roadmap
         and "share-link-error-sanitizer" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",

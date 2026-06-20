@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors" in text
-    assert "Current docs/health sync       docs: refresh FluxMind git and documentation status (this commit)" in text
-    assert "by the thirty-two local commits below" in text
+    assert "Current implementation commit  52eff68 fix: sanitize API validation error details" in text
+    assert "Current docs/health sync       docs: record API validation error audit status (this commit)" in text
+    assert "by the thirty-four local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    913ac43 fix: sanitize Streamlit admin UI errors" in text
-    assert "docs: refresh FluxMind git and documentation status (this commit)" in text
+    assert "Current local app-code HEAD    52eff68 fix: sanitize API validation error details" in text
+    assert "docs: record API validation error audit status (this commit)" in text
+    assert "52eff68 fix: sanitize API validation error details" in text
+    assert "08c5984 docs: refresh FluxMind git and documentation status" in text
     assert "24413ad docs: record Streamlit admin UI error audit status" in text
     assert "913ac43 fix: sanitize Streamlit admin UI errors" in text
     assert "9573793 docs: record product registry UI error audit status" in text
@@ -101,6 +103,12 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "docs-only refresh" in text
     assert "routes=69, operations=76" in text
     assert "no docs/health anchor drift" in text
+    assert "API validation error-output follow-up on 2026-06-20 21:50 CST" in text
+    assert "pass, 622 tests, 2 known warnings" in text
+    assert "API-validation-error-sanitizer anchor" in text
+    assert "rg 'detail=str(exc)' api.py                                no matches" in text
+    assert "invalid_corpus_source_path" in text
+    assert "artifact_export_denied" in text
     assert "Streamlit admin UI error-output follow-up on 2026-06-20 20:44 CST" in text
     assert "pass, 619 tests, 2 known warnings" in text
     assert "Artifact download failures" in text
@@ -170,11 +178,12 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 619 tests, 2 known warnings" in text
+    assert "pass, 622 tests, 2 known warnings" in text
     assert "execution-input-materialization" in text
     assert "runtime-event-metadata-value-redaction" in text
     assert "admin-on-demand-error-sanitizer" in text
     assert "artifact-gallery-error-sanitizer" in text
+    assert "API-validation-error-sanitizer" in text
     assert "product-registry-error-sanitizer" in text
     assert "share-link-error-sanitizer" in text
 
