@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 21:50 CST
+Snapshot time: 2026-06-20 22:01 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -15,12 +15,13 @@ Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
 Current implementation commit  52eff68 fix: sanitize API validation error details
-Current docs/health sync       docs: record API validation error audit status (this commit)
+Current docs/health sync       docs: refresh FluxMind git and documentation drift status (this commit)
 Current local app-code HEAD    52eff68 fix: sanitize API validation error details
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the thirty-four local commits below
-                               after this API validation error docs refresh commit
-Current local commit stack     docs: record API validation error audit status (this commit)
+                               by the thirty-five local commits below
+                               after this git/documentation drift refresh commit
+Current local commit stack     docs: refresh FluxMind git and documentation drift status (this commit)
+                               b82c6c6 docs: record API validation error audit status
                                52eff68 fix: sanitize API validation error details
                                08c5984 docs: refresh FluxMind git and documentation status
                                24413ad docs: record Streamlit admin UI error audit status
@@ -111,6 +112,9 @@ Current refresh scope          local audit/forward-development commits for produ
                                no-drift gate evidence,
                                API validation/artifact export HTTP error
                                detail sanitization,
+                               git/documentation drift refresh after the
+                               API validation docs sync with current
+                               no-drift gate evidence,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -246,6 +250,42 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Git/documentation drift refresh on 2026-06-20 22:01 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+git status --short --branch                                main...origin/main [ahead 34],
+                                                            no local changes before this
+                                                            docs-only refresh
+.venv/bin/python -m pytest -q                              pass, 622 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 622 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, local/docs and
+                                                            no-secret feature anchors;
+                                                            no docs/health anchor drift
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+git diff --check                                           pass
+```
+
+This is a documentation and repository-status hygiene pass only. It refreshes
+the git/worktree boundary after the API validation error-output docs sync and
+reconfirms no OpenAPI no-secret snapshot drift, no storage-schema drift, no
+docs/health anchor drift, and no whitespace drift in the current checkout. No
+application code, runtime data, production deployment, or live Trace-Twin
+service facts were changed in this pass; deployment state remains owned by
+`docs/DEPLOYMENT_STATUS.md`.
 
 API validation error-output follow-up on 2026-06-20 21:50 CST:
 

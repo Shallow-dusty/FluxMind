@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 619
+Current hardening progress through 2026-06-20: the automated suite has 622
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -77,6 +77,12 @@ A 2026-06-20 21:50 CST API validation error audit refresh confirms the updated
 local checkout with 622 tests passing, 89% branch coverage, offline RAG eval
 passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, and storage
 schema drift still at 0 problems.
+A 2026-06-20 22:01 CST git/documentation drift refresh confirms the clean
+checkout after the API validation docs sync, with 622 tests passing, 89% branch
+coverage, offline RAG eval passing, local health/docs anchors passing, OpenAPI
+no-secret snapshot drift still at `diff_count=0`, storage schema drift still at
+0 problems, and `git diff --check` clean. It was a docs-only status pass; no
+production deployment or live Trace-Twin service facts were refreshed.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

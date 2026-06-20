@@ -11,6 +11,11 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
+Current local verification was refreshed on 2026-06-20 22:01 CST as a
+docs-only drift pass after the API validation docs sync. The command set below
+still passes with 622 tests, 89% branch coverage, OpenAPI no-secret snapshot
+`diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
+
 ## Current Verification Command Set
 
 ```text
@@ -198,6 +203,13 @@ artifact titles, and symlink-resolution messages are not echoed. Local
 verification passes with 622 tests, 89% branch coverage, offline RAG eval,
 health anchors, OpenAPI no-secret snapshot `diff_count=0`, and storage-schema
 0 problems.
+
+The 2026-06-20 22:01 CST git/documentation drift refresh did not add feature
+surface or deployment facts. It reconfirmed the current local feature evidence
+above after the API validation docs sync: 622 tests pass, coverage remains 89%,
+offline RAG eval passes, health/docs anchors pass, OpenAPI no-secret snapshot
+verification has `diff_count=0`, storage schema inventory reports 10 stores
+with 0 problems, and `git diff --check` is clean.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,

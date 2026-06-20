@@ -47,8 +47,11 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
+Git/documentation drift refresh           2026-06-20 22:01 CST, checkout at
+                                          b82c6c6 before this docs-only refresh;
+                                          no production deployment performed
 API validation error audit refresh        2026-06-20 21:50 CST, checkout at
-                                          52eff68 before this docs refresh;
+                                          52eff68 before the API docs refresh;
                                           no production deployment performed
 .venv/bin/python -m pytest                pass, 622 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest

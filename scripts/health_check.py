@@ -166,8 +166,12 @@ def main() -> int:
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Current implementation commit  52eff68 fix: sanitize API validation error details" in repo_status
-        and "Current docs/health sync       docs: record API validation error audit status (this commit)" in repo_status
-        and "by the thirty-four local commits below" in repo_status
+        and "Current docs/health sync       docs: refresh FluxMind git and documentation drift status (this commit)" in repo_status
+        and "by the thirty-five local commits below" in repo_status
+        and "b82c6c6 docs: record API validation error audit status" in repo_status
+        and "Git/documentation drift refresh on 2026-06-20 22:01 CST" in repo_status
+        and "main...origin/main [ahead 34]" in repo_status
+        and "after the API validation error-output docs sync" in repo_status
         and "API validation error-output follow-up on 2026-06-20 21:50 CST" in repo_status
         and "pass, 622 tests, 2 known warnings" in repo_status
         and "API-validation-error-sanitizer anchor" in repo_status
