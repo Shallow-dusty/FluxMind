@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  125664d fix: sanitize Streamlit job failure messages" in text
-    assert "Current docs/health sync       docs: record Streamlit job result audit status (this commit)" in text
-    assert "by the fifty-three local commits below" in text
+    assert "Current implementation commit  0bbf9ff fix: sanitize Streamlit profile report errors" in text
+    assert "Current docs/health sync       docs: record Streamlit profile report audit status (this commit)" in text
+    assert "by the fifty-five local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    125664d fix: sanitize Streamlit job failure messages" in text
-    assert "docs: record Streamlit job result audit status (this commit)" in text
+    assert "Current local app-code HEAD    0bbf9ff fix: sanitize Streamlit profile report errors" in text
+    assert "docs: record Streamlit profile report audit status (this commit)" in text
+    assert "0bbf9ff fix: sanitize Streamlit profile report errors" in text
+    assert "8b314a2 docs: record Streamlit job result audit status" in text
     assert "125664d fix: sanitize Streamlit job failure messages" in text
     assert "1f9e8d2 docs: refresh git and documentation drift status" in text
     assert "848eef4 docs: record job request id audit status" in text
@@ -117,6 +119,12 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Streamlit corpus profile report failure-message follow-up on 2026-06-20 23:53 CST" in text
+    assert "main...origin/main [ahead 54]" in text
+    assert "pass, 633 tests" in text
+    assert "safe_streamlit_error_message" in text
+    assert "profile_report_failed" in text
+    assert "normalize_exception(exc).message" in text
     assert "Streamlit job result failure-message follow-up on 2026-06-20 23:42 CST" in text
     assert "main...origin/main [ahead 52]" in text
     assert "pass, 632 tests" in text
@@ -246,7 +254,9 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 632 tests, 2 known warnings" in text
+    assert "pass, 633 tests, 2 known warnings" in text
+    assert "Streamlit profile report error audit" in text
+    assert "Streamlit-corpus-profile-report-error-sanitizer" in text
     assert "Streamlit job result error audit" in text
     assert "Streamlit-job-result-error-sanitizer" in text
     assert "Git/documentation drift refresh" in text

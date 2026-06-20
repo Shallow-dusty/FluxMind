@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 632
+Current hardening progress through 2026-06-20: the automated suite has 633
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -168,6 +168,15 @@ health/docs anchors passing, and `git diff --check` clean. Failed local job
 results in the Streamlit sidebar now sanitize raw `job.error["message"]` values
 before rendering, so stderr/exception text containing secret-like tokens or
 local paths is redacted rather than displayed directly. It was a local UI
+projection hardening pass; no production deployment or live Trace-Twin service
+facts were refreshed.
+A 2026-06-20 23:53 CST Streamlit corpus profile report failure-message audit
+confirms the updated local checkout with 633 tests passing, 89% branch
+coverage, local health/docs anchors passing, and `git diff --check` clean.
+Profile report download failures in the Streamlit sidebar now use the shared
+sanitized error helper instead of rendering normalized exception messages
+directly, so local paths, URLs, bearer tokens, and secret-like values are
+redacted consistently with the rest of the operator UI. It was a local UI
 projection hardening pass; no production deployment or live Trace-Twin service
 facts were refreshed.
 The

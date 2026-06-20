@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 23:42 CST after the
-Streamlit job result failure-message hardening. The command set below now
-passes with 632 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 23:53 CST after the
+Streamlit corpus profile report failure-message hardening. The command set
+below now passes with 633 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ passes with 632 tests, 89% branch coverage, OpenAPI no-secret snapshot
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 632 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 633 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 632 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 633 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -45,6 +45,7 @@ Command                                                               Result
                                                                       Streamlit-admin-error-sanitizer/
                                                                       Streamlit-artifact-error-sanitizer/
                                                                       Streamlit-job-result-error-sanitizer/
+                                                                      Streamlit-corpus-profile-report-error-sanitizer/
                                                                       API-key-create-output-guard/
                                                                       share-link-registry/
                                                                       product-activation-rehearsal/
@@ -313,6 +314,17 @@ coverage verifies the renderer no longer uses the old direct
 `(job.error or {}).get("message", job.status)` path, and the health checker now
 has a Streamlit job-result sanitizer anchor. Local verification passes with 632
 tests and 89% branch coverage; no live deployment facts were refreshed.
+
+The 2026-06-20 23:53 CST Streamlit corpus profile report failure-message audit
+adds the same UI projection guard to the profile report download panel. Profile
+report generation failures no longer render `normalize_exception(exc).message`
+through `profile_report_failed`; the displayed warning now uses
+`safe_streamlit_error_message(exc)` so path, URL, bearer-token, and secret-like
+values are redacted consistently with the rest of the Streamlit operator UI.
+Static regression coverage verifies the panel no longer uses the old direct
+normalized-message path, and the health checker now has a Streamlit corpus
+profile report sanitizer anchor. Local verification passes with 633 tests and
+89% branch coverage; no live deployment facts were refreshed.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,

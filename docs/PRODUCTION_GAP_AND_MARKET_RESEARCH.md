@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 23:42 CST
+Last updated: 2026-06-20 23:53 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,9 +23,10 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 23:42 refresh updates the current local repo verification counts
-and the Streamlit job result failure-message sanitization boundary. It retains
-the job detail API request-ID, owner-metadata, and idempotency-key projection
+The 2026-06-20 23:53 refresh updates the current local repo verification counts
+and the Streamlit corpus profile report failure-message sanitization boundary.
+It retains the Streamlit job result failure-message sanitization boundary, job
+detail API request-ID, owner-metadata, and idempotency-key projection
 boundaries, job detail API code-output projection boundary, Streamlit validation
 error-output sanitization boundary, API request validation error projection
 boundary, index rebuild job API projection redaction boundary, API
@@ -46,15 +47,16 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 125664d fix: sanitize Streamlit job failure messages
-Current docs/health    docs: record Streamlit job result audit status
+Current implementation 0bbf9ff fix: sanitize Streamlit profile report errors
+Current docs/health    docs: record Streamlit profile report audit status
 Status note     local no-key hardening through index rebuild job API projection,
                 API request validation projection, API validation/artifact
                 download, Streamlit admin/artifact/upload validation
                 error-output sanitization, and job detail code-output
                 plus idempotency-key, owner-metadata, request-ID projection,
-                and Streamlit failed-job message sanitization is implemented
-                and locally verified; the 23:42
+                Streamlit failed-job message sanitization, and Streamlit corpus
+                profile report failure-message sanitization is implemented and
+                locally verified; the 23:53
                 refresh reconfirms no OpenAPI/storage/docs drift; the
                 local stack is not pushed to origin and not deployed to
                 Trace-Twin
@@ -62,7 +64,7 @@ Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 23:42 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 23:53 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -71,7 +73,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    632 passed, 2 known warnings
+pytest                                    633 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -108,7 +110,9 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           projection/job-idempotency-key-
                                           projection/job-owner-metadata-
                                           projection/job-request-id-projection/
-                                          Streamlit-job-result-error-sanitizer
+                                          Streamlit-job-result-error-sanitizer/
+                                          Streamlit-corpus-profile-report-error-
+                                          sanitizer
                                           anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against

@@ -165,9 +165,11 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  125664d fix: sanitize Streamlit job failure messages" in repo_status
-        and "Current docs/health sync       docs: record Streamlit job result audit status (this commit)" in repo_status
-        and "by the fifty-three local commits below" in repo_status
+        and "Current implementation commit  0bbf9ff fix: sanitize Streamlit profile report errors" in repo_status
+        and "Current docs/health sync       docs: record Streamlit profile report audit status (this commit)" in repo_status
+        and "by the fifty-five local commits below" in repo_status
+        and "0bbf9ff fix: sanitize Streamlit profile report errors" in repo_status
+        and "8b314a2 docs: record Streamlit job result audit status" in repo_status
         and "125664d fix: sanitize Streamlit job failure messages" in repo_status
         and "1f9e8d2 docs: refresh git and documentation drift status" in repo_status
         and "848eef4 docs: record job request id audit status" in repo_status
@@ -186,6 +188,12 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Streamlit corpus profile report failure-message follow-up on 2026-06-20 23:53 CST" in repo_status
+        and "main...origin/main [ahead 54]" in repo_status
+        and "pass, 633 tests" in repo_status
+        and "safe_streamlit_error_message" in repo_status
+        and "profile_report_failed" in repo_status
+        and "normalize_exception(exc).message" in repo_status
         and "Streamlit job result failure-message follow-up on 2026-06-20 23:42 CST" in repo_status
         and "main...origin/main [ahead 52]" in repo_status
         and "pass, 632 tests" in repo_status
@@ -311,7 +319,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 632 tests, 2 known warnings" in roadmap
+        and "pass, 633 tests, 2 known warnings" in roadmap
+        and "Streamlit profile report error audit" in roadmap
+        and "Streamlit-corpus-profile-report-error-sanitizer" in roadmap
         and "Streamlit job result error audit" in roadmap
         and "Streamlit-job-result-error-sanitizer" in roadmap
         and "Git/documentation drift refresh" in roadmap

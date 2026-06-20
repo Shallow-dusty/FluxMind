@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 23:42 CST
+Snapshot time: 2026-06-20 23:53 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  125664d fix: sanitize Streamlit job failure messages
-Current docs/health sync       docs: record Streamlit job result audit status (this commit)
-Current local app-code HEAD    125664d fix: sanitize Streamlit job failure messages
+Current implementation commit  0bbf9ff fix: sanitize Streamlit profile report errors
+Current docs/health sync       docs: record Streamlit profile report audit status (this commit)
+Current local app-code HEAD    0bbf9ff fix: sanitize Streamlit profile report errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the fifty-three local commits below
-                               after this Streamlit job result docs refresh commit
-Current local commit stack     docs: record Streamlit job result audit status (this commit)
+                               by the fifty-five local commits below
+                               after this Streamlit profile report docs refresh commit
+Current local commit stack     docs: record Streamlit profile report audit status (this commit)
+                               0bbf9ff fix: sanitize Streamlit profile report errors
+                               8b314a2 docs: record Streamlit job result audit status
                                125664d fix: sanitize Streamlit job failure messages
                                1f9e8d2 docs: refresh git and documentation drift status
                                848eef4 docs: record job request id audit status
@@ -126,6 +128,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                sanitization,
                                Streamlit admin on-demand panel and artifact gallery
                                error output sanitization,
+                               Streamlit corpus profile report failure-message
+                               output sanitization,
                                Streamlit job result failure-message output
                                sanitization,
                                git/documentation status refresh with current
@@ -295,6 +299,35 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Streamlit corpus profile report failure-message follow-up on 2026-06-20 23:53 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_translation_guard.py pass, 17 selected
+  tests/test_health_check.py::test_main_local_health_check_passes -q
+.venv/bin/python scripts/health_check.py                   pass, including Streamlit
+                                                            corpus profile report sanitizer anchor
+.venv/bin/python -m pytest -q                              pass, 633 tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 633 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+git diff --check                                           pass; no whitespace drift
+git status --short --branch                                main...origin/main [ahead 54],
+                                                            only docs changes remain before
+                                                            this docs refresh
+```
+
+The follow-up closes a Streamlit UI projection gap in the corpus profile report
+download panel. Profile report generation failures no longer render
+`normalize_exception(exc).message` directly through `profile_report_failed`;
+they now use `safe_streamlit_error_message(exc)`, so local paths, URLs, bearer
+tokens, and secret-like values are redacted consistently with the rest of the
+operator UI. Static regression coverage and the local health checker guard
+against reintroducing direct raw profile report error rendering. No production
+deployment was performed, and `docs/DEPLOYMENT_STATUS.md` remains unchanged
+because no live Trace-Twin service facts were refreshed in this pass.
 
 Streamlit job result failure-message follow-up on 2026-06-20 23:42 CST:
 
