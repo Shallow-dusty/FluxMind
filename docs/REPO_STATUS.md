@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 22:10 CST
+Snapshot time: 2026-06-20 22:21 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  19de06f fix: redact index rebuild job source paths
-Current docs/health sync       docs: record index rebuild job projection audit status (this commit)
-Current local app-code HEAD    19de06f fix: redact index rebuild job source paths
+Current implementation commit  4bf9775 fix: sanitize API request validation errors
+Current docs/health sync       docs: record API request validation audit status (this commit)
+Current local app-code HEAD    4bf9775 fix: sanitize API request validation errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the thirty-seven local commits below
-                               after this index rebuild job projection docs refresh commit
-Current local commit stack     docs: record index rebuild job projection audit status (this commit)
+                               by the thirty-nine local commits below
+                               after this API request validation docs refresh commit
+Current local commit stack     docs: record API request validation audit status (this commit)
+                               4bf9775 fix: sanitize API request validation errors
+                               9e7c4e2 docs: record index rebuild job projection audit status
                                19de06f fix: redact index rebuild job source paths
                                1115b02 docs: refresh FluxMind git and documentation drift status
                                b82c6c6 docs: record API validation error audit status
@@ -119,6 +121,9 @@ Current refresh scope          local audit/forward-development commits for produ
                                no-drift gate evidence,
                                index rebuild job API response projection
                                redaction for raw source paths,
+                               FastAPI request validation error projection
+                               that omits submitted input values from public
+                               422 responses,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -254,6 +259,52 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+API request validation projection follow-up on 2026-06-20 22:21 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -k            pass, 18 selected API tests,
+  "request_validation_error or corpus_structure or          97 deselected, 2 known warnings
+   update_active_corpus or corpus_profile or
+   artifact_download" -q
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 626 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including API request
+                                                            validation errors omit
+                                                            submitted input values anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+TestClient request validation repro                         pass, leaked=false and
+                                                            input field exported=false for
+                                                            secret-like idempotency_key and
+                                                            nested files.main.py values
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 38],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up closes a framework-level public 422 response gap. FastAPI
+`RequestValidationError` responses now pass through one no-secret projection
+that keeps validation `type`, stringified `loc`, and a generic
+`Invalid request field.` message, while omitting Pydantic/FastAPI `input`,
+`ctx`, and submitted body values. Focused API tests verify that a secret-like
+`idempotency_key` on `/jobs/index/rebuild` and a nested
+`files.main.py` value on `/jobs/code/python-local` are not echoed in public
+responses. No production deployment was performed, and
+`docs/DEPLOYMENT_STATUS.md` remains unchanged because no live Trace-Twin
+service facts were refreshed in this pass.
 
 Index rebuild job projection follow-up on 2026-06-20 22:10 CST:
 

@@ -165,11 +165,19 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  19de06f fix: redact index rebuild job source paths" in repo_status
-        and "Current docs/health sync       docs: record index rebuild job projection audit status (this commit)" in repo_status
-        and "by the thirty-seven local commits below" in repo_status
+        and "Current implementation commit  4bf9775 fix: sanitize API request validation errors" in repo_status
+        and "Current docs/health sync       docs: record API request validation audit status (this commit)" in repo_status
+        and "by the thirty-nine local commits below" in repo_status
+        and "4bf9775 fix: sanitize API request validation errors" in repo_status
+        and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "API request validation projection follow-up on 2026-06-20 22:21 CST" in repo_status
+        and "main...origin/main [ahead 38]" in repo_status
+        and "pass, 626 tests" in repo_status
+        and "RequestValidationError" in repo_status
+        and "Invalid request field." in repo_status
+        and "input field exported=false" in repo_status
         and "Index rebuild job projection follow-up on 2026-06-20 22:10 CST" in repo_status
         and "main...origin/main [ahead 36]" in repo_status
         and "source_path_count" in repo_status
@@ -255,7 +263,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 624 tests, 2 known warnings" in roadmap
+        and "pass, 626 tests, 2 known warnings" in roadmap
+        and "API request validation projection audit" in roadmap
+        and "request-validation-error-projection" in roadmap
         and "Index rebuild job projection audit" in roadmap
         and "index-rebuild-job-projection" in roadmap
         and "execution-input-materialization" in roadmap

@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 624
+Current hardening progress through 2026-06-20: the automated suite has 626
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -75,6 +75,10 @@ index rebuild jobs instead of raw `source_paths`, including sync failures,
 async queued jobs, idempotent existing-job responses, and exact job fetches,
 while the internal durable job request still retains source paths for worker
 execution and retry.
+FastAPI framework-level request validation errors now use one public no-secret
+projection as well: `RequestValidationError` responses keep validation `type`
+and field `loc`, but omit submitted `input` values, validation `ctx`, and raw
+body values from public 422 responses.
 A 2026-06-20 21:38 CST git/documentation status refresh confirms the current
 checkout remains clean before the docs-only refresh, with 619 tests passing,
 89% branch coverage, offline RAG eval passing, OpenAPI no-secret snapshot drift
@@ -94,6 +98,12 @@ local checkout with 624 tests passing, 89% branch coverage, offline RAG eval
 passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
 schema drift still at 0 problems, and a TestClient sync/async repro showing
 `leaked=false` for secret-like index rebuild source paths.
+A 2026-06-20 22:21 CST API request validation projection audit confirms the
+updated local checkout with 626 tests passing, 89% branch coverage, offline RAG
+eval passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
+schema drift still at 0 problems, and TestClient repros showing `leaked=false`
+and `input` exported=false for secret-like top-level and nested submitted body
+values.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

@@ -11,19 +11,19 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 22:10 CST after the
-index rebuild job API projection hardening. The command set below now passes
-with 624 tests, 89% branch coverage, OpenAPI no-secret snapshot `diff_count=0`,
-storage-schema 0 problems, and clean whitespace drift.
+Current local verification was refreshed on 2026-06-20 22:21 CST after the
+API request validation error projection hardening. The command set below now
+passes with 626 tests, 89% branch coverage, OpenAPI no-secret snapshot
+`diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
 
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 624 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 626 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 624 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 626 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -63,6 +63,7 @@ Command                                                               Result
                                                                       Streamlit-share-link-error-sanitizer/
                                                                       API-validation-error-sanitizer/
                                                                       index-rebuild-job-projection/
+                                                                      request-validation-error-projection/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -223,6 +224,16 @@ sync or async public responses; local verification passes with 624 tests, 89%
 branch coverage, offline RAG eval, health anchors, OpenAPI no-secret snapshot
 `diff_count=0`, and storage-schema 0 problems.
 
+The 2026-06-20 22:21 CST API request validation projection audit adds focused
+regression coverage for FastAPI/Pydantic `RequestValidationError` responses.
+Public 422 responses now keep validation `type` and field `loc`, but replace
+field-specific text with a generic no-secret message and omit submitted
+`input`, validation `ctx`, and raw body values. Tests verify that a secret-like
+`idempotency_key` for index rebuild jobs and a nested `files.main.py` value for
+local Python execution are not echoed; local verification passes with 626 tests,
+89% branch coverage, offline RAG eval, health anchors, OpenAPI no-secret
+snapshot `diff_count=0`, and storage-schema 0 problems.
+
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
 `/query/report` download responses preserving request/quota headers, and stable
@@ -359,6 +370,9 @@ Corpus and profile control    verified      30-paper curated seed library plus p
                                             profile create/activate/rebuild use
                                             stable no-secret codes instead of
                                             raw source-path exception text.
+                                            Framework-level request body
+                                            validation 422s omit submitted
+                                            input values and validation ctx.
 Local job and worker bridge   verified      immediate and async job routes, idempotency keys,
                                             owner metadata, bounded retry/dead-letter state,
                                             cancellation, leases, and worker service exist.
