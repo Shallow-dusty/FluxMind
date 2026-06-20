@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:39 CST
+Snapshot time: 2026-06-20 15:50 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  12f4205 fix: guard product registry orphan writes
-Current docs/health sync       05fae15 docs: record artifact path audit status
-Current local app-code HEAD    12f4205 fix: guard product registry orphan writes
+Current implementation commit  69bb9e7 fix: handle execution input path conflicts
+Current docs/health sync       1f97b7b docs: record product registry audit status
+Current local app-code HEAD    69bb9e7 fix: handle execution input path conflicts
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the seventeen local commits below
+                               by the nineteen local commits below
                                before this docs refresh
-Current local commit stack     12f4205 fix: guard product registry orphan writes
+Current local commit stack     69bb9e7 fix: handle execution input path conflicts
+                               1f97b7b docs: record product registry audit status
+                               12f4205 fix: guard product registry orphan writes
                                05fae15 docs: record artifact path audit status
                                51fee7e fix: harden local artifact path resolution
                                f2d2da1 docs: record corpus metadata audit status
@@ -75,6 +77,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                nonlocal host rejection for export/download,
                                product registry workspace/user referential guards
                                and sanitized CLI member output,
+                               execution input materialization conflict handling
+                               and regular-file entrypoint guards,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -210,6 +214,41 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Execution input materialization follow-up on 2026-06-20 15:50 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_providers.py          pass, 13 selected provider tests,
+  -k "materialization or entrypoint                         29 deselected
+  or policy_violation or docker_execution_provider" -q
+.venv/bin/python -m pytest tests/test_api.py                pass, 5 selected API execution tests,
+  -k "local_python_job_endpoint" -q                         103 deselected, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q               pass, 614 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up hardens execution input materialization for local Python,
+Octave-compatible, and Docker execution providers. Conflicting input names such
+as a file and child path under the same name now return a structured failure
+without starting Python, Octave, or Docker and without exposing the temporary
+workdir path. Execution entrypoints must resolve to regular files, so a
+directory entrypoint now fails with the existing structured missing-entrypoint
+diagnostic. The API job endpoint preserves that failure as a normal failed
+`code_execution` job instead of surfacing a provider exception.
 
 Product registry referential-integrity follow-up on 2026-06-20 15:39 CST:
 

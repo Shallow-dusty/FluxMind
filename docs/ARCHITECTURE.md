@@ -685,6 +685,12 @@ results without exporting source code.
 Execution results include no-secret reproducibility metadata for language,
 entrypoint, input file counts/bytes, provider runtime, runtime availability/
 details, filesystem isolation, network policy, timeout, memory, and CPU policy.
+Before either local child-process or Docker execution starts, shared input
+materialization writes submitted files inside the per-run workdir and converts
+path conflicts into structured failures that name only the submitted input,
+not the temporary workdir. Entrypoints must resolve to regular files; directory
+entrypoints fail with the same structured missing-entrypoint diagnostic rather
+than being passed to Python, Octave, or Docker.
 Local and Docker execution capture stdout/stderr through bounded stream readers;
 `CODE_EXECUTION_MAX_STDOUT_BYTES` and `CODE_EXECUTION_MAX_STDERR_BYTES` cap
 stored output while metadata records observed bytes and truncation flags.

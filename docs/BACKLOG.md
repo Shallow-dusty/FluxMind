@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 610
+Current hardening progress through 2026-06-20: the automated suite has 614
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -86,6 +86,13 @@ callers read the file. Artifact and job registry list limits are clamped at the
 helper layer, and malformed SQLite mirror payloads are treated as cache misses
 so artifact stable-ID export and job lookups can fall back to persisted job
 history.
+Execution input materialization now treats path conflicts, such as a file and a
+child path under the same name, as structured local execution failures rather
+than provider exceptions. The failure reports only the submitted input name,
+does not expose the temporary workdir path, and prevents local Python, Octave,
+or Docker execution from starting. Entrypoints must also resolve to regular
+files, so directory entrypoints fail with the existing structured
+missing-entrypoint diagnostic.
 The product shell now also has a no-secret local product activation rehearsal
 that creates disposable SQLite API-key and product registries, verifies
 hash-only key lifecycle, workspace RBAC, cross-workspace isolation denials,
@@ -755,7 +762,8 @@ Acceptance:
 
 Status: complete for the current no-key local execution baseline: local request/result plumbing, Python execution, Octave-compatible
 execution interface, file/plot artifact capture, workdir path containment,
-input file size/count limits, no-secret execution environment/policy metadata,
+input file size/count limits, input materialization conflict handling,
+regular-file entrypoint checks, no-secret execution environment/policy metadata,
 bounded stdout/stderr output capture, bounded generated-artifact export, Unix
 child-process memory/CPU limit metadata/enforcement, opt-in Docker
 container execution, Docker readiness reporting, request-level execution policy
@@ -774,6 +782,9 @@ with activation blockers now exposed through provider readiness
   generated text/file artifacts, and generated image files as plot artifacts.
 - Local execution providers reject absolute or escaping input paths/entrypoints
   and skip symlink or out-of-workdir artifact collection.
+- Local and Docker execution providers return structured diagnostics when input
+  names conflict during materialization and require entrypoints to be regular
+  files before starting Python, Octave, or a container.
 - The artifact store behind execution export rejects symlink/non-regular copy
   sources and symlink parent escapes, and its atomic writes do not follow
   preexisting destination symlinks.
@@ -863,8 +874,8 @@ Acceptance:
   artifacts through the same job/artifact contract.
 - Unsafe Python/Octave requests are rejected by policy before execution and are
   persisted with an explicit policy-violation error code.
-- A failed local execution returns structured diagnostics without breaking the
-  app.
+- A failed local execution, including input materialization failure, returns
+  structured diagnostics without breaking the app.
 
 ## WP6: Product Shell
 

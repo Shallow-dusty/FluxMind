@@ -165,8 +165,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  12f4205 fix: guard product registry orphan writes" in repo_status
-        and "Current docs/health sync       05fae15 docs: record artifact path audit status" in repo_status
+        and "Current implementation commit  69bb9e7 fix: handle execution input path conflicts" in repo_status
+        and "Current docs/health sync       1f97b7b docs: record product registry audit status" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
@@ -174,6 +174,10 @@ def main() -> int:
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
+        and "Execution input materialization follow-up on 2026-06-20 15:50 CST" in repo_status
+        and "pass, 614 tests, 2 known warnings" in repo_status
+        and "execution input materialization conflict handling" in repo_status
+        and "regular-file entrypoint guards" in repo_status
         and "Product registry referential-integrity follow-up on 2026-06-20 15:39 CST" in repo_status
         and "pass, 610 tests, 2 known warnings" in repo_status
         and "unsafe member user IDs are not echoed by the CLI" in repo_status
@@ -201,7 +205,9 @@ def main() -> int:
     )
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
-        "Decide whether to push the current 36 local commits" not in roadmap,
+        "Decide whether to push the current 36 local commits" not in roadmap
+        and "pass, 614 tests, 2 known warnings" in roadmap
+        and "execution-input-materialization" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
         failures,
     )
@@ -1291,6 +1297,12 @@ def main() -> int:
     )
     check("_resolve_workdir_path" in providers_source and "_is_collectable_output" in providers_source, "local execution path containment installed", failures)
     check("MAX_EXECUTION_FILES" in providers_source and "MAX_EXECUTION_TOTAL_BYTES" in providers_source, "local execution input size limits installed", failures)
+    check(
+        "could not be materialized" in providers_source and "current_name" in providers_source,
+        "local execution input materialization conflict guard installed",
+        failures,
+    )
+    check("entrypoint.is_file()" in providers_source, "local execution entrypoint regular-file guard installed", failures)
     check("checksum_sha256" in providers_source and "byte_count" in providers_source, "local artifact checksum metadata installed", failures)
     chain_source = (PROJECT_ROOT / "src" / "chain.py").read_text(encoding="utf-8")
     check("hybrid_retrieve" in chain_source and "keyword_search_documents" in chain_source, "hybrid retrieval installed", failures)

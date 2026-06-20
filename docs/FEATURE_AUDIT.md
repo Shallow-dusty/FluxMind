@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 602 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 614 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 602 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 614 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -47,6 +47,7 @@ Command                                                               Result
                                                                       provider-runtime-rehearsal/
                                                                       activation-suite/
                                                                       OpenAPI-contract/
+                                                                      execution-input-materialization/
                                                                       quality-evidence-plan/
                                                                       readiness-CLI-error-sanitizer/
                                                                       live-eval-request-id-redaction/
@@ -333,7 +334,10 @@ No-key execution providers    verified      local Python, Octave-compatible, and
                                             providers prove the job/artifact contract. Request-level
                                             package/policy preflight and no-secret execution outcome
                                             events exist; stdout/stderr capture and generated-artifact
-                                            export are byte/count-bounded, with local alert summaries.
+                                            export are byte/count-bounded, input materialization path
+                                            conflicts fail without starting execution or exposing temp
+                                            paths, and entrypoints must be regular files, with local
+                                            alert summaries.
                                             Hosted execution, deeper abuse controls, and MATLAB
                                             licensing remain planned; provider-readiness now exposes
                                             those activation blockers explicitly.
@@ -492,7 +496,9 @@ Jobs and workers        tests/test_jobs.py covers JSONL/SQLite state, durable id
                         owner metadata, bounded retry/dead-letter behavior, leases, recovery, deadlines,
                         cancellation, malformed JSONL fallback, and durable worker behavior
 Providers               tests/test_providers.py covers mock diagrams, Python/Octave execution,
-                        resource/path/input limits, Docker readiness, and runtime-unavailable cases
+                        resource/path/input limits, materialization path conflicts,
+                        regular-file entrypoint checks, Docker readiness, and
+                        runtime-unavailable cases
 Storage metadata        tests/test_metadata.py, tests/test_storage_manifest.py, and
                         tests/test_storage_schema.py cover corpus, chunks, profiles,
                         atomic writes, no-secret runtime manifests, restore dry-run
@@ -538,6 +544,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   rejects obvious disallowed imports, shell/package-manager commands, absolute
   path literals, and Octave shell/network calls. No-secret code-execution events
   summarize backend/status/policy/output-limit outcomes without copying source.
+  Materialization path conflicts and directory entrypoints now fail as
+  structured diagnostics before starting a local process or Docker container,
+  without exposing temporary workdir paths.
   Captured stdout/stderr and generated-artifact export are byte/count-bounded
   and record truncation metadata. Admin status/report now include local advisory
   alerts for failure rate, slow duration, policy violations, output/artifact

@@ -58,6 +58,8 @@ def test_main_local_health_check_passes(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "ok   required file: app.py" in output
     assert "ok   no-secret readiness CLI OS errors omit raw paths" in output
+    assert "ok   local execution input materialization conflict guard installed" in output
+    assert "ok   local execution entrypoint regular-file guard installed" in output
     assert "ok   API startup warmup readiness route installed" in output
     assert "skip local FAISS index is absent" in output or "ok   local FAISS index is non-empty" in output
 
