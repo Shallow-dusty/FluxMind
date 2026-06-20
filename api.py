@@ -631,7 +631,7 @@ class RetryScheduleRequest(BaseModel):
 
 
 class JobResponse(BaseModel):
-    job: dict = Field(..., description="Persisted local job record")
+    job: dict = Field(..., description="Public no-secret local job record projection")
 
 
 class JobListResponse(BaseModel):
@@ -1542,6 +1542,7 @@ def record_query_exception_event(
 
 def job_to_dict(record: JobRecord) -> dict:
     ownership = ownership_from_record(record)
+    idempotency_key = record.idempotency_key or ""
     return {
         "job_id": record.job_id,
         "kind": record.kind,
@@ -1560,7 +1561,13 @@ def job_to_dict(record: JobRecord) -> dict:
         "parent_job_id": record.parent_job_id,
         "not_before": record.not_before,
         "deadline_at": record.deadline_at,
-        "idempotency_key": record.idempotency_key,
+        "idempotency_key_present": bool(idempotency_key),
+        "idempotency_key_fingerprint": (
+            hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16]
+            if idempotency_key
+            else ""
+        ),
+        "idempotency_key_exported": False,
         "max_attempts": record.max_attempts,
         "retry_backoff_s": record.retry_backoff_s,
         "dead_lettered_at": record.dead_lettered_at,

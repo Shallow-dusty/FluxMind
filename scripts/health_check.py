@@ -1400,6 +1400,14 @@ def main() -> int:
         failures,
     )
     check("idempotency_key" in api_source and "existing_idempotent_job" in api_source, "job idempotency API installed", failures)
+    check(
+        "idempotency_key_fingerprint" in api_source
+        and "idempotency_key_exported" in api_source
+        and '"idempotency_key": record.idempotency_key' not in api_source
+        and "test_job_response_redacts_secret_like_idempotency_key" in test_api_source,
+        "job detail API projection redacts raw idempotency keys",
+        failures,
+    )
     check("owner_id: str | None" in api_source and "request_ownership" in api_source, "API ownership metadata fields installed", failures)
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)

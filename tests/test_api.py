@@ -3901,6 +3901,43 @@ def test_job_response_redacts_code_request_output_and_error_values(tmp_path, mon
     }
 
 
+def test_job_response_redacts_secret_like_idempotency_key(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    secret_key = "sk-secret-idempotency-key-12345678"
+    payload = {
+        "entrypoint": "main.py",
+        "files": {"main.py": "print('idempotent-secret-ok')"},
+        "idempotency_key": secret_key,
+    }
+
+    first_response = client.post("/jobs/code/python-local", json=payload)
+    second_response = client.post("/jobs/code/python-local", json=payload)
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert secret_key not in first_response.text
+    assert secret_key not in second_response.text
+    first = first_response.json()["job"]
+    second = second_response.json()["job"]
+    assert second["job_id"] == first["job_id"]
+    assert second["idempotency_key_present"] is True
+    assert len(second["idempotency_key_fingerprint"]) == 16
+    assert second["idempotency_key_exported"] is False
+    assert "idempotency_key" not in second
+
+    loaded_response = client.get(f"/jobs/{first['job_id']}")
+    assert loaded_response.status_code == 200
+    assert secret_key not in loaded_response.text
+    loaded = loaded_response.json()["job"]
+    assert loaded["idempotency_key_present"] is True
+    assert loaded["idempotency_key_fingerprint"] == second["idempotency_key_fingerprint"]
+    assert loaded["idempotency_key_exported"] is False
+    assert "idempotency_key" not in loaded
+
+
 def test_missing_job_returns_404(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
@@ -4130,7 +4167,10 @@ def test_async_python_job_endpoint_reuses_idempotency_key(tmp_path, monkeypatch)
     second = client.post("/jobs/async/code/python-local", json=payload).json()["job"]
 
     assert second["job_id"] == first["job_id"]
-    assert second["idempotency_key"] == "idem-python-api"
+    assert second["idempotency_key_present"] is True
+    assert second["idempotency_key_fingerprint"]
+    assert second["idempotency_key_exported"] is False
+    assert "idempotency_key" not in second
     assert len(store.list_latest(limit=10)) == 1
     manager._queue.join()
 
@@ -4180,7 +4220,10 @@ def test_immediate_python_job_endpoint_reuses_idempotency_key(tmp_path, monkeypa
 
     assert first["status"] == "succeeded"
     assert second["job_id"] == first["job_id"]
-    assert second["idempotency_key"] == "idem-python-now"
+    assert second["idempotency_key_present"] is True
+    assert second["idempotency_key_fingerprint"]
+    assert second["idempotency_key_exported"] is False
+    assert "idempotency_key" not in second
     assert len(api.LocalJobStore().list_latest(limit=10)) == 1
 
 
@@ -4205,8 +4248,14 @@ def test_immediate_python_job_endpoint_preserves_distinct_jobs_for_different_or_
     fourth = client.post("/jobs/code/python-local", json=base_payload).json()["job"]
 
     assert len({first["job_id"], second["job_id"], third["job_id"], fourth["job_id"]}) == 4
-    assert third["idempotency_key"] is None
-    assert fourth["idempotency_key"] is None
+    assert third["idempotency_key_present"] is False
+    assert third["idempotency_key_fingerprint"] == ""
+    assert third["idempotency_key_exported"] is False
+    assert "idempotency_key" not in third
+    assert fourth["idempotency_key_present"] is False
+    assert fourth["idempotency_key_fingerprint"] == ""
+    assert fourth["idempotency_key_exported"] is False
+    assert "idempotency_key" not in fourth
     assert len(api.LocalJobStore().list_latest(limit=10)) == 4
 
 
