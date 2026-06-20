@@ -165,9 +165,10 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  1173ea8 fix: redact runtime event metadata values" in repo_status
-        and "Current docs/health sync       docs: refresh git and drift status (this commit)" in repo_status
-        and "by the twenty-three local commits below" in repo_status
+        and "Current implementation commit  fix: redact API key public metadata (this commit)" in repo_status
+        and "Current docs/health sync       fix: redact API key public metadata (this commit)" in repo_status
+        and "by the twenty-four local commits below" in repo_status
+        and "c7b6d9d docs: refresh git and drift status" in repo_status
         and "6066547 docs: record runtime event redaction audit" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
@@ -175,6 +176,8 @@ def main() -> int:
         and "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST"
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
+        and "API-key public metadata projection follow-up on 2026-06-20 16:16 CST" in repo_status
+        and "create/list/verify/revoke now removes raw owner IDs" in repo_status
         and "Git/docs drift refresh on 2026-06-20 16:08 CST" in repo_status
         and "pass, 17 docs/feature-audit/" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
@@ -458,6 +461,9 @@ def main() -> int:
         failures,
     )
     api_keys_source = (PROJECT_ROOT / "src" / "api_keys.py").read_text(encoding="utf-8")
+    api_key_registry_cli = (PROJECT_ROOT / "scripts" / "api_key_registry.py").read_text(
+        encoding="utf-8"
+    )
     check(
         "LocalApiKeyRegistry" in api_keys_source
         and "token_hash" in api_keys_source
@@ -471,8 +477,14 @@ def main() -> int:
         "local API key registry no-secret status installed",
         failures,
     )
-    api_key_registry_cli = (PROJECT_ROOT / "scripts" / "api_key_registry.py").read_text(
-        encoding="utf-8"
+    check(
+        "owner_id_fingerprint" in api_keys_source
+        and "description_fingerprint" in api_keys_source
+        and "owner_exported" in api_keys_source
+        and "description_exported" in api_keys_source
+        and "owner_fingerprint=" in api_key_registry_cli,
+        "local API key registry public metadata projection installed",
+        failures,
     )
     check(
         "create" in api_key_registry_cli

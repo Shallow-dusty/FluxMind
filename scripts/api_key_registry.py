@@ -41,7 +41,7 @@ def render_markdown(payload: dict) -> str:
                 "## Created Key",
                 "",
                 f"- Key ID: {payload.get('key', {}).get('key_id', '')}",
-                f"- Owner: {payload.get('key', {}).get('owner_id', '')}",
+                f"- Owner fingerprint: {payload.get('key', {}).get('owner_id_fingerprint', '')}",
                 "- Token: shown once in JSON output only",
             ]
         )
@@ -52,7 +52,7 @@ def render_markdown(payload: dict) -> str:
             lines.append("- none")
         for key in keys:
             lines.append(
-                f"- {key.get('key_id', '')}: owner={key.get('owner_id', '')}, "
+                f"- {key.get('key_id', '')}: owner_fingerprint={key.get('owner_id_fingerprint', '')}, "
                 f"active={str(key.get('active', False)).lower()}, "
                 f"use_count={key.get('use_count', 0)}"
             )

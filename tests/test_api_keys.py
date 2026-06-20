@@ -16,13 +16,23 @@ def test_local_api_key_registry_lifecycle_without_plaintext(tmp_path):
     created = registry.create_key(
         owner_id="lab-owner",
         owner_label="Lab Owner",
-        description="test key",
+        description="pilot /private/hunter2 token=sk-secret-value",
     )
     token = created["token"]
     key_id = created["key"]["key_id"]
 
     assert token.startswith("fmk_")
-    assert created["key"]["owner_id"] == "lab-owner"
+    created_key_payload = json.dumps(created["key"], sort_keys=True)
+    assert created["key"]["owner_id_present"] is True
+    assert created["key"]["owner_id_fingerprint"]
+    assert created["key"]["owner_label_present"] is True
+    assert created["key"]["description_present"] is True
+    assert created["key"]["owner_exported"] is False
+    assert created["key"]["description_exported"] is False
+    assert "lab-owner" not in created_key_payload
+    assert "Lab Owner" not in created_key_payload
+    assert "/private/hunter2" not in created_key_payload
+    assert "sk-secret-value" not in created_key_payload
     assert "token_hash" not in created["key"]
     assert token not in json.dumps(registry.status(), sort_keys=True)
 
@@ -38,6 +48,10 @@ def test_local_api_key_registry_lifecycle_without_plaintext(tmp_path):
     assert len(listed) == 1
     assert token not in payload
     assert api_key_token_hash(token) not in payload
+    assert "lab-owner" not in payload
+    assert "Lab Owner" not in payload
+    assert "/private/hunter2" not in payload
+    assert "sk-secret-value" not in payload
 
     revoked = registry.revoke_key(key_id)
     assert revoked is not None

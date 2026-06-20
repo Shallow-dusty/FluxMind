@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 16:08 CST
+Snapshot time: 2026-06-20 16:16 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  1173ea8 fix: redact runtime event metadata values
-Current docs/health sync       docs: refresh git and drift status (this commit)
-Current local app-code HEAD    1173ea8 fix: redact runtime event metadata values
+Current implementation commit  fix: redact API key public metadata (this commit)
+Current docs/health sync       fix: redact API key public metadata (this commit)
+Current local app-code HEAD    fix: redact API key public metadata (this commit)
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the twenty-three local commits below
-                               after this docs refresh
-Current local commit stack     docs: refresh git and drift status (this commit)
+                               by the twenty-four local commits below
+                               after this API-key hardening commit
+Current local commit stack     fix: redact API key public metadata (this commit)
+                               c7b6d9d docs: refresh git and drift status
                                6066547 docs: record runtime event redaction audit
                                1173ea8 fix: redact runtime event metadata values
                                85eb2b5 docs: record execution input audit status
@@ -86,6 +87,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                runtime event metadata-value redaction for
                                legacy and newly written events,
                                git/docs drift refresh,
+                               API-key lifecycle public metadata projection
+                               hardening,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -221,6 +224,45 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+API-key public metadata projection follow-up on 2026-06-20 16:16 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api_keys.py          pass, 11 selected API-key/CLI tests,
+  tests/test_cli_scripts.py -k "api_key_registry" -q       72 deselected, 1 known warning
+.venv/bin/python -m pytest tests/test_api.py               pass, 11 selected API auth/product tests,
+  -k "api_key or verify_api_token or product_registry      97 deselected, 2 known warnings
+  or quota_guard or rbac_guard" -q
+.venv/bin/python -m coverage run -m pytest -q              pass, 616 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88        pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                   pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/openapi_contract.py               pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems
+git diff --check                                           pass
+```
+
+The follow-up hardens local API-key lifecycle public projections. `create`
+still returns the one-time raw token at the JSON top level, but key metadata
+returned by create/list/verify/revoke now removes raw owner IDs, owner labels,
+and descriptions, replacing them with presence booleans and short fingerprints.
+The internal `ApiKeyRecord` still carries owner ID/label for FastAPI auth,
+request ownership, product RBAC, and quota attribution, so authentication and
+local product guards keep their existing behavior.
 
 Git/docs drift refresh on 2026-06-20 16:08 CST:
 

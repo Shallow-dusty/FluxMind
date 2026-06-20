@@ -209,24 +209,61 @@ def test_api_key_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
             "create",
             "--owner-id",
             "lab-cli",
+            "--owner-label",
+            "CLI Owner",
+            "--description",
+            "pilot /private/hunter2 token=sk-secret-value",
         ],
     )
 
     assert api_key_registry_cli.main() == 0
-    created = json.loads(capsys.readouterr().out)
+    created_output = capsys.readouterr().out
+    created = json.loads(created_output)
     token = created["token"]
     key_id = created["key"]["key_id"]
     assert token.startswith("fmk_")
+    assert "lab-cli" not in json.dumps(created["key"], sort_keys=True)
+    assert "CLI Owner" not in created_output
+    assert "/private/hunter2" not in created_output
+    assert "sk-secret-value" not in created_output
 
     monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "verify", token])
     assert api_key_registry_cli.main() == 0
     verified_output = capsys.readouterr().out
     assert json.loads(verified_output)["valid"] is True
     assert token not in verified_output
+    assert "lab-cli" not in verified_output
+    assert "CLI Owner" not in verified_output
+    assert "/private/hunter2" not in verified_output
+    assert "sk-secret-value" not in verified_output
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "list",
+            "--format",
+            "markdown",
+        ],
+    )
+    assert api_key_registry_cli.main() == 0
+    list_markdown = capsys.readouterr().out
+    assert "owner_fingerprint=" in list_markdown
+    assert "lab-cli" not in list_markdown
+    assert "CLI Owner" not in list_markdown
+    assert "/private/hunter2" not in list_markdown
+    assert "sk-secret-value" not in list_markdown
 
     monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "revoke", key_id])
     assert api_key_registry_cli.main() == 0
-    assert json.loads(capsys.readouterr().out)["ok"] is True
+    revoke_output = capsys.readouterr().out
+    assert json.loads(revoke_output)["ok"] is True
+    assert "lab-cli" not in revoke_output
+    assert "CLI Owner" not in revoke_output
+    assert "/private/hunter2" not in revoke_output
+    assert "sk-secret-value" not in revoke_output
 
     monkeypatch.setattr("sys.argv", ["api_key_registry.py", "--db", str(db_path), "verify", token])
     assert api_key_registry_cli.main() == 1

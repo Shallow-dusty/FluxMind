@@ -211,6 +211,10 @@ identifiers, product user/workspace/API-key identifiers, source paths,
 camelCase/PascalCase path or URL fields, token values, filenames, and raw content
 cannot be returned or searched through those viewers. Aggregate
 workspace/user/member counts remain visible.
+API-key lifecycle public projections now similarly omit raw owner IDs, owner
+labels, and descriptions from create/list/verify/revoke key metadata, replacing
+them with presence booleans and short fingerprints while retaining internal
+owner binding for FastAPI auth and local RBAC/quota attribution.
 Top-level event messages with URL/path/token/prompt/answer-like value assignments
 are also redacted in the admin-facing projection. Runtime-event metadata values
 under otherwise safe keys now apply the same no-secret boundary for Bearer
@@ -614,10 +618,12 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   `scripts/collaboration_readiness.py`, `/admin/collaboration-readiness`, and
   the Streamlit admin panel without returning workspace/user/corpus/share
   identifiers in readiness output, URLs, tokens after create, creator user IDs,
-  descriptions, paths, prompts, answers, or contents. The local API-key,
-  product, and share-link registry CLIs also sanitize output-write and SQLite
-  registry errors instead of leaking output paths or crashing during error
-  reporting. Activation
+descriptions, paths, prompts, answers, or contents. The local API-key,
+product, and share-link registry CLIs also sanitize output-write and SQLite
+registry errors instead of leaking output paths or crashing during error
+reporting. API-key CLI list/verify/revoke Markdown and JSON outputs now also
+show owner fingerprints rather than raw owner IDs/labels and omit free-text
+descriptions. Activation
   still remains
   blocked on real
   external identity provider, identity-backed quota enforcement, external

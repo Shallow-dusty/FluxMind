@@ -94,8 +94,10 @@ systemd services for UI and API. Cloudflare Tunnel exposes:
 - `src/api_keys.py` and `scripts/api_key_registry.py`: optional local SQLite API
   key lifecycle registry. It persists token hashes only, returns raw tokens once
   on create through JSON output, rejects Markdown create output to avoid losing
-  the one-time token, supports list/verify/revoke, and can back FastAPI auth
-  when `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
+  the one-time token, supports list/verify/revoke, and exposes public key
+  metadata as owner/description presence plus short fingerprints instead of raw
+  owner IDs, labels, or descriptions. The internal registry record still backs
+  FastAPI auth owner attribution when `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`.
 - `src/product_registry.py` and `scripts/product_registry.py`: optional local
   SQLite user/workspace/RBAC/quota/usage/billing-attribution ledger. It gives
   product-readiness a no-secret local contract for product identity state, role

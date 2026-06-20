@@ -47,7 +47,10 @@ unsafe legacy runtime-event request IDs are projected as
 `request_id_present`/`request_id_redacted` booleans instead of raw values. The
 local API-key, product, and share-link registry CLIs also sanitize output-write
 and SQLite registry errors without exporting output paths or crashing during
-error reporting. The
+error reporting. API-key lifecycle public outputs now also redact raw owner
+IDs, owner labels, and free-text descriptions into presence/fingerprint fields,
+so list/verify/revoke and create key metadata cannot echo secret-like
+descriptions or local operator identifiers. The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
 request IDs into archived quality reports. The
@@ -170,7 +173,9 @@ paths, URLs, prompts, answers, source content, or credentials.
 The current product-shell slice also adds optional local SQLite API key and
 product registries. The API-key registry stores token hashes only and supports
 create/list/verify/revoke plus FastAPI auth integration; `create` requires JSON
-output so the one-time raw token cannot be silently lost in Markdown mode. The
+output so the one-time raw token cannot be silently lost in Markdown mode, and
+all public key metadata projections expose owner/description presence and
+fingerprints instead of raw owner IDs, labels, or descriptions. The
 product registry stores local users, workspaces, quota limits, usage events, and billing
 attribution records for no-secret readiness checks; when explicitly enabled, it
 also guards `/query*` routes with local request quotas, enforces local
@@ -924,7 +929,9 @@ identity-backed quotas, and external billing disabled until decisions are made
 - `scripts/api_key_registry.py` manages the local hashed-token registry with
   create/list/verify/revoke/status commands. Created tokens are returned once;
   `create` requires JSON output so that one-time token is actually emitted, and
-  list/status/verify/revoke outputs never include raw token values.
+  list/status/verify/revoke outputs never include raw token values. Public key
+  metadata outputs also reduce owners, labels, and descriptions to presence
+  flags and short fingerprints.
 - FastAPI auth can accept tokens from the local registry when
   `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite`; this is local API authentication,
   not multi-user tenancy, quota enforcement, or billing.

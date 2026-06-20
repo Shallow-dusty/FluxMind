@@ -38,7 +38,24 @@ class ApiKeyRecord:
 
     def to_public_dict(self) -> dict[str, Any]:
         payload = asdict(self)
+        payload.pop("owner_id", None)
+        payload.pop("owner_label", None)
+        payload.pop("description", None)
         payload["active"] = self.active
+        payload.update(
+            {
+                "owner_id_present": bool(self.owner_id),
+                "owner_id_fingerprint": _safe_value_fingerprint(self.owner_id),
+                "owner_label_present": bool(self.owner_label),
+                "owner_label_fingerprint": _safe_value_fingerprint(self.owner_label),
+                "description_present": bool(self.description),
+                "description_fingerprint": _safe_value_fingerprint(self.description),
+                "content_exported": False,
+                "token_hash_exported": False,
+                "owner_exported": False,
+                "description_exported": False,
+            }
+        )
         return payload
 
 
@@ -63,6 +80,12 @@ def _registry_db_path(db_path: Path | None = None) -> Path:
 
 def api_key_token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _safe_value_fingerprint(value: str) -> str:
+    if not value:
+        return ""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
 
 
 def generate_api_key_token() -> str:
