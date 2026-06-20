@@ -1402,6 +1402,9 @@ def main() -> int:
     job_summary_start = api_source.find("def job_summary_to_dict")
     job_summary_end = api_source.find("\ndef existing_idempotent_job", job_summary_start)
     job_summary_source = api_source[job_summary_start:job_summary_end]
+    job_detail_start = api_source.find("def job_to_dict")
+    job_detail_end = api_source.find("\ndef _source_path_count", job_detail_start)
+    job_detail_source = api_source[job_detail_start:job_detail_end]
     check(
         "owner_label_present" in job_summary_source
         and '"owner_label":' not in job_summary_source,
@@ -1415,6 +1418,16 @@ def main() -> int:
         and '"idempotency_key": record.idempotency_key' not in api_source
         and "test_job_response_redacts_secret_like_idempotency_key" in test_api_source,
         "job detail API projection redacts raw idempotency keys",
+        failures,
+    )
+    check(
+        "owner_id_fingerprint" in job_detail_source
+        and "owner_label_fingerprint" in job_detail_source
+        and "owner_exported" in job_detail_source
+        and '"owner_id":' not in job_detail_source
+        and '"owner_label":' not in job_detail_source
+        and "test_job_response_redacts_owner_metadata" in test_api_source,
+        "job detail API projection redacts raw owner metadata",
         failures,
     )
     check("owner_id: str | None" in api_source and "request_ownership" in api_source, "API ownership metadata fields installed", failures)

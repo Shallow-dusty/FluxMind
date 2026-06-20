@@ -1543,6 +1543,8 @@ def record_query_exception_event(
 def job_to_dict(record: JobRecord) -> dict:
     ownership = ownership_from_record(record)
     idempotency_key = record.idempotency_key or ""
+    owner_id = ownership["owner_id"]
+    owner_label = ownership["owner_label"]
     return {
         "job_id": record.job_id,
         "kind": record.kind,
@@ -1571,8 +1573,19 @@ def job_to_dict(record: JobRecord) -> dict:
         "max_attempts": record.max_attempts,
         "retry_backoff_s": record.retry_backoff_s,
         "dead_lettered_at": record.dead_lettered_at,
-        "owner_id": ownership["owner_id"],
-        "owner_label": ownership["owner_label"],
+        "owner_id_present": bool(owner_id),
+        "owner_id_fingerprint": (
+            hashlib.sha256(owner_id.encode("utf-8")).hexdigest()[:16]
+            if owner_id
+            else ""
+        ),
+        "owner_label_present": bool(owner_label),
+        "owner_label_fingerprint": (
+            hashlib.sha256(owner_label.encode("utf-8")).hexdigest()[:16]
+            if owner_label
+            else ""
+        ),
+        "owner_exported": False,
         "ownership_source": ownership["ownership_source"],
         "logs": public_job_logs(record),
     }

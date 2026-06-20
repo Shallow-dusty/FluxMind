@@ -1732,7 +1732,12 @@ def test_corpus_profile_rebuild_endpoint_activates_and_queues_job(tmp_path, monk
     assert payload["job"]["kind"] == "index_rebuild"
     assert payload["job"]["status"] == "queued"
     assert payload["job"]["request_id"] == "req-profile-rebuild"
-    assert payload["job"]["owner_id"] == "local-user"
+    assert payload["job"]["owner_id_present"] is True
+    assert payload["job"]["owner_id_fingerprint"]
+    assert payload["job"]["owner_label_present"] is True
+    assert payload["job"]["owner_exported"] is False
+    assert "owner_id" not in payload["job"]
+    assert "owner_label" not in payload["job"]
     assert activated["source_paths"] == ["papers/library/paper.pdf"]
     assert queued == {
         "source_paths": ["papers/library/paper.pdf"],
@@ -3682,8 +3687,15 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert job["kind"] == "image_generation"
     assert job["status"] == "succeeded"
     assert job["request_id"] == "req-image"
-    assert job["owner_id"] == "lab-image-api"
-    assert job["owner_label"] == "Image API Lab"
+    assert job["owner_id_present"] is True
+    assert job["owner_id_fingerprint"]
+    assert job["owner_label_present"] is True
+    assert job["owner_label_fingerprint"]
+    assert job["owner_exported"] is False
+    assert "owner_id" not in job
+    assert "owner_label" not in job
+    assert "lab-image-api" not in response.text
+    assert "Image API Lab" not in response.text
     assert job["ownership_source"] == "request"
     assert job["artifacts"][0]["mime_type"] == "image/svg+xml"
     assert job["artifacts"][0]["metadata"]["provider_present"] is True
@@ -3701,6 +3713,8 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert loaded.status_code == 200
     assert loaded.json()["job"]["job_id"] == job["job_id"]
     assert loaded.json()["job"]["logs"] == job["logs"]
+    assert "lab-image-api" not in loaded.text
+    assert "Image API Lab" not in loaded.text
 
 
 def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatch):
@@ -3938,6 +3952,60 @@ def test_job_response_redacts_secret_like_idempotency_key(tmp_path, monkeypatch)
     assert "idempotency_key" not in loaded
 
 
+def test_job_response_redacts_owner_metadata(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    owner_id = "sk-secret-owner-id-12345678"
+    owner_label = "Bearer secret-owner-label-token"
+    response = client.post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {"main.py": "raise SystemExit(3)"},
+            "owner_id": owner_id,
+            "owner_label": owner_label,
+        },
+    )
+
+    assert response.status_code == 200
+    assert owner_id not in response.text
+    assert owner_label not in response.text
+    job = response.json()["job"]
+    assert job["owner_id_present"] is True
+    assert len(job["owner_id_fingerprint"]) == 16
+    assert job["owner_label_present"] is True
+    assert len(job["owner_label_fingerprint"]) == 16
+    assert job["owner_exported"] is False
+    assert "owner_id" not in job
+    assert "owner_label" not in job
+
+    loaded_response = client.get(f"/jobs/{job['job_id']}")
+    assert loaded_response.status_code == 200
+    assert owner_id not in loaded_response.text
+    assert owner_label not in loaded_response.text
+    loaded = loaded_response.json()["job"]
+    assert loaded["owner_id_fingerprint"] == job["owner_id_fingerprint"]
+    assert loaded["owner_label_fingerprint"] == job["owner_label_fingerprint"]
+    assert loaded["owner_exported"] is False
+
+    retry_response = client.post(f"/jobs/{job['job_id']}/retry")
+    assert retry_response.status_code == 200
+    assert owner_id not in retry_response.text
+    assert owner_label not in retry_response.text
+    retried = retry_response.json()["job"]
+    assert retried["job_id"] != job["job_id"]
+    assert retried["ownership_source"] == "inherited"
+    assert retried["owner_id_present"] is True
+    assert retried["owner_id_fingerprint"] == job["owner_id_fingerprint"]
+    assert retried["owner_label_present"] is True
+    assert retried["owner_label_fingerprint"] == job["owner_label_fingerprint"]
+    assert retried["owner_exported"] is False
+    assert "owner_id" not in retried
+    assert "owner_label" not in retried
+
+
 def test_missing_job_returns_404(monkeypatch, tmp_path):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
@@ -4001,7 +4069,12 @@ def test_job_list_cancel_and_retry_endpoints(tmp_path, monkeypatch):
     retried = client.post(f"/jobs/{created['job_id']}/retry").json()["job"]
     assert retried["job_id"] != created["job_id"]
     assert retried["kind"] == "code_execution"
-    assert retried["owner_id"] == "lab-list-api"
+    assert retried["owner_id_present"] is True
+    assert retried["owner_id_fingerprint"]
+    assert retried["owner_label_present"] is True
+    assert retried["owner_exported"] is False
+    assert "owner_id" not in retried
+    assert "owner_label" not in retried
     assert retried["ownership_source"] == "inherited"
 
     cancel_response = client.post(f"/jobs/{created['job_id']}/cancel")
@@ -4144,8 +4217,15 @@ def test_async_python_job_endpoint_queues_job(tmp_path, monkeypatch):
     assert response.status_code == 200
     job = response.json()["job"]
     assert job["status"] == "queued"
-    assert job["owner_id"] == "lab-async-api"
-    assert job["owner_label"] == "Async API Lab"
+    assert job["owner_id_present"] is True
+    assert job["owner_id_fingerprint"]
+    assert job["owner_label_present"] is True
+    assert job["owner_label_fingerprint"]
+    assert job["owner_exported"] is False
+    assert "owner_id" not in job
+    assert "owner_label" not in job
+    assert "lab-async-api" not in response.text
+    assert "Async API Lab" not in response.text
     assert job["deadline_at"] is not None
     manager._queue.join()
     assert store.get(job["job_id"]).status == "succeeded"
