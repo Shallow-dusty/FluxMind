@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 608
+Current hardening progress through 2026-06-20: the automated suite has 610
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -172,7 +172,11 @@ permission checks; when local product RBAC is enabled, workspace list/detail
 and permission-check reads also require local admin-write permission instead of
 being readable by viewer tokens. The Streamlit direct management forms also
 require `FLUXMIND_STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED=true`, so
-enabling the SQLite registry alone does not expose public UI write controls. The
+enabling the SQLite registry alone does not expose public UI write controls.
+Product registry member/quota/usage/billing writes now reject missing
+workspaces at the registry layer, usage/quota decisions reject missing product
+users, and the CLI emits sanitized member projections instead of raw
+`add-member` arguments. The
 local product activation rehearsal now proves those SQLite contracts together
 without enabling an external identity provider or payment system. Both
 registries are covered by storage-schema, runtime-manifest, admin-inventory,
@@ -914,8 +918,10 @@ identity-backed quotas, and external billing disabled until decisions are made
   limits/usage/billing-attribution ledger. It supports status, bootstrap-local,
   set-quota, record-usage, add-member, check-permission, and list-workspaces
   while keeping provider secrets, payment credentials, prompts, answers, and
-  runtime file contents out of output. `check-permission` exits nonzero when a
-  local role does not satisfy the requested action.
+  runtime file contents out of output. `add-member` returns the registry's
+  sanitized member projection, and missing workspace/user writes are rejected so
+  local counts cannot be polluted by orphan records. `check-permission` exits
+  nonzero when a local role does not satisfy the requested action.
 - `GET/POST /admin/product-registry/*` exposes the same local registry as an
   API contract for operator tooling: status, workspace list/detail,
   create/update workspace, add/update member, set quota, set local billing

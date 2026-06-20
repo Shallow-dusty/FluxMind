@@ -578,7 +578,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   role permissions when the RBAC guard is explicitly enabled, returning `403`
   before protected work starts. FastAPI and Streamlit now expose a local
   product-registry management surface for workspace/member/quota/permission
-  operations when the SQLite backend is enabled. The local product activation
+  operations when the SQLite backend is enabled. The registry now rejects
+  missing-workspace member/quota/usage/billing writes, rejects usage/quota
+  decisions for missing product users, and makes the CLI `add-member` response
+  use sanitized member projections rather than raw submitted IDs. The local product activation
   rehearsal now proves hash-only API-key lifecycle, workspace RBAC,
   cross-workspace isolation denial, quota limiting, billing attribution, and
   `product_readiness` activation against disposable SQLite stores without

@@ -577,7 +577,11 @@ requests before calling the model provider. When
 local product registry and local API-key ownership, query routes require an
 active workspace membership, local job submit/manage routes require
 member/admin/owner roles, and corpus/index/admin destructive writes require
-admin/owner roles. Denials return structured 403 responses and metadata-only
+admin/owner roles. Product-registry writes for members, quotas, usage, billing,
+and quota decisions require an active workspace at the registry layer, and
+usage/quota decisions also require an active product user; CLI member writes
+return sanitized registry projections rather than raw submitted IDs. Denials
+return structured 403 responses and metadata-only
 `product_rbac` runtime events. Activation remains blocked until the chosen
 identity, quota-store, billing-provider, billing-attribution, runtime quota
 guard, and RBAC guard targets are configured. The CLI

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:26 CST
+Snapshot time: 2026-06-20 15:39 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  51fee7e fix: harden local artifact path resolution
-Current docs/health sync       f2d2da1 docs: record corpus metadata audit status
-Current local app-code HEAD    51fee7e fix: harden local artifact path resolution
+Current implementation commit  12f4205 fix: guard product registry orphan writes
+Current docs/health sync       05fae15 docs: record artifact path audit status
+Current local app-code HEAD    12f4205 fix: guard product registry orphan writes
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the fifteen local commits below
+                               by the seventeen local commits below
                                before this docs refresh
-Current local commit stack     51fee7e fix: harden local artifact path resolution
+Current local commit stack     12f4205 fix: guard product registry orphan writes
+                               05fae15 docs: record artifact path audit status
+                               51fee7e fix: harden local artifact path resolution
                                f2d2da1 docs: record corpus metadata audit status
                                5065418 fix: preserve same-name corpus metadata
                                830d05d docs: record job lease audit status
@@ -71,6 +73,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                library/upload PDFs,
                                local artifact file-URI canonicalization and
                                nonlocal host rejection for export/download,
+                               product registry workspace/user referential guards
+                               and sanitized CLI member output,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -206,6 +210,41 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Product registry referential-integrity follow-up on 2026-06-20 15:39 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_product_registry.py   pass, 89 selected product/CLI tests,
+  tests/test_cli_scripts.py -q                              1 known warning
+.venv/bin/python -m pytest tests/test_api.py                pass, 7 selected API auth/product tests,
+  -k "product_registry or quota_guard or rbac_guard         100 deselected, 2 known warnings
+  or api_key" -q
+.venv/bin/python -m coverage run -m pytest -q               pass, 610 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up hardens the local product registry ledger against orphan writes.
+Member, quota, usage, billing, and quota-decision writes now require an active
+workspace, while usage and quota-decision writes also require an active product
+user. `add_member()` returns a no-secret sanitized member projection, and
+`scripts/product_registry.py add-member` now emits that projection instead of
+reflecting raw CLI `workspace_id` or `user_id` arguments. Regression coverage
+verifies that missing workspace/user writes do not inflate registry counts and
+that unsafe member user IDs are not echoed by the CLI.
 
 Artifact path-resolution follow-up on 2026-06-20 15:26 CST:
 
