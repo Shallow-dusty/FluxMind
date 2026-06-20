@@ -22,6 +22,7 @@ from src.config import (
     JOBS_DB_FILE,
     PRODUCT_REGISTRY_FILE,
     RUNTIME_EVENTS_FILE,
+    SHARE_LINK_TOKEN_STORE_FILE,
 )
 
 
@@ -184,6 +185,21 @@ PRODUCT_BILLING_COLUMNS = (
     "attribution_enabled",
     "updated_at",
 )
+SHARE_LINK_COLUMNS = (
+    "link_id",
+    "token_hash",
+    "workspace_id",
+    "created_by_user_id",
+    "resource_kind",
+    "resource_ref",
+    "description",
+    "created_at",
+    "expires_at",
+    "revoked_at",
+    "redeemed_at",
+    "redeem_count",
+    "max_redemptions",
+)
 
 RUNTIME_EVENT_FIELDS = ("event_id", "kind", "code", "message", "created_at", "metadata")
 
@@ -242,6 +258,11 @@ def default_sqlite_store_specs() -> tuple[SqliteStoreSpec, ...]:
                 SqliteTableSpec("usage_events", PRODUCT_USAGE_COLUMNS),
                 SqliteTableSpec("billing_accounts", PRODUCT_BILLING_COLUMNS),
             ),
+        ),
+        SqliteStoreSpec(
+            "share_link_registry_sqlite",
+            SHARE_LINK_TOKEN_STORE_FILE,
+            (SqliteTableSpec("share_links", SHARE_LINK_COLUMNS),),
         ),
     )
 
@@ -537,6 +558,11 @@ def storage_schema_status_for_root(project_root: Path) -> dict[str, Any]:
                     SqliteTableSpec("usage_events", PRODUCT_USAGE_COLUMNS),
                     SqliteTableSpec("billing_accounts", PRODUCT_BILLING_COLUMNS),
                 ),
+            ),
+            SqliteStoreSpec(
+                "share_link_registry_sqlite",
+                metadata_dir / "share_links.sqlite3",
+                (SqliteTableSpec("share_links", SHARE_LINK_COLUMNS),),
             ),
         ),
     )

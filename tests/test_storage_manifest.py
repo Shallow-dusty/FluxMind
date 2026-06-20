@@ -115,6 +115,7 @@ def test_default_runtime_manifest_includes_local_registry_state():
 
     assert "api_key_registry_sqlite" in metadata_files
     assert "product_registry_sqlite" in metadata_files
+    assert "share_link_registry_sqlite" in metadata_files
 
 
 def test_runtime_restore_check_accepts_matching_manifest_without_content(tmp_path: Path):
