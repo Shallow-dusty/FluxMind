@@ -173,14 +173,12 @@ def job_artifact_to_public_dict(job: JobRecord, artifact: dict) -> dict[str, obj
 def local_artifact_path(uri: str) -> Path:
     """Resolve a file artifact URI and require it to stay under ARTIFACTS_DIR."""
     parsed = urlparse(uri)
-    if parsed.scheme != "file":
+    if parsed.scheme != "file" or parsed.netloc not in {"", "localhost"}:
         raise ValueError("Only local file artifacts can be exported.")
     path = Path(unquote(parsed.path))
+    if not path.is_absolute():
+        raise ValueError("Artifact file URI must be absolute.")
     root = ARTIFACTS_DIR.resolve()
-    try:
-        path.parent.resolve().relative_to(root)
-    except ValueError as exc:
-        raise ValueError("Artifact path escapes the local artifact directory.") from exc
     try:
         path_stat = path.lstat()
     except FileNotFoundError:
@@ -189,7 +187,14 @@ def local_artifact_path(uri: str) -> Path:
         raise ValueError("Artifact symlinks cannot be exported.")
     if not stat.S_ISREG(path_stat.st_mode):
         raise FileNotFoundError("Artifact file does not exist.")
-    return path
+    try:
+        resolved_path = path.resolve(strict=True)
+        resolved_path.relative_to(root)
+    except FileNotFoundError:
+        raise FileNotFoundError("Artifact file does not exist.")
+    except ValueError as exc:
+        raise ValueError("Artifact path escapes the local artifact directory.") from exc
+    return resolved_path
 
 
 class LocalArtifactRegistry:

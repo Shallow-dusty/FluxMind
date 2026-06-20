@@ -177,6 +177,30 @@ def test_local_artifact_path_rejects_escaped_file(tmp_path: Path, monkeypatch):
         local_artifact_path(outside.resolve().as_uri())
 
 
+def test_local_artifact_path_returns_canonical_path(tmp_path: Path, monkeypatch):
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+    nested = artifact_root / "nested"
+    nested.mkdir()
+    artifact = artifact_root / "result.txt"
+    artifact.write_text("artifact-body", encoding="utf-8")
+    alias = nested / ".." / "result.txt"
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", artifact_root)
+
+    assert local_artifact_path(f"file://{alias.as_posix()}") == artifact.resolve()
+
+
+def test_local_artifact_path_rejects_nonlocal_file_uri(tmp_path: Path, monkeypatch):
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+    artifact = artifact_root / "result.txt"
+    artifact.write_text("artifact-body", encoding="utf-8")
+    monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", artifact_root)
+
+    with pytest.raises(ValueError, match="Only local file artifacts"):
+        local_artifact_path(f"file://remote-host{artifact.as_posix()}")
+
+
 def test_local_artifact_path_rejects_symlink_artifact(tmp_path: Path, monkeypatch):
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir()
