@@ -1554,7 +1554,7 @@ def job_to_dict(record: JobRecord) -> dict:
             job_artifact_to_public_dict(record, artifact)
             for artifact in record.artifacts
         ],
-        "error": record.error,
+        "error": public_job_error(record),
         "attempts": record.attempts,
         "request_id": record.request_id,
         "parent_job_id": record.parent_job_id,
@@ -1567,7 +1567,7 @@ def job_to_dict(record: JobRecord) -> dict:
         "owner_id": ownership["owner_id"],
         "owner_label": ownership["owner_label"],
         "ownership_source": ownership["ownership_source"],
-        "logs": record.logs,
+        "logs": public_job_logs(record),
     }
 
 
@@ -1575,12 +1575,113 @@ def _source_path_count(value: Any) -> int:
     return len(value) if isinstance(value, list) else 0
 
 
+def _string_byte_count(value: Any) -> int:
+    return len(str(value).encode("utf-8")) if isinstance(value, str) else 0
+
+
+def _request_files_summary(value: Any) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {"input_file_count": 0, "input_total_bytes": 0}
+    return {
+        "input_file_count": len(value),
+        "input_total_bytes": sum(_string_byte_count(content) for content in value.values()),
+    }
+
+
+def _public_scalar(value: Any) -> Any:
+    if isinstance(value, (bool, int, float)) or value is None:
+        return value
+    return str(value)
+
+
+PUBLIC_CODE_RUNTIME_METADATA_KEYS = {
+    "language",
+    "input_file_count",
+    "input_total_bytes",
+    "provider_runtime",
+    "runtime_available",
+    "filesystem_isolation",
+    "network_policy_enforced",
+    "timeout_s",
+    "cpu_time_s",
+    "memory_mb",
+    "memory_limit_enforced",
+    "cpu_limit_enforced",
+    "max_files",
+    "max_file_bytes",
+    "max_total_file_bytes",
+    "max_stdout_bytes",
+    "max_stderr_bytes",
+    "max_artifacts",
+    "max_artifact_bytes",
+    "max_artifact_total_bytes",
+    "max_artifact_candidates",
+    "execution_policy",
+    "execution_policy_enforced",
+    "execution_policy_checked_files",
+    "execution_policy_violations",
+    "policy_violation",
+    "stdout_bytes",
+    "stderr_bytes",
+    "stdout_truncated",
+    "stderr_truncated",
+    "output_truncated",
+    "artifact_scanned_entries",
+    "artifact_scanned_files",
+    "artifact_candidate_count",
+    "artifact_exported_count",
+    "artifact_exported_bytes",
+    "artifact_skipped_count",
+    "artifact_skipped_too_large_count",
+    "artifact_skipped_count_limit",
+    "artifact_skipped_total_bytes_limit",
+    "artifact_skipped_unreadable_count",
+    "artifact_skipped_unreadable_dirs",
+    "artifact_scan_truncated",
+    "artifact_collection_truncated",
+    "docker_network",
+    "runtime",
+    "cost_estimate_usd",
+}
+
+
+def public_code_runtime_metadata(metadata: Any) -> dict[str, Any]:
+    if not isinstance(metadata, dict):
+        return {}
+    return {
+        str(key): _public_scalar(value)
+        for key, value in metadata.items()
+        if key in PUBLIC_CODE_RUNTIME_METADATA_KEYS
+    }
+
+
 def public_job_request(record: JobRecord) -> dict[str, Any]:
+    request = record.request if isinstance(record.request, dict) else {}
+    if record.kind == "image_generation":
+        prompt = request.get("prompt")
+        references = request.get("reference_uris")
+        return {
+            "prompt_present": bool(prompt),
+            "prompt_length": len(prompt) if isinstance(prompt, str) else 0,
+            "style_present": bool(request.get("style")),
+            "size_present": bool(request.get("size")),
+            "diagram_template_present": bool(request.get("diagram_template")),
+            "reference_count": len(references) if isinstance(references, list) else 0,
+        }
+    if record.kind == "code_execution":
+        summary = _request_files_summary(request.get("files"))
+        return {
+            "language": str(request.get("language") or ""),
+            "entrypoint_present": bool(request.get("entrypoint")),
+            **summary,
+            "timeout_s": _public_scalar(request.get("timeout_s")),
+            "memory_mb": _public_scalar(request.get("memory_mb")),
+        }
     if record.kind != "index_rebuild":
-        return record.request
+        return {}
     source_paths = (
-        record.request.get("source_paths")
-        if isinstance(record.request, dict)
+        request.get("source_paths")
+        if isinstance(request, dict)
         else None
     )
     return {"source_path_count": _source_path_count(source_paths)}
@@ -1589,12 +1690,89 @@ def public_job_request(record: JobRecord) -> dict[str, Any]:
 def public_job_result(record: JobRecord) -> dict[str, Any] | None:
     if record.result is None:
         return None
+    if record.kind == "code_execution":
+        result = record.result if isinstance(record.result, dict) else {}
+        stdout = result.get("stdout")
+        stderr = result.get("stderr")
+        metadata = public_code_runtime_metadata(result.get("runtime_metadata"))
+        return {
+            "exit_code": _public_scalar(result.get("exit_code")),
+            "stdout_present": bool(stdout),
+            "stderr_present": bool(stderr),
+            "stdout_bytes": _public_scalar(
+                metadata.get("stdout_bytes", _string_byte_count(stdout))
+            ),
+            "stderr_bytes": _public_scalar(
+                metadata.get("stderr_bytes", _string_byte_count(stderr))
+            ),
+            "stdout_truncated": _public_scalar(metadata.get("stdout_truncated", "false")),
+            "stderr_truncated": _public_scalar(metadata.get("stderr_truncated", "false")),
+            "output_truncated": _public_scalar(metadata.get("output_truncated", "false")),
+            "artifact_count": len(record.artifacts),
+            "runtime_metadata": metadata,
+        }
     if record.kind != "index_rebuild":
         return record.result
     result = dict(record.result)
     source_paths = result.pop("source_paths", None)
     result["source_path_count"] = _source_path_count(source_paths)
     return result
+
+
+PUBLIC_JOB_ERROR_MESSAGES = {
+    "cancelled": "Job was cancelled.",
+    "execution_failed": "Execution failed.",
+    "execution_policy_violation": "Execution policy rejected the request.",
+    "execution_timeout": "Execution timed out.",
+    "job_deadline_exceeded": "Job deadline exceeded before execution.",
+    "runtime_unavailable": "Execution runtime unavailable.",
+}
+
+
+def public_job_error(record: JobRecord) -> dict[str, Any] | None:
+    if not isinstance(record.error, dict):
+        return None
+    code = str(record.error.get("code") or "job_failed")
+    message = PUBLIC_JOB_ERROR_MESSAGES.get(code, "Job failed.")
+    raw_message = record.error.get("message")
+    return {
+        "code": code,
+        "message": message,
+        "message_redacted": bool(raw_message and raw_message != message),
+    }
+
+
+PUBLIC_JOB_LOG_METADATA_KEYS = {
+    "artifact_count",
+    "attempt",
+    "error_code",
+    "exit_code",
+    "max_attempts",
+    "retry_backoff_s",
+}
+
+
+def public_job_logs(record: JobRecord) -> list[dict[str, Any]]:
+    public_logs: list[dict[str, Any]] = []
+    for entry in record.logs:
+        if not isinstance(entry, dict):
+            continue
+        public_entry = {
+            "created_at": entry.get("created_at"),
+            "status": entry.get("status"),
+            "message": entry.get("message"),
+        }
+        metadata = entry.get("metadata")
+        if isinstance(metadata, dict):
+            public_metadata = {
+                str(key): _public_scalar(value)
+                for key, value in metadata.items()
+                if key in PUBLIC_JOB_LOG_METADATA_KEYS
+            }
+            if public_metadata:
+                public_entry["metadata"] = public_metadata
+        public_logs.append(public_entry)
+    return public_logs
 
 
 def job_summary_to_dict(record: JobRecord) -> dict:

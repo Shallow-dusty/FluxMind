@@ -3694,6 +3694,8 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert "prompt" not in job["artifacts"][0]["metadata"]
     assert "diagram_template" not in job["artifacts"][0]["metadata"]
     assert [entry["status"] for entry in job["logs"]] == ["running", "succeeded"]
+    assert "lab-image-api" not in json.dumps(job["logs"], sort_keys=True)
+    assert "Image API Lab" not in json.dumps(job["logs"], sort_keys=True)
 
     loaded = client.get(f"/jobs/{job['job_id']}")
     assert loaded.status_code == 200
@@ -3718,8 +3720,17 @@ def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatc
     job = response.json()["job"]
     assert job["kind"] == "code_execution"
     assert job["status"] == "succeeded"
-    assert job["result"]["stdout"] == "api-job-ok\n"
+    assert job["request"]["entrypoint_present"] is True
+    assert job["request"]["input_file_count"] == 1
+    assert job["request"]["input_total_bytes"] == len("print('api-job-ok')".encode("utf-8"))
+    assert "files" not in job["request"]
+    assert "entrypoint" not in job["request"]
+    assert job["result"]["stdout_present"] is True
+    assert job["result"]["stdout_bytes"] == str(len("api-job-ok\n".encode("utf-8")))
+    assert "stdout" not in job["result"]
+    assert "stderr" not in job["result"]
     assert job["result"]["runtime_metadata"]["memory_mb"] == "512"
+    assert "entrypoint" not in job["result"]["runtime_metadata"]
 
 
 def test_local_python_job_endpoint_handles_input_path_conflict(tmp_path, monkeypatch):
@@ -3743,8 +3754,12 @@ def test_local_python_job_endpoint_handles_input_path_conflict(tmp_path, monkeyp
     assert job["kind"] == "code_execution"
     assert job["status"] == "failed"
     assert job["error"]["code"] == "execution_failed"
-    assert "could not be materialized: main.py/helper.txt" in job["result"]["stderr"]
-    assert "/tmp/fluxmind-" not in job["result"]["stderr"]
+    assert job["error"]["message"] == "Execution failed."
+    assert job["error"]["message_redacted"] is True
+    assert job["result"]["stderr_present"] is True
+    assert "stderr" not in job["result"]
+    assert "could not be materialized: main.py/helper.txt" not in response.text
+    assert "/tmp/fluxmind-" not in response.text
 
 
 def test_local_python_job_endpoint_uses_configured_docker_backend(tmp_path, monkeypatch):
@@ -3782,7 +3797,10 @@ def test_local_python_job_endpoint_uses_configured_docker_backend(tmp_path, monk
     assert response.status_code == 200
     job = response.json()["job"]
     assert job["status"] == "succeeded"
-    assert job["result"]["stdout"] == "api-docker-ok\n"
+    assert job["result"]["stdout_present"] is True
+    assert job["result"]["stdout_bytes"] == str(len("api-docker-ok\n".encode("utf-8")))
+    assert "stdout" not in job["result"]
+    assert "stderr" not in job["result"]
     assert job["result"]["runtime_metadata"]["provider_runtime"] == "docker-python"
     assert job["result"]["runtime_metadata"]["filesystem_isolation"] == "docker_container_bind_mount"
     assert job["result"]["runtime_metadata"]["network_policy_enforced"] == "true"
@@ -3853,7 +3871,34 @@ def test_local_octave_job_endpoint_returns_structured_runtime_failure(tmp_path, 
     assert job["request"]["language"] == "octave"
     assert job["result"]["exit_code"] == 127
     assert job["error"]["code"] == "runtime_unavailable"
-    assert "GNU Octave executable not found" in job["error"]["message"]
+    assert job["error"]["message"] == "Execution runtime unavailable."
+    assert job["error"]["message_redacted"] is True
+
+
+def test_job_response_redacts_code_request_output_and_error_values(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    secret = "sk-secret-job-output"
+    response = client.post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "secret-entrypoint.py",
+            "files": {"secret-entrypoint.py": f"raise RuntimeError('{secret}')"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert secret not in response.text
+    assert "secret-entrypoint.py" not in response.text
+    assert "stdout" not in response.json()["job"]["result"]
+    assert "stderr" not in response.json()["job"]["result"]
+    assert response.json()["job"]["error"] == {
+        "code": "execution_failed",
+        "message": "Execution failed.",
+        "message_redacted": True,
+    }
 
 
 def test_missing_job_returns_404(monkeypatch, tmp_path):

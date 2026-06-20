@@ -1362,11 +1362,21 @@ def main() -> int:
     check("/admin/status/report" in api_source and "format_admin_status_report" in api_source, "admin status report route installed", failures)
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
+    test_api_source = (PROJECT_ROOT / "tests" / "test_api.py").read_text(encoding="utf-8")
     check(
         "def public_job_request" in api_source
         and "def public_job_result" in api_source
         and '"source_path_count"' in api_source,
         "index rebuild job API projection redacts source paths",
+        failures,
+    )
+    check(
+        "def public_job_error" in api_source
+        and "def public_job_logs" in api_source
+        and "def public_code_runtime_metadata" in api_source
+        and '"stdout" not in job["result"]' in test_api_source
+        and '"files" not in job["request"]' in test_api_source,
+        "job detail API projection redacts code input and output content",
         failures,
     )
     check("status: str | None" in api_source and "kind: str | None" in api_source and "q=q" in api_source, "job metadata filters installed", failures)
@@ -1384,7 +1394,7 @@ def main() -> int:
     check("/jobs/code/octave-local" in api_source and "/jobs/async/code/octave-local" in api_source, "Octave-compatible job routes installed", failures)
     check("/jobs/{job_id}/retry" in api_source, "job retry route installed", failures)
     check("/jobs/{job_id}/retry-scheduled" in api_source, "scheduled retry route installed", failures)
-    check('"logs": record.logs' in api_source, "job transition logs exposed by API", failures)
+    check('"logs": public_job_logs(record)' in api_source, "job transition logs exposed by public API projection", failures)
     check("append_runtime_event" in api_source, "query provider failures are recorded", failures)
     check(
         "runtime_ownership_metadata" in api_source
@@ -1852,7 +1862,7 @@ def main() -> int:
             "grep -q '/jobs/code/octave-local' /opt/fluxmind/api.py; "
             "grep -q '/jobs/async/code/octave-local' /opt/fluxmind/api.py; "
             "grep -q '/jobs/{job_id}/retry-scheduled' /opt/fluxmind/api.py; "
-            "grep -q '\"logs\": record.logs' /opt/fluxmind/api.py; "
+            "grep -q '\"logs\": public_job_logs(record)' /opt/fluxmind/api.py; "
             "grep -q '/admin/status/report' /opt/fluxmind/api.py; "
             "grep -q '/admin/metrics' /opt/fluxmind/api.py; "
             "grep -q 'append_runtime_event' /opt/fluxmind/api.py; "
