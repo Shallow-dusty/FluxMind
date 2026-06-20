@@ -854,6 +854,14 @@ def test_admin_share_link_registry_routes_use_local_backend(tmp_path, monkeypatc
         "share_link_admin",
         "share_link_admin",
     ]
+    assert [event["metadata"]["action"] for event in events] == [
+        "create",
+        "list",
+        "resolve",
+        "revoke",
+        "resolve",
+    ]
+    assert all(event["metadata"]["product_workspace_present"] is True for event in events)
     assert events[-1]["metadata"]["share_link_present"] is True
     assert events[-1]["metadata"]["status_code"] == 200
     assert events[-1]["metadata"]["share_link_valid"] is False

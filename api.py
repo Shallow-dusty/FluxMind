@@ -1231,6 +1231,7 @@ def record_share_link_admin_event(
     status_code: int,
     request_id: str | None = None,
     workspace_id: str = "",
+    workspace_present: bool | None = None,
     link_id: str = "",
     reason: str = "ok",
     share_link_valid: bool | None = None,
@@ -1238,7 +1239,11 @@ def record_share_link_admin_event(
     metadata = {
         "action": action,
         "status_code": status_code,
-        "product_workspace_present": bool(str(workspace_id or "").strip()),
+        "product_workspace_present": (
+            bool(workspace_present)
+            if workspace_present is not None
+            else bool(str(workspace_id or "").strip())
+        ),
         "share_link_present": bool(str(link_id or "").strip()),
         "share_link_backend": SHARE_LINK_TOKEN_STORE_BACKEND,
         "content_exported": False,
@@ -3516,7 +3521,7 @@ def admin_share_link_resolve(
         action="resolve",
         status_code=200,
         request_id=request_id,
-        workspace_id=str(share_link.get("workspace_id", "")),
+        workspace_present=bool(share_link.get("workspace_present")),
         link_id=str(share_link.get("link_id", "")),
         reason=str(resolution.get("reason", "unknown")),
         share_link_valid=bool(resolution.get("valid")),
