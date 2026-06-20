@@ -6,6 +6,21 @@ FluxMind 是基于 RAG 的控制理论研究 Copilot（滑模控制 SMC + 磁链
 
 > **AGENTS.md 与本文件应保持同步**——它面向其他 agent，内容应与此处一致。
 
+## ⚠️ 重要：先读开发指南（2026-06-21 更新）
+
+**在开始任何开发工作前，必须先阅读**：
+
+1. **CODE_PRINCIPLES.md** - 开发原则和防御代码冻结规定
+2. **DEVELOPMENT_PLAN.md** - 3周详细开发计划（2026-06-21 至 07-12）
+
+**核心原则**：
+- ❌ 不再添加 no-secret 投影层
+- ❌ 不再添加 sanitize/redact 代码  
+- ✅ 优先实现 Priority 1-3 功能（论文库、图像、代码执行）
+- ✅ 每周至少 1 个用户可见功能
+
+**项目定位**：轻量级多用户工具（5-20人内部使用），不是企业级 SaaS。
+
 ## 常用命令
 
 ```bash
@@ -81,15 +96,31 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 
 **配置全在 `src/config.py`**（从 `.env` 读，`PROJECT_ROOT` 锚定）。RAG 参数硬编码：`CHUNK_SIZE=1000`、`CHUNK_OVERLAP=200`、`TOP_K=5`。运行时目录（`papers/`、`faiss_index/`、`artifacts/`、`jobs/`、`metadata/`）均 gitignored。
 
-## 文档纪律（重要）
+## 文档结构（2026-06-21 整理后）
 
-`docs/` 严格遵循**单一事实来源**：每个事实只在其 owner 文档里写，不跨文件复制。改动前先读 `docs/README.md` 的 Source-Of-Truth Map。有专门测试守护文档一致性（`tests/test_docs_status.py`、`test_feature_audit_docs.py`、`test_translation_guard.py`），改文档可能需同步改测试。
+### 顶层指导文档
+- **CODE_PRINCIPLES.md** - 开发原则、防御代码冻结、红线警报
+- **DEVELOPMENT_PLAN.md** - 3周详细计划（每日任务、验收标准）
+- **NEXT_STEPS.md** - 快速行动清单和检查点
+- **DISCUSSION.md** - 项目诊断和决策记录（参考）
 
-- 架构/模块边界 → `docs/ARCHITECTURE.md`（深度参考，本文件是其摘要）
-- git/worktree 快照 → `docs/REPO_STATUS.md`
-- 生产部署快照 → `docs/DEPLOYMENT_STATUS.md`（**依赖 live 服务的事实，必须先跑 health check 再更新并记录时间**）
-- 工作包/验收 → `docs/BACKLOG.md`
-- 严禁把 secret、token、上传的 PDF、FAISS 索引、metadata/job/artifact 内容写进任何文档。
+### docs/ 目录结构
+- **docs/README.md** - 文档导航索引
+- **docs/current/** - 活跃维护的文档
+  - `ARCHITECTURE.md` - 系统架构设计
+  - `DEPLOYMENT_STATUS.md` - 生产部署状态（更新前需先跑 health check）
+  - `REPO_STATUS.md` - Git 仓库快照
+- **docs/archive/** - 历史参考文档（只读）
+  - `BACKLOG.md` - 过去的待办清单
+  - `FEATURE_AUDIT.md` - 功能审计
+  - `PLATFORM_AUDIT_AND_ROADMAP.md` - 平台审计
+  - `PRODUCTION_GAP_AND_MARKET_RESEARCH.md` - 生产差距分析
+  - `QUALITY_ROADMAP.md` - 质量路线图
+
+### 文档维护原则
+- 单一事实来源：每个事实只在其 owner 文档中写
+- 改动前先读 `docs/README.md`
+- 严禁写入 secret、token、上传的 PDF、FAISS 索引、metadata/job/artifact 内容
 
 ## 部署
 

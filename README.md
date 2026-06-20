@@ -4,6 +4,8 @@
 
 FluxMind turns a curated research corpus into traceable answers, retrieval diagnostics, paper-to-code handoffs, executable local examples, and no-secret operational evidence. It is currently a deployed small-group research baseline, not a fully activated SaaS platform.
 
+> **For Contributors:** Before starting development, read [CODE_PRINCIPLES.md](CODE_PRINCIPLES.md) and [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). The project has been refocused (2026-06-21) from over-engineering to delivering real user value.
+
 [English](#english) | [中文](#中文)
 
 ---
@@ -203,15 +205,26 @@ Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-toke
 README is the GitHub entrypoint. Detailed facts live in owner documents:
 
 ```text
+# Development Guides (Start Here for Contributors)
+CODE_PRINCIPLES.md                     development principles, defensive code freeze, red lines
+DEVELOPMENT_PLAN.md                    3-week detailed plan (2026-06-21 to 07-12)
+NEXT_STEPS.md                          quick action checklist and checkpoints
+DISCUSSION.md                          project diagnosis and decision records (reference)
+
+# Current Documentation
 docs/README.md                         reading order and source-of-truth map
-docs/REPO_STATUS.md                    git/worktree snapshot and verification
-docs/DEPLOYMENT_STATUS.md              live deployment snapshot and commands
-docs/ARCHITECTURE.md                   runtime boundaries and module design
-docs/BACKLOG.md                        work packages and acceptance criteria
-docs/QUALITY_ROADMAP.md                self-use, small-group, community gates
-docs/FEATURE_AUDIT.md                  implemented surface and remaining gaps
-docs/PLATFORM_AUDIT_AND_ROADMAP.md     platform audit and open decisions
-docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md production gap and staged roadmap
+docs/current/ARCHITECTURE.md           runtime boundaries and module design
+docs/current/DEPLOYMENT_STATUS.md      live deployment snapshot and commands
+docs/current/REPO_STATUS.md            git/worktree snapshot and verification
+
+# Archived Documentation (Read-Only)
+docs/archive/BACKLOG.md                past work packages
+docs/archive/FEATURE_AUDIT.md          feature audit
+docs/archive/PLATFORM_AUDIT_AND_ROADMAP.md  platform audit
+docs/archive/PRODUCTION_GAP_AND_MARKET_RESEARCH.md  production gap analysis
+docs/archive/QUALITY_ROADMAP.md        quality roadmap
+
+# Demo Materials
 docs/demo-script.md                    Chinese demo script and defense Q&A
 ```
 
@@ -416,15 +429,26 @@ IDENTITY_QUOTAS_BILLING_ENABLED=false
 README 是 GitHub 入口页，详细事实由 owner 文档维护：
 
 ```text
+# 开发指南（贡献者必读）
+CODE_PRINCIPLES.md                     开发原则、防御代码冻结、红线警报
+DEVELOPMENT_PLAN.md                    3周详细计划（2026-06-21 至 07-12）
+NEXT_STEPS.md                          快速行动清单和检查点
+DISCUSSION.md                          项目诊断和决策记录（参考）
+
+# 当前文档
 docs/README.md                         阅读顺序和事实归属图
-docs/REPO_STATUS.md                    git/worktree 快照和验证记录
-docs/DEPLOYMENT_STATUS.md              live 部署快照和刷新命令
-docs/ARCHITECTURE.md                   运行时边界和模块设计
-docs/BACKLOG.md                        工作包和验收标准
-docs/QUALITY_ROADMAP.md                self-use / small-group / community 门槛
-docs/FEATURE_AUDIT.md                  已实现功能和剩余缺口
-docs/PLATFORM_AUDIT_AND_ROADMAP.md     平台审计和开放决策
-docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md 生产缺口和分阶段路线
+docs/current/ARCHITECTURE.md           运行时边界和模块设计
+docs/current/DEPLOYMENT_STATUS.md      live 部署快照和刷新命令
+docs/current/REPO_STATUS.md            git/worktree 快照和验证记录
+
+# 归档文档（只读）
+docs/archive/BACKLOG.md                过去的工作包
+docs/archive/FEATURE_AUDIT.md          功能审计
+docs/archive/PLATFORM_AUDIT_AND_ROADMAP.md  平台审计
+docs/archive/PRODUCTION_GAP_AND_MARKET_RESEARCH.md  生产缺口分析
+docs/archive/QUALITY_ROADMAP.md        质量路线图
+
+# 演示材料
 docs/demo-script.md                    中文演示脚本和答辩问答
 ```
 
