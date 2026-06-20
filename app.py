@@ -819,7 +819,7 @@ def render_product_registry_management() -> None:
     try:
         workspaces = registry.list_workspace_summaries(limit=50)
     except (OSError, sqlite3.Error, ValueError) as exc:
-        st.error(str(exc))
+        st.error(safe_streamlit_error_message(exc))
         return
     st.json({"workspaces": workspaces})
     default_workspace_id = workspaces[0]["workspace_id"] if workspaces else "local-workspace"
@@ -855,7 +855,7 @@ def render_product_registry_management() -> None:
                 )
                 st.json(registry.workspace_detail(workspace_id=workspace.workspace_id))
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("product_registry_member_form"):
         member_workspace_id = st.text_input(
@@ -892,7 +892,7 @@ def render_product_registry_management() -> None:
                     )
                     st.json(registry.workspace_detail(workspace_id=member_workspace_id))
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("product_registry_quota_form"):
         quota_workspace_id = st.text_input(
@@ -934,7 +934,7 @@ def render_product_registry_management() -> None:
                     )
                     st.json(registry.workspace_detail(workspace_id=quota_workspace_id))
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("product_registry_permission_form"):
         permission_workspace_id = st.text_input(
@@ -962,7 +962,7 @@ def render_product_registry_management() -> None:
                     )
                 )
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
 
 def render_share_link_registry_management() -> None:

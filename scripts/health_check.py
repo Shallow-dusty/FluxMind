@@ -1102,6 +1102,24 @@ def main() -> int:
         "Streamlit product registry management requires explicit enable flag",
         failures,
     )
+    product_registry_management_block = ""
+    if (
+        "def render_product_registry_management()" in app_source
+        and "def render_share_link_registry_management()" in app_source
+    ):
+        product_registry_management_block = app_source.split(
+            "def render_product_registry_management()", 1
+        )[1].split("def render_share_link_registry_management()", 1)[0]
+    check(
+        "safe_streamlit_error_message" in app_source
+        and "st.error(str(exc))" not in product_registry_management_block
+        and product_registry_management_block.count(
+            "st.error(safe_streamlit_error_message(exc))"
+        )
+        >= 5,
+        "Streamlit product registry management sanitizes error output",
+        failures,
+    )
     check(
         "STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED" in app_source
         and '"management_enabled": STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' in app_source

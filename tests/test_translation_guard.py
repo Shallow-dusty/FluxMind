@@ -104,9 +104,20 @@ def test_streamlit_product_registry_management_requires_explicit_flag():
     assert '"management_enabled": STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' in APP_SOURCE
     assert "if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:" in APP_SOURCE
     assert "product_registry_management_disabled" in APP_SOURCE
+    assert "safe_streamlit_error_message" in APP_SOURCE
     guard_index = APP_SOURCE.index("if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:")
     registry_index = APP_SOURCE.index("registry = LocalProductRegistry()")
     assert guard_index < registry_index
+
+
+def test_streamlit_product_registry_management_sanitizes_errors():
+    product_block = APP_SOURCE.split("def render_product_registry_management()", 1)[
+        1
+    ].split("def render_share_link_registry_management()", 1)[0]
+
+    assert "def safe_streamlit_error_message" in APP_SOURCE
+    assert "st.error(str(exc))" not in product_block
+    assert product_block.count("st.error(safe_streamlit_error_message(exc))") == 5
 
 
 def test_streamlit_share_link_management_requires_explicit_flag():
