@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 606
+Current hardening progress through 2026-06-20: the automated suite has 608
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -79,9 +79,12 @@ they reach filenames.
 The local artifact store now validates relative targets under the artifact
 root, writes through atomic replacement so preexisting destination symlinks are
 not followed, rejects symlink parent escapes, and rejects symlink/non-regular
-copy sources. Artifact and job registry list limits are clamped at the helper
-layer, and malformed SQLite mirror payloads are treated as cache misses so
-artifact stable-ID export and job lookups can fall back to persisted job
+copy sources. Local artifact export/download resolution now accepts only local
+absolute `file://` artifact URIs, rejects nonlocal file hosts, canonicalizes the
+final file path under the artifact root, and returns the canonical path before
+callers read the file. Artifact and job registry list limits are clamped at the
+helper layer, and malformed SQLite mirror payloads are treated as cache misses
+so artifact stable-ID export and job lookups can fall back to persisted job
 history.
 The product shell now also has a no-secret local product activation rehearsal
 that creates disposable SQLite API-key and product registries, verifies
@@ -695,7 +698,8 @@ activation blocker codes
   scaffolds without external image providers.
 - `GET /artifacts` lists generated local artifacts from persisted jobs.
 - `GET /artifacts/{artifact_id}` exports regular local file artifacts by stable
-  ID and rejects symlink artifacts.
+  ID, rejects symlink artifacts, rejects nonlocal file artifact URIs, and
+  resolves downloads to canonical artifact-root paths.
 - `GET /artifacts` supports local `q`, `kind`, `job_kind`, and `owner_id`
   filters over the public no-secret artifact projection while keeping raw
   owner/path/prompt/reference values out of list responses and search.

@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 15:18 CST
+Snapshot time: 2026-06-20 15:26 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  5065418 fix: preserve same-name corpus metadata
-Current docs/health sync       830d05d docs: record job lease audit status
-Current local app-code HEAD    5065418 fix: preserve same-name corpus metadata
+Current implementation commit  51fee7e fix: harden local artifact path resolution
+Current docs/health sync       f2d2da1 docs: record corpus metadata audit status
+Current local app-code HEAD    51fee7e fix: harden local artifact path resolution
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the thirteen local commits below
+                               by the fifteen local commits below
                                before this docs refresh
-Current local commit stack     5065418 fix: preserve same-name corpus metadata
+Current local commit stack     51fee7e fix: harden local artifact path resolution
+                               f2d2da1 docs: record corpus metadata audit status
+                               5065418 fix: preserve same-name corpus metadata
                                830d05d docs: record job lease audit status
                                bae5f88 fix: guard terminal job lease release
                                fac2c6b docs: record share-link event evidence audit
@@ -67,6 +69,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                completed-job worker provenance,
                                source-path-specific corpus metadata for same-filename
                                library/upload PDFs,
+                               local artifact file-URI canonicalization and
+                               nonlocal host rejection for export/download,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -202,6 +206,37 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Artifact path-resolution follow-up on 2026-06-20 15:26 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest <artifact/API focused slice>     pass, 20 selected artifact/API tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q               pass, 608 tests, 2 known warnings
+.venv/bin/python -m coverage report --fail-under=88         pass, 89% total branch coverage
+.venv/bin/python scripts/health_check.py                    pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py                pass, local_contract_ready=true,
+  --format json --require-local-contract                    69 routes, 76 operations,
+                                                            fingerprint=15bdfa2ae5ec34f1d0045c38b7137cf2b31a27857b1571a035a8efc12d61d18c
+.venv/bin/python scripts/openapi_contract.py                pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract...       just-exported no-secret snapshot
+  --require-no-drift --format json
+.venv/bin/python scripts/storage_schema.py --format json    pass, ok=true, 10 stores, 0 problems
+git diff --check                                            pass
+```
+
+The follow-up hardens local artifact file-URI resolution for export/download
+helpers. It now accepts only local `file://` artifact URIs with no host or
+`localhost`, requires absolute file paths, rejects symlink/non-regular artifacts
+before export, resolves the final file path canonically under the artifact root,
+and returns that canonical path to callers. Regression coverage verifies
+canonical `..` aliases and rejects nonlocal file artifact URIs such as
+`file://remote-host/...`.
 
 Corpus same-name metadata follow-up on 2026-06-20 15:18 CST:
 

@@ -218,7 +218,10 @@ prompts, and source-reference values while preserving stable artifact IDs,
 safe metadata flags/counts, checksum/byte-count presence, and explicit
 `owner_id` filtering for local operator workflows. Download filenames reject
 unexpected artifact IDs, and public cost summaries accept bounded finite numeric
-values only.
+values only. Local artifact download/export resolution accepts only local
+absolute `file://` artifact URIs with no host or `localhost`, returns a
+canonical artifact-root path to callers, and rejects nonlocal file artifact URIs
+before any file response is built.
 `GET /jobs` now uses no-secret job summaries and safe search/status projections
 instead of raw request payloads, execution results, logs, owner IDs/labels,
 idempotency keys, or artifact metadata; exact `owner_id` filtering remains
@@ -304,7 +307,9 @@ Local job and worker bridge   verified      immediate and async job routes, idem
 Artifacts and exports         verified      artifact list/download, checksums, and metadata mirrors
                                             exist, including source-job owner metadata,
                                             full-history stable-ID export, symlink
-                                            artifact rejection, store-level
+                                            artifact rejection, nonlocal file-URI
+                                            rejection, canonical artifact-root
+                                            export paths, store-level
                                             symlink/source write guards,
                                             SQLite-cache fallback, and public no-secret
                                             artifact projections. Durable

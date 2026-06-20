@@ -688,12 +688,13 @@ Generated-artifact export is also bounded by `CODE_EXECUTION_MAX_ARTIFACTS`,
 `CODE_EXECUTION_MAX_ARTIFACT_BYTES`, `CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES`,
 and `CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES`; metadata records scanned,
 exported, skipped, and truncated collection counts without copying skipped
-files. Artifact download/export resolves only regular files under
-`ARTIFACTS_DIR` and rejects symlink artifact paths before returning file
-responses. Local artifact writes validate relative targets under the artifact
-root, use atomic replacement so preexisting destination symlinks are not
-followed, reject symlink parent escapes, and reject symlink/non-regular copy
-sources.
+files. Artifact download/export accepts only local absolute `file://` artifact
+URIs with no host or `localhost`, resolves the final file path canonically under
+`ARTIFACTS_DIR`, returns that canonical path to callers, and rejects
+symlink/non-regular artifact paths before returning file responses. Local
+artifact writes validate relative targets under the artifact root, use atomic
+replacement so preexisting destination symlinks are not followed, reject symlink
+parent escapes, and reject symlink/non-regular copy sources.
 Each code-execution attempt also appends a no-secret `code_execution` runtime
 event with job id, owner metadata, language, selected backend, status/error
 code, duration, artifact count, exit code, output/artifact limit metadata, and
@@ -715,9 +716,10 @@ artifacts, and Octave-compatible templates `pmsm_current_decay` and
 
 FastAPI exposes `GET /artifacts` and `GET /artifacts/{artifact_id}` so generated
 mock diagrams, plots, and execution files can be listed and exported without
-exposing raw filesystem paths. Export only supports local `file://` artifacts
-that resolve under `ARTIFACTS_DIR`. The local artifact registry mirrors current
-artifact metadata into `artifacts/artifacts.sqlite3` while still deriving records
+exposing raw filesystem paths. Export only supports local absolute `file://`
+artifacts with no host or `localhost` that canonically resolve under
+`ARTIFACTS_DIR`. The local artifact registry mirrors current artifact metadata
+into `artifacts/artifacts.sqlite3` while still deriving records
 from persisted jobs, giving later durable artifact storage a concrete migration
 shape. Malformed SQLite mirror payloads are treated as cache misses and stable-ID
 lookup falls back to persisted job history; registry limits are clamped at the

@@ -165,8 +165,8 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  5065418 fix: preserve same-name corpus metadata" in repo_status
-        and "Current docs/health sync       830d05d docs: record job lease audit status" in repo_status
+        and "Current implementation commit  51fee7e fix: harden local artifact path resolution" in repo_status
+        and "Current docs/health sync       f2d2da1 docs: record corpus metadata audit status" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST"
         in repo_status
@@ -174,6 +174,9 @@ def main() -> int:
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
         and "share-link admin runtime-event workspace-present" in repo_status
+        and "Artifact path-resolution follow-up on 2026-06-20 15:26 CST" in repo_status
+        and "pass, 608 tests, 2 known warnings" in repo_status
+        and "rejects nonlocal file artifact URIs" in repo_status
         and "Corpus same-name metadata follow-up on 2026-06-20 15:18 CST" in repo_status
         and "pass, 606 tests, 2 known warnings" in repo_status
         and "source-path-specific entries" in repo_status

@@ -615,6 +615,9 @@ records inherit owner metadata from their source jobs for local status and
 explicit owner filtering, but list/search/RAG contexts do not expose raw owner,
 path, title, prompt, or source-reference values. RAG prompts can include recent
 generated diagrams, plots, and files as `[Artifact:<id>]` references.
+Artifact export/download resolution now accepts only local absolute `file://`
+artifact URIs with no host or `localhost`, rejects nonlocal file artifact URIs,
+and returns canonical artifact-root paths to API/UI callers.
 
 OpenAI's current image docs separate simple Image API generation/edits from
 Responses API image tools for conversational, iterative image workflows. That
@@ -680,8 +683,10 @@ collection truncation.
 
 Artifact progress: generated local artifacts can be listed and downloaded
 through `GET /artifacts` and `GET /artifacts/{artifact_id}`; symlink artifact
-paths are rejected before export, and store-level writes do not follow
-destination symlinks. The local SQLite artifact mirror is treated as a cache:
+paths and nonlocal file artifact URIs are rejected before export, local file
+URIs resolve to canonical paths under the artifact root, and store-level writes
+do not follow destination symlinks. The local SQLite artifact mirror is treated
+as a cache:
 malformed payload rows do not block stable-ID lookup from persisted job history,
 and list limits are clamped before slicing. This gives image and execution
 outputs an export path before real provider storage is configured. The Streamlit
