@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 22:43 CST after the
-job detail API projection hardening. The command set below now passes with
-628 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 23:01 CST after the
+job idempotency key projection hardening. The command set below now passes with
+629 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ job detail API projection hardening. The command set below now passes with
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 628 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 629 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 628 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 629 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -66,6 +66,7 @@ Command                                                               Result
                                                                       request-validation-error-projection/
                                                                       Streamlit-validation-error-sanitizer/
                                                                       job-detail-code-output-projection/
+                                                                      job-idempotency-key-projection/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -260,6 +261,16 @@ metadata are not echoed; local verification passes with 628 tests, 89% branch
 coverage, offline RAG eval, OpenAPI no-secret snapshot `diff_count=0`, and
 storage-schema 0 problems.
 
+The 2026-06-20 23:01 CST job idempotency key projection audit adds focused
+coverage for public `JobResponse` idempotency metadata. Exact job responses now
+replace raw submitted `idempotency_key` values with presence, short fingerprint,
+and `idempotency_key_exported=false` fields for create, duplicate-idempotent,
+and exact fetch responses. Internal durable job records still retain normalized
+keys for duplicate-job lookup. Tests verify that a secret-like idempotency key
+is not echoed while duplicate requests still reuse the same job; local
+verification passes with 629 tests, 89% branch coverage, offline RAG eval,
+OpenAPI no-secret snapshot `diff_count=0`, and storage-schema 0 problems.
+
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
 `/query/report` download responses preserving request/quota headers, and stable
@@ -411,6 +422,11 @@ Local job and worker bridge   verified      immediate and async job routes, idem
                                             logs without raw code files,
                                             stdout/stderr, tracebacks, or raw
                                             log owner metadata.
+                                            Raw idempotency keys are not echoed
+                                            in exact responses; presence,
+                                            fingerprint, and exported=false
+                                            fields preserve duplicate-job
+                                            observability.
                                             Admin status/report include local job-health alerts.
                                             Distributed queue remains planned.
 Artifacts and exports         verified      artifact list/download, checksums, and metadata mirrors

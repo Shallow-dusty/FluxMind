@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 22:43 CST
+Last updated: 2026-06-20 23:01 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,15 +23,15 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 22:43 refresh updates the current local repo verification counts,
-job detail API code-output projection boundary, Streamlit validation
-error-output sanitization boundary, API request validation error projection
-boundary, index rebuild job API projection redaction boundary, git/documentation
-drift evidence after the API validation docs sync, API validation/artifact
-download error-output redaction boundary, Streamlit admin/artifact error-output
-redaction boundary, and no-secret registry/readiness default state only. Dated
-live deployment and external research snapshots remain scoped to the times
-shown in their rows.
+The 2026-06-20 23:01 refresh updates the current local repo verification counts,
+job detail API idempotency-key projection boundary, job detail API code-output
+projection boundary, Streamlit validation error-output sanitization boundary,
+API request validation error projection boundary, index rebuild job API
+projection redaction boundary, git/documentation drift evidence after the API
+validation docs sync, API validation/artifact download error-output redaction
+boundary, Streamlit admin/artifact error-output redaction boundary, and
+no-secret registry/readiness default state only. Dated live deployment and
+external research snapshots remain scoped to the times shown in their rows.
 
 ## Current Baseline
 
@@ -44,13 +44,13 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation ddd17b1 fix: redact job detail code outputs
-Current docs/health    docs: record job detail projection audit status
+Current implementation d65a8de fix: redact job idempotency keys
+Current docs/health    docs: record job idempotency key audit status
 Status note     local no-key hardening through index rebuild job API projection,
                 API request validation projection, API validation/artifact
                 download, Streamlit admin/artifact/upload validation
                 error-output sanitization, and job detail code-output
-                projection is implemented and locally verified; the 22:43
+                plus idempotency-key projection is implemented and locally verified; the 23:01
                 refresh reconfirms no OpenAPI/storage/docs drift; the
                 local stack is not pushed to origin and not deployed to
                 Trace-Twin
@@ -58,7 +58,7 @@ Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 22:43 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 23:01 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -67,7 +67,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    628 passed, 2 known warnings
+pytest                                    629 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -101,6 +101,7 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           sanitizer/request-validation-error-
                                           projection/Streamlit-validation-
                                           error-sanitizer/job-detail-code-output-
+                                          projection/job-idempotency-key-
                                           projection anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against
