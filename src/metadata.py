@@ -119,6 +119,17 @@ def _normalize_topic_tags(*values: Any) -> list[str]:
     return tags
 
 
+def _manifest_entry_for_path(manifest: dict[str, dict], path: Path) -> dict[str, Any]:
+    source_path = project_relative(path)
+    entry = manifest.get(source_path)
+    if isinstance(entry, dict):
+        return entry
+    if PAPERS_LIBRARY_DIR not in path.parents and path.parent != PROJECT_ROOT / "papers":
+        return {}
+    entry = manifest.get(path.name)
+    return entry if isinstance(entry, dict) else {}
+
+
 @dataclass
 class PaperRecord:
     """Serializable metadata for one selectable paper."""
@@ -289,7 +300,7 @@ class CorpusMetadataStore:
         records = [
             self.upsert_paper(
                 path,
-                manifest_entry=manifest.get(path.name, {}),
+                manifest_entry=_manifest_entry_for_path(manifest, path),
                 active=path.resolve() in active_set,
             )
             for path in paths

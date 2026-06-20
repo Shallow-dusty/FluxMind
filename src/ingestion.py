@@ -597,13 +597,35 @@ def extract_pdf_structure_markers(
     return markers
 
 
+def _metadata_entry_for_path(entries: dict[str, dict], path: Path) -> dict[str, Any]:
+    source_path = _relative(path)
+    entry = entries.get(source_path)
+    if isinstance(entry, dict):
+        return entry
+    if PAPERS_LIBRARY_DIR not in path.parents and path.parent != PAPERS_DIR:
+        return {}
+    entry = entries.get(path.name)
+    return entry if isinstance(entry, dict) else {}
+
+
 def paper_metadata_entries(paths: list[Path], manifest: dict[str, dict] | None = None) -> dict[str, dict]:
-    """Return manifest-over-extracted metadata keyed by selectable filename."""
+    """Return manifest-over-extracted metadata keyed by source path, with filename fallback."""
     manifest = manifest or {}
-    return {
-        path.name: extract_pdf_bibliographic_metadata(path) | manifest.get(path.name, {})
-        for path in paths
-    }
+    entries: dict[str, dict] = {}
+    for path in paths:
+        source_path = _relative(path)
+        manifest_entry = manifest.get(source_path)
+        if not isinstance(manifest_entry, dict):
+            if PAPERS_LIBRARY_DIR in path.parents or path.parent == PAPERS_DIR:
+                manifest_entry = manifest.get(path.name, {})
+            else:
+                manifest_entry = {}
+        if not isinstance(manifest_entry, dict):
+            manifest_entry = {}
+        entry = extract_pdf_bibliographic_metadata(path) | manifest_entry
+        entries[source_path] = entry
+        entries.setdefault(path.name, entry)
+    return entries
 
 
 def refresh_paper_metadata() -> list[PaperRecord]:
@@ -622,7 +644,7 @@ def refresh_paper_metadata() -> list[PaperRecord]:
                 path = PROJECT_ROOT / record.source_path
                 record = store.upsert_paper(
                     path,
-                    manifest_entry=manifest.get(path.name, {}),
+                    manifest_entry=_metadata_entry_for_path(manifest, path),
                     active=True,
                     indexed_status="indexed",
                 )
@@ -886,7 +908,7 @@ def rebuild_vector_store_from_pdfs(
         source_path = _relative(path)
         metadata_store.upsert_paper(
             path,
-            manifest_entry=metadata_entries.get(path.name, {}),
+            manifest_entry=_metadata_entry_for_path(metadata_entries, path),
             active=True,
             indexed_status="indexed",
             chunk_count=chunk_counts_by_source.get(source_path, 0),

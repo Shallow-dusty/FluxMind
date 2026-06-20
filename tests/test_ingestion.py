@@ -440,6 +440,53 @@ def test_manifest_metadata_overrides_extracted_pdf_metadata(tmp_path: Path, monk
     assert records[0].authors == "Curated Author"
 
 
+def test_refresh_paper_metadata_keeps_same_filename_metadata_by_source_path(tmp_path: Path, monkeypatch):
+    import fitz
+
+    root = tmp_path
+    library = root / "papers" / "library"
+    uploads = root / "papers" / "uploads"
+    metadata_dir = root / "metadata"
+    library.mkdir(parents=True)
+    uploads.mkdir(parents=True)
+    library_pdf = library / "paper.pdf"
+    upload_pdf = uploads / "paper.pdf"
+
+    library_doc = fitz.open()
+    library_doc.new_page().insert_text((72, 72), "Extracted Library Title")
+    library_doc.save(library_pdf)
+    library_doc.close()
+
+    upload_doc = fitz.open()
+    upload_doc.new_page().insert_text((72, 72), "Uploaded Same Filename Title")
+    upload_doc.set_metadata({"author": "Upload Author"})
+    upload_doc.save(upload_pdf)
+    upload_doc.close()
+
+    (library / "manifest.json").write_text(
+        json.dumps({"paper.pdf": {"title": "Curated Library Title"}}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(ingestion, "PROJECT_ROOT", root)
+    monkeypatch.setattr(ingestion, "PAPERS_DIR", root / "papers")
+    monkeypatch.setattr(ingestion, "PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr(ingestion, "PAPERS_UPLOADS_DIR", uploads)
+    monkeypatch.setattr(ingestion, "PAPER_LIBRARY_MANIFEST", library / "manifest.json")
+    monkeypatch.setattr(ingestion, "FAISS_INDEX_DIR", root / "faiss_index")
+    monkeypatch.setattr(ingestion, "ACTIVE_PAPERS_FILE", root / "faiss_index" / "active_papers.json")
+    monkeypatch.setattr("src.metadata.PROJECT_ROOT", root)
+    monkeypatch.setattr("src.metadata.PAPERS_LIBRARY_DIR", library)
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_FILE", metadata_dir / "corpus.json")
+    monkeypatch.setattr("src.metadata.CORPUS_METADATA_DB_FILE", metadata_dir / "corpus.sqlite3")
+
+    records = {record.source_path: record for record in ingestion.refresh_paper_metadata()}
+
+    assert records["papers/library/paper.pdf"].title == "Curated Library Title"
+    assert records["papers/uploads/paper.pdf"].title == "Uploaded Same Filename Title"
+    assert records["papers/uploads/paper.pdf"].authors == "Upload Author"
+
+
 def test_load_library_manifest_ignores_invalid_or_non_object_manifest(tmp_path: Path, monkeypatch):
     library = tmp_path / "papers" / "library"
     library.mkdir(parents=True)
