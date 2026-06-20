@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 23:01 CST
+Snapshot time: 2026-06-20 23:12 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  d65a8de fix: redact job idempotency keys
-Current docs/health sync       docs: record job idempotency key audit status (this commit)
-Current local app-code HEAD    d65a8de fix: redact job idempotency keys
+Current implementation commit  c9d1f38 fix: redact job owner metadata
+Current docs/health sync       docs: record job owner metadata audit status (this commit)
+Current local app-code HEAD    c9d1f38 fix: redact job owner metadata
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the forty-six local commits below
-                               after this job idempotency key docs refresh commit
-Current local commit stack     docs: record job idempotency key audit status (this commit)
+                               by the forty-eight local commits below
+                               after this job owner metadata docs refresh commit
+Current local commit stack     docs: record job owner metadata audit status (this commit)
+                               c9d1f38 fix: redact job owner metadata
+                               887f53f docs: record job idempotency key audit status
                                d65a8de fix: redact job idempotency keys
                                2458fd8 docs: record job detail projection audit status
                                de19eda test: isolate code execution event assertion
@@ -141,6 +143,9 @@ Current refresh scope          local audit/forward-development commits for produ
                                job detail API idempotency key projection that
                                replaces raw keys with presence/fingerprint
                                fields while preserving idempotent reuse,
+                               job detail API owner metadata projection that
+                               replaces raw owner IDs/labels with
+                               presence/fingerprint/exported=false fields,
                                full-suite code execution event test isolation
                                for background job event noise,
                                and docs;
@@ -278,6 +283,52 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Job owner metadata projection follow-up on 2026-06-20 23:12 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_api.py -q            pass, 118 API tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 630 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including job detail
+                                                            API raw owner-metadata
+                                                            projection anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot;
+                                                            routes=69, operations=76
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+TestClient code job owner metadata repro                    pass, leaked=false for
+                                                            sk-secret-owner-id-12345678 and
+                                                            Bearer secret-owner-label-token;
+                                                            raw owner_id/owner_label exported=false;
+                                                            presence/fingerprint preserved
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 47],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up closes a public `JobResponse` detail projection gap for local job
+owner metadata. Exact job responses no longer echo raw submitted `owner_id` or
+`owner_label` values for create, exact fetch, retry, image-generation, async
+job, or corpus-profile rebuild responses. They expose `owner_id_present`,
+`owner_id_fingerprint`, `owner_label_present`, `owner_label_fingerprint`, and
+`owner_exported=false`, while the internal `JobRecord`, local exact
+`owner_id` filter, worker/retry execution, artifact attribution, and product
+guard inputs still retain normalized owner metadata for local operator
+workflows. No production deployment was performed, and
+`docs/DEPLOYMENT_STATUS.md` remains unchanged because no live Trace-Twin service
+facts were refreshed in this pass.
 
 Job idempotency key projection follow-up on 2026-06-20 23:01 CST:
 

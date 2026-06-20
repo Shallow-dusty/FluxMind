@@ -165,9 +165,11 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  d65a8de fix: redact job idempotency keys" in repo_status
-        and "Current docs/health sync       docs: record job idempotency key audit status (this commit)" in repo_status
-        and "by the forty-six local commits below" in repo_status
+        and "Current implementation commit  c9d1f38 fix: redact job owner metadata" in repo_status
+        and "Current docs/health sync       docs: record job owner metadata audit status (this commit)" in repo_status
+        and "by the forty-eight local commits below" in repo_status
+        and "c9d1f38 fix: redact job owner metadata" in repo_status
+        and "887f53f docs: record job idempotency key audit status" in repo_status
         and "d65a8de fix: redact job idempotency keys" in repo_status
         and "2458fd8 docs: record job detail projection audit status" in repo_status
         and "de19eda test: isolate code execution event assertion" in repo_status
@@ -179,6 +181,11 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Job owner metadata projection follow-up on 2026-06-20 23:12 CST" in repo_status
+        and "main...origin/main [ahead 47]" in repo_status
+        and "pass, 630 tests" in repo_status
+        and "sk-secret-owner-id-12345678" in repo_status
+        and "raw owner_id/owner_label exported=false" in repo_status
         and "Job idempotency key projection follow-up on 2026-06-20 23:01 CST" in repo_status
         and "main...origin/main [ahead 45]" in repo_status
         and "pass, 629 tests" in repo_status
@@ -285,7 +292,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 629 tests, 2 known warnings" in roadmap
+        and "pass, 630 tests, 2 known warnings" in roadmap
+        and "Job owner metadata projection audit" in roadmap
+        and "job-owner-metadata-projection" in roadmap
         and "Job idempotency key projection audit" in roadmap
         and "job-idempotency-key-projection" in roadmap
         and "Job detail API projection audit" in roadmap

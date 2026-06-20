@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  d65a8de fix: redact job idempotency keys" in text
-    assert "Current docs/health sync       docs: record job idempotency key audit status (this commit)" in text
-    assert "by the forty-six local commits below" in text
+    assert "Current implementation commit  c9d1f38 fix: redact job owner metadata" in text
+    assert "Current docs/health sync       docs: record job owner metadata audit status (this commit)" in text
+    assert "by the forty-eight local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    d65a8de fix: redact job idempotency keys" in text
-    assert "docs: record job idempotency key audit status (this commit)" in text
+    assert "Current local app-code HEAD    c9d1f38 fix: redact job owner metadata" in text
+    assert "docs: record job owner metadata audit status (this commit)" in text
+    assert "c9d1f38 fix: redact job owner metadata" in text
+    assert "887f53f docs: record job idempotency key audit status" in text
     assert "d65a8de fix: redact job idempotency keys" in text
     assert "2458fd8 docs: record job detail projection audit status" in text
     assert "de19eda test: isolate code execution event assertion" in text
@@ -110,6 +112,11 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Job owner metadata projection follow-up on 2026-06-20 23:12 CST" in text
+    assert "main...origin/main [ahead 47]" in text
+    assert "pass, 630 tests" in text
+    assert "sk-secret-owner-id-12345678" in text
+    assert "raw owner_id/owner_label exported=false" in text
     assert "Job idempotency key projection follow-up on 2026-06-20 23:01 CST" in text
     assert "main...origin/main [ahead 45]" in text
     assert "pass, 629 tests" in text
@@ -220,7 +227,9 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 629 tests, 2 known warnings" in text
+    assert "pass, 630 tests, 2 known warnings" in text
+    assert "Job owner metadata projection audit" in text
+    assert "job-owner-metadata-projection" in text
     assert "Job idempotency key projection audit" in text
     assert "job-idempotency-key-projection" in text
     assert "Job detail API projection audit" in text

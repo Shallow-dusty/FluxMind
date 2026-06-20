@@ -42,14 +42,17 @@ metadata/export, retrieval diagnostics, and deterministic offline RAG regression
 gates, plus the opt-in no-key Docker execution backend, structured execution
 input materialization guards, runtime-event metadata-value redaction, and
 public request validation error projection plus Streamlit validation
-error-output sanitization plus public job detail code-output and idempotency-key
-projection.
+error-output sanitization plus public job detail code-output, idempotency-key,
+and owner-metadata projection.
 
 Current verification run:
 
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
+Job owner metadata projection audit       2026-06-20 23:12 CST, checkout at
+                                          c9d1f38 before this docs refresh;
+                                          no production deployment performed
 Job idempotency key projection audit      2026-06-20 23:01 CST, checkout at
                                           d65a8de before this docs refresh;
                                           no production deployment performed
@@ -71,14 +74,14 @@ Git/documentation drift refresh           2026-06-20 22:01 CST, checkout at
 API validation error audit refresh        2026-06-20 21:50 CST, checkout at
                                           52eff68 before the API docs refresh;
                                           no production deployment performed
-.venv/bin/python -m pytest                pass, 629 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 630 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
                                              30 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/admin-on-demand-error-sanitizer/artifact-gallery-error-sanitizer/API-validation-error-sanitizer/index-rebuild-job-projection/request-validation-error-projection/Streamlit-validation-error-sanitizer/job-detail-code-output-projection/job-idempotency-key-projection/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/admin-on-demand-error-sanitizer/artifact-gallery-error-sanitizer/API-validation-error-sanitizer/index-rebuild-job-projection/request-validation-error-projection/Streamlit-validation-error-sanitizer/job-detail-code-output-projection/job-idempotency-key-projection/job-owner-metadata-projection/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 10 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
@@ -521,11 +524,15 @@ mirror payloads are skipped or refreshed from append-only JSONL rather than
 breaking list/get/idempotency/claim paths.
 Immediate and async job submissions can include `idempotency_key`; duplicate
 submissions for the same job kind and key return the existing persisted job, and
-missing keys still create fresh jobs.
+missing keys still create fresh jobs. Exact job detail responses project raw
+idempotency keys and raw owner IDs/labels as presence, short fingerprints, and
+exported=false flags rather than public raw values.
 Query and job submissions can also include optional local `owner_id` and
 `owner_label` metadata. These fields default to `local-user` / `Local user` and
 persist through durable jobs, job logs, query runtime events, artifacts, and
-admin summaries, but they are not identity, quota, tenancy, or billing controls.
+admin summaries, but public job detail responses expose only no-secret
+presence/fingerprint summaries and they are not identity, quota, tenancy, or
+billing controls.
 Async submissions can set `max_attempts` and `retry_backoff_s`; failed attempts
 are requeued as the same durable job until exhausted, then marked
 `dead_lettered` with no-secret transition logs.
