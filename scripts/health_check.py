@@ -1322,6 +1322,21 @@ def main() -> int:
         "Streamlit corpus profile panel installed",
         failures,
     )
+    profile_report_block = ""
+    if (
+        "selected_profile = st.selectbox(" in app_source
+        and 'if st.button(text["activate_profile"]' in app_source
+    ):
+        profile_report_block = app_source.split("selected_profile = st.selectbox(", 1)[
+            1
+        ].split('if st.button(text["activate_profile"]', 1)[0]
+    check(
+        "safe_streamlit_error_message(exc)" in profile_report_block
+        and "error = normalize_exception(exc)" not in profile_report_block
+        and "error.message" not in profile_report_block,
+        "Streamlit corpus profile report sanitizes failure message output",
+        failures,
+    )
     api_source = (PROJECT_ROOT / "api.py").read_text(encoding="utf-8")
     check("verify_configured_api_key_token" in api_source and "api_key_registry_configured" in api_source, "API auth supports local key registry", failures)
     check("enforce_product_quota" in api_source and "product_quota_guard" in api_source, "API query paths support local product quota guard", failures)

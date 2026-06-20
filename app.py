@@ -1977,8 +1977,11 @@ with st.sidebar:
                         use_container_width=True,
                     )
                 except Exception as exc:
-                    error = normalize_exception(exc)
-                    st.warning(text["profile_report_failed"].format(error=error.message))
+                    st.warning(
+                        text["profile_report_failed"].format(
+                            error=safe_streamlit_error_message(exc)
+                        )
+                    )
                 if st.button(text["activate_profile"], use_container_width=True):
                     profile = profile_store.get_profile(selected_profile)
                     set_active_paper_source_paths(profile.source_paths)

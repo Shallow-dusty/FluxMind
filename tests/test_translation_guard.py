@@ -199,6 +199,20 @@ def test_streamlit_upload_errors_sanitize_exception_output():
     assert 'safe_streamlit_error_text(text["upload_failed"], exc)' in upload_block
 
 
+def test_streamlit_profile_report_errors_sanitize_exception_output():
+    profile_block = APP_SOURCE.split("selected_profile = st.selectbox(", 1)[1].split(
+        'if st.button(text["activate_profile"]',
+        1,
+    )[0]
+
+    assert "def safe_streamlit_error_message" in APP_SOURCE
+    assert "error = normalize_exception(exc)" not in profile_block
+    assert "error.message" not in profile_block
+    assert "safe_streamlit_error_message(exc)" in profile_block
+    assert "st.warning(" in profile_block
+    assert 'text["profile_report_failed"].format(' in profile_block
+
+
 def test_streamlit_runtime_event_filter_covers_guard_events():
     assert "RUNTIME_EVENT_KIND_FILTER_OPTIONS" in APP_SOURCE
     for event_kind in [
