@@ -148,6 +148,29 @@ SENSITIVE_RUNTIME_EVENT_MESSAGE_PATTERNS = (
     re.compile(r"\bbearer\s+\S+", re.IGNORECASE),
 )
 SAFE_RUNTIME_EVENT_MESSAGE_REDACTION = "Runtime event message redacted for no-secret projection."
+SAFE_RUNTIME_EVENT_METADATA_VALUE_REDACTION = (
+    "Runtime event metadata value redacted for no-secret projection."
+)
+SENSITIVE_RUNTIME_EVENT_METADATA_VALUE_PATTERNS = (
+    re.compile(r"https?://\S+", re.IGNORECASE),
+    re.compile(r"file://\S+", re.IGNORECASE),
+    re.compile(r"\b[A-Za-z]:\\[^\s]+"),
+    re.compile(
+        r"(?<!\w)/(?:home|private|tmp|var|etc|opt|mnt|root|Users|papers|artifacts|metadata|jobs|faiss_index)(?:/[^\s]*)?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:api[_ -]?key|apikey|access[_ -]?token|accesstoken|token(?:[_ -]?value)?|secret(?:[_ -]?value)?|password|passwd|authorization(?:[_ -]?header)?|credential(?:[_ -]?value)?|rawprompt|prompt|finalanswer|answer|source[_ -]?path|sourcepath|file[_ -]?path|filepath)\b\s*[:=]",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:owner|user|workspace|tenant|member|customer)[_ -]?(?:id|ids|label|labels|name|names|email|emails)\b\s*[:=]",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b", re.IGNORECASE),
+    re.compile(r"\bbearer\s+\S+", re.IGNORECASE),
+    re.compile(r"\bsecret[-_][A-Za-z0-9_-]{4,}\b", re.IGNORECASE),
+)
 RUNTIME_EVENT_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
 SENSITIVE_RUNTIME_EVENT_REQUEST_ID_RE = re.compile(
     r"(authorization|bearer|api[-_\s]?key|token|secret|sk-[A-Za-z0-9])",
@@ -362,6 +385,10 @@ def sanitize_runtime_event_metadata(value: Any) -> tuple[Any, int]:
             clean_items.append(clean_item)
             redacted += nested_redacted
         return clean_items, redacted
+    if isinstance(value, str):
+        if any(pattern.search(value) for pattern in SENSITIVE_RUNTIME_EVENT_METADATA_VALUE_PATTERNS):
+            return SAFE_RUNTIME_EVENT_METADATA_VALUE_REDACTION, 1
+        return value, 0
     return value, redacted
 
 

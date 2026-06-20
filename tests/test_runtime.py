@@ -174,6 +174,65 @@ def test_append_runtime_event_sanitizes_raw_jsonl(tmp_path):
         assert sensitive not in raw
 
 
+def test_append_runtime_event_redacts_sensitive_metadata_values_under_safe_keys(tmp_path):
+    path = tmp_path / "runtime_events.jsonl"
+
+    event = append_runtime_event(
+        kind="admin_check",
+        code="runtime_probe",
+        message="safe",
+        request_id="req-values",
+        metadata={
+            "endpoint": "/admin/status",
+            "status": "failed with Bearer secret-token-value",
+            "details": "provider returned sk-testSecretToken123",
+            "source": "file:///private/source.pdf",
+            "notes": [
+                "safe note",
+                "debug path /tmp/fluxmind-secret/runtime.json",
+                "secret-private-value",
+            ],
+            "nested": {
+                "reason": "downloaded https://internal.example/secret",
+                "route": "/query",
+                "count": 2,
+            },
+        },
+        path=path,
+    )
+    raw = path.read_text(encoding="utf-8")
+    payload = json.loads(raw)
+
+    assert event.metadata_redacted_fields == 6
+    assert event.metadata == {
+        "endpoint": "/admin/status",
+        "status": "Runtime event metadata value redacted for no-secret projection.",
+        "details": "Runtime event metadata value redacted for no-secret projection.",
+        "source": "Runtime event metadata value redacted for no-secret projection.",
+        "notes": [
+            "safe note",
+            "Runtime event metadata value redacted for no-secret projection.",
+            "Runtime event metadata value redacted for no-secret projection.",
+        ],
+        "nested": {
+            "reason": "Runtime event metadata value redacted for no-secret projection.",
+            "route": "/query",
+            "count": 2,
+        },
+    }
+    assert payload["metadata"] == event.metadata
+    assert payload["metadata_redacted_fields"] == 6
+    for sensitive in (
+        "secret-token-value",
+        "sk-testSecretToken123",
+        "/private/source.pdf",
+        "/tmp/fluxmind-secret/runtime.json",
+        "secret-private-value",
+        "internal.example",
+    ):
+        assert sensitive not in raw
+
+
 def test_append_runtime_event_redacts_unsafe_request_id_from_raw_jsonl(tmp_path):
     path = tmp_path / "runtime_events.jsonl"
 
@@ -338,6 +397,65 @@ def test_runtime_event_safe_projection_redacts_legacy_unsafe_request_id():
         ensure_ascii=False,
         sort_keys=True,
     )
+
+
+def test_runtime_event_safe_projection_redacts_legacy_sensitive_metadata_values():
+    event = RuntimeEvent(
+        event_id="evt-value",
+        kind="admin_check",
+        code="runtime_probe",
+        message="safe",
+        created_at="2026-06-20T00:00:00+00:00",
+        request_id="req-value",
+        metadata={
+            "endpoint": "/admin/status",
+            "status": "failed with Bearer secret-token-value",
+            "details": "provider returned sk-testSecretToken123",
+            "source": "file:///private/source.pdf",
+            "notes": [
+                "safe note",
+                "debug path /tmp/fluxmind-secret/runtime.json",
+                "secret-private-value",
+            ],
+            "nested": {
+                "reason": "downloaded https://internal.example/secret",
+                "route": "/query",
+                "count": 2,
+            },
+        },
+    )
+
+    safe = runtime_event_to_safe_dict(event, include_request_id=True)
+
+    assert safe["metadata_redacted_fields"] == 6
+    assert safe["metadata"] == {
+        "endpoint": "/admin/status",
+        "status": "Runtime event metadata value redacted for no-secret projection.",
+        "details": "Runtime event metadata value redacted for no-secret projection.",
+        "source": "Runtime event metadata value redacted for no-secret projection.",
+        "notes": [
+            "safe note",
+            "Runtime event metadata value redacted for no-secret projection.",
+            "Runtime event metadata value redacted for no-secret projection.",
+        ],
+        "nested": {
+            "reason": "Runtime event metadata value redacted for no-secret projection.",
+            "route": "/query",
+            "count": 2,
+        },
+    }
+    payload = json.dumps(safe, ensure_ascii=False, sort_keys=True)
+    assert "/admin/status" in payload
+    assert "/query" in payload
+    for sensitive in (
+        "secret-token-value",
+        "sk-testSecretToken123",
+        "/private/source.pdf",
+        "/tmp/fluxmind-secret/runtime.json",
+        "secret-private-value",
+        "internal.example",
+    ):
+        assert sensitive not in payload
 
 
 def test_runtime_event_request_id_sanitizer_preserves_safe_correlation_ids():
