@@ -713,6 +713,29 @@ def test_product_registry_cli_member_and_permission_check(monkeypatch, tmp_path,
             "product_registry.py",
             "--db",
             str(db_path),
+            "add-member",
+            "--workspace-id",
+            "lab-workspace",
+            "--user-id",
+            "viewer/secret@example.test",
+            "--role",
+            "viewer",
+        ],
+    )
+    assert product_registry_cli.main() == 0
+    unsafe_member_output = capsys.readouterr().out
+    unsafe_member = json.loads(unsafe_member_output)["member"]
+    assert unsafe_member["workspace_id"] == "lab-workspace"
+    assert unsafe_member["user_id"].startswith("user_")
+    assert "viewer/secret@example.test" not in unsafe_member_output
+    assert "secret@example.test" not in unsafe_member_output
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
             "check-permission",
             "--workspace-id",
             "lab-workspace",

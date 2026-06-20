@@ -225,18 +225,14 @@ def main() -> int:
                 "secrets_exported": False,
             }
         elif args.command == "add-member":
-            registry.add_member(
+            member_payload = registry.add_member(
                 workspace_id=args.workspace_id,
                 user_id=args.user_id,
                 label=args.user_label,
                 role=args.role,
             )
             payload = {
-                "member": {
-                    "workspace_id": args.workspace_id,
-                    "user_id": args.user_id,
-                    "role": args.role,
-                },
+                "member": member_payload,
                 "content_exported": False,
                 "secrets_exported": False,
             }

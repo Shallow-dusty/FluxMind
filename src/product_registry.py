@@ -183,6 +183,26 @@ class LocalProductRegistry:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_members_user ON workspace_members(user_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_workspace_metric ON usage_events(workspace_id, metric)")
 
+    def _require_active_workspace(self, workspace_id: str) -> None:
+        self.ensure_schema()
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT 1 FROM workspaces WHERE workspace_id = ? AND status = 'active'",
+                (workspace_id,),
+            ).fetchone()
+        if row is None:
+            raise ValueError("Product workspace not found.")
+
+    def _require_active_user(self, user_id: str) -> None:
+        self.ensure_schema()
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT 1 FROM product_users WHERE user_id = ? AND status = 'active'",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            raise ValueError("Product user not found.")
+
     def upsert_user(
         self,
         *,
@@ -281,10 +301,11 @@ class LocalProductRegistry:
         user_id: str,
         label: str | None = None,
         role: str = "member",
-    ) -> None:
+    ) -> dict[str, Any]:
         self.ensure_schema()
-        user = self.upsert_user(user_id=user_id, label=label)
         safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        self._require_active_workspace(safe_workspace_id)
+        user = self.upsert_user(user_id=user_id, label=label)
         safe_role = role if role in {"owner", "admin", "member", "viewer"} else "member"
         now = _utc_now()
         with sqlite3.connect(self.db_path) as conn:
@@ -301,6 +322,14 @@ class LocalProductRegistry:
                 """,
                 (safe_workspace_id, user.user_id, safe_role, now, now),
             )
+        return {
+            "workspace_id": safe_workspace_id,
+            "user_id": user.user_id,
+            "role": safe_role,
+            "status": "active",
+            "content_exported": False,
+            "secrets_exported": False,
+        }
 
     def set_quota(
         self,
@@ -312,6 +341,7 @@ class LocalProductRegistry:
     ) -> dict[str, Any]:
         self.ensure_schema()
         safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        self._require_active_workspace(safe_workspace_id)
         safe_metric = _safe_identifier(metric, prefix="metric")
         limit_int = max(0, int(limit_value))
         window_int = max(0, int(window_s))
@@ -349,7 +379,9 @@ class LocalProductRegistry:
     ) -> dict[str, Any]:
         self.ensure_schema()
         safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        self._require_active_workspace(safe_workspace_id)
         safe_user_id = _safe_identifier(user_id, prefix="user")
+        self._require_active_user(safe_user_id)
         safe_metric = _safe_identifier(metric, prefix="metric")
         amount_int = max(0, int(amount))
         safe_source = _safe_label(source, "manual")
@@ -504,7 +536,9 @@ class LocalProductRegistry:
         """Check a local quota window and optionally record no-secret usage."""
         self.ensure_schema()
         safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        self._require_active_workspace(safe_workspace_id)
         safe_user_id = _safe_identifier(user_id, prefix="user")
+        self._require_active_user(safe_user_id)
         safe_metric = _safe_identifier(metric, prefix="metric")
         amount_int = max(0, int(amount))
         safe_source = _safe_label(source, "runtime")
@@ -636,6 +670,7 @@ class LocalProductRegistry:
     ) -> dict[str, Any]:
         self.ensure_schema()
         safe_workspace_id = _safe_identifier(workspace_id, prefix="ws")
+        self._require_active_workspace(safe_workspace_id)
         safe_mode = _safe_identifier(billing_mode, prefix="billing")
         safe_status = status if status in {"active", "disabled"} else "active"
         now = _utc_now()

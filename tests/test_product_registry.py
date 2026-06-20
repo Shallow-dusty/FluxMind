@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from src.product_registry import LocalProductRegistry, product_registry_backend_status
 
 
@@ -85,17 +87,80 @@ def test_product_registry_sanitizes_invalid_ids(tmp_path):
 def test_product_registry_finds_workspace_for_member(tmp_path):
     registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
     workspace = registry.create_workspace(workspace_id="ws-main", owner_user_id="owner")
-    registry.add_member(workspace_id=workspace.workspace_id, user_id="member", role="member")
+    member = registry.add_member(workspace_id=workspace.workspace_id, user_id="member", role="member")
 
     membership = registry.workspace_for_user(user_id="member")
     requested = registry.workspace_for_user(user_id="member", workspace_id="ws-main")
     missing = registry.workspace_for_user(user_id="member", workspace_id="ws-other")
 
+    assert member["workspace_id"] == "ws-main"
+    assert member["user_id"] == "member"
+    assert member["secrets_exported"] is False
     assert membership["workspace_id"] == "ws-main"
     assert membership["role"] == "member"
     assert requested["workspace_id"] == "ws-main"
     assert requested["secrets_exported"] is False
     assert missing is None
+
+
+def test_product_registry_rejects_orphan_workspace_writes(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+
+    with pytest.raises(ValueError, match="Product workspace not found"):
+        registry.add_member(workspace_id="missing-ws", user_id="member", role="member")
+    with pytest.raises(ValueError, match="Product workspace not found"):
+        registry.set_quota(
+            workspace_id="missing-ws",
+            metric="requests",
+            limit_value=1,
+            window_s=60,
+        )
+    with pytest.raises(ValueError, match="Product workspace not found"):
+        registry.record_usage(
+            workspace_id="missing-ws",
+            user_id="member",
+            metric="requests",
+            amount=1,
+        )
+    with pytest.raises(ValueError, match="Product workspace not found"):
+        registry.set_billing_account(workspace_id="missing-ws")
+    with pytest.raises(ValueError, match="Product workspace not found"):
+        registry.quota_decision(
+            workspace_id="missing-ws",
+            user_id="member",
+            metric="requests",
+        )
+
+    status = registry.status()
+    assert status["workspace_count"] == 0
+    assert status["member_count"] == 0
+    assert status["quota_limit_count"] == 0
+    assert status["usage_event_count"] == 0
+    assert status["billing_account_count"] == 0
+
+
+def test_product_registry_rejects_orphan_usage_user(tmp_path):
+    registry = LocalProductRegistry(tmp_path / "product_registry.sqlite3")
+    workspace = registry.create_workspace(workspace_id="usage-ws", owner_user_id="owner")
+
+    with pytest.raises(ValueError, match="Product user not found"):
+        registry.record_usage(
+            workspace_id=workspace.workspace_id,
+            user_id="missing-user",
+            metric="requests",
+            amount=1,
+        )
+    with pytest.raises(ValueError, match="Product user not found"):
+        registry.quota_decision(
+            workspace_id=workspace.workspace_id,
+            user_id="missing-user",
+            metric="requests",
+        )
+
+    status = registry.status()
+    assert status["workspace_count"] == 1
+    assert status["user_count"] == 1
+    assert status["usage_event_count"] == 0
 
 
 def test_product_registry_permission_decision_enforces_local_roles(tmp_path):
