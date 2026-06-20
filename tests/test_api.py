@@ -3592,6 +3592,31 @@ def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatc
     assert job["result"]["runtime_metadata"]["memory_mb"] == "512"
 
 
+def test_local_python_job_endpoint_handles_input_path_conflict(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/code/python-local",
+        json={
+            "entrypoint": "main.py",
+            "files": {
+                "main.py": "print('should-not-run')",
+                "main.py/helper.txt": "conflict",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "code_execution"
+    assert job["status"] == "failed"
+    assert job["error"]["code"] == "execution_failed"
+    assert "could not be materialized: main.py/helper.txt" in job["result"]["stderr"]
+    assert "/tmp/fluxmind-" not in job["result"]["stderr"]
+
+
 def test_local_python_job_endpoint_uses_configured_docker_backend(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")

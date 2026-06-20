@@ -701,11 +701,13 @@ def _materialize_execution_files(
 ) -> tuple[Path, set[Path] | None, CodeExecutionResult | None]:
     """Write request files into a temp workdir or return a structured failure."""
     input_files: set[Path] = set()
+    current_name = ""
     try:
         if len(request.files) > MAX_EXECUTION_FILES:
             raise ValueError(f"Too many execution input files: {len(request.files)} > {MAX_EXECUTION_FILES}")
         total_bytes = 0
         for name, content in request.files.items():
+            current_name = name
             target = _resolve_workdir_path(workdir, name)
             content_bytes = content.encode("utf-8")
             byte_count = len(content_bytes)
@@ -723,6 +725,7 @@ def _materialize_execution_files(
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content_bytes)
             input_files.add(target.resolve())
+        current_name = request.entrypoint
         entrypoint = _resolve_workdir_path(workdir, request.entrypoint)
     except ValueError as exc:
         return (
@@ -732,6 +735,17 @@ def _materialize_execution_files(
                 exit_code=2,
                 stdout="",
                 stderr=str(exc),
+                runtime_metadata=runtime_metadata,
+            ),
+        )
+    except OSError:
+        return (
+            workdir / request.entrypoint,
+            None,
+            CodeExecutionResult(
+                exit_code=2,
+                stdout="",
+                stderr=f"Execution input file could not be materialized: {current_name}",
                 runtime_metadata=runtime_metadata,
             ),
         )
@@ -979,7 +993,7 @@ class LocalPythonExecutionProvider(CodeExecutionProvider):
             )
             if failure is not None:
                 return failure
-            if not entrypoint.exists():
+            if not entrypoint.is_file():
                 return CodeExecutionResult(
                     exit_code=2,
                     stdout="",
@@ -1140,7 +1154,7 @@ class LocalOctaveExecutionProvider(CodeExecutionProvider):
             )
             if failure is not None:
                 return failure
-            if not entrypoint.exists():
+            if not entrypoint.is_file():
                 return CodeExecutionResult(
                     exit_code=2,
                     stdout="",
@@ -1282,7 +1296,7 @@ class DockerExecutionProvider(CodeExecutionProvider):
             )
             if failure is not None:
                 return failure
-            if not entrypoint.exists():
+            if not entrypoint.is_file():
                 return CodeExecutionResult(
                     exit_code=2,
                     stdout="",

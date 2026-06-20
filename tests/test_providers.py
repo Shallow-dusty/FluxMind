@@ -418,6 +418,32 @@ def test_docker_execution_provider_rejects_policy_violation_before_container(mon
     assert "python_import_not_allowed" in result.stderr
 
 
+def test_docker_execution_provider_rejects_materialization_conflict_before_container(monkeypatch):
+    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
+
+    def fail_popen(*_args, **_kwargs):
+        raise AssertionError("input path conflict should not start docker")
+
+    monkeypatch.setattr("src.providers.subprocess.Popen", fail_popen)
+    provider = DockerExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": "print('should-not-run')",
+                "main.py/helper.txt": "conflict",
+            },
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 2
+    assert "could not be materialized: main.py/helper.txt" in result.stderr
+    assert "/tmp/fluxmind-" not in result.stderr
+
+
 def test_local_python_execution_provider_captures_generated_files(tmp_path: Path):
     provider = LocalPythonExecutionProvider(LocalArtifactStore(tmp_path / "artifacts"))
 
@@ -678,6 +704,43 @@ def test_local_python_execution_provider_rejects_missing_entrypoint_file():
     assert result.success is False
     assert result.exit_code == 2
     assert "Entrypoint not found: main.py" in result.stderr
+
+
+def test_local_python_execution_provider_rejects_materialization_path_conflict():
+    provider = LocalPythonExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={
+                "main.py": "print('should-not-run')",
+                "main.py/helper.txt": "conflict",
+            },
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 2
+    assert "could not be materialized: main.py/helper.txt" in result.stderr
+    assert "/tmp/fluxmind-" not in result.stderr
+
+
+def test_local_python_execution_provider_rejects_directory_entrypoint():
+    provider = LocalPythonExecutionProvider()
+
+    result = provider.run(
+        CodeExecutionRequest(
+            language="python",
+            entrypoint="main.py",
+            files={"main.py/helper.txt": "not a script"},
+        )
+    )
+
+    assert result.success is False
+    assert result.exit_code == 2
+    assert "Entrypoint not found: main.py" in result.stderr
+    assert result.stdout == ""
 
 
 def test_local_python_execution_provider_rejects_too_many_files():
