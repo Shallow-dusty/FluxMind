@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  fix: redact API key public metadata (this commit)" in text
-    assert "Current docs/health sync       fix: redact API key public metadata (this commit)" in text
-    assert "by the twenty-four local commits below" in text
+    assert "Current implementation commit  042e6d0 fix: redact API key public metadata" in text
+    assert "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in text
+    assert "by the twenty-five local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    fix: redact API key public metadata (this commit)" in text
-    assert "fix: redact API key public metadata (this commit)" in text
+    assert "Current local app-code HEAD    042e6d0 fix: redact API key public metadata" in text
+    assert "docs: refresh git and documentation drift status (this commit)" in text
+    assert "042e6d0 fix: redact API key public metadata" in text
     assert "c7b6d9d docs: refresh git and drift status" in text
     assert "6066547 docs: record runtime event redaction audit" in text
     assert "1173ea8 fix: redact runtime event metadata values" in text
@@ -91,6 +92,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "API-key public metadata projection follow-up on 2026-06-20 16:16 CST" in text
     assert "create/list/verify/revoke now removes raw owner IDs" in text
     assert "presence booleans and short fingerprints" in text
+    assert "Git/documentation drift refresh on 2026-06-20 20:10 CST" in text
+    assert "share tokens/URLs exported=false" in text
+    assert "no OpenAPI no-secret snapshot drift" in text
     assert "Git/docs drift refresh on 2026-06-20 16:08 CST" in text
     assert "pass, 17 docs/feature-audit/" in text
     assert "No production deployment was" in text

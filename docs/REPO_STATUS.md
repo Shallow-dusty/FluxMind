@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 16:16 CST
+Snapshot time: 2026-06-20 20:10 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,14 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  fix: redact API key public metadata (this commit)
-Current docs/health sync       fix: redact API key public metadata (this commit)
-Current local app-code HEAD    fix: redact API key public metadata (this commit)
+Current implementation commit  042e6d0 fix: redact API key public metadata
+Current docs/health sync       docs: refresh git and documentation drift status (this commit)
+Current local app-code HEAD    042e6d0 fix: redact API key public metadata
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the twenty-four local commits below
-                               after this API-key hardening commit
-Current local commit stack     fix: redact API key public metadata (this commit)
+                               by the twenty-five local commits below
+                               after this documentation drift refresh commit
+Current local commit stack     docs: refresh git and documentation drift status (this commit)
+                               042e6d0 fix: redact API key public metadata
                                c7b6d9d docs: refresh git and drift status
                                6066547 docs: record runtime event redaction audit
                                1173ea8 fix: redact runtime event metadata values
@@ -89,6 +90,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                git/docs drift refresh,
                                API-key lifecycle public metadata projection
                                hardening,
+                               final git/documentation drift refresh with
+                               current no-drift gate evidence,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -224,6 +227,58 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Git/documentation drift refresh on 2026-06-20 20:10 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_docs_status.py        pass, 17 docs/feature-audit/
+  tests/test_feature_audit_docs.py tests/test_translation_guard.py
+                                                            translation guard tests
+.venv/bin/python -m pytest -q                              pass, 616 tests, 2 known warnings
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, repo-status and feature anchors;
+                                                            local FAISS index and active-paper
+                                                            selection absent in this checkout,
+                                                            so those runtime checks were skipped
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+.venv/bin/python scripts/api_key_registry.py status        pass, backend=none, available=false,
+  --format markdown                                         active_keys=0, secrets_exported=false
+.venv/bin/python scripts/product_registry.py status        pass, backend=none, available=false,
+  --format markdown                                         workspaces=0, secrets_exported=false
+.venv/bin/python scripts/share_link_registry.py status     pass, backend=none, available=false,
+  --format markdown                                         active_links=0, secrets_exported=false,
+                                                            share tokens/URLs exported=false
+.venv/bin/python scripts/product_readiness.py              pass, local_foundation_ready=true,
+  --format markdown                                         activation_ready=false with expected
+                                                            identity/quota/billing blockers
+.venv/bin/python scripts/provider_readiness.py             pass, local_foundation_ready=true,
+  --format markdown                                         activation_ready=false with expected
+                                                            provider/MATLAB blockers
+.venv/bin/python scripts/quality_readiness.py              pass, local_foundation_ready=true,
+  --format markdown                                         small_group/community false without
+                                                            supplied live report evidence
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 24],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+This pass refreshes repo and documentation status after the API-key metadata
+projection hardening. It confirms no OpenAPI no-secret snapshot drift, no
+storage-schema drift, no docs/feature-anchor drift, and no whitespace drift in
+the current checkout. No production deployment was performed, and
+`docs/DEPLOYMENT_STATUS.md` remains unchanged because no live Trace-Twin service
+facts were refreshed in this pass.
 
 API-key public metadata projection follow-up on 2026-06-20 16:16 CST:
 

@@ -165,9 +165,9 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  fix: redact API key public metadata (this commit)" in repo_status
-        and "Current docs/health sync       fix: redact API key public metadata (this commit)" in repo_status
-        and "by the twenty-four local commits below" in repo_status
+        and "Current implementation commit  042e6d0 fix: redact API key public metadata" in repo_status
+        and "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in repo_status
+        and "by the twenty-five local commits below" in repo_status
         and "c7b6d9d docs: refresh git and drift status" in repo_status
         and "6066547 docs: record runtime event redaction audit" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
@@ -176,6 +176,9 @@ def main() -> int:
         and "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST"
         in repo_status
         and "Octave-aware code-output fallback" in repo_status
+        and "Git/documentation drift refresh on 2026-06-20 20:10 CST" in repo_status
+        and "no OpenAPI no-secret snapshot drift" in repo_status
+        and "share tokens/URLs exported=false" in repo_status
         and "API-key public metadata projection follow-up on 2026-06-20 16:16 CST" in repo_status
         and "create/list/verify/revoke now removes raw owner IDs" in repo_status
         and "Git/docs drift refresh on 2026-06-20 16:08 CST" in repo_status
