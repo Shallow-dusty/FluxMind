@@ -1388,6 +1388,7 @@ def main() -> int:
     check(
         "def public_error_detail" in api_source
         and "detail=str(exc)" not in api_source
+        and 'detail={"code": str(exc)}' not in api_source
         and 'public_error_detail("artifact_export_denied")' in api_source
         and api_source.count('public_error_detail("invalid_corpus_source_path")') >= 5,
         "API validation errors sanitize exception text",
@@ -1451,6 +1452,13 @@ def main() -> int:
     check("/jobs/index/rebuild" in api_source, "index rebuild job route installed", failures)
     check("/jobs/async/index/rebuild" in api_source, "async index rebuild job route installed", failures)
     test_api_source = (PROJECT_ROOT / "tests" / "test_api.py").read_text(encoding="utf-8")
+    check(
+        'public_error_detail("invalid_share_link_request")' in api_source
+        and 'detail={"code": str(exc)}' not in api_source
+        and "test_admin_share_link_create_sanitizes_value_error_detail" in test_api_source,
+        "API share-link create errors sanitize exception text",
+        failures,
+    )
     check(
         "def public_job_request" in api_source
         and "def public_job_result" in api_source

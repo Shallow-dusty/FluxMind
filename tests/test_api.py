@@ -913,6 +913,39 @@ def test_admin_share_link_registry_routes_use_local_backend(tmp_path, monkeypatc
     assert "share_link_id" not in events[-1]["metadata"]
 
 
+def test_admin_share_link_create_sanitizes_value_error_detail(monkeypatch):
+    secret_error = "bad resource_ref=/tmp/sk-secret-share.pdf token=sk-secret-share-token"
+
+    class FailingShareLinkRegistry:
+        def create_link(self, **_kwargs):
+            raise ValueError(secret_error)
+
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(
+        api,
+        "require_local_share_link_registry",
+        lambda: FailingShareLinkRegistry(),
+    )
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/admin/share-links",
+        json={
+            "workspace_id": "lab-ws",
+            "resource_kind": "paper",
+            "resource_ref": "private-paper-id",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {"code": "invalid_share_link_request"}
+    rendered = json.dumps(response.json(), sort_keys=True)
+    assert secret_error not in rendered
+    assert "/tmp/sk-secret-share.pdf" not in rendered
+    assert "sk-secret-share-token" not in rendered
+    assert "private-paper-id" not in rendered
+
+
 def test_admin_share_link_registry_routes_report_disabled_backend(monkeypatch):
     monkeypatch.setattr(api, "API_TOKEN", "")
     monkeypatch.setattr(api, "SHARE_LINK_TOKEN_STORE_BACKEND", "none")

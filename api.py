@@ -3727,7 +3727,10 @@ def admin_share_link_create(
             max_redemptions=req.max_redemptions,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=public_error_detail("invalid_share_link_request"),
+        ) from exc
     except (OSError, sqlite3.Error) as exc:
         raise HTTPException(status_code=500, detail={"code": "share_link_write_failed"}) from exc
     share_link = payload.get("share_link", {}) or {}
