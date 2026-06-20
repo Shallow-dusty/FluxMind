@@ -990,7 +990,7 @@ def render_share_link_registry_management() -> None:
         st.error(str(exc))
         return
     st.json({"share_links": links})
-    default_workspace_id = links[0]["workspace_id"] if links else "local-workspace"
+    default_workspace_id = "local-workspace"
 
     with st.form("share_link_create_form"):
         workspace_id = st.text_input(

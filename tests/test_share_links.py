@@ -23,12 +23,16 @@ def test_share_link_registry_lifecycle_is_hash_only(tmp_path):
     assert token.startswith("fms_")
     assert link["link_id"].startswith("share_")
     assert link["resource_kind"] == "corpus_profile"
+    assert link["workspace_present"] is True
+    assert link["workspace_fingerprint"]
     assert link["created_by_user_present"] is True
     assert link["created_by_user_fingerprint"]
     assert link["resource_ref_present"] is True
     assert link["resource_ref_fingerprint"]
     assert link["description_present"] is True
     assert link["description_fingerprint"]
+    assert "workspace_id" not in link
+    assert "lab-ws" not in json.dumps(link, sort_keys=True)
     assert "private-profile-id" not in json.dumps(link, sort_keys=True)
     assert "owner-user" not in json.dumps(link, sort_keys=True)
     assert "/private/hunter2" not in json.dumps(link, sort_keys=True)
@@ -38,6 +42,8 @@ def test_share_link_registry_lifecycle_is_hash_only(tmp_path):
     rendered = json.dumps(listed, sort_keys=True)
     assert len(listed) == 1
     assert token not in rendered
+    assert "workspace_id" not in rendered
+    assert "lab-ws" not in rendered
     assert "private-profile-id" not in rendered
     assert "owner-user" not in rendered
     assert "/private/hunter2" not in rendered
@@ -47,6 +53,8 @@ def test_share_link_registry_lifecycle_is_hash_only(tmp_path):
     assert first_resolution["valid"] is True
     assert first_resolution["share_link"]["redeem_count"] == 1
     assert token not in json.dumps(first_resolution, sort_keys=True)
+    assert "workspace_id" not in json.dumps(first_resolution, sort_keys=True)
+    assert "lab-ws" not in json.dumps(first_resolution, sort_keys=True)
     assert "private-profile-id" not in json.dumps(first_resolution, sort_keys=True)
     assert "owner-user" not in json.dumps(first_resolution, sort_keys=True)
     assert "/private/hunter2" not in json.dumps(first_resolution, sort_keys=True)

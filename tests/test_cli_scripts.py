@@ -363,6 +363,10 @@ def test_share_link_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
     token = created["token"]
     link_id = created["share_link"]["link_id"]
     assert token.startswith("fms_")
+    assert "workspace_id" not in created["share_link"]
+    assert created["share_link"]["workspace_present"] is True
+    assert created["share_link"]["workspace_fingerprint"]
+    assert "lab-ws" not in json.dumps(created["share_link"], sort_keys=True)
     assert "private-profile-id" not in json.dumps(created["share_link"], sort_keys=True)
     assert "owner-user" not in json.dumps(created["share_link"], sort_keys=True)
     assert "/private/hunter2" not in json.dumps(created["share_link"], sort_keys=True)
@@ -377,6 +381,8 @@ def test_share_link_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
     rendered = json.dumps(resolved, sort_keys=True)
     assert resolved["resolution"]["valid"] is True
     assert token not in rendered
+    assert "workspace_id" not in rendered
+    assert "lab-ws" not in rendered
     assert "private-profile-id" not in rendered
     assert "owner-user" not in rendered
     assert "/private/hunter2" not in rendered
@@ -398,6 +404,8 @@ def test_share_link_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
     assert "FluxMind Share Link Registry" in listed
     assert link_id in listed
     assert token not in listed
+    assert "workspace_id" not in listed
+    assert "lab-ws" not in listed
     assert "private-profile-id" not in listed
     assert "owner-user" not in listed
     assert "/private/hunter2" not in listed
@@ -412,6 +420,8 @@ def test_share_link_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
     assert revoked["ok"] is True
     assert revoked["share_link"]["revoked_at"]
     assert token not in json.dumps(revoked, sort_keys=True)
+    assert "workspace_id" not in json.dumps(revoked, sort_keys=True)
+    assert "lab-ws" not in json.dumps(revoked, sort_keys=True)
 
 
 def test_share_link_registry_cli_rejects_markdown_create_before_writing(monkeypatch, tmp_path, capsys):
@@ -467,7 +477,8 @@ def test_share_link_registry_cli_markdown_shapes_are_no_secret():
             "token": "fms_secret-token",
             "share_link": {
                 "link_id": "share_1",
-                "workspace_id": "lab-ws",
+                "workspace_present": True,
+                "workspace_fingerprint": "abc123",
                 "resource_kind": "corpus_profile",
                 "share_token_exported": False,
             },
@@ -506,6 +517,7 @@ def test_share_link_registry_cli_markdown_shapes_are_no_secret():
     assert "Reason: share_link_revoked" in resolution
     assert "Revoked at: 2026-06-20T00:00:00+00:00" in revoked
     assert "fms_secret-token" not in rendered
+    assert "lab-ws" not in rendered
     assert "Share token exported: false" in rendered
 
 

@@ -812,6 +812,10 @@ def test_admin_share_link_registry_routes_use_local_backend(tmp_path, monkeypatc
     assert status.json()["status"]["available"] is True
     assert created.status_code == 200
     assert token.startswith("fms_")
+    assert "workspace_id" not in created.json()["share_link"]
+    assert created.json()["share_link"]["workspace_present"] is True
+    assert created.json()["share_link"]["workspace_fingerprint"]
+    assert "lab-ws" not in json.dumps(created.json()["share_link"], sort_keys=True)
     assert "private-profile-id" not in str(created.json()["share_link"])
     assert "owner-user" not in str(created.json()["share_link"])
     assert "/private/hunter2" not in str(created.json()["share_link"])
@@ -829,6 +833,8 @@ def test_admin_share_link_registry_routes_use_local_backend(tmp_path, monkeypatc
     for payload in [listed.json(), resolved.json(), revoked.json(), revoked_resolution.json()]:
         rendered = json.dumps(payload, sort_keys=True)
         assert token not in rendered
+        assert "workspace_id" not in rendered
+        assert "lab-ws" not in rendered
         assert "private-profile-id" not in rendered
         assert "owner-user" not in rendered
         assert "/private/hunter2" not in rendered

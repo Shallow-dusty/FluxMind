@@ -58,6 +58,7 @@ class ShareLinkRecord:
 
     def to_public_dict(self) -> dict[str, Any]:
         payload = asdict(self)
+        payload.pop("workspace_id", None)
         payload.pop("resource_ref", None)
         payload.pop("description", None)
         payload.pop("created_by_user_id", None)
@@ -66,6 +67,8 @@ class ShareLinkRecord:
                 "active": self.active and not self.exhausted,
                 "expired": self.expired,
                 "exhausted": self.exhausted,
+                "workspace_present": bool(self.workspace_id),
+                "workspace_fingerprint": _safe_value_fingerprint(self.workspace_id),
                 "created_by_user_present": bool(self.created_by_user_id),
                 "created_by_user_fingerprint": _safe_value_fingerprint(
                     self.created_by_user_id

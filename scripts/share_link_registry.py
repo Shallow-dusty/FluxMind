@@ -42,7 +42,8 @@ def render_markdown(payload: dict) -> str:
                 "## Created Share Link",
                 "",
                 f"- Link ID: {link.get('link_id', '')}",
-                f"- Workspace: {link.get('workspace_id', '')}",
+                f"- Workspace present: {str(link.get('workspace_present', False)).lower()}",
+                f"- Workspace fingerprint: {link.get('workspace_fingerprint', '')}",
                 f"- Resource kind: {link.get('resource_kind', '')}",
                 "- Token: shown once in JSON output only",
                 f"- Share token exported: {str(link.get('share_token_exported', False)).lower()}",
@@ -55,7 +56,8 @@ def render_markdown(payload: dict) -> str:
             lines.append("- none")
         for link in links:
             lines.append(
-                f"- {link.get('link_id', '')}: workspace={link.get('workspace_id', '')}, "
+                f"- {link.get('link_id', '')}: "
+                f"workspace_present={str(link.get('workspace_present', False)).lower()}, "
                 f"kind={link.get('resource_kind', '')}, "
                 f"active={str(link.get('active', False)).lower()}, "
                 f"redeem_count={link.get('redeem_count', 0)}"
