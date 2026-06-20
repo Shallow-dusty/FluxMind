@@ -165,9 +165,13 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  49cdb82 fix: sanitize share-link UI errors" in repo_status
-        and "Current docs/health sync       docs: record share-link UI error audit status (this commit)" in repo_status
-        and "by the twenty-seven local commits below" in repo_status
+        and "Current implementation commit  951c0cb fix: sanitize product registry UI errors" in repo_status
+        and "Current docs/health sync       docs: record product registry UI error audit status (this commit)" in repo_status
+        and "by the twenty-nine local commits below" in repo_status
+        and "Product registry Streamlit error-output follow-up on 2026-06-20 20:32 CST" in repo_status
+        and "pass, 618 tests, 2 known warnings" in repo_status
+        and "sanitizes Streamlit product-registry management exception output" in repo_status
+        and "workspace list/create, member, quota, and permission" in repo_status
         and "Share-link Streamlit error-output follow-up on 2026-06-20 20:20 CST" in repo_status
         and "pass, 617 tests, 2 known warnings" in repo_status
         and "sanitizes Streamlit share-link management exception output" in repo_status
@@ -223,9 +227,10 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 617 tests, 2 known warnings" in roadmap
+        and "pass, 618 tests, 2 known warnings" in roadmap
         and "execution-input-materialization" in roadmap
         and "runtime-event-metadata-value-redaction" in roadmap
+        and "product-registry-error-sanitizer" in roadmap
         and "share-link-error-sanitizer" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
         failures,

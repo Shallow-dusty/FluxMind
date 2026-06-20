@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 20:10 CST
+Last updated: 2026-06-20 20:32 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,10 +23,11 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 20:10 refresh updates the current local repo verification counts,
-API-key public metadata redaction boundary, no-secret registry/readiness default
-state, and documentation drift evidence only. Dated live deployment and external
-research snapshots remain scoped to the times shown in their rows.
+The 2026-06-20 20:32 refresh updates the current local repo verification counts,
+Streamlit product-registry error-output redaction boundary, no-secret
+registry/readiness default state, and documentation drift evidence only. Dated
+live deployment and external research snapshots remain scoped to the times shown
+in their rows.
 
 ## Current Baseline
 
@@ -39,16 +40,16 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 49cdb82 fix: sanitize share-link UI errors
-Current docs/health    docs: record share-link UI error audit status
-Status note     local no-key hardening through share-link Streamlit error-output
+Current implementation 951c0cb fix: sanitize product registry UI errors
+Current docs/health    docs: record product registry UI error audit status
+Status note     local no-key hardening through product registry Streamlit error-output
                 sanitization is implemented and locally verified; the local
                 stack is not pushed to origin and not deployed to Trace-Twin
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 20:10 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 20:32 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -57,7 +58,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    617 passed, 2 known warnings
+pytest                                    618 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -82,9 +83,10 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           verifier/OpenAPI-contract/execution-input-
                                           materialization/runtime-event-metadata-
                                           value-redaction/readiness-CLI-error-
-                                          sanitizer/live-eval-request-ID-redaction
-                                          and Streamlit-share-link-error-sanitizer
-                                          anchors
+                                          sanitizer/live-eval-request-ID-redaction,
+                                          Streamlit-share-link-error-sanitizer,
+                                          and Streamlit-product-registry-error-
+                                          sanitizer anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against
                                           the just-exported local contract

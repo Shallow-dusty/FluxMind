@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 617 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 618 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 617 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 618 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -36,6 +36,7 @@ Command                                                               Result
                                                                       product-registry-management/
                                                                       product-registry-read-RBAC/
                                                                       Streamlit-product-registry-flag/
+                                                                      Streamlit-product-registry-error-sanitizer/
                                                                       API-key-create-output-guard/
                                                                       share-link-registry/
                                                                       product-activation-rehearsal/
@@ -597,7 +598,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   role permissions when the RBAC guard is explicitly enabled, returning `403`
   before protected work starts. FastAPI and Streamlit now expose a local
   product-registry management surface for workspace/member/quota/permission
-  operations when the SQLite backend is enabled. The registry now rejects
+  operations when the SQLite backend is enabled. The Streamlit management panel
+  has its own explicit flag and sanitizes OSError, SQLite, and validation error
+  output before rendering operator messages. The registry now rejects
   missing-workspace member/quota/usage/billing writes, rejects usage/quota
   decisions for missing product users, and makes the CLI `add-member` response
   use sanitized member projections rather than raw submitted IDs. The local product activation
@@ -623,8 +626,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 descriptions, paths, prompts, answers, or contents. The local API-key,
 product, and share-link registry CLIs also sanitize output-write and SQLite
 registry errors instead of leaking output paths or crashing during error
-reporting; the Streamlit share-link management panel applies the same no-secret
-error projection to OSError, SQLite, and validation failures. API-key CLI
+reporting; the Streamlit product-registry and share-link management panels
+apply the same no-secret error projection to OSError, SQLite, and validation
+failures. API-key CLI
 list/verify/revoke Markdown and JSON outputs now also show owner fingerprints
 rather than raw owner IDs/labels and omit free-text descriptions. Activation
   still remains
