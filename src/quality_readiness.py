@@ -34,6 +34,15 @@ LIVE_QUALITY_RULES = (
         "minimum_average_live_answer_term_coverage",
     ),
 )
+LIVE_EVIDENCE_METRICS = {
+    "live_answer_result_count",
+    "live_answer_pass_rate",
+    "live_retrieval_result_count",
+    "live_retrieval_pass_rate",
+    "average_live_answer_term_coverage",
+}
+CORPUS_EVIDENCE_METRICS = {"seed_paper_count"}
+EVIDENCE_SOURCE_ORDER = ("corpus_manifest", "eval_baseline", "live_eval_report")
 
 
 def _utc_now() -> str:
@@ -63,6 +72,13 @@ def _target_by_id(targets: list[dict[str, Any]], target_id: str) -> dict[str, An
 def _summary_total(summary: dict[str, Any], key: str) -> int:
     try:
         return int((summary.get(key, {}) or {}).get("total", 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value or 0)
     except (TypeError, ValueError):
         return 0
 
@@ -105,23 +121,24 @@ def _average_result_metric(items: list[dict[str, Any]], metric: str) -> float | 
     return sum(values) / len(values)
 
 
-def _live_report_summary(path: Path) -> dict[str, Any]:
-    """Read a no-secret eval JSON report and return only maturity evidence."""
-    report: dict[str, Any] = {
-        "name": path.name,
+def _empty_live_report_summary(reason: str) -> dict[str, Any]:
+    return {
+        "name": "live_report",
         "ok": False,
         "schema_version": None,
+        "source_name_exported": False,
         "live_answer_result_count": 0,
         "live_retrieval_result_count": 0,
         "live_answer_pass_rate": None,
         "live_retrieval_pass_rate": None,
         "average_live_answer_term_coverage": None,
-        "reason": "unreadable",
+        "reason": reason,
     }
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return report
+
+
+def _live_report_summary_from_data(data: Any) -> dict[str, Any]:
+    """Return only maturity evidence from a parsed no-secret eval JSON report."""
+    report = _empty_live_report_summary("ok")
     if not isinstance(data, dict):
         report["reason"] = "invalid_report_shape"
         return report
@@ -163,8 +180,20 @@ def _live_report_summary(path: Path) -> dict[str, Any]:
         "answer_term_coverage",
     )
     report["ok"] = True
-    report["reason"] = "ok"
     return report
+
+
+def _live_report_summary(path: Path) -> dict[str, Any]:
+    """Read a no-secret eval JSON report and return only maturity evidence."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return _empty_live_report_summary("unreadable")
+    return _live_report_summary_from_data(data)
+
+
+def _live_report_summaries_from_data(reports: list[Any] | None) -> list[dict[str, Any]]:
+    return [_live_report_summary_from_data(report) for report in (reports or [])]
 
 
 def _best_report_by_count(
@@ -260,10 +289,261 @@ def _enrich_targets_with_live_quality(
     return enriched
 
 
+def _target_gap_summary(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return no-secret count and quality gaps for each maturity target."""
+    summaries: list[dict[str, Any]] = []
+    for target in targets:
+        checks = [
+            check
+            for check in target.get("checks", [])
+            if isinstance(check, dict)
+        ]
+        count_gaps = [
+            {
+                "metric": str(check.get("metric", "")),
+                "actual": _safe_int(check.get("actual", 0)),
+                "expected": _safe_int(check.get("expected", 0)),
+                "gap": _safe_int(check.get("gap", 0)),
+            }
+            for check in checks
+            if _safe_int(check.get("gap", 0)) > 0
+        ]
+        quality_gaps = [
+            {
+                "metric": str(check.get("metric", "")),
+                "actual": check.get("actual"),
+                "expected": str(check.get("expected", "")),
+                "source_gate": str(check.get("source_gate", "")),
+            }
+            for check in target.get("quality_checks", [])
+            if isinstance(check, dict) and not check.get("ok")
+        ]
+        count_gaps.sort(key=lambda item: (-item["gap"], item["metric"]))
+        summaries.append(
+            {
+                "target": str(target.get("id", "")),
+                "status": str(target.get("status", "")),
+                "required_metric_count": len(checks),
+                "met_metric_count": sum(1 for check in checks if check.get("ok")),
+                "missing_metric_count": len(count_gaps),
+                "missing_metrics": [item["metric"] for item in count_gaps],
+                "count_gaps": count_gaps,
+                "quality_gaps": quality_gaps,
+            }
+        )
+    return summaries
+
+
+def _evidence_source_for_metric(metric: str) -> str:
+    if metric in LIVE_EVIDENCE_METRICS:
+        return "live_eval_report"
+    if metric in CORPUS_EVIDENCE_METRICS:
+        return "corpus_manifest"
+    return "eval_baseline"
+
+
+def _evidence_requests(gap_summary: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return no-secret evidence deltas needed for each maturity target."""
+    requests: list[dict[str, Any]] = []
+    for summary in gap_summary:
+        count_items = [
+            {
+                "kind": "count",
+                "metric": str(gap.get("metric", "")),
+                "actual": _safe_int(gap.get("actual")),
+                "expected": _safe_int(gap.get("expected")),
+                "gap": _safe_int(gap.get("gap")),
+                "evidence_source": _evidence_source_for_metric(str(gap.get("metric", ""))),
+            }
+            for gap in summary.get("count_gaps", []) or []
+            if isinstance(gap, dict) and _safe_int(gap.get("gap")) > 0
+        ]
+        quality_items = [
+            {
+                "kind": "quality",
+                "metric": str(gap.get("metric", "")),
+                "actual": gap.get("actual"),
+                "expected": str(gap.get("expected", "")),
+                "evidence_source": _evidence_source_for_metric(str(gap.get("metric", ""))),
+                "source_gate": str(gap.get("source_gate", "")),
+            }
+            for gap in summary.get("quality_gaps", []) or []
+            if isinstance(gap, dict)
+        ]
+        items = sorted(
+            count_items,
+            key=lambda item: (
+                item["evidence_source"],
+                -item["gap"],
+                item["metric"],
+            ),
+        ) + sorted(
+            quality_items,
+            key=lambda item: (item["evidence_source"], item["metric"]),
+        )
+        target = str(summary.get("target", ""))
+        requests.append(
+            {
+                "target": target,
+                "status": str(summary.get("status", "")),
+                "ready": not items,
+                "item_count": len(items),
+                "evidence_sources": sorted(
+                    {item["evidence_source"] for item in items}
+                ),
+                "items": items,
+            }
+        )
+    return requests
+
+
+def _next_evidence_request(requests: list[dict[str, Any]]) -> dict[str, Any]:
+    for request in requests:
+        if not request.get("ready"):
+            return request
+    return {
+        "target": "none",
+        "status": "met",
+        "ready": True,
+        "item_count": 0,
+        "evidence_sources": [],
+        "items": [],
+    }
+
+
+def _evidence_request_by_target(
+    requests: list[dict[str, Any]],
+    target: str,
+) -> dict[str, Any]:
+    for request in requests:
+        if request.get("target") == target:
+            return request
+    return {
+        "target": target,
+        "status": "missing",
+        "ready": False,
+        "item_count": 1,
+        "evidence_sources": ["eval_baseline"],
+        "items": [
+            {
+                "kind": "count",
+                "metric": "target_missing",
+                "actual": 0,
+                "expected": 1,
+                "gap": 1,
+                "evidence_source": "eval_baseline",
+            }
+        ],
+    }
+
+
+def _dedupe_sorted(values: list[str]) -> list[str]:
+    return sorted({value for value in values if value})
+
+
+def _live_eval_command(metrics: list[str]) -> str:
+    flags: list[str] = []
+    if any(metric.startswith("live_retrieval") for metric in metrics):
+        flags.append("--retrieval-url <api-base-url>")
+    if any(
+        metric.startswith("live_answer")
+        or metric == "average_live_answer_term_coverage"
+        for metric in metrics
+    ):
+        flags.append("--live-url <api-base-url>")
+    if not flags:
+        flags = ["--retrieval-url <api-base-url>", "--live-url <api-base-url>"]
+    return (
+        ".venv/bin/python scripts/evaluate_rag.py "
+        + " ".join(flags)
+        + " --api-key-env FLUXMIND_API_TOKEN --json-report <report.json>"
+    )
+
+
+def _evidence_source_action(source: str, metrics: list[str]) -> tuple[str, str]:
+    if source == "corpus_manifest":
+        return (
+            "Add curated open-access corpus entries until the corpus count gaps close.",
+            "manual: update the curated corpus manifest, then run .venv/bin/python scripts/evaluate_rag.py --json-report <report.json>",
+        )
+    if source == "eval_baseline":
+        return (
+            "Expand the eval baseline with traceable answer, retrieval, recorded-answer, or topic coverage fixtures until the eval gaps close.",
+            "manual: update the eval baseline, then run .venv/bin/python scripts/evaluate_rag.py --json-report <report.json>",
+        )
+    if source == "live_eval_report":
+        return (
+            "Run live retrieval or live answer scoring against an explicit API base URL and feed the no-secret JSON report back into readiness.",
+            _live_eval_command(metrics),
+        )
+    return (
+        "Provide the missing no-secret evidence for this metric source.",
+        "manual: collect evidence, then run .venv/bin/python scripts/quality_readiness.py --format markdown",
+    )
+
+
+def _evidence_collection_plan(request: dict[str, Any]) -> dict[str, Any]:
+    """Turn a target evidence request into an operator-facing no-secret plan."""
+    target = str(request.get("target", ""))
+    items = [
+        item
+        for item in request.get("items", []) or []
+        if isinstance(item, dict)
+    ]
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in items:
+        source = str(item.get("evidence_source", "eval_baseline"))
+        grouped.setdefault(source, []).append(item)
+
+    source_order = list(EVIDENCE_SOURCE_ORDER) + sorted(
+        source for source in grouped if source not in EVIDENCE_SOURCE_ORDER
+    )
+    steps: list[dict[str, Any]] = []
+    for source in source_order:
+        source_items = grouped.get(source, [])
+        if not source_items:
+            continue
+        metrics = _dedupe_sorted([str(item.get("metric", "")) for item in source_items])
+        action, command = _evidence_source_action(source, metrics)
+        steps.append(
+            {
+                "evidence_source": source,
+                "item_count": len(source_items),
+                "metrics": metrics,
+                "action": action,
+                "command": command,
+                "verification_command": (
+                    ".venv/bin/python scripts/quality_readiness.py "
+                    f"--live-report <report.json> --require-target {target} --format markdown"
+                ),
+                "content_exported": False,
+                "secrets_exported": False,
+                "paths_exported": False,
+            }
+        )
+
+    return {
+        "target": target,
+        "status": str(request.get("status", "")),
+        "ready": bool(request.get("ready")),
+        "item_count": len(items),
+        "source_count": len(steps),
+        "steps": steps,
+        "content_exported": False,
+        "secrets_exported": False,
+        "paths_exported": False,
+        "notes": [
+            "Commands use placeholders only; operators must supply an API base URL and an ignored local report path.",
+            "The plan does not embed prompts, answers, source text, raw report payloads, API tokens, or local paths.",
+        ],
+    }
+
+
 def collect_quality_readiness(
     *,
     eval_file: Path | None = None,
     live_report_paths: list[Path] | None = None,
+    live_reports: list[Any] | None = None,
     generated_at: str | None = None,
     project_root: Path = PROJECT_ROOT,
 ) -> dict[str, Any]:
@@ -274,7 +554,7 @@ def collect_quality_readiness(
     report_summaries = [
         _live_report_summary(path)
         for path in (live_report_paths or [])
-    ]
+    ] + _live_report_summaries_from_data(live_reports)
 
     for report in report_summaries:
         if not report.get("ok"):
@@ -309,6 +589,13 @@ def collect_quality_readiness(
         maturity_blockers.append("live_report_unreadable")
 
     local_foundation_ready = bool(self_use.get("ok")) and live_reports_ok
+    gap_summary = _target_gap_summary(targets)
+    evidence_requests = _evidence_requests(gap_summary)
+    next_evidence_request = _next_evidence_request(evidence_requests)
+    community_evidence_request = _evidence_request_by_target(
+        evidence_requests,
+        "community",
+    )
     return {
         "mode": "quality_readiness",
         "schema_version": QUALITY_READINESS_SCHEMA_VERSION,
@@ -323,6 +610,13 @@ def collect_quality_readiness(
         "paths_exported": False,
         "metrics": metrics,
         "targets": targets,
+        "gap_summary": gap_summary,
+        "evidence_requests": evidence_requests,
+        "next_evidence_request": next_evidence_request,
+        "next_evidence_plan": _evidence_collection_plan(next_evidence_request),
+        "community_evidence_plan": _evidence_collection_plan(
+            community_evidence_request
+        ),
         "reports": report_summaries,
         "blockers": {
             "local_foundation": [] if local_foundation_ready else list(self_use.get("missing_metrics", [])),
@@ -364,6 +658,69 @@ def format_quality_readiness_markdown(status: dict[str, Any]) -> str:
         lines.append(
             f"- {target.get('id', '')}: {target.get('status', '')}; missing={missing}"
         )
+
+    lines.extend(["", "## Target Gap Summary", ""])
+    for summary in status.get("gap_summary", []) or []:
+        count_gaps = summary.get("count_gaps", []) or []
+        quality_gaps = summary.get("quality_gaps", []) or []
+        count_gap_text = "; ".join(
+            f"{item.get('metric', '')} {item.get('actual', 0)}/"
+            f"{item.get('expected', 0)} gap={item.get('gap', 0)}"
+            for item in count_gaps
+        ) or "none"
+        quality_gap_text = "; ".join(
+            f"{item.get('metric', '')} actual={_format_optional_float(item.get('actual'))} "
+            f"expected={item.get('expected', '')}"
+            for item in quality_gaps
+        ) or "none"
+        lines.append(
+            f"- {summary.get('target', '')}: status={summary.get('status', '')}, "
+            f"met={summary.get('met_metric_count', 0)}/"
+            f"{summary.get('required_metric_count', 0)}, "
+            f"count_gaps={count_gap_text}, quality_gaps={quality_gap_text}"
+        )
+
+    evidence_requests = status.get("evidence_requests", []) or []
+    lines.extend(["", "## Evidence Requests", ""])
+    for request in evidence_requests:
+        lines.append(
+            f"- {request.get('target', '')}: ready={_format_bool(request.get('ready'))}, "
+            f"items={request.get('item_count', 0)}, "
+            f"sources={','.join(request.get('evidence_sources', [])) or 'none'}"
+        )
+        for item in request.get("items", []) or []:
+            if item.get("kind") == "quality":
+                lines.append(
+                    f"  - quality {item.get('metric', '')}: actual="
+                    f"{_format_optional_float(item.get('actual'))} "
+                    f"expected={item.get('expected', '')} "
+                    f"source={item.get('evidence_source', '')}"
+                )
+            else:
+                lines.append(
+                    f"  - count {item.get('metric', '')}: actual={item.get('actual', 0)} "
+                    f"expected={item.get('expected', 0)} gap={item.get('gap', 0)} "
+                    f"source={item.get('evidence_source', '')}"
+                )
+
+    lines.extend(["", "## Evidence Collection Plan", ""])
+    for label, plan_key in (
+        ("Next target", "next_evidence_plan"),
+        ("Community target", "community_evidence_plan"),
+    ):
+        plan = status.get(plan_key, {}) or {}
+        lines.append(
+            f"- {label}: target={plan.get('target', '')}, "
+            f"ready={_format_bool(plan.get('ready', False))}, "
+            f"sources={plan.get('source_count', 0)}, items={plan.get('item_count', 0)}"
+        )
+        for step in plan.get("steps", []) or []:
+            lines.append(
+                f"  - {step.get('evidence_source', '')}: "
+                f"metrics={','.join(step.get('metrics', [])) or 'none'}; "
+                f"command=`{step.get('command', '')}`; "
+                f"verify=`{step.get('verification_command', '')}`"
+            )
 
     reports = status.get("reports", []) or []
     lines.extend(["", "## Live Reports", ""])

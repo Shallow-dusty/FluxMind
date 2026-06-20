@@ -3,18 +3,55 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import scripts.activation_suite as activation_suite_cli
 import scripts.api_key_registry as api_key_registry_cli
+import scripts.collaboration_readiness as collaboration_readiness_cli
 import scripts.evaluate_rag as evaluate_rag_cli
+import scripts.openapi_contract as openapi_contract_cli
 import scripts.platform_migration_preflight as platform_migration_preflight_cli
 import scripts.platform_migration_rehearsal as platform_migration_rehearsal_cli
+import scripts.product_activation_rehearsal as product_activation_rehearsal_cli
+import scripts.provider_runtime_rehearsal as provider_runtime_rehearsal_cli
 import scripts.provider_readiness as provider_readiness_cli
 import scripts.quality_readiness as quality_readiness_cli
 import scripts.product_readiness as product_readiness_cli
 import scripts.product_registry as product_registry_cli
 import scripts.run_job_worker as run_job_worker_cli
 import scripts.runtime_manifest as runtime_manifest_cli
+import scripts.share_link_registry as share_link_registry_cli
+from scripts._safe_cli import format_os_error
 import scripts.storage_schema as storage_schema_cli
 import scripts.update_local_references as update_refs_cli
+
+
+def assert_sanitized_cli_os_error(captured, expected: str = "error: Permission denied") -> None:
+    assert expected in captured.err
+    assert captured.out == ""
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+
+
+def test_format_os_error_preserves_safe_messages_without_paths():
+    assert format_os_error(OSError("cannot read eval")) == "cannot read eval"
+
+
+def test_format_os_error_redacts_paths_urls_and_token_values():
+    message = format_os_error(
+        OSError(
+            "cannot read /private/hunter2-eval.json from https://secret.example/path "
+            "token=sk-test-secret-token"
+        )
+    )
+
+    assert "cannot read" in message
+    assert "[redacted]" in message
+    for sensitive in (
+        "/private",
+        "hunter2",
+        "https://secret.example",
+        "sk-test-secret-token",
+    ):
+        assert sensitive not in message
 
 
 def test_evaluate_rag_cli_writes_json_report(monkeypatch, tmp_path, capsys):
@@ -77,7 +114,13 @@ def test_evaluate_rag_cli_reports_failures(monkeypatch, tmp_path, capsys):
 
 
 def test_evaluate_rag_cli_uses_live_urls_and_env_key(monkeypatch, tmp_path, capsys):
-    result = SimpleNamespace(ok=True, case_id="case-1", message="ok", request_id="req-1")
+    result = SimpleNamespace(
+        ok=True,
+        case_id="case-1",
+        message="ok",
+        request_id_present=True,
+        request_id_redacted=True,
+    )
     calls = []
 
     monkeypatch.setattr(evaluate_rag_cli, "load_eval_config", lambda path: {"cases": []})
@@ -118,8 +161,9 @@ def test_evaluate_rag_cli_uses_live_urls_and_env_key(monkeypatch, tmp_path, caps
         ("retrieval", "https://api.example.test", "secret-token", 3.5),
     ]
     output = capsys.readouterr().out
-    assert "ok   live answer case-1: ok request_id=req-1" in output
-    assert "ok   live retrieval case-1: ok request_id=req-1" in output
+    assert "ok   live answer case-1: ok request_id_present=True request_id_redacted=True" in output
+    assert "ok   live retrieval case-1: ok request_id_present=True request_id_redacted=True" in output
+    assert "req-1" not in output
 
 
 def test_runtime_manifest_cli_outputs_manifest(monkeypatch, tmp_path):
@@ -212,6 +256,28 @@ def test_api_key_registry_cli_status_markdown(monkeypatch, tmp_path):
     assert "Secrets exported: false" in markdown
 
 
+def test_api_key_registry_cli_rejects_markdown_create_before_writing(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "api_keys.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--db",
+            str(db_path),
+            "create",
+            "--format",
+            "markdown",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "requires --format json" in captured.err
+    assert "fmk_" not in captured.out
+    assert "fmk_" not in captured.err
+    assert not db_path.exists()
+
+
 def test_api_key_registry_cli_accepts_subcommand_output_flags(monkeypatch, tmp_path, capsys):
     db_path = tmp_path / "api_keys.sqlite3"
     monkeypatch.setattr(
@@ -244,7 +310,242 @@ def test_api_key_registry_cli_reports_sqlite_errors(monkeypatch, tmp_path, capsy
     )
 
     assert api_key_registry_cli.main() == 2
-    assert "error:" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert str(db_path) not in captured.err
+
+
+def test_api_key_registry_cli_output_os_errors_are_sanitized(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "api-keys.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "api_key_registry.py",
+            "--output",
+            str(output_path),
+            "status",
+        ],
+    )
+
+    assert api_key_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "private-hunter2" not in captured.err
+    assert str(output_path) not in captured.err
+
+
+def test_share_link_registry_cli_lifecycle(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "share_links.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--db",
+            str(db_path),
+            "create",
+            "--workspace-id",
+            "lab-ws",
+            "--created-by-user-id",
+            "owner-user",
+            "--resource-kind",
+            "corpus_profile",
+            "--resource-ref",
+            "private-profile-id",
+            "--description",
+            "pilot share /private/hunter2 token=sk-secret-value",
+            "--max-redemptions",
+            "2",
+        ],
+    )
+
+    assert share_link_registry_cli.main() == 0
+    created = json.loads(capsys.readouterr().out)
+    token = created["token"]
+    link_id = created["share_link"]["link_id"]
+    assert token.startswith("fms_")
+    assert "private-profile-id" not in json.dumps(created["share_link"], sort_keys=True)
+    assert "owner-user" not in json.dumps(created["share_link"], sort_keys=True)
+    assert "/private/hunter2" not in json.dumps(created["share_link"], sort_keys=True)
+    assert "sk-secret-value" not in json.dumps(created["share_link"], sort_keys=True)
+
+    monkeypatch.setattr(
+        "sys.argv",
+        ["share_link_registry.py", "--db", str(db_path), "resolve", token],
+    )
+    assert share_link_registry_cli.main() == 0
+    resolved = json.loads(capsys.readouterr().out)
+    rendered = json.dumps(resolved, sort_keys=True)
+    assert resolved["resolution"]["valid"] is True
+    assert token not in rendered
+    assert "private-profile-id" not in rendered
+    assert "owner-user" not in rendered
+    assert "/private/hunter2" not in rendered
+    assert "sk-secret-value" not in rendered
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--db",
+            str(db_path),
+            "--format",
+            "markdown",
+            "list",
+        ],
+    )
+    assert share_link_registry_cli.main() == 0
+    listed = capsys.readouterr().out
+    assert "FluxMind Share Link Registry" in listed
+    assert link_id in listed
+    assert token not in listed
+    assert "private-profile-id" not in listed
+    assert "owner-user" not in listed
+    assert "/private/hunter2" not in listed
+    assert "sk-secret-value" not in listed
+
+    monkeypatch.setattr(
+        "sys.argv",
+        ["share_link_registry.py", "--db", str(db_path), "revoke", link_id],
+    )
+    assert share_link_registry_cli.main() == 0
+    revoked = json.loads(capsys.readouterr().out)
+    assert revoked["ok"] is True
+    assert revoked["share_link"]["revoked_at"]
+    assert token not in json.dumps(revoked, sort_keys=True)
+
+
+def test_share_link_registry_cli_rejects_markdown_create_before_writing(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "share_links.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--db",
+            str(db_path),
+            "create",
+            "--format",
+            "markdown",
+            "--workspace-id",
+            "lab-ws",
+            "--created-by-user-id",
+            "owner-user",
+            "--resource-ref",
+            "private-profile-id",
+        ],
+    )
+
+    assert share_link_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "requires --format json" in captured.err
+    assert "fms_" not in captured.out
+    assert "fms_" not in captured.err
+    assert not db_path.exists()
+
+
+def test_share_link_registry_cli_output_os_errors_are_sanitized(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "share-links.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--output",
+            str(output_path),
+            "status",
+        ],
+    )
+
+    assert share_link_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "private-hunter2" not in captured.err
+    assert str(output_path) not in captured.err
+
+
+def test_share_link_registry_cli_markdown_shapes_are_no_secret():
+    created = share_link_registry_cli.render_markdown(
+        {
+            "token": "fms_secret-token",
+            "share_link": {
+                "link_id": "share_1",
+                "workspace_id": "lab-ws",
+                "resource_kind": "corpus_profile",
+                "share_token_exported": False,
+            },
+        }
+    )
+    empty_list = share_link_registry_cli.render_markdown({"share_links": []})
+    resolution = share_link_registry_cli.render_markdown(
+        {
+            "resolution": {
+                "valid": False,
+                "reason": "share_link_revoked",
+                "share_token_exported": False,
+                "share_link": {
+                    "link_id": "share_1",
+                    "resource_kind": "corpus_profile",
+                    "resource_ref_fingerprint": "abc123",
+                },
+            }
+        }
+    )
+    revoked = share_link_registry_cli.render_markdown(
+        {
+            "share_link": {
+                "link_id": "share_1",
+                "active": False,
+                "revoked_at": "2026-06-20T00:00:00+00:00",
+                "share_token_exported": False,
+            }
+        }
+    )
+
+    rendered = "\n".join([created, empty_list, resolution, revoked])
+    assert "Created Share Link" in created
+    assert "Token: shown once in JSON output only" in created
+    assert "- none" in empty_list
+    assert "Reason: share_link_revoked" in resolution
+    assert "Revoked at: 2026-06-20T00:00:00+00:00" in revoked
+    assert "fms_secret-token" not in rendered
+    assert "Share token exported: false" in rendered
+
+
+def test_share_link_registry_cli_revoke_missing_returns_nonzero(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "share_links.sqlite3"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--db",
+            str(db_path),
+            "revoke",
+            "share_missing",
+        ],
+    )
+
+    assert share_link_registry_cli.main() == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is False
+    assert payload["reason"] == "share_link_not_found"
+    assert payload["share_tokens_exported"] is False
+
+
+def test_share_link_registry_cli_reports_sqlite_errors(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "share_links.sqlite3"
+    db_path.write_text("not sqlite", encoding="utf-8")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "share_link_registry.py",
+            "--db",
+            str(db_path),
+            "list",
+        ],
+    )
+
+    assert share_link_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert str(db_path) not in captured.err
 
 
 def test_product_registry_cli_bootstrap_usage_and_markdown(monkeypatch, tmp_path, capsys):
@@ -318,6 +619,44 @@ def test_product_registry_cli_status_output_file(monkeypatch, tmp_path):
     assert "# FluxMind Product Registry" in markdown
     assert "Available: true" in markdown
     assert "Secrets exported: false" in markdown
+
+
+def test_product_registry_cli_output_os_errors_are_sanitized(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "product.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--output",
+            str(output_path),
+            "status",
+        ],
+    )
+
+    assert product_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert "private-hunter2" not in captured.err
+    assert str(output_path) not in captured.err
+
+
+def test_product_registry_cli_reports_sqlite_errors(monkeypatch, tmp_path, capsys):
+    db_path = tmp_path / "product_registry.sqlite3"
+    db_path.write_text("not sqlite", encoding="utf-8")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_registry.py",
+            "--db",
+            str(db_path),
+            "list-workspaces",
+        ],
+    )
+
+    assert product_registry_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error:" in captured.err
+    assert str(db_path) not in captured.err
 
 
 def test_product_registry_cli_member_and_permission_check(monkeypatch, tmp_path, capsys):
@@ -398,6 +737,492 @@ def test_product_registry_cli_member_and_permission_check(monkeypatch, tmp_path,
     assert "Secrets exported: false" in markdown
 
 
+def test_product_activation_rehearsal_cli_is_no_secret(monkeypatch, tmp_path, capsys):
+    root = tmp_path / "rehearsal"
+    output_path = tmp_path / "product-rehearsal.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_activation_rehearsal.py",
+            "--root",
+            str(root),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+            "--require-activation",
+        ],
+    )
+
+    assert product_activation_rehearsal_cli.main() == 0
+    assert capsys.readouterr().out == ""
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# FluxMind Product Activation Rehearsal" in markdown
+    assert "OK: true" in markdown
+    assert "Activation ready: true" in markdown
+    assert "Secrets exported: false" in markdown
+    assert "Paths exported: false" in markdown
+    assert "fmk_" not in markdown
+    assert str(root) not in markdown
+    for sensitive in (
+        "rehearsal-owner",
+        "rehearsal-viewer",
+        "rehearsal-workspace",
+        "api_keys.sqlite3",
+        "product_registry.sqlite3",
+    ):
+        assert sensitive not in markdown
+
+
+def test_product_activation_rehearsal_cli_sanitizes_output_os_errors(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "product.md"
+    monkeypatch.setattr(
+        product_activation_rehearsal_cli,
+        "collect_product_activation_rehearsal",
+        lambda **kwargs: {"mode": "product_activation_rehearsal", "ok": True},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "product_activation_rehearsal.py",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert product_activation_rehearsal_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error: No such file or directory" in captured.err
+    assert captured.out == ""
+    assert str(tmp_path) not in captured.err
+    assert "private-hunter2" not in captured.err
+
+
+def test_collaboration_readiness_cli_default_allows_safe_foundation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        collaboration_readiness_cli,
+        "collect_collaboration_readiness",
+        lambda: {
+            "mode": "collaboration_readiness",
+            "ok": True,
+            "activation_ready": False,
+            "secrets_exported": False,
+        },
+    )
+    monkeypatch.setattr("sys.argv", ["collaboration_readiness.py"])
+
+    assert collaboration_readiness_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["mode"] == "collaboration_readiness"
+    assert output["ok"] is True
+    assert output["activation_ready"] is False
+
+
+def test_collaboration_readiness_cli_can_require_activation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        collaboration_readiness_cli,
+        "collect_collaboration_readiness",
+        lambda: {
+            "mode": "collaboration_readiness",
+            "ok": True,
+            "activation_ready": False,
+            "blockers": {"activation": ["share_links_disabled"]},
+        },
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["collaboration_readiness.py", "--require-activation"],
+    )
+
+    assert collaboration_readiness_cli.main() == 1
+    output = json.loads(capsys.readouterr().out)
+    assert output["blockers"]["activation"] == ["share_links_disabled"]
+
+
+def test_collaboration_readiness_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "collaboration.md"
+    monkeypatch.setattr(
+        collaboration_readiness_cli,
+        "collect_collaboration_readiness",
+        lambda: {
+            "mode": "collaboration_readiness",
+            "ok": True,
+            "activation_ready": False,
+            "secrets_exported": False,
+        },
+    )
+    monkeypatch.setattr(
+        collaboration_readiness_cli,
+        "format_collaboration_readiness_markdown",
+        lambda status: "# FluxMind Collaboration Readiness\n\n- Secrets exported: false",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "collaboration_readiness.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert collaboration_readiness_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8").endswith("Secrets exported: false\n")
+
+
+def test_collaboration_readiness_cli_reports_sanitized_os_errors(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "collaboration.md"
+    monkeypatch.setattr(
+        collaboration_readiness_cli,
+        "collect_collaboration_readiness",
+        lambda: {"mode": "collaboration_readiness", "ok": True},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "collaboration_readiness.py",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert collaboration_readiness_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error: No such file or directory" in captured.err
+    assert str(tmp_path) not in captured.err
+    assert "private-hunter2" not in captured.err
+
+
+def test_provider_runtime_rehearsal_cli_is_no_secret(monkeypatch, tmp_path, capsys):
+    root = tmp_path / "provider-rehearsal"
+    output_path = tmp_path / "provider-rehearsal.md"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "provider_runtime_rehearsal.py",
+            "--root",
+            str(root),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+            "--require-local-foundation",
+        ],
+    )
+
+    assert provider_runtime_rehearsal_cli.main() == 0
+    assert capsys.readouterr().out == ""
+    markdown = output_path.read_text(encoding="utf-8")
+    assert "# FluxMind Provider Runtime Rehearsal" in markdown
+    assert "OK: true" in markdown
+    assert "Local foundation ready: true" in markdown
+    assert "External activation ready: false" in markdown
+    assert "Provider Quota Guard" in markdown
+    assert "Blocked reason: provider_prompt_token_limit_exceeded" in markdown
+    assert "Secrets exported: false" in markdown
+    assert "Paths exported: false" in markdown
+    assert str(root) not in markdown
+    assert "hunter2" not in markdown
+    for sensitive in (
+        "Provider rehearsal SMC observer diagram",
+        "provider-runtime-rehearsal-ok",
+        "provider-runtime-rehearsal",
+        "summary.txt",
+        "main.py",
+        "main.m",
+        "file://",
+    ):
+        assert sensitive not in markdown
+
+
+def test_provider_runtime_rehearsal_cli_sanitizes_output_os_errors(monkeypatch, tmp_path, capsys):
+    output_path = tmp_path / "missing" / "private-hunter2" / "provider.md"
+    monkeypatch.setattr(
+        provider_runtime_rehearsal_cli,
+        "collect_provider_runtime_rehearsal",
+        lambda **kwargs: {"mode": "provider_runtime_rehearsal", "ok": True},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "provider_runtime_rehearsal.py",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert provider_runtime_rehearsal_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error: No such file or directory" in captured.err
+    assert captured.out == ""
+    assert str(tmp_path) not in captured.err
+    assert "private-hunter2" not in captured.err
+
+
+def test_activation_suite_cli_default_allows_local_foundation(monkeypatch, capsys):
+    seen = {}
+
+    def fake_collect(**kwargs):
+        seen.update(kwargs)
+        return {
+            "local_foundation_ready": True,
+            "small_group_ready": False,
+            "community_ready": False,
+            "full_activation_ready": False,
+        }
+
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "collect_activation_suite",
+        fake_collect,
+    )
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "_load_openapi_schema",
+        lambda: {"openapi": "3.1.0"},
+    )
+    monkeypatch.setattr("sys.argv", ["activation_suite.py", "--target-root", "/tmp/root"])
+
+    assert activation_suite_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["local_foundation_ready"] is True
+    assert output["full_activation_ready"] is False
+    assert str(seen["project_root"]) == "/tmp/root"
+    assert str(seen["eval_file"]) == "/tmp/root/eval/rag_baseline.json"
+    assert seen["openapi_schema"] == {"openapi": "3.1.0"}
+
+
+def test_activation_suite_cli_can_require_full_activation(monkeypatch, capsys):
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "collect_activation_suite",
+        lambda **kwargs: {
+            "local_foundation_ready": True,
+            "small_group_ready": True,
+            "community_ready": False,
+            "full_activation_ready": False,
+        },
+    )
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "_load_openapi_schema",
+        lambda: {"openapi": "3.1.0"},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["activation_suite.py", "--require-target", "full_activation"],
+    )
+
+    assert activation_suite_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["full_activation_ready"] is False
+
+
+def test_activation_suite_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "suite.md"
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "collect_activation_suite",
+        lambda **kwargs: {
+            "local_foundation_ready": True,
+            "small_group_ready": False,
+            "community_ready": False,
+            "full_activation_ready": False,
+        },
+    )
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "_load_openapi_schema",
+        lambda: {"openapi": "3.1.0"},
+    )
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "format_activation_suite_markdown",
+        lambda status: "# Suite",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "activation_suite.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert activation_suite_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# Suite\n"
+
+
+def test_activation_suite_cli_reports_os_errors(monkeypatch, capsys):
+    def fail_collect(**kwargs):
+        raise OSError(13, "Permission denied", "/private/hunter2-suite.json")
+
+    monkeypatch.setattr(activation_suite_cli, "collect_activation_suite", fail_collect)
+    monkeypatch.setattr(
+        activation_suite_cli,
+        "_load_openapi_schema",
+        lambda: {"openapi": "3.1.0"},
+    )
+    monkeypatch.setattr("sys.argv", ["activation_suite.py"])
+
+    assert activation_suite_cli.main() == 2
+    captured = capsys.readouterr()
+    assert "error: Permission denied" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
+
+
+def test_openapi_contract_cli_writes_markdown(monkeypatch, tmp_path):
+    output_path = tmp_path / "openapi.md"
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "collect_openapi_contract",
+        lambda schema: {"local_contract_ready": True},
+    )
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "format_openapi_contract_markdown",
+        lambda status: "# OpenAPI",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "openapi_contract.py",
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert openapi_contract_cli.main() == 0
+    assert output_path.read_text(encoding="utf-8") == "# OpenAPI\n"
+
+
+def test_openapi_contract_cli_can_require_local_contract(monkeypatch, capsys):
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "collect_openapi_contract",
+        lambda schema: {"local_contract_ready": False},
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["openapi_contract.py", "--require-local-contract"],
+    )
+
+    assert openapi_contract_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["local_contract_ready"] is False
+
+
+def test_openapi_contract_cli_can_verify_snapshot(monkeypatch, tmp_path, capsys):
+    snapshot_path = tmp_path / "openapi-snapshot.json"
+    snapshot_path.write_text(
+        json.dumps({"mode": "openapi_contract", "operation_fingerprint": "abc"}),
+        encoding="utf-8",
+    )
+    seen = {}
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "collect_openapi_contract",
+        lambda schema: {"local_contract_ready": True, "operation_fingerprint": "abc"},
+    )
+
+    def fake_verify(current, snapshot):
+        seen["current"] = current
+        seen["snapshot"] = snapshot
+        return {"mode": "openapi_contract_snapshot_verify", "ok": True, "diff_count": 0}
+
+    monkeypatch.setattr(openapi_contract_cli, "verify_openapi_contract_snapshot", fake_verify)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "openapi_contract.py",
+            "--verify-snapshot",
+            str(snapshot_path),
+            "--require-no-drift",
+        ],
+    )
+
+    assert openapi_contract_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["ok"] is True
+    assert seen["snapshot"]["operation_fingerprint"] == "abc"
+    assert seen["current"]["local_contract_ready"] is True
+
+
+def test_openapi_contract_cli_returns_nonzero_for_snapshot_drift(monkeypatch, tmp_path, capsys):
+    snapshot_path = tmp_path / "openapi-snapshot.json"
+    snapshot_path.write_text(
+        json.dumps({"mode": "openapi_contract", "operation_fingerprint": "old"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "collect_openapi_contract",
+        lambda schema: {"local_contract_ready": True, "operation_fingerprint": "new"},
+    )
+    monkeypatch.setattr(
+        openapi_contract_cli,
+        "verify_openapi_contract_snapshot",
+        lambda current, snapshot: {
+            "mode": "openapi_contract_snapshot_verify",
+            "ok": False,
+            "diff_count": 1,
+        },
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "openapi_contract.py",
+            "--verify-snapshot",
+            str(snapshot_path),
+            "--require-no-drift",
+        ],
+    )
+
+    assert openapi_contract_cli.main() == 1
+    assert json.loads(capsys.readouterr().out)["diff_count"] == 1
+
+
+def test_openapi_contract_cli_requires_snapshot_for_no_drift_gate(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "sys.argv",
+        ["openapi_contract.py", "--require-no-drift"],
+    )
+
+    assert openapi_contract_cli.main() == 2
+    assert "--require-no-drift requires --verify-snapshot" in capsys.readouterr().err
+
+
+def test_openapi_contract_cli_rejects_non_object_snapshot(monkeypatch, tmp_path, capsys):
+    snapshot_path = tmp_path / "openapi-snapshot.json"
+    snapshot_path.write_text('["not-an-object"]', encoding="utf-8")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "openapi_contract.py",
+            "--verify-snapshot",
+            str(snapshot_path),
+        ],
+    )
+
+    assert openapi_contract_cli.main() == 2
+    assert "snapshot JSON must be an object" in capsys.readouterr().err
+
+
+def test_openapi_contract_cli_reports_sanitized_os_errors(monkeypatch, capsys):
+    def fail_collect(schema):
+        raise OSError(13, "Permission denied", "/private/hunter2-openapi.json")
+
+    monkeypatch.setattr(openapi_contract_cli, "collect_openapi_contract", fail_collect)
+    monkeypatch.setattr("sys.argv", ["openapi_contract.py"])
+
+    assert openapi_contract_cli.main() == 2
+    assert_sanitized_cli_os_error(capsys.readouterr())
+
+
 def test_storage_schema_cli_outputs_markdown(monkeypatch, tmp_path):
     output_path = tmp_path / "schema.md"
     monkeypatch.setattr(storage_schema_cli, "storage_schema_status_for_root", lambda root: {"ok": True})
@@ -414,6 +1239,17 @@ def test_storage_schema_cli_returns_nonzero_for_drift(monkeypatch, capsys):
 
     assert storage_schema_cli.main() == 1
     assert json.loads(capsys.readouterr().out) == {"ok": False}
+
+
+def test_storage_schema_cli_reports_sanitized_os_errors(monkeypatch, capsys):
+    def fail_status(root):
+        raise OSError(13, "Permission denied", "/private/hunter2-schema.sqlite3")
+
+    monkeypatch.setattr(storage_schema_cli, "storage_schema_status_for_root", fail_status)
+    monkeypatch.setattr("sys.argv", ["storage_schema.py"])
+
+    assert storage_schema_cli.main() == 2
+    assert_sanitized_cli_os_error(capsys.readouterr())
 
 
 def test_platform_migration_preflight_cli_default_allows_local_preflight(monkeypatch, capsys):
@@ -475,7 +1311,7 @@ def test_platform_migration_preflight_cli_writes_markdown(monkeypatch, tmp_path)
 
 def test_platform_migration_preflight_cli_reports_os_errors(monkeypatch, capsys):
     def fail_collect(*, project_root):
-        raise OSError("cannot read target")
+        raise OSError(13, "Permission denied", "/private/hunter2-target")
 
     monkeypatch.setattr(
         platform_migration_preflight_cli,
@@ -485,7 +1321,10 @@ def test_platform_migration_preflight_cli_reports_os_errors(monkeypatch, capsys)
     monkeypatch.setattr("sys.argv", ["platform_migration_preflight.py"])
 
     assert platform_migration_preflight_cli.main() == 2
-    assert "error: cannot read target" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "error: Permission denied" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
 
 
 def test_platform_migration_rehearsal_cli_uses_temporary_staging(monkeypatch, capsys):
@@ -505,6 +1344,7 @@ def test_platform_migration_rehearsal_cli_uses_temporary_staging(monkeypatch, ca
     assert seen["overwrite_staging"] is False
     assert seen["include_runtime_dependencies"] is False
     assert seen["include_object_manifest"] is False
+    assert seen["include_job_store_manifest"] is False
     assert seen["object_key_prefix"] == "fluxmind-runtime"
 
 
@@ -537,6 +1377,34 @@ def test_platform_migration_rehearsal_cli_can_include_object_manifest(monkeypatc
     assert output["object_storage_manifest"]["mode"] == "object_storage_migration_manifest"
     assert seen["include_object_manifest"] is True
     assert seen["object_key_prefix"] == "lab-runtime"
+
+
+def test_platform_migration_rehearsal_cli_can_include_job_store_manifest(monkeypatch, capsys):
+    seen = {}
+
+    def fake_rehearsal(**kwargs):
+        seen.update(kwargs)
+        return {
+            "rehearsal_ok": True,
+            "summary": {"job_store_manifest_ready": True},
+            "job_store_manifest": {"mode": "job_store_migration_manifest"},
+        }
+
+    monkeypatch.setattr(platform_migration_rehearsal_cli, "run_storage_migration_rehearsal", fake_rehearsal)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--target-root",
+            "/tmp/root",
+            "--include-job-store-manifest",
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["job_store_manifest"]["mode"] == "job_store_migration_manifest"
+    assert seen["include_job_store_manifest"] is True
 
 
 def test_platform_migration_rehearsal_cli_verifies_object_manifest_from_stdin(
@@ -572,6 +1440,76 @@ def test_platform_migration_rehearsal_cli_verifies_object_manifest_from_stdin(
     assert seen["manifest"]["mode"] == "object_storage_migration_manifest"
     assert str(seen["project_root"]) == "/tmp/root"
     assert seen["include_runtime_dependencies"] is None
+
+
+def test_platform_migration_rehearsal_cli_verifies_job_store_manifest_from_stdin(
+    monkeypatch, capsys
+):
+    seen = {}
+
+    def fake_verify(manifest, **kwargs):
+        seen["manifest"] = manifest
+        seen.update(kwargs)
+        return {"mode": "job_store_migration_manifest_verify", "ok": True}
+
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "verify_job_store_migration_manifest",
+        fake_verify,
+    )
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"mode":"job_store_migration_manifest"}'))
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--target-root",
+            "/tmp/root",
+            "--verify-job-store-manifest",
+            "-",
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output == {"mode": "job_store_migration_manifest_verify", "ok": True}
+    assert seen["manifest"]["mode"] == "job_store_migration_manifest"
+    assert str(seen["project_root"]) == "/tmp/root"
+
+
+def test_platform_migration_rehearsal_cli_job_store_verify_failure_returns_nonzero(
+    monkeypatch, tmp_path
+):
+    manifest_path = tmp_path / "job-manifest.json"
+    output_path = tmp_path / "job-verify.md"
+    manifest_path.write_text('{"mode":"job_store_migration_manifest"}', encoding="utf-8")
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "verify_job_store_migration_manifest",
+        lambda manifest, **kwargs: {
+            "mode": "job_store_migration_manifest_verify",
+            "ok": False,
+        },
+    )
+    monkeypatch.setattr(
+        platform_migration_rehearsal_cli,
+        "format_job_store_migration_verify_markdown",
+        lambda status: "# Job Verify",
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "platform_migration_rehearsal.py",
+            "--verify-job-store-manifest",
+            str(manifest_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert platform_migration_rehearsal_cli.main() == 1
+    assert output_path.read_text(encoding="utf-8") == "# Job Verify\n"
 
 
 def test_platform_migration_rehearsal_cli_verify_failure_returns_nonzero(
@@ -654,7 +1592,7 @@ def test_platform_migration_rehearsal_cli_writes_markdown(monkeypatch, tmp_path)
 
 def test_platform_migration_rehearsal_cli_reports_os_errors(monkeypatch, capsys):
     def fail_rehearsal(**kwargs):
-        raise OSError("cannot copy runtime")
+        raise OSError(13, "Permission denied", "/private/hunter2-runtime")
 
     monkeypatch.setattr(
         platform_migration_rehearsal_cli,
@@ -664,7 +1602,10 @@ def test_platform_migration_rehearsal_cli_reports_os_errors(monkeypatch, capsys)
     monkeypatch.setattr("sys.argv", ["platform_migration_rehearsal.py"])
 
     assert platform_migration_rehearsal_cli.main() == 2
-    assert "error: cannot copy runtime" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "error: Permission denied" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
 
 
 def test_product_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
@@ -721,6 +1662,17 @@ def test_product_readiness_cli_writes_markdown(monkeypatch, tmp_path):
     assert output_path.read_text(encoding="utf-8") == "# Product\n"
 
 
+def test_product_readiness_cli_reports_sanitized_os_errors(monkeypatch, capsys):
+    def fail_collect():
+        raise OSError(13, "Permission denied", "/private/hunter2-product.sqlite3")
+
+    monkeypatch.setattr(product_readiness_cli, "collect_product_readiness", fail_collect)
+    monkeypatch.setattr("sys.argv", ["product_readiness.py"])
+
+    assert product_readiness_cli.main() == 2
+    assert_sanitized_cli_os_error(capsys.readouterr())
+
+
 def test_provider_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
     monkeypatch.setattr(
         provider_readiness_cli,
@@ -773,6 +1725,17 @@ def test_provider_readiness_cli_writes_markdown(monkeypatch, tmp_path):
 
     assert provider_readiness_cli.main() == 0
     assert output_path.read_text(encoding="utf-8") == "# Provider\n"
+
+
+def test_provider_readiness_cli_reports_sanitized_os_errors(monkeypatch, capsys):
+    def fail_collect():
+        raise OSError(13, "Permission denied", "/private/hunter2-provider.json")
+
+    monkeypatch.setattr(provider_readiness_cli, "collect_provider_readiness", fail_collect)
+    monkeypatch.setattr("sys.argv", ["provider_readiness.py"])
+
+    assert provider_readiness_cli.main() == 2
+    assert_sanitized_cli_os_error(capsys.readouterr())
 
 
 def test_quality_readiness_cli_default_allows_local_foundation(monkeypatch, capsys):
@@ -844,13 +1807,16 @@ def test_quality_readiness_cli_writes_markdown(monkeypatch, tmp_path):
 
 def test_quality_readiness_cli_reports_os_errors(monkeypatch, capsys):
     def fail_collect(**kwargs):
-        raise OSError("cannot read eval")
+        raise OSError(13, "Permission denied", "/private/hunter2-eval.json")
 
     monkeypatch.setattr(quality_readiness_cli, "collect_quality_readiness", fail_collect)
     monkeypatch.setattr("sys.argv", ["quality_readiness.py"])
 
     assert quality_readiness_cli.main() == 2
-    assert "error: cannot read eval" in capsys.readouterr().err
+    captured = capsys.readouterr()
+    assert "error: Permission denied" in captured.err
+    assert "/private" not in captured.err
+    assert "hunter2" not in captured.err
 
 
 def test_run_job_worker_cli_prints_claimed_jobs(monkeypatch, capsys):
