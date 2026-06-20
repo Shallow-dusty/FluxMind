@@ -8,9 +8,9 @@ def test_repo_status_records_post_deployment_git_boundary():
     text = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
-    assert "Current implementation commit  4bf9775 fix: sanitize API request validation errors" in text
-    assert "Current docs/health sync       docs: record API request validation audit status (this commit)" in text
-    assert "by the thirty-nine local commits below" in text
+    assert "Current implementation commit  673cd2f fix: sanitize Streamlit validation error output" in text
+    assert "Current docs/health sync       docs: record Streamlit validation error audit status (this commit)" in text
+    assert "by the forty-one local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -63,8 +63,10 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "origin/main   a51a060" not in text
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
-    assert "Current local app-code HEAD    4bf9775 fix: sanitize API request validation errors" in text
-    assert "docs: record API request validation audit status (this commit)" in text
+    assert "Current local app-code HEAD    673cd2f fix: sanitize Streamlit validation error output" in text
+    assert "docs: record Streamlit validation error audit status (this commit)" in text
+    assert "673cd2f fix: sanitize Streamlit validation error output" in text
+    assert "384665a docs: record API request validation audit status" in text
     assert "4bf9775 fix: sanitize API request validation errors" in text
     assert "9e7c4e2 docs: record index rebuild job projection audit status" in text
     assert "19de06f fix: redact index rebuild job source paths" in text
@@ -103,6 +105,11 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Streamlit validation error-output follow-up on 2026-06-20 22:30 CST" in text
+    assert "main...origin/main [ahead 40]" in text
+    assert "pass, 627 tests" in text
+    assert "safe_streamlit_error_text" in text
+    assert "rg '.format(error=exc)' app.py                              no matches" in text
     assert "API request validation projection follow-up on 2026-06-20 22:21 CST" in text
     assert "main...origin/main [ahead 38]" in text
     assert "pass, 626 tests" in text
@@ -198,7 +205,9 @@ def test_roadmap_near_term_plan_starts_from_deployed_baseline():
 
     assert "Treat `9b1cbc5` as the current source/eval quality baseline" in text
     assert "Decide whether to push the current 36 local commits" not in text
-    assert "pass, 626 tests, 2 known warnings" in text
+    assert "pass, 627 tests, 2 known warnings" in text
+    assert "Streamlit validation error-output audit" in text
+    assert "Streamlit-validation-error-sanitizer" in text
     assert "API request validation projection audit" in text
     assert "request-validation-error-projection" in text
     assert "Index rebuild job projection audit" in text

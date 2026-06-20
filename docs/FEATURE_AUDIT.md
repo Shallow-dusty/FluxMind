@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 22:21 CST after the
-API request validation error projection hardening. The command set below now
-passes with 626 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 22:30 CST after the
+Streamlit validation error-output hardening. The command set below now
+passes with 627 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ passes with 626 tests, 89% branch coverage, OpenAPI no-secret snapshot
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 626 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 627 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 626 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 627 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -64,6 +64,7 @@ Command                                                               Result
                                                                       API-validation-error-sanitizer/
                                                                       index-rebuild-job-projection/
                                                                       request-validation-error-projection/
+                                                                      Streamlit-validation-error-sanitizer/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
@@ -233,6 +234,17 @@ field-specific text with a generic no-secret message and omit submitted
 local Python execution are not echoed; local verification passes with 626 tests,
 89% branch coverage, offline RAG eval, health anchors, OpenAPI no-secret
 snapshot `diff_count=0`, and storage-schema 0 problems.
+
+The 2026-06-20 22:30 CST Streamlit validation error-output audit adds focused
+guard coverage for user-upload/admin validation errors that previously used
+localized templates with raw `exc` interpolation. Quality-readiness live eval
+JSON, activation-suite live eval JSON, OpenAPI contract snapshot JSON, runtime
+restore manifest uploads, and PDF upload failures now render through
+`safe_streamlit_error_text`, preserving localized prefixes while sanitizing
+exception text. Static UI guards and health anchors verify that
+`.format(error=exc)` has no matches in `app.py`; local verification passes with
+627 tests, 89% branch coverage, offline RAG eval, OpenAPI no-secret snapshot
+`diff_count=0`, and storage-schema 0 problems.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,
@@ -413,6 +425,10 @@ Admin and runtime status      verified      status/report/retention/events/runti
                                             provider-readiness blocker summaries.
                                             Streamlit on-demand readiness/rehearsal/
                                             OpenAPI controls sanitize OSError output.
+                                            Uploaded JSON/manifest/PDF validation
+                                            errors use the same sanitized UI
+                                            error text helper instead of raw
+                                            exception interpolation.
                                             Identity-aware admin remains planned.
 No-key execution providers    verified      local Python, Octave-compatible, and opt-in Docker
                                             providers prove the job/artifact contract. Request-level

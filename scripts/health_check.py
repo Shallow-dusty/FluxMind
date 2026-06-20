@@ -165,13 +165,20 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  4bf9775 fix: sanitize API request validation errors" in repo_status
-        and "Current docs/health sync       docs: record API request validation audit status (this commit)" in repo_status
-        and "by the thirty-nine local commits below" in repo_status
+        and "Current implementation commit  673cd2f fix: sanitize Streamlit validation error output" in repo_status
+        and "Current docs/health sync       docs: record Streamlit validation error audit status (this commit)" in repo_status
+        and "by the forty-one local commits below" in repo_status
+        and "673cd2f fix: sanitize Streamlit validation error output" in repo_status
+        and "384665a docs: record API request validation audit status" in repo_status
         and "4bf9775 fix: sanitize API request validation errors" in repo_status
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Streamlit validation error-output follow-up on 2026-06-20 22:30 CST" in repo_status
+        and "main...origin/main [ahead 40]" in repo_status
+        and "pass, 627 tests" in repo_status
+        and "safe_streamlit_error_text" in repo_status
+        and "rg '.format(error=exc)' app.py                              no matches" in repo_status
         and "API request validation projection follow-up on 2026-06-20 22:21 CST" in repo_status
         and "main...origin/main [ahead 38]" in repo_status
         and "pass, 626 tests" in repo_status
@@ -263,7 +270,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 626 tests, 2 known warnings" in roadmap
+        and "pass, 627 tests, 2 known warnings" in roadmap
+        and "Streamlit validation error-output audit" in roadmap
+        and "Streamlit-validation-error-sanitizer" in roadmap
         and "API request validation projection audit" in roadmap
         and "request-validation-error-projection" in roadmap
         and "Index rebuild job projection audit" in roadmap

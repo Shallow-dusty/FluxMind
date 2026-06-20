@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 626
+Current hardening progress through 2026-06-20: the automated suite has 627
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -63,6 +63,10 @@ The wider Streamlit admin surface now applies that same no-secret UI error
 projection to artifact gallery download failures and on-demand admin
 readiness/rehearsal/OpenAPI buttons, so path/URI/OSError failures are not
 rendered as raw exception strings in public UI captions or errors.
+Streamlit user-upload/admin validation errors now share the same sanitizer for
+JSON decode, runtime restore manifest parse, OpenAPI snapshot parse, and PDF
+upload `ValueError` output, so localized UI prefixes can remain while raw
+exception text is not rendered directly through `.format(error=exc)`.
 The FastAPI corpus/profile/artifact download boundary now uses the same
 principle for validation failures: corpus source-path and artifact-export
 `ValueError` branches return stable no-secret `detail.code` values instead of
@@ -104,6 +108,11 @@ eval passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
 schema drift still at 0 problems, and TestClient repros showing `leaked=false`
 and `input` exported=false for secret-like top-level and nested submitted body
 values.
+A 2026-06-20 22:30 CST Streamlit validation error-output audit confirms the
+updated local checkout with 627 tests passing, 89% branch coverage, offline RAG
+eval passing, OpenAPI no-secret snapshot drift still at `diff_count=0`, storage
+schema drift still at 0 problems, and static UI guards showing
+`.format(error=exc)` has no matches in `app.py`.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
