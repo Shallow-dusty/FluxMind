@@ -11,9 +11,9 @@ For repo/worktree status, use `docs/REPO_STATUS.md`. For live deployment state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there before
 making deployment decisions.
 
-Current local verification was refreshed on 2026-06-20 23:31 CST during the
-git/documentation drift refresh after the job request ID projection docs sync.
-The command set below now passes with 631 tests, 89% branch coverage, OpenAPI no-secret snapshot
+Current local verification was refreshed on 2026-06-20 23:42 CST after the
+Streamlit job result failure-message hardening. The command set below now
+passes with 632 tests, 89% branch coverage, OpenAPI no-secret snapshot
 `diff_count=0`, storage-schema 0 problems, and clean whitespace drift.
 
 ## Current Verification Command Set
@@ -21,9 +21,9 @@ The command set below now passes with 631 tests, 89% branch coverage, OpenAPI no
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 631 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 632 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 631 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 632 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -44,6 +44,7 @@ Command                                                               Result
                                                                       Streamlit-product-registry-error-sanitizer/
                                                                       Streamlit-admin-error-sanitizer/
                                                                       Streamlit-artifact-error-sanitizer/
+                                                                      Streamlit-job-result-error-sanitizer/
                                                                       API-key-create-output-guard/
                                                                       share-link-registry/
                                                                       product-activation-rehearsal/
@@ -302,6 +303,16 @@ docs sync: 631 tests pass, coverage remains 89%, offline RAG eval passes,
 health/docs anchors pass, OpenAPI no-secret snapshot verification has
 `diff_count=0`, storage schema inventory reports 10 stores with 0 problems, and
 `git diff --check` is clean. No live deployment facts were refreshed.
+
+The 2026-06-20 23:42 CST Streamlit job result failure-message audit adds a
+focused guard for the immediate job-result panel. Failed local jobs no longer
+render raw `job.error["message"]` values through `st.error`; the message is
+sanitized through the shared no-secret CLI/UI error sanitizer before display,
+with a status fallback when the sanitized text is empty. Static regression
+coverage verifies the renderer no longer uses the old direct
+`(job.error or {}).get("message", job.status)` path, and the health checker now
+has a Streamlit job-result sanitizer anchor. Local verification passes with 632
+tests and 89% branch coverage; no live deployment facts were refreshed.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,

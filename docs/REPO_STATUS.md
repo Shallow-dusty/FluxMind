@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 23:31 CST
+Snapshot time: 2026-06-20 23:42 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  73be318 fix: redact unsafe job request ids
-Current docs/health sync       docs: refresh git and documentation drift status (this commit)
-Current local app-code HEAD    73be318 fix: redact unsafe job request ids
+Current implementation commit  125664d fix: sanitize Streamlit job failure messages
+Current docs/health sync       docs: record Streamlit job result audit status (this commit)
+Current local app-code HEAD    125664d fix: sanitize Streamlit job failure messages
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the fifty-one local commits below
-                               after this git/documentation drift refresh commit
-Current local commit stack     docs: refresh git and documentation drift status (this commit)
+                               by the fifty-three local commits below
+                               after this Streamlit job result docs refresh commit
+Current local commit stack     docs: record Streamlit job result audit status (this commit)
+                               125664d fix: sanitize Streamlit job failure messages
+                               1f9e8d2 docs: refresh git and documentation drift status
                                848eef4 docs: record job request id audit status
                                73be318 fix: redact unsafe job request ids
                                a1a047e docs: record job owner metadata audit status
@@ -124,6 +126,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                sanitization,
                                Streamlit admin on-demand panel and artifact gallery
                                error output sanitization,
+                               Streamlit job result failure-message output
+                               sanitization,
                                git/documentation status refresh with current
                                no-drift gate evidence,
                                API validation/artifact export HTTP error
@@ -291,6 +295,35 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Streamlit job result failure-message follow-up on 2026-06-20 23:42 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_translation_guard.py pass, 16 selected
+  tests/test_health_check.py::test_main_local_health_check_passes -q
+.venv/bin/python scripts/health_check.py                   pass, including Streamlit
+                                                            job result sanitizer anchor
+.venv/bin/python -m pytest -q                              pass, 632 tests,
+                                                            2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 632 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+git diff --check                                           pass; no whitespace drift
+git status --short --branch                                main...origin/main [ahead 52],
+                                                            only docs changes remain before
+                                                            this docs refresh
+```
+
+The follow-up closes a Streamlit UI projection gap for local job failures.
+`render_job_result()` no longer formats raw `job.error["message"]` directly
+when a job fails. It now sanitizes the message through the same no-secret CLI/UI
+error-message sanitizer used by the admin panels via
+`safe_streamlit_status_message` and falls back to the job status when the
+sanitized message is empty. Static regression coverage and the local health
+checker guard against reintroducing direct raw job error rendering. No
+production deployment was performed, and `docs/DEPLOYMENT_STATUS.md` remains
+unchanged because no live Trace-Twin service facts were refreshed in this pass.
 
 Git/documentation drift refresh on 2026-06-20 23:31 CST:
 

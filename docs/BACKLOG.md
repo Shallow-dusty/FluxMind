@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 631
+Current hardening progress through 2026-06-20: the automated suite has 632
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -162,6 +162,14 @@ coverage, offline RAG eval passing, local health/docs anchors passing, OpenAPI
 no-secret snapshot drift still at `diff_count=0`, storage schema drift still at
 0 problems, and `git diff --check` clean. It was a docs/health-only status
 pass; no production deployment or live Trace-Twin service facts were refreshed.
+A 2026-06-20 23:42 CST Streamlit job result failure-message audit confirms the
+updated local checkout with 632 tests passing, 89% branch coverage, local
+health/docs anchors passing, and `git diff --check` clean. Failed local job
+results in the Streamlit sidebar now sanitize raw `job.error["message"]` values
+before rendering, so stderr/exception text containing secret-like tokens or
+local paths is redacted rather than displayed directly. It was a local UI
+projection hardening pass; no production deployment or live Trace-Twin service
+facts were refreshed.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

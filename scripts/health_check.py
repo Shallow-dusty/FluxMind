@@ -165,9 +165,11 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  73be318 fix: redact unsafe job request ids" in repo_status
-        and "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in repo_status
-        and "by the fifty-one local commits below" in repo_status
+        and "Current implementation commit  125664d fix: sanitize Streamlit job failure messages" in repo_status
+        and "Current docs/health sync       docs: record Streamlit job result audit status (this commit)" in repo_status
+        and "by the fifty-three local commits below" in repo_status
+        and "125664d fix: sanitize Streamlit job failure messages" in repo_status
+        and "1f9e8d2 docs: refresh git and documentation drift status" in repo_status
         and "848eef4 docs: record job request id audit status" in repo_status
         and "73be318 fix: redact unsafe job request ids" in repo_status
         and "a1a047e docs: record job owner metadata audit status" in repo_status
@@ -184,6 +186,11 @@ def main() -> int:
         and "9e7c4e2 docs: record index rebuild job projection audit status" in repo_status
         and "19de06f fix: redact index rebuild job source paths" in repo_status
         and "1115b02 docs: refresh FluxMind git and documentation drift status" in repo_status
+        and "Streamlit job result failure-message follow-up on 2026-06-20 23:42 CST" in repo_status
+        and "main...origin/main [ahead 52]" in repo_status
+        and "pass, 632 tests" in repo_status
+        and "safe_streamlit_status_message" in repo_status
+        and "raw `job.error[\"message\"]`" in repo_status
         and "Git/documentation drift refresh on 2026-06-20 23:31 CST" in repo_status
         and "main...origin/main [ahead 50]" in repo_status
         and "after the job request-ID docs sync" in repo_status
@@ -304,7 +311,9 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 631 tests, 2 known warnings" in roadmap
+        and "pass, 632 tests, 2 known warnings" in roadmap
+        and "Streamlit job result error audit" in roadmap
+        and "Streamlit-job-result-error-sanitizer" in roadmap
         and "Git/documentation drift refresh" in roadmap
         and "Job request ID projection audit" in roadmap
         and "job-request-id-projection" in roadmap
