@@ -1,56 +1,50 @@
-# FluxMind Documentation Index
+# FluxMind 文档索引
 
-Last updated: 2026-06-20
+**最后更新**: 2026-06-21
 
-This directory separates current status, architecture, planning, deployment
-evidence, and demo handoff material. Prefer updating the document that owns the
-fact instead of repeating the same state in several places.
+## 📖 核心文档（活跃维护）
 
-## Reading Order
+### 用户文档
+- **[../README.md](../README.md)** - 项目介绍、安装和快速开始
+- **[../CLAUDE.md](../CLAUDE.md)** - Claude Code 开发约定
 
-1. `docs/REPO_STATUS.md` - current git/worktree snapshot, local/remote
-   verification results, and the immediate repo hygiene boundary.
-2. `docs/DEPLOYMENT_STATUS.md` - mutable production deployment snapshot and
-   refresh commands. Re-check live state before acting on this file.
-3. `docs/ARCHITECTURE.md` - current runtime boundaries, module ownership, and
-   the next architecture step.
-4. `docs/BACKLOG.md` - implementation work packages and acceptance criteria.
-5. `docs/PLATFORM_AUDIT_AND_ROADMAP.md` - broader platform audit, product
-   direction, and open decisions.
-6. `docs/QUALITY_ROADMAP.md` - staged quality bars for self-use, small-group,
-   and community readiness.
-7. `docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md` - production readiness gap,
-   competitor scan, community demand signals, and staged roadmap.
-8. `docs/FEATURE_AUDIT.md` - current feature inventory, route coverage, test
-   evidence, and known capability gaps.
-9. `docs/demo-script.md` - short Chinese demo script and defense Q&A.
-10. `docs/handover.html` - single-file visual handover for presentations.
+### 开发文档
+- **[current/ARCHITECTURE.md](current/ARCHITECTURE.md)** - 系统架构设计（56KB）
+- **[current/DEPLOYMENT_STATUS.md](current/DEPLOYMENT_STATUS.md)** - 生产部署状态（74KB）
+- **[current/REPO_STATUS.md](current/REPO_STATUS.md)** - Git 仓库状态快照（207KB）
 
-## Source-Of-Truth Map
+### 示例
+- **[demo-script.md](demo-script.md)** - 演示脚本
+- **[handover.html](handover.html)** - 可视化交付页面
 
-```text
-Topic                     Owner doc
-------------------------  ---------------------------------
-Git/worktree snapshot     docs/REPO_STATUS.md
-Live deployment state     docs/DEPLOYMENT_STATUS.md
-Runtime/module boundary   docs/ARCHITECTURE.md
-Work package status       docs/BACKLOG.md
-Product/platform roadmap  docs/PLATFORM_AUDIT_AND_ROADMAP.md
-Quality maturity gates    docs/QUALITY_ROADMAP.md, eval/rag_baseline.json
-Production/market gap     docs/PRODUCTION_GAP_AND_MARKET_RESEARCH.md
-Feature coverage audit    docs/FEATURE_AUDIT.md
-Demo speaking notes       docs/demo-script.md
-Visual delivery page      docs/handover.html
-Project bootstrap         README.md, AGENTS.md, CLAUDE.md
-```
+## 📦 存档文档（仅供参考）
 
-## Update Rules
+以下文档记录了开发过程中的详细审计和路线图，已移至 `archive/` 供参考：
 
-- If a fact depends on live services, update it only after running the relevant
-  check and record the check date/time.
-- If a fact describes planned work, keep it in `docs/BACKLOG.md` or
-  `docs/PLATFORM_AUDIT_AND_ROADMAP.md`, not in `README.md`.
-- Keep `README.md` as the project entrypoint. It may summarize, but the detailed
-  operational status belongs in this docs tree.
-- Do not copy secrets, tokens, `.env` values, uploaded PDFs, FAISS indexes,
-  metadata databases, job logs, or artifacts into documentation.
+| 文档 | 大小 | 说明 |
+|------|------|------|
+| `archive/BACKLOG.md` | 94KB | 实现待办清单 |
+| `archive/FEATURE_AUDIT.md` | 66KB | 功能审计报告 |
+| `archive/PLATFORM_AUDIT_AND_ROADMAP.md` | 59KB | 平台审计和路线图 |
+| `archive/PRODUCTION_GAP_AND_MARKET_RESEARCH.md` | 48KB | 生产差距分析 |
+| `archive/QUALITY_ROADMAP.md` | 8KB | 质量路线图 |
+
+**总计**: ~275KB 开发历史记录
+
+## 🎯 快速导航
+
+**想要...**
+
+- 快速上手 → [../README.md](../README.md)
+- 理解架构 → [current/ARCHITECTURE.md](current/ARCHITECTURE.md)
+- 查看部署状态 → [current/DEPLOYMENT_STATUS.md](current/DEPLOYMENT_STATUS.md)
+- 了解开发历史 → `archive/` 目录
+
+## 📊 文档维护约定
+
+1. **REPO_STATUS.md** - Git 快照，由脚本自动更新
+2. **DEPLOYMENT_STATUS.md** - 生产状态，部署后手动更新
+3. **ARCHITECTURE.md** - 架构设计，重大变更时更新
+4. **存档文档** - 保持只读，不再更新
+
+**注意**: 不要在文档中包含 secrets、tokens、`.env` 值、PDF 内容、FAISS 索引或数据库内容。
