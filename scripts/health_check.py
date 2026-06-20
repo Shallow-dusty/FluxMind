@@ -165,9 +165,13 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  042e6d0 fix: redact API key public metadata" in repo_status
-        and "Current docs/health sync       docs: refresh git and documentation drift status (this commit)" in repo_status
-        and "by the twenty-five local commits below" in repo_status
+        and "Current implementation commit  49cdb82 fix: sanitize share-link UI errors" in repo_status
+        and "Current docs/health sync       docs: record share-link UI error audit status (this commit)" in repo_status
+        and "by the twenty-seven local commits below" in repo_status
+        and "Share-link Streamlit error-output follow-up on 2026-06-20 20:20 CST" in repo_status
+        and "pass, 617 tests, 2 known warnings" in repo_status
+        and "sanitizes Streamlit share-link management exception output" in repo_status
+        and "uses the sanitized error helper" in repo_status
         and "c7b6d9d docs: refresh git and drift status" in repo_status
         and "6066547 docs: record runtime event redaction audit" in repo_status
         and "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in repo_status
@@ -219,9 +223,10 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 616 tests, 2 known warnings" in roadmap
+        and "pass, 617 tests, 2 known warnings" in roadmap
         and "execution-input-materialization" in roadmap
-        and "runtime-event-metadata-value-redaction" in roadmap,
+        and "runtime-event-metadata-value-redaction" in roadmap
+        and "share-link-error-sanitizer" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
         failures,
     )

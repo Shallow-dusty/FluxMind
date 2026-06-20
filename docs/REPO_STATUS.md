@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 20:10 CST
+Snapshot time: 2026-06-20 20:20 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  042e6d0 fix: redact API key public metadata
-Current docs/health sync       docs: refresh git and documentation drift status (this commit)
-Current local app-code HEAD    042e6d0 fix: redact API key public metadata
+Current implementation commit  49cdb82 fix: sanitize share-link UI errors
+Current docs/health sync       docs: record share-link UI error audit status (this commit)
+Current local app-code HEAD    49cdb82 fix: sanitize share-link UI errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the twenty-five local commits below
-                               after this documentation drift refresh commit
-Current local commit stack     docs: refresh git and documentation drift status (this commit)
+                               by the twenty-seven local commits below
+                               after this share-link UI docs refresh commit
+Current local commit stack     docs: record share-link UI error audit status (this commit)
+                               49cdb82 fix: sanitize share-link UI errors
+                               d39d983 docs: refresh git and documentation drift status
                                042e6d0 fix: redact API key public metadata
                                c7b6d9d docs: refresh git and drift status
                                6066547 docs: record runtime event redaction audit
@@ -92,6 +94,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                hardening,
                                final git/documentation drift refresh with
                                current no-drift gate evidence,
+                               Streamlit share-link management error output
+                               sanitization,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -227,6 +231,47 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Share-link Streamlit error-output follow-up on 2026-06-20 20:20 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_translation_guard.py pass, 13 selected share-link/UI/
+  tests/test_share_links.py tests/test_api.py::...         CLI/API guard tests,
+  tests/test_cli_scripts.py -k "share_link_registry" -q    83 deselected, 2 known warnings
+.venv/bin/python -m pytest -q                              pass, 617 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 617 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including
+                                                            Streamlit share-link
+                                                            management sanitized
+                                                            error-output anchor
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 26],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up sanitizes Streamlit share-link management exception output. The
+share-link registry API/CLI already returned no-secret public projections; this
+patch closes the UI-side error path so OSError, SQLite, or validation failures
+shown in the explicit operator panel are passed through the existing path,
+URL, bearer token, `sk-...`, and token/secret assignment redaction helper
+instead of rendering `str(exc)` directly. The guard test and health check now
+verify that the share-link management block no longer contains
+`st.error(str(exc))` and uses the sanitized error helper for list/create/
+resolve/revoke paths.
 
 Git/documentation drift refresh on 2026-06-20 20:10 CST:
 

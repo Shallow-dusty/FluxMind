@@ -47,14 +47,14 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 616 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 617 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
                                              30 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/share-link-management/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/share-link-management/share-link-error-sanitizer/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 10 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
@@ -726,7 +726,10 @@ Local share-link token lifecycle is implemented through a separate SQLite
 registry that stores token hashes only, returns the raw share token once on
 create, and exposes list/revoke/resolve through CLI, `/admin/share-links*`,
 and an explicitly enabled Streamlit operator panel without returning raw URLs,
-resource refs, creator user IDs, descriptions, paths, or contents.
+resource refs, creator user IDs, descriptions, paths, or contents. The
+Streamlit share-link operator panel also sanitizes OSError, SQLite, and
+validation error output through the no-secret error boundary instead of
+rendering raw exception strings.
 The local product registry can also enforce request quotas on `/query*` routes
 when the quota guard is explicitly enabled, and workspace-role permissions on
 query/job/corpus/admin write paths when the RBAC guard is explicitly enabled.

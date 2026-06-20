@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 616
+Current hardening progress through 2026-06-20: the automated suite has 617
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -47,10 +47,14 @@ unsafe legacy runtime-event request IDs are projected as
 `request_id_present`/`request_id_redacted` booleans instead of raw values. The
 local API-key, product, and share-link registry CLIs also sanitize output-write
 and SQLite registry errors without exporting output paths or crashing during
-error reporting. API-key lifecycle public outputs now also redact raw owner
-IDs, owner labels, and free-text descriptions into presence/fingerprint fields,
-so list/verify/revoke and create key metadata cannot echo secret-like
-descriptions or local operator identifiers. The
+error reporting. The explicit Streamlit share-link management panel now uses the
+same no-secret error projection for OSError, SQLite, and validation failures, so
+UI errors from list/create/resolve/revoke paths cannot render raw paths, URLs,
+bearer tokens, `sk-...` values, or token/secret assignments. API-key lifecycle
+public outputs now also redact raw owner IDs, owner labels, and free-text
+descriptions into presence/fingerprint fields, so list/verify/revoke and create
+key metadata cannot echo secret-like descriptions or local operator identifiers.
+The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
 request IDs into archived quality reports. The

@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 616 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 617 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 616 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 617 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -52,6 +52,7 @@ Command                                                               Result
                                                                       quality-evidence-plan/
                                                                       readiness-CLI-error-sanitizer/
                                                                       live-eval-request-id-redaction/
+                                                                      Streamlit-share-link-error-sanitizer/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
@@ -613,7 +614,8 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
   share-link registry now stores token hashes in SQLite, returns the raw token
   only once on create, supports list/revoke/resolve through CLI and
   `/admin/share-links*`, exposes Streamlit operator management behind a
-  separate explicit flag, and records metadata-only `share_link_admin` events.
+  separate explicit flag, sanitizes Streamlit operator error output, and records
+  metadata-only `share_link_admin` events.
   It is exposed through
   `scripts/collaboration_readiness.py`, `/admin/collaboration-readiness`, and
   the Streamlit admin panel without returning workspace/user/corpus/share
@@ -621,9 +623,10 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 descriptions, paths, prompts, answers, or contents. The local API-key,
 product, and share-link registry CLIs also sanitize output-write and SQLite
 registry errors instead of leaking output paths or crashing during error
-reporting. API-key CLI list/verify/revoke Markdown and JSON outputs now also
-show owner fingerprints rather than raw owner IDs/labels and omit free-text
-descriptions. Activation
+reporting; the Streamlit share-link management panel applies the same no-secret
+error projection to OSError, SQLite, and validation failures. API-key CLI
+list/verify/revoke Markdown and JSON outputs now also show owner fingerprints
+rather than raw owner IDs/labels and omit free-text descriptions. Activation
   still remains
   blocked on real
   external identity provider, identity-backed quota enforcement, external

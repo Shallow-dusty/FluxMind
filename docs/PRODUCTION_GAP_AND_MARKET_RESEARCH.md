@@ -39,11 +39,11 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 042e6d0 fix: redact API key public metadata
-Current docs/health    docs: refresh git and documentation drift status
-Status note     local no-key hardening through API-key public metadata
-                projection is implemented and locally verified; the local stack
-                is not pushed to origin and not deployed to Trace-Twin
+Current implementation 49cdb82 fix: sanitize share-link UI errors
+Current docs/health    docs: record share-link UI error audit status
+Status note     local no-key hardening through share-link Streamlit error-output
+                sanitization is implemented and locally verified; the local
+                stack is not pushed to origin and not deployed to Trace-Twin
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
@@ -57,7 +57,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    616 passed, 2 known warnings
+pytest                                    617 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -83,6 +83,7 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           materialization/runtime-event-metadata-
                                           value-redaction/readiness-CLI-error-
                                           sanitizer/live-eval-request-ID-redaction
+                                          and Streamlit-share-link-error-sanitizer
                                           anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against
