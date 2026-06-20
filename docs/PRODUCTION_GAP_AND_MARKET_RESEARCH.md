@@ -1,6 +1,6 @@
 # FluxMind Production Gap and Market Research
 
-Last updated: 2026-06-20 20:32 CST
+Last updated: 2026-06-20 20:44 CST
 
 This document answers: what should FluxMind build next, what is still missing
 before it can be treated as a production-grade product, and what external
@@ -23,8 +23,8 @@ External research     Public project docs, GitHub API, community/forum search
 
 External links and GitHub counts are time-sensitive. Re-run public checks before
 using this document for investment, deployment, or release decisions.
-The 2026-06-20 20:32 refresh updates the current local repo verification counts,
-Streamlit product-registry error-output redaction boundary, no-secret
+The 2026-06-20 20:44 refresh updates the current local repo verification counts,
+Streamlit admin/artifact error-output redaction boundary, no-secret
 registry/readiness default state, and documentation drift evidence only. Dated
 live deployment and external research snapshots remain scoped to the times shown
 in their rows.
@@ -40,16 +40,16 @@ Source/eval     e069873 test: complete FluxMind small-group quality baseline
 Calibration     cc705dc test: recalibrate FluxMind live retrieval expectation
 Gate hardening  d80c083 test: tighten FluxMind small-group quality gates
 Current source/eval  9b1cbc5 test: expand FluxMind community quality eval
-Current implementation 951c0cb fix: sanitize product registry UI errors
-Current docs/health    docs: record product registry UI error audit status
-Status note     local no-key hardening through product registry Streamlit error-output
+Current implementation 913ac43 fix: sanitize Streamlit admin UI errors
+Current docs/health    docs: record Streamlit admin UI error audit status
+Status note     local no-key hardening through Streamlit admin/artifact error-output
                 sanitization is implemented and locally verified; the local
                 stack is not pushed to origin and not deployed to Trace-Twin
 Deployed source/eval  9b1cbc5 test: expand FluxMind community quality eval
 Work scope      local no-secret hardening, docs/status refresh, and drift gates;
                 external providers, identity, billing, and distributed storage
                 remain disabled by default
-Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 20:32 CST
+Diff hygiene    git diff --check passed for the current checkout on 2026-06-20 20:44 CST
 ```
 
 Current local verification from this docs/status pass plus retained readiness
@@ -58,7 +58,7 @@ and deployment snapshots:
 ```text
 Check                                      Result
 ----------------------------------------  -------------------------------------
-pytest                                    618 passed, 2 known warnings
+pytest                                    619 passed, 2 known warnings
 coverage                                  89% total branch coverage over api,
                                           scripts, and src
 offline RAG eval                          42 answer cases, 65 retrieval-only
@@ -86,6 +86,8 @@ local health_check.py                     pass, local/docs/query-latency/query-a
                                           sanitizer/live-eval-request-ID-redaction,
                                           Streamlit-share-link-error-sanitizer,
                                           and Streamlit-product-registry-error-
+                                          sanitizer/admin-on-demand-error-
+                                          sanitizer/artifact-gallery-error-
                                           sanitizer anchors
 storage_schema.py                         pass, ok=true, 10 stores, 0 problems
 OpenAPI no-secret snapshot verify         pass, ok=true, diff_count=0 against

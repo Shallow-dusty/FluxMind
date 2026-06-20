@@ -47,14 +47,14 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
-.venv/bin/python -m pytest                pass, 618 tests, 2 known warnings
+.venv/bin/python -m pytest                pass, 619 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py  pass, 42 answer cases, 65 retrieval-only
                                              cases, 13 code-output cases,
                                              30 PDF structure cases,
                                              42 recorded answers
-health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
+health_check.py local/docs anchors         pass, including query-latency/query-alert/provider-alert/job-alert/API-access-audit/API-rate-limit/upload-scan/retention-delete/metrics-export/retrieval-trace/retrieval-alerts/storage-schema/API-key-registry/product-registry/share-link-registry/product-quota/product-RBAC/product-registry-management/product-registry-error-sanitizer/share-link-management/share-link-error-sanitizer/admin-on-demand-error-sanitizer/artifact-gallery-error-sanitizer/product-activation-rehearsal/object-storage-manifest/object-storage-manifest-verifier/job-store-manifest/job-store-manifest-verifier/provider-readiness/provider-runtime-rehearsal/quality-readiness/activation-action-plan/OpenAPI-contract/execution-input-materialization/runtime-event-metadata-value-redaction and repo/roadmap drift checks
 storage_schema.py local preflight          pass, ok=true, 10 stores, 0 problems
 runtime manifest restore dry-run          pass, ok=true, 6 groups, 5 checked files, manifest_errors=0 against exported local manifest
 product_readiness.py local preflight       pass, local_foundation_ready=true, activation_ready=false; product quota/RBAC guard advisories when disabled
@@ -818,10 +818,13 @@ token-value variants, and sensitive top-level event messages, and search only
 the sanitized projection. Estimated query usage remains the fallback when provider
 usage data is absent; provider-specific pricing is available as local
 configuration only, while billing attribution and user cost dashboards remain
-blocked on external product decisions. The local product-registry admin panel
-can configure local workspace, role, quota, and attribution metadata for
+blocked on external product decisions. The local product-registry admin panel can
+configure local workspace, role, quota, and attribution metadata for
 self-hosted/operator testing, but it is not a substitute for external identity
-or payment administration.
+or payment administration. The wider Streamlit admin on-demand
+readiness/rehearsal/OpenAPI controls and artifact gallery sanitize OSError,
+path, and URI resolution failures through the no-secret error boundary instead
+of rendering raw exception strings.
 
 ## Near-Term Implementation Plan
 

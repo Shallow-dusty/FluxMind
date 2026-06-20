@@ -1,6 +1,6 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-20 20:32 CST
+Snapshot time: 2026-06-20 20:44 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
@@ -14,13 +14,15 @@ Branch                         main
 Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
 Tracking                       origin/main
 Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval
-Current implementation commit  951c0cb fix: sanitize product registry UI errors
-Current docs/health sync       docs: record product registry UI error audit status (this commit)
-Current local app-code HEAD    951c0cb fix: sanitize product registry UI errors
+Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors
+Current docs/health sync       docs: record Streamlit admin UI error audit status (this commit)
+Current local app-code HEAD    913ac43 fix: sanitize Streamlit admin UI errors
 Remote status at verification  origin/main remains at 675149b; local main is ahead
-                               by the twenty-nine local commits below
-                               after this product registry UI docs refresh commit
-Current local commit stack     docs: record product registry UI error audit status (this commit)
+                               by the thirty-one local commits below
+                               after this Streamlit admin UI docs refresh commit
+Current local commit stack     docs: record Streamlit admin UI error audit status (this commit)
+                               913ac43 fix: sanitize Streamlit admin UI errors
+                               9573793 docs: record product registry UI error audit status
                                951c0cb fix: sanitize product registry UI errors
                                9bda94c docs: record share-link UI error audit status
                                49cdb82 fix: sanitize share-link UI errors
@@ -100,6 +102,8 @@ Current refresh scope          local audit/forward-development commits for produ
                                sanitization,
                                Streamlit product registry management error output
                                sanitization,
+                               Streamlit admin on-demand panel and artifact gallery
+                               error output sanitization,
                                and docs;
                                committed locally in the stack above, not pushed
                                to origin and not deployed to Trace-Twin
@@ -235,6 +239,50 @@ with implementation/eval commit `bb9cb76` (`test: expand PDF structure eval
 gate`). It raises the aggregate PDF structure regression gate to 30 seeded
 equation/table/figure/algorithm cases using local paper fixtures only, so the
 community PDF-structure count target is no longer an open blocker.
+
+Streamlit admin UI error-output follow-up on 2026-06-20 20:44 CST:
+
+```text
+Command                                                     Result
+----------------------------------------------------------  ----------------------------------------
+.venv/bin/python -m pytest tests/test_translation_guard.py pass, 13 Streamlit/UI guard tests
+.venv/bin/python -m pytest -q                              pass, 619 tests, 2 known warnings
+.venv/bin/python -m coverage run -m pytest -q &&           pass, 619 tests,
+  .venv/bin/python -m coverage report --fail-under=88      89% total branch coverage
+.venv/bin/python scripts/evaluate_rag.py                   pass, 42 answer cases,
+                                                            65 retrieval-only cases,
+                                                            13 code-output cases,
+                                                            30 PDF structure cases,
+                                                            42 recorded answers
+.venv/bin/python scripts/health_check.py                   pass, including
+                                                            Streamlit admin on-demand
+                                                            and artifact-gallery
+                                                            sanitized error-output
+                                                            anchors
+.venv/bin/python scripts/openapi_contract.py               pass, ok=true, diff_count=0 against the
+  --verify-snapshot /tmp/fluxmind-openapi-contract-current.json
+  --require-no-drift --format markdown                      just-exported no-secret snapshot
+.venv/bin/python scripts/storage_schema.py --format markdown pass, ok=true, 10 stores, 0 problems;
+                                                            no storage-schema drift
+rg 'st.error(str(exc))|st.caption(str(exc))' app.py         no matches
+git diff --check                                           pass
+git status --short --branch                                main...origin/main [ahead 30],
+                                                            no local changes before this
+                                                            docs refresh
+```
+
+The follow-up extends the Streamlit no-secret UI error boundary beyond the
+product-registry and share-link management panels. Artifact download failures
+in the gallery now pass through the same sanitized message helper instead of
+captioning raw path/URI resolution exceptions. The admin on-demand buttons for
+platform migration rehearsal, product activation rehearsal, collaboration
+readiness, provider runtime rehearsal, quality readiness, activation suite, and
+OpenAPI contract checks now also sanitize OSError output instead of rendering
+`str(exc)` directly. Translation guard tests and health check anchors verify
+that the Streamlit app no longer contains direct `st.error(str(exc))` or
+`st.caption(str(exc))` public UI exception output. No production deployment was
+performed, and `docs/DEPLOYMENT_STATUS.md` remains unchanged because no live
+Trace-Twin service facts were refreshed in this pass.
 
 Product registry Streamlit error-output follow-up on 2026-06-20 20:32 CST:
 

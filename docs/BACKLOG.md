@@ -29,7 +29,7 @@ WP6 product shell     complete for local no-secret admin/reporting foundation
                      plus product/provider-readiness preflights
 ```
 
-Current hardening progress through 2026-06-20: the automated suite has 618
+Current hardening progress through 2026-06-20: the automated suite has 619
 passing tests, the repository has a coverage command/gate with 89% total branch
 coverage over `api`, `scripts`, and `src`, and the curated seed library has been
 expanded to 30 open-access papers. Recent hardening passes added constant-time
@@ -59,6 +59,10 @@ no-secret error projection for OSError, SQLite, and validation failures, so UI
 errors from workspace list/create, member, quota, and permission-check paths
 cannot render raw paths, URLs, bearer tokens, `sk-...` values, or token/secret
 assignments.
+The wider Streamlit admin surface now applies that same no-secret UI error
+projection to artifact gallery download failures and on-demand admin
+readiness/rehearsal/OpenAPI buttons, so path/URI/OSError failures are not
+rendered as raw exception strings in public UI captions or errors.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live
@@ -968,6 +972,9 @@ identity-backed quotas, and external billing disabled until decisions are made
   `FLUXMIND_STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED=true` are enabled.
   With the default disabled backend or disabled management flag, it only shows
   no-secret status.
+- Streamlit admin on-demand readiness/rehearsal/OpenAPI controls and artifact
+  download failures sanitize OSError/path/URI exception output before rendering
+  operator messages.
 - FastAPI query routes can enforce the local product registry's `requests`
   quota when `IDENTITY_QUOTAS_BILLING_ENABLED=true`,
   `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite`,

@@ -16,9 +16,9 @@ making deployment decisions.
 ```text
 Command                                                               Result
 --------------------------------------------------------------------  -------------------------------
-.venv/bin/python -m pytest                                           pass, 618 tests, 2 known warnings
+.venv/bin/python -m pytest                                           pass, 619 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest &&
-.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 618 tests, 89% total branch coverage
+.venv/bin/python -m coverage report --fail-under=88 --sort=cover    pass, 619 tests, 89% total branch coverage
 .venv/bin/python scripts/evaluate_rag.py                             pass, 42 answer cases and
                                                                       65 retrieval-only cases,
                                                                       13 code-output cases,
@@ -37,6 +37,8 @@ Command                                                               Result
                                                                       product-registry-read-RBAC/
                                                                       Streamlit-product-registry-flag/
                                                                       Streamlit-product-registry-error-sanitizer/
+                                                                      Streamlit-admin-error-sanitizer/
+                                                                      Streamlit-artifact-error-sanitizer/
                                                                       API-key-create-output-guard/
                                                                       share-link-registry/
                                                                       product-activation-rehearsal/
@@ -323,7 +325,10 @@ Artifacts and exports         verified      artifact list/download, checksums, a
                                             export paths, store-level
                                             symlink/source write guards,
                                             SQLite-cache fallback, and public no-secret
-                                            artifact projections. Durable
+                                            artifact projections. Streamlit artifact
+                                            download errors use the same no-secret
+                                            sanitized UI projection instead of raw
+                                            path/URI exceptions. Durable
                                             object storage remains planned.
 Admin and runtime status      verified      status/report/retention/events/runtime-manifest and
                                             restore-check routes plus Streamlit upload/report UI
@@ -339,6 +344,8 @@ Admin and runtime status      verified      status/report/retention/events/runti
                                             retrieval trace summaries, retrieval-quality alerts,
                                             platform-readiness blocker summaries, and
                                             provider-readiness blocker summaries.
+                                            Streamlit on-demand readiness/rehearsal/
+                                            OpenAPI controls sanitize OSError output.
                                             Identity-aware admin remains planned.
 No-key execution providers    verified      local Python, Octave-compatible, and opt-in Docker
                                             providers prove the job/artifact contract. Request-level
@@ -626,9 +633,9 @@ Runtime events          tests/test_runtime.py covers no-secret event listing plu
 descriptions, paths, prompts, answers, or contents. The local API-key,
 product, and share-link registry CLIs also sanitize output-write and SQLite
 registry errors instead of leaking output paths or crashing during error
-reporting; the Streamlit product-registry and share-link management panels
-apply the same no-secret error projection to OSError, SQLite, and validation
-failures. API-key CLI
+reporting; the Streamlit product-registry/share-link management panels and
+admin on-demand readiness/rehearsal/OpenAPI controls apply the same no-secret
+error projection to OSError, SQLite, path/URI, and validation failures. API-key CLI
 list/verify/revoke Markdown and JSON outputs now also show owner fingerprints
 rather than raw owner IDs/labels and omit free-text descriptions. Activation
   still remains

@@ -165,9 +165,14 @@ def main() -> int:
     repo_status = (PROJECT_ROOT / "docs" / "REPO_STATUS.md").read_text(encoding="utf-8")
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
-        and "Current implementation commit  951c0cb fix: sanitize product registry UI errors" in repo_status
-        and "Current docs/health sync       docs: record product registry UI error audit status (this commit)" in repo_status
-        and "by the twenty-nine local commits below" in repo_status
+        and "Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors" in repo_status
+        and "Current docs/health sync       docs: record Streamlit admin UI error audit status (this commit)" in repo_status
+        and "by the thirty-one local commits below" in repo_status
+        and "Streamlit admin UI error-output follow-up on 2026-06-20 20:44 CST" in repo_status
+        and "pass, 619 tests, 2 known warnings" in repo_status
+        and "Artifact download failures" in repo_status
+        and "admin on-demand buttons" in repo_status
+        and "no longer contains direct `st.error(str(exc))` or" in repo_status
         and "Product registry Streamlit error-output follow-up on 2026-06-20 20:32 CST" in repo_status
         and "pass, 618 tests, 2 known warnings" in repo_status
         and "sanitizes Streamlit product-registry management exception output" in repo_status
@@ -227,9 +232,11 @@ def main() -> int:
     roadmap = (PROJECT_ROOT / "docs" / "PLATFORM_AUDIT_AND_ROADMAP.md").read_text(encoding="utf-8")
     check(
         "Decide whether to push the current 36 local commits" not in roadmap
-        and "pass, 618 tests, 2 known warnings" in roadmap
+        and "pass, 619 tests, 2 known warnings" in roadmap
         and "execution-input-materialization" in roadmap
         and "runtime-event-metadata-value-redaction" in roadmap
+        and "admin-on-demand-error-sanitizer" in roadmap
+        and "artifact-gallery-error-sanitizer" in roadmap
         and "product-registry-error-sanitizer" in roadmap
         and "share-link-error-sanitizer" in roadmap,
         "roadmap does not contain stale pre-push near-term plan",
