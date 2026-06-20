@@ -63,6 +63,10 @@ The wider Streamlit admin surface now applies that same no-secret UI error
 projection to artifact gallery download failures and on-demand admin
 readiness/rehearsal/OpenAPI buttons, so path/URI/OSError failures are not
 rendered as raw exception strings in public UI captions or errors.
+A 2026-06-20 21:38 CST git/documentation status refresh confirms the current
+checkout remains clean before the docs-only refresh, with 619 tests passing,
+89% branch coverage, offline RAG eval passing, OpenAPI no-secret snapshot drift
+at `diff_count=0`, and storage schema drift at 0 problems.
 The
 live answer/retrieval eval JSON report path also stores request-ID evidence as
 `request_id_present`/`request_id_redacted` booleans instead of copying raw live

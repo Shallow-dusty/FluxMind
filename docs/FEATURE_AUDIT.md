@@ -58,6 +58,9 @@ Command                                                               Result
                                                                       Streamlit-share-link-error-sanitizer/
                                                                       readiness/log-noise anchors
 .venv/bin/python scripts/storage_schema.py --output /tmp/...         pass, ok=true, 10 stores, 0 problems
+.venv/bin/python scripts/openapi_contract.py --verify-snapshot...   pass, ok=true, diff_count=0,
+                                                                      routes=69, operations=76,
+                                                                      raw schema exported=false
 .venv/bin/python scripts/api_key_registry.py status --format...      pass, backend=none, available=false,
                                                                       active_keys=0, secrets_exported=false
 .venv/bin/python scripts/product_registry.py status --format...      pass, backend=none, available=false,
@@ -177,6 +180,12 @@ curl https://api-smy.hyper-dusty.cloud/health                        02:14 snaps
 .venv/bin/python scripts/health_check.py --ssh-host root@100.100...  02:14 snapshot, live runtime green,
                                                                       active_papers=30, chunks=1934
 ```
+
+The 2026-06-20 21:38 CST git/documentation status refresh did not add feature
+surface or deployment facts. It reconfirmed the local feature evidence above:
+619 tests pass, coverage remains 89%, offline RAG eval passes, health anchors
+pass, OpenAPI no-secret snapshot verification has `diff_count=0`, and storage
+schema inventory reports 10 stores with 0 problems.
 
 The 2026-06-19 local audit added focused coverage for blank and unsafe
 `X-Request-ID` handling across query responses and API-access audit events,

@@ -166,8 +166,13 @@ def main() -> int:
     check(
         "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in repo_status
         and "Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors" in repo_status
-        and "Current docs/health sync       docs: record Streamlit admin UI error audit status (this commit)" in repo_status
-        and "by the thirty-one local commits below" in repo_status
+        and "Current docs/health sync       docs: refresh FluxMind git and documentation status (this commit)" in repo_status
+        and "by the thirty-two local commits below" in repo_status
+        and "Git/documentation status refresh on 2026-06-20 21:38 CST" in repo_status
+        and "main...origin/main [ahead 31]" in repo_status
+        and "docs-only refresh" in repo_status
+        and "routes=69, operations=76" in repo_status
+        and "no docs/health anchor drift" in repo_status
         and "Streamlit admin UI error-output follow-up on 2026-06-20 20:44 CST" in repo_status
         and "pass, 619 tests, 2 known warnings" in repo_status
         and "Artifact download failures" in repo_status

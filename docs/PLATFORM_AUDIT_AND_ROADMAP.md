@@ -47,6 +47,10 @@ Current verification run:
 ```text
 Gate                                      Result
 ----------------------------------------  -------------------------------------
+git/docs status refresh                   2026-06-20 21:38 CST, checkout clean
+                                          and main...origin/main [ahead 31]
+                                          before this docs-only refresh; no
+                                          production deployment performed
 .venv/bin/python -m pytest                pass, 619 tests, 2 known warnings
 .venv/bin/python -m coverage run -m pytest
 coverage report --fail-under=88           pass, 89% total branch coverage

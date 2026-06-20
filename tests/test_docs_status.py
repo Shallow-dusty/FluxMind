@@ -9,8 +9,8 @@ def test_repo_status_records_post_deployment_git_boundary():
 
     assert "Source/eval quality baseline   9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Current implementation commit  913ac43 fix: sanitize Streamlit admin UI errors" in text
-    assert "Current docs/health sync       docs: record Streamlit admin UI error audit status (this commit)" in text
-    assert "by the thirty-one local commits below" in text
+    assert "Current docs/health sync       docs: refresh FluxMind git and documentation status (this commit)" in text
+    assert "by the thirty-two local commits below" in text
     assert "Last deployed source/eval baseline 9b1cbc5 test: expand FluxMind community quality eval" in text
     assert "Live verification follow-up    30-paper corpus and 107/107 live retrieval refreshed on 2026-06-17 02:37 CST" in text
     assert "Latest deploy follow-up        95f1760/e4da2e9 synced without restart and live-checked on 2026-06-17 02:59 CST" in text
@@ -64,7 +64,8 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "before the deployment-record follow-up" not in text
     assert "Latest deploy follow-up        45e4cc6/517756f synced" not in text
     assert "Current local app-code HEAD    913ac43 fix: sanitize Streamlit admin UI errors" in text
-    assert "docs: record Streamlit admin UI error audit status (this commit)" in text
+    assert "docs: refresh FluxMind git and documentation status (this commit)" in text
+    assert "24413ad docs: record Streamlit admin UI error audit status" in text
     assert "913ac43 fix: sanitize Streamlit admin UI errors" in text
     assert "9573793 docs: record product registry UI error audit status" in text
     assert "951c0cb fix: sanitize product registry UI errors" in text
@@ -95,6 +96,11 @@ def test_repo_status_records_post_deployment_git_boundary():
     assert "1ebfde3 feat: add durable job-store migration manifests" in text
     assert "39ddaee feat: add local activation readiness tools" in text
     assert "b1212e2 feat: expose local activation admin surfaces" in text
+    assert "Git/documentation status refresh on 2026-06-20 21:38 CST" in text
+    assert "main...origin/main [ahead 31]" in text
+    assert "docs-only refresh" in text
+    assert "routes=69, operations=76" in text
+    assert "no docs/health anchor drift" in text
     assert "Streamlit admin UI error-output follow-up on 2026-06-20 20:44 CST" in text
     assert "pass, 619 tests, 2 known warnings" in text
     assert "Artifact download failures" in text
