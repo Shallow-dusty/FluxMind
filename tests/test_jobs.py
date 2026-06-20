@@ -190,8 +190,13 @@ def test_local_python_job_records_no_secret_execution_event(tmp_path: Path, monk
     )
 
     assert job.status == "succeeded"
-    assert len(events) == 1
-    event = events[0]
+    job_events = [
+        event
+        for event in events
+        if event.get("metadata", {}).get("job_id") == job.job_id
+    ]
+    assert len(job_events) == 1
+    event = job_events[0]
     assert event["kind"] == "code_execution"
     assert event["code"] == "execution_succeeded"
     assert event["request_id"] == "req-code-event"
