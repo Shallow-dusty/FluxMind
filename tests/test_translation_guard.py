@@ -115,9 +115,21 @@ def test_streamlit_share_link_management_requires_explicit_flag():
     assert "if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:" in APP_SOURCE
     assert "share_link_management_disabled" in APP_SOURCE
     assert "type=\"password\"" in APP_SOURCE
+    assert "safe_streamlit_error_message" in APP_SOURCE
     guard_index = APP_SOURCE.index("if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:")
     registry_index = APP_SOURCE.index("registry = LocalShareLinkRegistry()")
     assert guard_index < registry_index
+
+
+def test_streamlit_share_link_management_sanitizes_errors():
+    share_link_block = APP_SOURCE.split("def render_share_link_registry_management()", 1)[
+        1
+    ].split("def render_admin_status()", 1)[0]
+
+    assert "from scripts._safe_cli import format_os_error, sanitize_cli_error_message" in APP_SOURCE
+    assert "def safe_streamlit_error_message" in APP_SOURCE
+    assert "st.error(str(exc))" not in share_link_block
+    assert share_link_block.count("st.error(safe_streamlit_error_message(exc))") == 5
 
 
 def test_streamlit_runtime_event_filter_covers_guard_events():

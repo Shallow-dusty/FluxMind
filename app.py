@@ -90,6 +90,7 @@ from src.storage_manifest import (
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
+from scripts._safe_cli import format_os_error, sanitize_cli_error_message
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -109,6 +110,12 @@ RUNTIME_EVENT_KIND_FILTER_OPTIONS = (
     "upload_scan",
     "retention_delete",
 )
+
+
+def safe_streamlit_error_message(exc: BaseException) -> str:
+    if isinstance(exc, (OSError, sqlite3.Error)):
+        return format_os_error(exc)
+    return sanitize_cli_error_message(str(exc)) or exc.__class__.__name__
 
 
 @st.dialog("演示导览", width="large")
@@ -987,7 +994,7 @@ def render_share_link_registry_management() -> None:
     try:
         links = [record.to_public_dict() for record in registry.list_links(include_revoked=True, limit=20)]
     except (OSError, sqlite3.Error, ValueError) as exc:
-        st.error(str(exc))
+        st.error(safe_streamlit_error_message(exc))
         return
     st.json({"share_links": links})
     default_workspace_id = "local-workspace"
@@ -1048,7 +1055,7 @@ def render_share_link_registry_management() -> None:
                     )
                 )
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("share_link_list_form"):
         list_workspace_id = st.text_input(
@@ -1088,7 +1095,7 @@ def render_share_link_registry_management() -> None:
                     }
                 )
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("share_link_resolve_form"):
         token = st.text_input(
@@ -1113,7 +1120,7 @@ def render_share_link_registry_management() -> None:
                     }
                 )
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
     with st.form("share_link_revoke_form"):
         link_id = st.text_input(
@@ -1144,7 +1151,7 @@ def render_share_link_registry_management() -> None:
                         }
                     )
             except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(str(exc))
+                st.error(safe_streamlit_error_message(exc))
 
 
 def render_admin_status() -> None:

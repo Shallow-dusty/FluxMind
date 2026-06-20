@@ -1107,6 +1107,23 @@ def main() -> int:
         "Streamlit share-link management requires explicit enable flag",
         failures,
     )
+    share_link_management_block = ""
+    if (
+        "def render_share_link_registry_management()" in app_source
+        and "def render_admin_status()" in app_source
+    ):
+        share_link_management_block = app_source.split(
+            "def render_share_link_registry_management()", 1
+        )[1].split("def render_admin_status()", 1)[0]
+    check(
+        "safe_streamlit_error_message" in app_source
+        and "format_os_error" in app_source
+        and "sanitize_cli_error_message" in app_source
+        and "st.error(str(exc))" not in share_link_management_block
+        and share_link_management_block.count("st.error(safe_streamlit_error_message(exc))") >= 5,
+        "Streamlit share-link management sanitizes error output",
+        failures,
+    )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
