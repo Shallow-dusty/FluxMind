@@ -16,6 +16,17 @@ def test_streamlit_write_stream_is_not_used_for_chat_streaming():
     assert "render_streaming_response(prompt, answer_mode=st.session_state.answer_mode)" in APP_SOURCE
 
 
+def test_streamlit_query_errors_sanitize_user_visible_message():
+    query_block = APP_SOURCE.split("def render_streaming_response(", 1)[1].split(
+        "def render_job_result(job)", 1
+    )[0]
+
+    assert "safe_streamlit_status_message(error.message, fallback=error.code)" in query_block
+    assert 'message = f"{error.message}' not in query_block
+    assert "placeholder.error(message)" in query_block
+    assert "Request ID:" in query_block
+
+
 def test_streamlit_local_job_panel_is_installed():
     assert "get_async_job_manager" in APP_SOURCE
     assert "enqueue_index_rebuild(selected)" in APP_SOURCE

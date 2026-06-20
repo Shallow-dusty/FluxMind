@@ -665,7 +665,8 @@ def render_streaming_response(prompt: str, *, answer_mode: str) -> str:
     except Exception as exc:
         error = normalize_exception(exc)
         logger.exception("streamlit.query.error request_id=%s code=%s", request_id, error.code)
-        message = f"{error.message}\n\nRequest ID: `{request_id}`"
+        safe_message = safe_streamlit_status_message(error.message, fallback=error.code)
+        message = f"{safe_message}\n\nRequest ID: `{request_id}`"
         placeholder.error(message)
         return message
     response = "".join(chunks)

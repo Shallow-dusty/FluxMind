@@ -1348,6 +1348,20 @@ def main() -> int:
         "Streamlit user-upload/admin validation errors sanitize exception output",
         failures,
     )
+    streamlit_query_block = ""
+    if "def render_streaming_response(" in app_source and "def render_job_result(job)" in app_source:
+        streamlit_query_block = app_source.split("def render_streaming_response(", 1)[1].split(
+            "def render_job_result(job)", 1
+        )[0]
+    check(
+        "safe_streamlit_status_message(error.message, fallback=error.code)" in streamlit_query_block
+        and 'message = f"{error.message}' not in streamlit_query_block
+        and "test_streamlit_query_errors_sanitize_user_visible_message" in (
+            PROJECT_ROOT / "tests" / "test_translation_guard.py"
+        ).read_text(encoding="utf-8"),
+        "Streamlit query errors sanitize user-visible output",
+        failures,
+    )
     check("status_provider_readiness" in app_source and "provider_readiness" in app_source, "Streamlit provider readiness panel installed", failures)
     check("status_runtime_manifest" in app_source and "download_runtime_manifest" in app_source, "Streamlit runtime manifest panel installed", failures)
     check("runtime_restore_manifest_upload" in app_source and "format_runtime_restore_check_markdown" in app_source, "Streamlit runtime restore-check panel installed", failures)
