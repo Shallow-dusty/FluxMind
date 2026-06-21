@@ -2,6 +2,13 @@
 
 Last live check: 2026-06-17 03:14 CST
 
+Repository follow-up note: local `main` was later refocused and synchronized to
+`origin/main` at `5435955 docs: add comprehensive cleanup summary` on
+2026-06-21. This deployment document was not live-refreshed during that
+docs/git cleanup; treat the 2026-06-17 service checks below as the last
+verified runtime snapshot, not proof that the 2026-06-21 refocus docs or future
+feature changes are deployed.
+
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
 healthy at a later time.

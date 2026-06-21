@@ -1,7 +1,7 @@
 # FluxMind 下一步行动清单
 
 **生成时间**: 2026-06-21  
-**状态**: 文档整理完成，等待推送
+**状态**: refocus 文档已推送同步，准备继续功能开发
 
 ---
 
@@ -20,35 +20,40 @@
    - Commit: ed56760
 
 3. **Git 状态**
-   - 领先 origin/main 65 个提交
+   - 当前 HEAD: `5435955 docs: add comprehensive cleanup summary`
+   - `main` 与 `origin/main` 同步（ahead 0 / behind 0）
    - 工作区干净
-   - 准备推送
 
 ---
 
 ## 🚀 立即行动（今天）
 
-### 1. 推送到 GitHub
+### 1. 不再做推送清理
+
+当前 refocus 文档已同步到 `origin/main`。除非后续产生新改动，不需要再把"推送当前状态"作为开发前置任务。
+
+### 2. 进入第一个功能边界
+
+从 `DEVELOPMENT_PLAN.md` 的 Day 1-2 开始：
+
 ```bash
-git push origin main
+# 目标：启用真实 Docker 执行后端
+cd /home/shallow/04.AI-Prism/11.FluxMind
+docker --version
+docker ps
 ```
 
-### 2. 创建提醒标签
-```bash
-# 标记当前重构起点
-git tag -a v0.9.0-refocus -m "Refocus: From over-engineering to real features"
-git push origin v0.9.0-refocus
-```
+完成标准：Python/Octave 代码能在 Docker 后端执行，生成文件能进入 artifact，失败时错误信息清晰。
 
 ---
 
-## 📋 下周开始执行
+## 📋 开发执行顺序
 
 ### Week 1 (2026-06-21 - 2026-06-28)
 
 **Day 1-2: Docker 代码执行**
 ```bash
-# 目标：替换 mock，使用真实 Docker
+# 目标：替换本地 subprocess/mock，使用真实 Docker
 cd /home/shallow/04.AI-Prism/11.FluxMind
 
 # 检查 Docker 可用性
@@ -61,7 +66,7 @@ docker ps
 
 **Day 3-4: OpenAI 图像生成**
 ```bash
-# 目标：接入 DALL-E API
+# 目标：接入 OpenAI 图像 API，生成真实控制系统图
 # 需要：OpenAI API Key
 
 # 参考：DEVELOPMENT_PLAN.md "Day 3-4" 部分
@@ -72,6 +77,8 @@ docker ps
 # 目标：简单的 admin/student 区分
 # 参考：DEVELOPMENT_PLAN.md "Day 5" 部分
 ```
+
+Day 1-5 完成前，不新增 sanitize/redact/no-secret 投影类工作。
 
 ---
 

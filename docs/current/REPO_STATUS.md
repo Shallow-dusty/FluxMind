@@ -1,13 +1,37 @@
 # FluxMind Repository Status
 
-Snapshot time: 2026-06-21 00:37 CST
+Snapshot time: 2026-06-21 11:42 CST
 
 This file records the current local repository snapshot plus the last verified
 clean repository boundary for the completed no-key/local baseline. It is a repo
 snapshot, not a production deployment source of truth. For live service state,
 use `docs/DEPLOYMENT_STATUS.md` and re-run the refresh commands there.
 
-## Git State
+## Current Git State
+
+```text
+Branch                         main
+Remote                         origin git@github.com:Shallow-dusty/FluxMind.git
+Tracking                       origin/main
+HEAD                           5435955 docs: add comprehensive cleanup summary
+Remote divergence              ahead 0 / behind 0
+Worktree                       clean at refresh time
+Latest refocus stack           5435955 docs: add comprehensive cleanup summary
+                               84a9a16 docs: update CLAUDE.md, AGENTS.md, README.md with development guides
+                               78c6a36 docs: add next steps action checklist
+                               ed56760 docs: add development principles and 3-week plan
+                               173b546 docs: reorganize documentation structure
+Forward-development authority  CODE_PRINCIPLES.md and DEVELOPMENT_PLAN.md
+Current development boundary   stop adding no-secret/sanitize/redact surfaces;
+                               resume Priority 1-3 user-visible work
+Live deployment state          not refreshed in this git/docs cleanup pass
+```
+
+## Historical Pre-Refocus Stack
+
+The detailed stack below is retained as historical context for the earlier
+no-key/local hardening run. It is not the current git status; use the
+`Current Git State` section above for the active repository boundary.
 
 ```text
 Branch                         main

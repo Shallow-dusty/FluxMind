@@ -18,6 +18,7 @@ FluxMind 是基于 RAG 的控制理论研究 Copilot（滑模控制 SMC + 磁链
 - ❌ 不再添加 sanitize/redact 代码  
 - ✅ 优先实现 Priority 1-3 功能（论文库、图像、代码执行）
 - ✅ 每周至少 1 个用户可见功能
+- ✅ 若旧架构说明与 `CODE_PRINCIPLES.md` / `DEVELOPMENT_PLAN.md` 冲突，以这两个 2026-06-21 指导文档为准
 
 **项目定位**：轻量级多用户工具（5-20人内部使用），不是企业级 SaaS。
 
@@ -71,9 +72,10 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 
 **双入口、共用一个 RAG 核心。** `app.py`（Streamlit UI）和 `api.py`（FastAPI）都调用 `src/chain.py`。chain 做检索 + 生成：`hybrid_retrieve()`（FAISS 向量池 + docstore 关键词）→ `rerank_documents()`（确定性 BM25-lite，无密钥；`RERANKER_MODEL` 指向本地路径时才用 CrossEncoder）→ 编号引用校验。`query_stream()` 供 UI 流式，`query()`/`query_with_metadata()`/`retrieve_with_metadata()` 供 API 的 `/query`、`/query/inspect`、`/query/retrieve`。
 
-**"本地无密钥（no-key / no-secret）"是核心架构约束，不是临时状态。** 所有重活——图像生成、代码执行、向量存储、metadata、job 队列——都通过 provider-neutral 接口 + 本地 mock/真实实现完成，**不依赖任何外部 key**。真实外部 provider（图像、托管沙箱、真 MATLAB、多租户身份/配额/计费）被刻意禁用，只在 admin 里以"配置/可用"布尔位与 reason code 体现。新功能必须沿这条路走：接口 + 本地实现 + fixture + runtime flag，**绝不**把外部依赖硬塞进 UI 进程或同步 `/query` 路径。
+**运行时默认保持 no-key/local，但后续开发以真实用户功能为先。** 现有 provider-neutral、job、artifact、metadata 层可以继续复用；但不要再把"no-secret"扩展成新的投影层、sanitize/redact 代码或企业级 readiness 面板。真实 OpenAI 图像生成、Docker 执行等用户可见功能可以通过显式配置、job-backed provider 和清晰错误提示接入；外部 key 不写入仓库，也不要把重活塞进 UI 进程或同步 `/query` 路径。
 
 **Job / Storage / Artifact 子系统是为"未来迁移到分布式平台"预留的本地形态。** 关键模块：
+以下模块说明是现有系统地图，不是下一阶段待扩展清单；除非 Priority 1-3 功能确实需要，避免继续扩展 readiness/no-secret/审计类表面。
 - `src/jobs.py` — append-only JSONL（`jobs/jobs.jsonl`）+ SQLite 当前态镜像（`jobs/jobs.sqlite3`）；即时 runner、进程内队列、显式 durable worker；幂等键、租约（lease）、重试/退避、死信、deadline；`GET /jobs` 和 Streamlit 最近任务面板
   只返回 no-secret summary 并用安全投影搜索，详情走精确 `GET /jobs/{job_id}`。这是**本地**契约，不是分布式队列。
 - `src/metadata.py` — `metadata/corpus.json`（+ `corpus.sqlite3`）语料注册表、`chunks.sqlite3` chunk 镜像、`corpus_profiles.json` 可复用选集。JSON 写入走同目录临时文件 + 原子替换。
@@ -92,7 +94,7 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 - `src/openapi_contract.py` — no-secret OpenAPI contract readiness：检查 required route/method、operation summary/id、responses、protected auth header 声明和 route-group 覆盖，生成 stable operation fingerprint，并可用旧 no-secret JSON 报告校验 snapshot drift；FastAPI/Streamlit/CLI 只输出摘要，不导出 raw schema。
 - `src/admin.py`（115KB，最大模块）— 聚合上述所有状态为 `/admin/status`、`/admin/status/report`(Markdown)、`/admin/metrics`(Prometheus)、`/admin/events`。全部 no-secret：只出计数/布尔/code，绝不返回 prompt、答案、源路径、owner ID、文件内容。
 
-**runtime event 是横切观测层。** `metadata/runtime_events.jsonl` 记录 `retrieval_trace`、`query_usage`、`code_execution`、`upload_scan`、`provider_failure` 等元数据-only 事件；admin/Streamlit/metrics 从中派生 advisory alert。增量功能若产生可观测行为，应追加对应 event（同样不得含敏感内容）。
+**runtime event 是已有观测层，不是新增审计任务的默认理由。** `metadata/runtime_events.jsonl` 记录 `retrieval_trace`、`query_usage`、`code_execution`、`upload_scan`、`provider_failure` 等事件；admin/Streamlit/metrics 从中派生 advisory alert。增量功能只有在对调试、用户反馈或运行稳定性有实际价值时才追加事件，不再为了理论上的 no-secret 审计覆盖而扩展事件面。
 
 **配置全在 `src/config.py`**（从 `.env` 读，`PROJECT_ROOT` 锚定）。RAG 参数硬编码：`CHUNK_SIZE=1000`、`CHUNK_OVERLAP=200`、`TOP_K=5`。运行时目录（`papers/`、`faiss_index/`、`artifacts/`、`jobs/`、`metadata/`）均 gitignored。
 
