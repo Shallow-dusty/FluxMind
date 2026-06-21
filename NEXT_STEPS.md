@@ -1,7 +1,7 @@
 # FluxMind 下一步行动清单
 
 **生成时间**: 2026-06-21  
-**状态**: Docker 执行后端已在 Trace-Twin 启用并验证，当前改动待提交
+**状态**: Docker 执行后端已在 Trace-Twin 启用、验证、提交并推送
 
 ---
 
@@ -20,9 +20,9 @@
    - Commit: ed56760
 
 3. **Git 状态**
-   - 当前 HEAD: `1b59d1e docs: align FluxMind refocus status`
-   - `main` 相对 `origin/main`：ahead 1 / behind 0
-   - 工作区包含 Docker 执行后端、生产启用记录和可复现镜像构建文件，待提交
+   - 当前 HEAD: `f43f65a feat: enable Docker code execution backend`
+   - `main` 与 `origin/main` 同步（ahead 0 / behind 0）
+   - 工作区干净
 
 4. **Docker 代码执行生产启用**
    - Trace-Twin `/opt/fluxmind` 已启用 `CODE_EXECUTION_BACKEND=docker`
@@ -35,9 +35,9 @@
 
 ## 🚀 立即行动（今天）
 
-### 1. 提交当前 Docker 执行后端切片
+### 1. Docker 执行后端已完成
 
-当前有新改动，应该先提交 Docker execution slice，再进入下一项功能开发。
+当前 Docker execution slice 已提交并推送。下一步进入下一项功能开发。
 
 ### 2. 进入下一个功能边界
 
@@ -180,7 +180,7 @@ Day 1-5 完成前，不新增 sanitize/redact/no-secret 投影类工作。
 ## 🎯 成功标准（3 周后验证）
 
 ### 必须完成
-- [ ] Docker 代码执行可用
+- [x] Docker 代码执行可用
 - [ ] OpenAI 图像生成可用
 - [ ] 论文库 ≥ 50 篇
 - [ ] 基础用户登录和权限
@@ -217,7 +217,7 @@ Day 1-5 完成前，不新增 sanitize/redact/no-secret 投影类工作。
 ## 📞 检查点
 
 ### 第一周末（2026-06-28 周五）
-- [ ] Docker 执行演示成功
+- [x] Docker 执行演示成功
 - [ ] OpenAI 图像演示成功
 - [ ] 基础登录演示成功
 
