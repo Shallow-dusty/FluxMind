@@ -34,6 +34,7 @@
 - 在 Trace-Twin 服务器上安装/验证 Docker
 - 准备执行镜像：python:3.11-slim, octave:latest
 - 测试 Docker 基本权限
+- 给可能执行代码的 API/UI/worker systemd 服务配置 Docker daemon 访问权限，可参考 deploy/systemd/fluxmind-docker-execution.dropin.example.conf
 
 # 2. 更新代码
 - 检查 src/providers.py 中的 DockerExecutionProvider
@@ -42,8 +43,22 @@
 
 # 3. 配置和测试
 - 设置环境变量：CODE_EXECUTION_BACKEND=docker
+- 配置语言镜像：
+  - DOCKER_PYTHON_EXECUTION_IMAGE=python:3.11-slim
+  - DOCKER_OCTAVE_EXECUTION_IMAGE=gnuoctave/octave:latest
+- 运行最小 smoke：python scripts/docker_execution_smoke.py --language all
+- 默认 smoke 走 job/provider/artifact 完整边界；如需只调 provider，可加 --mode provider
+- 若默认镜像不可用，可只在 smoke 中临时覆盖：
+  - python scripts/docker_execution_smoke.py --language python --python-image python:3.11-slim
+  - python scripts/docker_execution_smoke.py --language octave --octave-image gnuoctave/octave:latest
 - 测试执行简单 Python 代码
 - 测试执行 Octave 代码
+- API 入口使用：
+  - POST /jobs/code/python-docker
+  - POST /jobs/async/code/python-docker
+  - POST /jobs/code/octave-docker
+  - POST /jobs/async/code/octave-docker
+- Docker API 入口要求 CODE_EXECUTION_BACKEND=docker；否则返回 409 并提示当前 backend
 - 测试生成图表和文件输出
 
 # 4. 更新文档
@@ -492,3 +507,18 @@ cat DEVELOPMENT_PLAN.md | grep "^\- \[x\]" | wc -l
 **校订/方向确认**: Shallow  
 **生效日期**: 2026-06-21  
 **下次审查**: 2026-07-05（第二周末）
+
+## Docker 镜像策略补充（Trace-Twin / 国内服务器）
+
+Trace-Twin 位于杭州，生产 Docker 执行不应依赖 Docker Hub 或 GHCR 直连拉取大镜像。
+当前生产策略是：
+
+```text
+Python image  m.daocloud.io/docker.io/library/python:3.11-slim
+Octave image  fluxmind/octave:trixie-slim
+```
+
+Octave 镜像通过 `deploy/docker/octave-trixie-slim.Dockerfile` 在 Trace-Twin 本机构建，
+使用 USTC Debian mirror 安装 Debian trixie 的 Octave。后续 Docker 执行相关验收，
+应优先验证服务运行用户、systemd `EnvironmentFile`、Docker group、artifact 输出目录和
+`/jobs/code/*-docker` API 路由，而不是把 Docker Hub 直连作为前置条件。

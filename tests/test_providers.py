@@ -15,6 +15,7 @@ from src.providers import (
     LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
+    _is_collectable_output,
     docker_execution_status,
 )
 
@@ -113,6 +114,50 @@ def test_docker_execution_status_reports_not_configured(monkeypatch):
     assert status["configured"] is False
     assert status["available"] is False
     assert status["reason"] == "not_configured"
+
+
+def test_docker_execution_provider_builds_sandbox_command(tmp_path: Path):
+    provider = DockerExecutionProvider(LocalArtifactStore(tmp_path), image="python:3.11-slim")
+
+    command = provider._docker_command(
+        docker_path="/usr/bin/docker",
+        workdir=tmp_path,
+        container_name="fluxmind-test",
+        container_user="1000:1000",
+        container_command=["python", "main.py"],
+        memory_mb=512,
+    )
+
+    assert command[:4] == ["/usr/bin/docker", "run", "--rm", "--name"]
+    assert "python:3.11-slim" in command
+    assert command[-2:] == ["python", "main.py"]
+    assert "--network" in command
+    assert "none" in command
+    assert "--read-only" in command
+    assert "/tmp:rw,nosuid,nodev,size=64m,mode=1777" in command
+    assert "no-new-privileges" in command
+    assert "ALL" in command
+    assert f"{tmp_path.resolve()}:/work:rw" in command
+    assert "HOME=/tmp" in command
+    assert "MPLCONFIGDIR=/tmp/matplotlib" in command
+
+
+def test_docker_execution_provider_explains_missing_runtime(tmp_path: Path):
+    provider = DockerExecutionProvider(LocalArtifactStore(tmp_path), image="python:3.11-slim")
+
+    stderr = provider._docker_stderr(
+        captured_stderr='exec: "octave": executable file not found in $PATH',
+        docker_returncode=127,
+        request=CodeExecutionRequest(
+            language="octave",
+            entrypoint="main.m",
+            files={"main.m": "disp('ok');"},
+        ),
+        container_command=["octave", "--quiet", "--no-gui", "main.m"],
+    )
+
+    assert "Execution runtime `octave` was not found" in stderr
+    assert "python:3.11-slim" in stderr
 
 
 def test_docker_execution_status_reports_permission_denied(monkeypatch):
@@ -1002,3 +1047,16 @@ def test_local_octave_execution_provider_runs_when_binary_exists(tmp_path: Path,
     assert result.artifacts[0].metadata["checksum_sha256"] == hashlib.sha256(b"artifact-ok").hexdigest()
     assert result.artifacts[0].metadata["byte_count"] == str(len(b"artifact-ok"))
     assert result.artifacts[0].metadata["runtime"] == "gnu-octave-local"
+
+
+def test_execution_artifact_collection_skips_python_cache_files(tmp_path: Path):
+    workdir = tmp_path / "work"
+    cache_dir = workdir / "__pycache__"
+    cache_dir.mkdir(parents=True)
+    pyc = cache_dir / "main.cpython-311.pyc"
+    pyc.write_bytes(b"cache")
+    output = workdir / "result.txt"
+    output.write_text("ok", encoding="utf-8")
+
+    assert _is_collectable_output(pyc, workdir, set()) is False
+    assert _is_collectable_output(output, workdir, set()) is True

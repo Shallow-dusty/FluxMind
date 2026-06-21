@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
+from src.capabilities import CodeExecutionRequest, CodeExecutionResult, ImageGenerationRequest
 from src.execution_policy import POLICY_VIOLATION_EXIT_CODE
 from src.ingestion import IngestionCancelled
 from src.jobs import (
@@ -173,6 +173,38 @@ def test_local_python_job_persists_execution_result(tmp_path: Path, monkeypatch)
     assert job.logs[-1]["metadata"]["artifact_count"] == 1
 
 
+def test_code_execution_error_classifies_docker_failures():
+    start_failed = CodeExecutionResult(
+        exit_code=127,
+        stdout="",
+        stderr="Docker daemon is not reachable",
+        runtime_metadata={"docker_returncode": "125", "provider_runtime": "docker-python"},
+    )
+    run_denied = CodeExecutionResult(
+        exit_code=127,
+        stdout="",
+        stderr="Docker refused to run the container",
+        runtime_metadata={"docker_returncode": "126", "provider_runtime": "docker-python"},
+    )
+    missing_runtime = CodeExecutionResult(
+        exit_code=127,
+        stdout="",
+        stderr="Execution runtime `octave` was not found in Docker image `python:3.11-slim`.",
+        runtime_metadata={"docker_returncode": "127", "provider_runtime": "docker-octave"},
+    )
+    user_exit_127 = CodeExecutionResult(
+        exit_code=127,
+        stdout="",
+        stderr="user script returned 127",
+        runtime_metadata={"docker_returncode": "127", "provider_runtime": "docker-python"},
+    )
+
+    assert LocalJobRunner._code_execution_error_from_result(start_failed)["code"] == "docker_container_start_failed"
+    assert LocalJobRunner._code_execution_error_from_result(run_denied)["code"] == "docker_container_run_denied"
+    assert LocalJobRunner._code_execution_error_from_result(missing_runtime)["code"] == "runtime_unavailable"
+    assert LocalJobRunner._code_execution_error_from_result(user_exit_127)["code"] == "execution_failed"
+
+
 def test_local_python_job_records_no_secret_execution_event(tmp_path: Path, monkeypatch):
     events = []
     monkeypatch.setattr("src.jobs.append_runtime_event", lambda **kwargs: events.append(kwargs))
@@ -265,7 +297,7 @@ def test_local_python_job_uses_configured_docker_backend(tmp_path: Path, monkeyp
             return "job-docker-ok\n", ""
 
     monkeypatch.setattr("src.jobs.CODE_EXECUTION_BACKEND", "docker")
-    monkeypatch.setattr("src.jobs.DOCKER_EXECUTION_IMAGE", "python:3.12-slim")
+    monkeypatch.setattr("src.jobs.DOCKER_PYTHON_EXECUTION_IMAGE", "python:3.12-slim")
     monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
     monkeypatch.setattr("src.providers.subprocess.Popen", FakePopen)
     store = LocalJobStore(tmp_path / "jobs.jsonl")
@@ -285,6 +317,7 @@ def test_local_python_job_uses_configured_docker_backend(tmp_path: Path, monkeyp
     assert job.result["runtime_metadata"]["network_policy_enforced"] == "true"
     assert job.artifacts[0]["title"] == "docker-result.txt"
     assert job.artifacts[0]["metadata"]["runtime"] == "docker-python"
+    assert "python:3.12-slim" in captured["command"]
     assert captured["command"][captured["command"].index("--network") + 1] == "none"
 
 

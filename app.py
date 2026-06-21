@@ -57,6 +57,9 @@ from src.artifacts import (
 )
 from src.chain import query_stream
 from src.config import (
+    CODE_EXECUTION_BACKEND,
+    DOCKER_OCTAVE_EXECUTION_IMAGE,
+    DOCKER_PYTHON_EXECUTION_IMAGE,
     MAX_UPLOAD_SIZE_MB,
     PAPERS_LIBRARY_DIR,
     PROJECT_ROOT,
@@ -299,12 +302,14 @@ I18N = {
         "mock_image_prompt": "图示提示词",
         "mock_image_template": "图示模板",
         "run_mock_image": "运行图示任务",
-        "python_job": "运行本地 Python",
+        "python_job": "运行 Python（当前后端）",
+        "code_execution_backend_caption": "当前代码执行后端：{backend}",
+        "code_execution_image_caption": "Docker 镜像：{image}",
         "python_entrypoint": "入口文件",
         "python_template": "Python 模板",
         "python_files": "文件内容",
         "run_python_job": "运行 Python 任务",
-        "octave_job": "运行本地 Octave 兼容脚本",
+        "octave_job": "运行 Octave 兼容脚本（当前后端）",
         "octave_entrypoint": "Octave 入口文件",
         "octave_template": "Octave 模板",
         "octave_files": "Octave 文件内容",
@@ -510,12 +515,14 @@ I18N = {
         "mock_image_prompt": "Diagram prompt",
         "mock_image_template": "Diagram template",
         "run_mock_image": "Run Image Job",
-        "python_job": "Run Local Python",
+        "python_job": "Run Python (configured backend)",
+        "code_execution_backend_caption": "Current code execution backend: {backend}",
+        "code_execution_image_caption": "Docker image: {image}",
         "python_entrypoint": "Entrypoint",
         "python_template": "Python template",
         "python_files": "File contents",
         "run_python_job": "Run Python Job",
-        "octave_job": "Run Local Octave-Compatible Script",
+        "octave_job": "Run Octave-Compatible Script (configured backend)",
         "octave_entrypoint": "Octave entrypoint",
         "octave_template": "Octave template",
         "octave_files": "Octave file contents",
@@ -1240,7 +1247,9 @@ def render_admin_status() -> None:
             "total_recent": code_execution.get("total_recent", 0),
             "by_code": code_execution.get("by_code", {}),
             "by_status": code_execution.get("by_status", {}),
+            "by_backend": code_execution.get("by_backend", {}),
             "failure_rate": code_execution.get("failure_rate", 0),
+            "artifact_exported_bytes": code_execution.get("artifact_exported_bytes", 0),
             "alerts": code_execution.get("alerts", []),
             "alert_thresholds": code_execution.get("alert_thresholds", {}),
             "duration_ms": code_execution.get("duration_ms", {}),
@@ -2049,6 +2058,9 @@ with st.sidebar:
             render_job_result(job)
 
     with st.expander(text["python_job"]):
+        st.caption(text["code_execution_backend_caption"].format(backend=CODE_EXECUTION_BACKEND))
+        if CODE_EXECUTION_BACKEND == "docker":
+            st.caption(text["code_execution_image_caption"].format(image=DOCKER_PYTHON_EXECUTION_IMAGE))
         python_template = st.selectbox(
             text["python_template"],
             options=list(PYTHON_EXECUTION_TEMPLATES),
@@ -2078,6 +2090,9 @@ with st.sidebar:
             render_job_result(job)
 
     with st.expander(text["octave_job"]):
+        st.caption(text["code_execution_backend_caption"].format(backend=CODE_EXECUTION_BACKEND))
+        if CODE_EXECUTION_BACKEND == "docker":
+            st.caption(text["code_execution_image_caption"].format(image=DOCKER_OCTAVE_EXECUTION_IMAGE))
         octave_template = st.selectbox(
             text["octave_template"],
             options=list(OCTAVE_EXECUTION_TEMPLATES),

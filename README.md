@@ -178,6 +178,8 @@ METADATA_STORAGE_BACKEND=local
 OBJECT_STORAGE_BACKEND=local
 DISTRIBUTED_JOB_STORE_BACKEND=local
 CODE_EXECUTION_BACKEND=local
+DOCKER_PYTHON_EXECUTION_IMAGE=python:3.11-slim
+DOCKER_OCTAVE_EXECUTION_IMAGE=gnuoctave/octave:latest
 CODE_EXECUTION_POLICY=local-safe-v1
 EXTERNAL_PROVIDERS_ENABLED=false
 IMAGE_PROVIDER_BACKEND=local-mock
@@ -402,6 +404,8 @@ METADATA_STORAGE_BACKEND=local
 OBJECT_STORAGE_BACKEND=local
 DISTRIBUTED_JOB_STORE_BACKEND=local
 CODE_EXECUTION_BACKEND=local
+DOCKER_PYTHON_EXECUTION_IMAGE=python:3.11-slim
+DOCKER_OCTAVE_EXECUTION_IMAGE=gnuoctave/octave:latest
 CODE_EXECUTION_POLICY=local-safe-v1
 EXTERNAL_PROVIDERS_ENABLED=false
 IMAGE_PROVIDER_BACKEND=local-mock
@@ -461,3 +465,30 @@ docs/demo-script.md                    中文演示脚本和答辩问答
 3. 强化执行安全和观测：sandbox 方案、滥用控制、生产 metrics/traces/alerts、成本归因。
 4. 建立外部产品身份层：identity-backed API key、外部 quota、billing/payment、team workflow 和审计控制。
 5. 替换或包裹 demo-oriented Streamlit，形成可维护的正式产品 UI。
+
+## Docker execution image policy for Trace-Twin
+
+Trace-Twin is hosted in Hangzhou. Production Docker execution should not depend
+on direct Docker Hub or GHCR pulls for large runtime images. The current live
+configuration uses:
+
+```text
+CODE_EXECUTION_BACKEND=docker
+DOCKER_PYTHON_EXECUTION_IMAGE=m.daocloud.io/docker.io/library/python:3.11-slim
+DOCKER_OCTAVE_EXECUTION_IMAGE=fluxmind/octave:trixie-slim
+```
+
+The Octave runtime image is built locally from
+`deploy/docker/octave-trixie-slim.Dockerfile`.
+
+## Trace-Twin 的 Docker 执行镜像策略
+
+Trace-Twin 位于杭州。生产 Docker 执行不应依赖 Docker Hub 或 GHCR 直连拉取大镜像。当前线上配置为：
+
+```text
+CODE_EXECUTION_BACKEND=docker
+DOCKER_PYTHON_EXECUTION_IMAGE=m.daocloud.io/docker.io/library/python:3.11-slim
+DOCKER_OCTAVE_EXECUTION_IMAGE=fluxmind/octave:trixie-slim
+```
+
+Octave runtime 镜像通过 `deploy/docker/octave-trixie-slim.Dockerfile` 在服务器本机构建。

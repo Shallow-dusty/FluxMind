@@ -41,6 +41,8 @@ from src.config import (
     DISTRIBUTED_JOB_STORE_BACKEND,
     DISTRIBUTED_JOB_STORE_URL,
     DOCKER_EXECUTION_IMAGE,
+    DOCKER_OCTAVE_EXECUTION_IMAGE,
+    DOCKER_PYTHON_EXECUTION_IMAGE,
     EMBEDDING_MODEL,
     FAISS_INDEX_DIR,
     JOBS_DB_FILE,
@@ -1398,6 +1400,8 @@ def format_admin_status_report(status: AdminStatus | dict[str, Any]) -> str:
             f"- Docker execution configured: {_format_bool(config.get('docker_execution', {}).get('configured', False))}",
             f"- Docker execution available: {_format_bool(config.get('docker_execution', {}).get('available', False))}",
             f"- Docker execution reason: {config.get('docker_execution', {}).get('reason', '')}",
+            f"- Docker Python image: {config.get('docker_execution', {}).get('python_image', '')}",
+            f"- Docker Octave image: {config.get('docker_execution', {}).get('octave_image', '')}",
             f"- Identity/quotas/billing enabled: {_format_bool(config.get('identity_quotas_billing_enabled', False))}",
             f"- Product local foundation ready: {_format_bool(product_readiness.get('local_foundation_ready', False))}",
             f"- Product activation ready: {_format_bool(product_readiness.get('activation_ready', False))}",
@@ -2716,8 +2720,13 @@ def collect_admin_status(*, job_limit: int = 500) -> AdminStatus:
     product_readiness = collect_product_readiness()
     docker_execution = docker_execution_status(
         configured_backend=CODE_EXECUTION_BACKEND,
-        image=DOCKER_EXECUTION_IMAGE,
+        image=DOCKER_PYTHON_EXECUTION_IMAGE,
     )
+    docker_execution["python_image"] = DOCKER_PYTHON_EXECUTION_IMAGE
+    docker_execution["octave_image"] = DOCKER_OCTAVE_EXECUTION_IMAGE
+    docker_execution["fallback_image"] = DOCKER_EXECUTION_IMAGE
+    docker_execution["readiness_scope"] = "docker_daemon"
+    docker_execution["image_smoke_required"] = True
     provider_readiness = collect_provider_readiness(
         code_execution_backend=CODE_EXECUTION_BACKEND,
         docker_status=docker_execution,

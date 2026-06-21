@@ -56,6 +56,7 @@ python scripts/product_activation_rehearsal.py --format markdown --require-activ
 python scripts/collaboration_readiness.py --format markdown # 私有语料/share-link collaboration readiness
 python scripts/provider_readiness.py --format markdown # 外部 provider/MATLAB activation readiness
 python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation # 本地 provider runtime 合约演练
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language all # 显式 Docker Python/Octave 执行 smoke
 python scripts/quality_readiness.py --format markdown # self-use/small-group/community 质量 readiness
 python scripts/activation_suite.py --format markdown --require-target local_foundation # 聚合本地激活演练
 python scripts/openapi_contract.py --format markdown --require-local-contract # no-secret OpenAPI 合约检查

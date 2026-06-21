@@ -1,17 +1,58 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-17 03:14 CST
-
-Repository follow-up note: local `main` was later refocused and synchronized to
-`origin/main` at `5435955 docs: add comprehensive cleanup summary` on
-2026-06-21. This deployment document was not live-refreshed during that
-docs/git cleanup; treat the 2026-06-17 service checks below as the last
-verified runtime snapshot, not proof that the 2026-06-21 refocus docs or future
-feature changes are deployed.
+Last live check: 2026-06-21 15:56 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
 healthy at a later time.
+
+## 2026-06-21 Docker Execution Activation
+
+The Docker execution backend was enabled on Trace-Twin under the existing
+job/provider/artifact boundary.
+
+Deployment actions:
+
+- Synchronized the local Docker execution source slice to `/opt/fluxmind` with
+  `python scripts/deploy_sync.py --apply`; runtime state, `.env`, models,
+  metadata, jobs, artifacts, papers, and FAISS index remained excluded.
+- Updated `/opt/fluxmind/.env` with `CODE_EXECUTION_BACKEND=docker`,
+  `DOCKER_PYTHON_EXECUTION_IMAGE=m.daocloud.io/docker.io/library/python:3.11-slim`,
+  and `DOCKER_OCTAVE_EXECUTION_IMAGE=fluxmind/octave:trixie-slim`.
+- Added service drop-ins at
+  `/etc/systemd/system/fluxmind-api.service.d/docker-execution.conf`,
+  `/etc/systemd/system/fluxmind-ui.service.d/docker-execution.conf`, and
+  `/etc/systemd/system/fluxmind-worker.service.d/docker-execution.conf` with
+  `SupplementaryGroups=docker`.
+- Built the local Octave runtime image `fluxmind/octave:trixie-slim` on
+  Trace-Twin from `deploy/docker/octave-trixie-slim.Dockerfile`, using the USTC
+  Debian mirror. The image contains Octave 9.4.0 from Debian trixie.
+- Restarted `fluxmind-api.service`, `fluxmind-ui.service`, and
+  `fluxmind-worker.service`.
+
+Verification:
+
+- `systemd-run` as `User=fluxmind`, `Group=fluxmind`, with
+  `SupplementaryGroups=docker` and `EnvironmentFile=/opt/fluxmind/.env` passed
+  `scripts/docker_execution_smoke.py --language all`.
+- API smoke passed for `POST /jobs/code/python-docker` and
+  `POST /jobs/code/octave-docker`; both returned HTTP 200, `job_status=succeeded`,
+  `exit_code=0`, and one exported artifact.
+- `fluxmind-api.service`, `fluxmind-ui.service`, `fluxmind-worker.service`, and
+  `docker.service` were active after restart.
+- Local API health returned `{"status":"ok"}` and ports `18501`/`18502` were
+  listening.
+
+Notes:
+
+- Direct Docker Hub pulls from Trace-Twin timed out during this pass.
+- `m.daocloud.io/docker.io/library/python:3.11-slim` was already available on
+  the host and is used for Python execution.
+- The official Octave image remained impractical to pull directly on this host,
+  so production Octave execution uses the local image
+  `fluxmind/octave:trixie-slim`.
+- `/opt/fluxmind/.env` remains `root:root 600`; production env injection is
+  through systemd `EnvironmentFile`.
 
 ## Current Deployment
 
@@ -26,6 +67,8 @@ Last deployed implementation/eval update: `bb9cb76`
 (`test: expand PDF structure eval gate`).
 Last deployed source/docs/health sync: `0aa1919`
 (`docs: document PDF structure gate expansion`).
+Last deployed Docker execution update: 2026-06-21 local working tree sync
+through `python scripts/deploy_sync.py --apply`; final commit hash pending.
 
 ```
 Host          Trace-Twin
@@ -65,8 +108,9 @@ Local runtime state directories are owned by the `fluxmind` runtime user:
 
 FluxMind is deployed separately from the Trace-Twin bot stack:
 
-- no Docker deployment for FluxMind
-- no Docker restart during deployment
+- FluxMind uses the host Docker daemon for Python/Octave code-execution
+  sandboxes only
+- no FluxMind application container deployment
 - no changes to `/opt/trace-twin`
 - independent systemd services
 - independent ports `18501` and `18502`
@@ -85,6 +129,9 @@ The deployed `.env` currently uses:
 LLM_BASE_URL=https://token-plan-sgp.xiaomimimo.com/v1
 LLM_MODEL=mimo-v2.5-pro
 EMBEDDING_MODEL=/opt/fluxmind/models/all-MiniLM-L6-v2
+CODE_EXECUTION_BACKEND=docker
+DOCKER_PYTHON_EXECUTION_IMAGE=m.daocloud.io/docker.io/library/python:3.11-slim
+DOCKER_OCTAVE_EXECUTION_IMAGE=fluxmind/octave:trixie-slim
 ```
 
 `mimo-v2.5-pro` is a reasoning model: it emits `reasoning_content` first

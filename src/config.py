@@ -6,7 +6,13 @@ from dotenv import load_dotenv
 
 # Load .env from project root
 PROJECT_ROOT = Path(__file__).parent.parent
-load_dotenv(PROJECT_ROOT / ".env")
+try:
+    load_dotenv(PROJECT_ROOT / ".env")
+except PermissionError:
+    # Production systemd units load /opt/fluxmind/.env through EnvironmentFile
+    # while keeping the file root-only. In that case the process environment is
+    # already populated and direct dotenv reads should not prevent startup.
+    pass
 
 # LLM
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.example.com/v1")
@@ -30,10 +36,18 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "")
 
 # Local execution backend. `local` keeps the current child-process provider.
-# `docker` enables the no-key container backend when the runtime user can access
-# Docker safely.
+# `docker` runs jobs through language-specific local Docker images when the
+# runtime user can access Docker.
 CODE_EXECUTION_BACKEND = os.getenv("CODE_EXECUTION_BACKEND", "local").strip().lower()
-DOCKER_EXECUTION_IMAGE = os.getenv("DOCKER_EXECUTION_IMAGE", "python:3.12-slim")
+DOCKER_EXECUTION_IMAGE = os.getenv("DOCKER_EXECUTION_IMAGE", "python:3.11-slim").strip() or "python:3.11-slim"
+DOCKER_PYTHON_EXECUTION_IMAGE = os.getenv(
+    "DOCKER_PYTHON_EXECUTION_IMAGE",
+    DOCKER_EXECUTION_IMAGE or "python:3.11-slim",
+).strip() or DOCKER_EXECUTION_IMAGE
+DOCKER_OCTAVE_EXECUTION_IMAGE = os.getenv(
+    "DOCKER_OCTAVE_EXECUTION_IMAGE",
+    "gnuoctave/octave:latest",
+).strip() or "gnuoctave/octave:latest"
 CODE_EXECUTION_POLICY = os.getenv("CODE_EXECUTION_POLICY", "local-safe-v1").strip().lower()
 CODE_EXECUTION_ALLOWED_IMPORTS = os.getenv(
     "CODE_EXECUTION_ALLOWED_IMPORTS",

@@ -522,6 +522,8 @@ def _is_collectable_output(path: Path, workdir: Path, input_files: set[Path]) ->
     """Return whether a generated file can be safely copied as an artifact."""
     if path.is_symlink() or not path.is_file():
         return False
+    if path.name.endswith(".pyc") or "__pycache__" in path.parts:
+        return False
     resolved = path.resolve()
     if resolved in input_files:
         return False
@@ -1363,11 +1365,17 @@ class DockerExecutionProvider(CodeExecutionProvider):
             metadata = apply_policy_metadata(metadata, policy)
             metadata = apply_output_capture_metadata(metadata, captured)
             exit_code = 127 if captured.returncode in {125, 126} else captured.returncode
+            stderr = self._docker_stderr(
+                captured_stderr=captured.stderr,
+                docker_returncode=captured.returncode,
+                request=request,
+                container_command=container_command,
+            )
             artifact_collection = self._collect_artifacts(workdir, input_files, request)
             return CodeExecutionResult(
                 exit_code=exit_code,
                 stdout=captured.stdout,
-                stderr=captured.stderr,
+                stderr=stderr,
                 artifacts=artifact_collection.artifacts,
                 runtime_metadata={**metadata, **artifact_collection.metadata},
             )
@@ -1416,18 +1424,90 @@ class DockerExecutionProvider(CodeExecutionProvider):
             "ALL",
             "--read-only",
             "--tmpfs",
-            "/tmp:rw,nosuid,nodev,size=64m",
+            "/tmp:rw,nosuid,nodev,size=64m,mode=1777",
             "-v",
             f"{workdir.resolve()}:/work:rw",
             "-w",
             "/work",
             "--env",
             "PYTHONUNBUFFERED=1",
+            "--env",
+            "HOME=/tmp",
+            "--env",
+            "MPLCONFIGDIR=/tmp/matplotlib",
         ]
         if container_user:
             command.extend(["--user", container_user])
         command.extend([self.image, *container_command])
         return command
+
+    def _docker_stderr(
+        self,
+        *,
+        captured_stderr: str,
+        docker_returncode: int,
+        request: CodeExecutionRequest,
+        container_command: list[str],
+    ) -> str:
+        detail = captured_stderr or ""
+        prefix = ""
+        if docker_returncode == 125:
+            prefix = self._docker_start_failure_message(
+                detail=detail,
+                language=request.language,
+                image=self.image,
+            )
+        elif docker_returncode == 126:
+            prefix = (
+                f"Docker refused to run the {request.language} execution container. "
+                "Check container runtime permissions and security policy."
+            )
+        elif (
+            docker_returncode == 127
+            and container_command
+            and self._looks_like_missing_container_runtime(detail, container_command[0])
+        ):
+            prefix = (
+                f"Execution runtime `{container_command[0]}` was not found in Docker image "
+                f"`{self.image}`. Configure the matching Docker image for {request.language} jobs."
+            )
+        if not prefix:
+            return detail
+        if not detail.strip():
+            return prefix
+        return f"{prefix}\n{detail}"
+
+    @staticmethod
+    def _looks_like_missing_container_runtime(stderr: str, executable: str) -> bool:
+        lower = (stderr or "").lower()
+        executable = executable.lower()
+        if executable and executable not in lower:
+            return False
+        return "executable file not found" in lower or "not found" in lower
+
+    @staticmethod
+    def _docker_start_failure_message(*, detail: str, language: str, image: str) -> str:
+        lower = (detail or "").lower()
+        if "permission denied" in lower:
+            return (
+                f"Docker cannot start the {language} execution container because the "
+                "runtime user cannot access the Docker daemon. Check docker group or "
+                f"rootless Docker permissions for image `{image}`."
+            )
+        if "cannot connect to the docker daemon" in lower or "is the docker daemon running" in lower:
+            return (
+                f"Docker daemon is not reachable for {language} execution. Start Docker "
+                f"or check the daemon socket before using image `{image}`."
+            )
+        if "pull access denied" in lower or "manifest unknown" in lower or "not found" in lower:
+            return (
+                f"Docker image `{image}` is not available for {language} execution. "
+                "Check the image name or pull it before running the job."
+            )
+        return (
+            f"Docker could not start the {language} execution container. "
+            f"Check Docker access and image availability for `{image}`."
+        )
 
     @staticmethod
     def _force_remove_container(docker_path: str, container_name: str) -> None:

@@ -20,7 +20,14 @@ from src.capabilities import (
     GeneratedArtifact,
     ImageGenerationRequest,
 )
-from src.config import CODE_EXECUTION_BACKEND, DOCKER_EXECUTION_IMAGE, JOBS_FILE, PROJECT_ROOT
+from src.config import (
+    CODE_EXECUTION_BACKEND,
+    DOCKER_EXECUTION_IMAGE,
+    DOCKER_OCTAVE_EXECUTION_IMAGE,
+    DOCKER_PYTHON_EXECUTION_IMAGE,
+    JOBS_FILE,
+    PROJECT_ROOT,
+)
 from src.providers import (
     DockerExecutionProvider,
     LocalArtifactStore,
@@ -943,7 +950,12 @@ class LocalJobRunner:
     def _code_execution_provider(self, language: str):
         store = self._artifact_store()
         if CODE_EXECUTION_BACKEND == "docker":
-            return DockerExecutionProvider(store, image=DOCKER_EXECUTION_IMAGE)
+            image = (
+                DOCKER_OCTAVE_EXECUTION_IMAGE
+                if language == "octave"
+                else DOCKER_PYTHON_EXECUTION_IMAGE
+            )
+            return DockerExecutionProvider(store, image=image)
         if language == "octave":
             return LocalOctaveExecutionProvider(store)
         return LocalPythonExecutionProvider(store)
@@ -1249,6 +1261,35 @@ class LocalJobRunner:
             return False
         return True
 
+    @staticmethod
+    def _code_execution_error_from_result(result: CodeExecutionResult) -> dict[str, str] | None:
+        if result.success:
+            return None
+        if result.runtime_metadata.get("policy_violation") == "true":
+            return {"code": "execution_policy_violation", "message": result.stderr}
+        docker_returncode = result.runtime_metadata.get("docker_returncode")
+        if docker_returncode == "125":
+            return {"code": "docker_container_start_failed", "message": result.stderr}
+        if docker_returncode == "126":
+            return {"code": "docker_container_run_denied", "message": result.stderr}
+        if docker_returncode == "127" and not LocalJobRunner._docker_runtime_unavailable(result):
+            return {"code": "execution_failed", "message": result.stderr}
+        if result.exit_code == 127:
+            return {"code": "runtime_unavailable", "message": result.stderr}
+        if result.exit_code == 124:
+            return {"code": "execution_timeout", "message": result.stderr}
+        return {"code": "execution_failed", "message": result.stderr}
+
+    @staticmethod
+    def _docker_runtime_unavailable(result: CodeExecutionResult) -> bool:
+        if not str(result.runtime_metadata.get("provider_runtime", "")).startswith("docker-"):
+            return False
+        stderr = (result.stderr or "").lower()
+        return (
+            ("execution runtime" in stderr and "not found" in stderr)
+            or "executable file not found" in stderr
+        )
+
     def run_mock_image(
         self,
         request: ImageGenerationRequest,
@@ -1329,16 +1370,7 @@ class LocalJobRunner:
             error = {"code": "cancelled", "message": result.stderr or "Job was cancelled."}
         else:
             status = "succeeded" if result.success else "failed"
-            if result.success:
-                error = None
-            elif result.runtime_metadata.get("policy_violation") == "true":
-                error = {"code": "execution_policy_violation", "message": result.stderr}
-            elif result.exit_code == 127:
-                error = {"code": "runtime_unavailable", "message": result.stderr}
-            elif result.exit_code == 124:
-                error = {"code": "execution_timeout", "message": result.stderr}
-            else:
-                error = {"code": "execution_failed", "message": result.stderr}
+            error = self._code_execution_error_from_result(result)
         payload = asdict(result)
         self._record_code_execution_event(
             record,
@@ -1401,16 +1433,7 @@ class LocalJobRunner:
             error = {"code": "cancelled", "message": result.stderr or "Job was cancelled."}
         else:
             status = "succeeded" if result.success else "failed"
-            if result.success:
-                error = None
-            elif result.runtime_metadata.get("policy_violation") == "true":
-                error = {"code": "execution_policy_violation", "message": result.stderr}
-            elif result.exit_code == 127:
-                error = {"code": "runtime_unavailable", "message": result.stderr}
-            elif result.exit_code == 124:
-                error = {"code": "execution_timeout", "message": result.stderr}
-            else:
-                error = {"code": "execution_failed", "message": result.stderr}
+            error = self._code_execution_error_from_result(result)
         payload = asdict(result)
         self._record_code_execution_event(
             record,

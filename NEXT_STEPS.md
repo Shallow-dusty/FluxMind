@@ -1,7 +1,7 @@
 # FluxMind 下一步行动清单
 
 **生成时间**: 2026-06-21  
-**状态**: refocus 文档已推送同步，准备继续功能开发
+**状态**: Docker 执行后端已在 Trace-Twin 启用并验证，当前改动待提交
 
 ---
 
@@ -20,30 +20,96 @@
    - Commit: ed56760
 
 3. **Git 状态**
-   - 当前 HEAD: `5435955 docs: add comprehensive cleanup summary`
-   - `main` 与 `origin/main` 同步（ahead 0 / behind 0）
-   - 工作区干净
+   - 当前 HEAD: `1b59d1e docs: align FluxMind refocus status`
+   - `main` 相对 `origin/main`：ahead 1 / behind 0
+   - 工作区包含 Docker 执行后端、生产启用记录和可复现镜像构建文件，待提交
+
+4. **Docker 代码执行生产启用**
+   - Trace-Twin `/opt/fluxmind` 已启用 `CODE_EXECUTION_BACKEND=docker`
+   - API/UI/worker systemd 服务通过 `SupplementaryGroups=docker` 访问 Docker daemon
+   - Python 镜像：`m.daocloud.io/docker.io/library/python:3.11-slim`
+   - Octave 镜像：`fluxmind/octave:trixie-slim`
+   - Python/Octave smoke 和 `/jobs/code/*-docker` API smoke 均通过
 
 ---
 
 ## 🚀 立即行动（今天）
 
-### 1. 不再做推送清理
+### 1. 提交当前 Docker 执行后端切片
 
-当前 refocus 文档已同步到 `origin/main`。除非后续产生新改动，不需要再把"推送当前状态"作为开发前置任务。
+当前有新改动，应该先提交 Docker execution slice，再进入下一项功能开发。
 
-### 2. 进入第一个功能边界
+### 2. 进入下一个功能边界
 
-从 `DEVELOPMENT_PLAN.md` 的 Day 1-2 开始：
+Docker 代码执行已在 Trace-Twin 验证通过。下一步进入 `DEVELOPMENT_PLAN.md`
+后续 Priority 1-3 用户可见功能，优先选择论文库或图像生成改进。
+
+保留 Docker 回归命令：
 
 ```bash
-# 目标：启用真实 Docker 执行后端
 cd /home/shallow/04.AI-Prism/11.FluxMind
-docker --version
-docker ps
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language all
+python -m pytest tests/test_providers.py tests/test_jobs.py tests/test_docker_execution_smoke.py tests/test_api_docker_execution.py
 ```
 
-完成标准：Python/Octave 代码能在 Docker 后端执行，生成文件能进入 artifact，失败时错误信息清晰。
+完成标准已达成：Python/Octave 代码能在 Docker 后端执行，生成文件能进入 artifact，失败时错误信息清晰。
+
+生产启用时，API/UI/worker 三类进程都可能触发代码执行；需要让对应 systemd 服务的运行用户能访问 Docker daemon。参考：
+
+```text
+deploy/systemd/fluxmind-docker-execution.dropin.example.conf
+```
+
+最短验证顺序：
+
+```bash
+# 1. 确认 Docker daemon 对当前用户可用
+docker --version
+docker ps
+
+# 2. 验证 provider/artifact 路径
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language python
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language octave
+
+# 3. 如默认镜像不可用，只替换 smoke 镜像先定位问题
+python scripts/docker_execution_smoke.py --language octave --octave-image fluxmind/octave:trixie-slim
+
+# 4. 如需绕过 job 层直接调试 provider，可显式指定 provider mode
+python scripts/docker_execution_smoke.py --mode provider --language python
+```
+
+注意：`/admin/status` 中的 Docker available 只表示 Docker daemon 对运行用户可达，不等于 Python/Octave 镜像都已拉取并能执行；镜像和 artifact 路径必须用 `scripts/docker_execution_smoke.py` 验证。
+
+API 入口：
+
+```text
+POST /jobs/code/python-docker
+POST /jobs/async/code/python-docker
+POST /jobs/code/octave-docker
+POST /jobs/async/code/octave-docker
+```
+
+这些 Docker API 入口要求 `CODE_EXECUTION_BACKEND=docker`；否则返回 `409` 并提示当前 backend，避免误把 local 执行当作 Docker 执行。
+
+常见失败码：
+
+```text
+docker_container_start_failed  Docker daemon/权限/镜像启动问题
+docker_container_run_denied    Docker 拒绝运行容器
+runtime_unavailable            容器内缺少 python/octave runtime
+execution_timeout              执行超时
+execution_failed               用户代码自身失败
+```
+
+提交前最小检查：
+
+```bash
+python -m pytest tests/test_providers.py tests/test_jobs.py tests/test_docker_execution_smoke.py tests/test_api_docker_execution.py
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language python
+CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language octave
+```
+
+只有上述检查覆盖到 Docker job/provider/artifact 边界后，才把本轮 Docker 执行后端改动标记为完成。
 
 ---
 
@@ -216,3 +282,26 @@ FluxMind/
 ---
 
 **祝开发顺利！🚀**
+
+## Docker 镜像策略（Trace-Twin）
+
+Trace-Twin 在杭州，Docker Hub/GHCR 大镜像直连超时属于预期网络条件，不作为功能失败处理。
+生产使用以下镜像：
+
+```text
+Python image  m.daocloud.io/docker.io/library/python:3.11-slim
+Octave image  fluxmind/octave:trixie-slim
+```
+
+Octave 镜像的可复现构建文件在：
+
+```text
+deploy/docker/octave-trixie-slim.Dockerfile
+```
+
+如果以后重建生产镜像，在 Trace-Twin 上执行：
+
+```bash
+cd /opt/fluxmind
+docker build -t fluxmind/octave:trixie-slim -f deploy/docker/octave-trixie-slim.Dockerfile deploy/docker
+```

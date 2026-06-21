@@ -69,6 +69,7 @@ from src.config import (
     API_RATE_LIMIT_ENABLED,
     API_RATE_LIMIT_MAX_REQUESTS,
     API_RATE_LIMIT_WINDOW_S,
+    CODE_EXECUTION_BACKEND,
     FAISS_INDEX_DIR,
     IDENTITY_QUOTAS_BILLING_ENABLED,
     LLM_MODEL,
@@ -4266,7 +4267,38 @@ def enqueue_mock_image_job(
     return JobResponse(job=job_to_dict(job))
 
 
-@app.post("/jobs/code/python-local", response_model=JobResponse, summary="Run local Python job")
+def _require_docker_execution_backend() -> None:
+    if CODE_EXECUTION_BACKEND != "docker":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Docker execution route requires CODE_EXECUTION_BACKEND=docker. "
+                f"Current backend is {CODE_EXECUTION_BACKEND or 'local'}."
+            ),
+        )
+
+
+@app.post("/jobs/code/python-docker", response_model=JobResponse, summary="Run Docker Python job")
+def create_docker_python_job(
+    req: LocalPythonJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Run a Python job through the Docker execution route."""
+    _require_docker_execution_backend()
+    return _create_python_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/code/python-docker",
+    )
+
+
+@app.post("/jobs/code/python-local", response_model=JobResponse, summary="Run configured Python job compatibility route")
 def create_local_python_job(
     req: LocalPythonJobRequest,
     response: Response,
@@ -4274,7 +4306,26 @@ def create_local_python_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Run a development-only local Python job without hosted sandbox keys."""
+    """Compatibility route for the configured Python execution backend."""
+    return _create_python_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/code/python-local",
+    )
+
+
+def _create_python_job(
+    req: LocalPythonJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+) -> JobResponse:
     auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
     ownership = request_ownership(req, auth_context)
@@ -4286,7 +4337,7 @@ def create_local_python_job(
         request_id=request_id,
         ownership=ownership,
         auth_context=auth_context,
-        endpoint="/jobs/code/python-local",
+        endpoint=endpoint,
         action="job_submit",
     )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
@@ -4307,7 +4358,27 @@ def create_local_python_job(
     return JobResponse(job=job_to_dict(job))
 
 
-@app.post("/jobs/async/code/python-local", response_model=JobResponse, summary="Queue local Python job")
+@app.post("/jobs/async/code/python-docker", response_model=JobResponse, summary="Queue Docker Python job")
+def enqueue_docker_python_job(
+    req: LocalPythonJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue a Python job through the Docker execution route."""
+    _require_docker_execution_backend()
+    return _enqueue_python_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/async/code/python-docker",
+    )
+
+
+@app.post("/jobs/async/code/python-local", response_model=JobResponse, summary="Queue configured Python job compatibility route")
 def enqueue_local_python_job(
     req: LocalPythonJobRequest,
     response: Response,
@@ -4315,7 +4386,26 @@ def enqueue_local_python_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Queue a development-only local Python job without hosted sandbox keys."""
+    """Compatibility route for queuing the configured Python execution backend."""
+    return _enqueue_python_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/async/code/python-local",
+    )
+
+
+def _enqueue_python_job(
+    req: LocalPythonJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+) -> JobResponse:
     auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
     ownership = request_ownership(req, auth_context)
@@ -4327,7 +4417,7 @@ def enqueue_local_python_job(
         request_id=request_id,
         ownership=ownership,
         auth_context=auth_context,
-        endpoint="/jobs/async/code/python-local",
+        endpoint=endpoint,
         action="job_submit",
     )
     job = get_async_job_manager().enqueue_local_python(
@@ -4348,7 +4438,27 @@ def enqueue_local_python_job(
     return JobResponse(job=job_to_dict(job))
 
 
-@app.post("/jobs/code/octave-local", response_model=JobResponse, summary="Run local Octave-compatible job")
+@app.post("/jobs/code/octave-docker", response_model=JobResponse, summary="Run Docker Octave-compatible job")
+def create_docker_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Run an Octave-compatible job through the Docker execution route."""
+    _require_docker_execution_backend()
+    return _create_octave_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/code/octave-docker",
+    )
+
+
+@app.post("/jobs/code/octave-local", response_model=JobResponse, summary="Run configured Octave-compatible job compatibility route")
 def create_local_octave_job(
     req: LocalOctaveJobRequest,
     response: Response,
@@ -4356,7 +4466,26 @@ def create_local_octave_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Run a no-key local GNU Octave-compatible job when octave is installed."""
+    """Compatibility route for the configured Octave-compatible execution backend."""
+    return _create_octave_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/code/octave-local",
+    )
+
+
+def _create_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+) -> JobResponse:
     auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
     ownership = request_ownership(req, auth_context)
@@ -4368,7 +4497,7 @@ def create_local_octave_job(
         request_id=request_id,
         ownership=ownership,
         auth_context=auth_context,
-        endpoint="/jobs/code/octave-local",
+        endpoint=endpoint,
         action="job_submit",
     )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
@@ -4389,7 +4518,27 @@ def create_local_octave_job(
     return JobResponse(job=job_to_dict(job))
 
 
-@app.post("/jobs/async/code/octave-local", response_model=JobResponse, summary="Queue local Octave-compatible job")
+@app.post("/jobs/async/code/octave-docker", response_model=JobResponse, summary="Queue Docker Octave-compatible job")
+def enqueue_docker_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue an Octave-compatible job through the Docker execution route."""
+    _require_docker_execution_backend()
+    return _enqueue_octave_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/async/code/octave-docker",
+    )
+
+
+@app.post("/jobs/async/code/octave-local", response_model=JobResponse, summary="Queue configured Octave-compatible job compatibility route")
 def enqueue_local_octave_job(
     req: LocalOctaveJobRequest,
     response: Response,
@@ -4397,7 +4546,26 @@ def enqueue_local_octave_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Queue a no-key local GNU Octave-compatible job when octave is installed."""
+    """Compatibility route for queuing the configured Octave-compatible backend."""
+    return _enqueue_octave_job(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/async/code/octave-local",
+    )
+
+
+def _enqueue_octave_job(
+    req: LocalOctaveJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+) -> JobResponse:
     auth_context = verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
     ownership = request_ownership(req, auth_context)
@@ -4409,7 +4577,7 @@ def enqueue_local_octave_job(
         request_id=request_id,
         ownership=ownership,
         auth_context=auth_context,
-        endpoint="/jobs/async/code/octave-local",
+        endpoint=endpoint,
         action="job_submit",
     )
     job = get_async_job_manager().enqueue_local_octave(
