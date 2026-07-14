@@ -17,3 +17,6 @@ metadata/
 papers/*.pdf
 papers/uploads/
 .streamlit/secrets.toml
+# Curated library PDFs (308MB) are reproducible via scripts/import_seed_papers.py.
+# Track only the manifest + scripts, not the binaries.
+papers/library/*.pdf

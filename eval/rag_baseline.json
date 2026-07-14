@@ -94,9 +94,9 @@
       "observer_estimation",
       "implementation_trust"
     ],
-    "minimum_expected_source_ref_count": 145,
-    "minimum_retrieval_only_case_count": 65,
-    "minimum_retrieval_eval_question_count": 107,
+    "minimum_expected_source_ref_count": 167,
+    "minimum_retrieval_only_case_count": 87,
+    "minimum_retrieval_eval_question_count": 129,
     "minimum_retrieval_only_pass_rate": 1.0,
     "minimum_code_output_case_count": 13,
     "required_code_output_languages": [
@@ -292,6 +292,18 @@
       "expected_job_log_statuses": [
         "running",
         "succeeded"
+      ],
+      "expected_runtime_metadata_any": [
+        {
+          "provider_runtime": "python-local",
+          "filesystem_isolation": "temporary_workdir",
+          "network_policy_enforced": "false"
+        },
+        {
+          "provider_runtime": "docker-python",
+          "filesystem_isolation": "docker_container_bind_mount",
+          "network_policy_enforced": "true"
+        }
       ]
     },
     {
@@ -334,6 +346,18 @@
       "expected_job_log_statuses": [
         "running",
         "succeeded"
+      ],
+      "expected_runtime_metadata_any": [
+        {
+          "provider_runtime": "python-local",
+          "filesystem_isolation": "temporary_workdir",
+          "network_policy_enforced": "false"
+        },
+        {
+          "provider_runtime": "docker-python",
+          "filesystem_isolation": "docker_container_bind_mount",
+          "network_policy_enforced": "true"
+        }
       ]
     },
     {
@@ -416,6 +440,18 @@
       "expected_job_log_statuses": [
         "running",
         "succeeded"
+      ],
+      "expected_runtime_metadata_any": [
+        {
+          "provider_runtime": "python-local",
+          "filesystem_isolation": "temporary_workdir",
+          "network_policy_enforced": "false"
+        },
+        {
+          "provider_runtime": "docker-python",
+          "filesystem_isolation": "docker_container_bind_mount",
+          "network_policy_enforced": "true"
+        }
       ]
     },
     {
@@ -498,6 +534,18 @@
       "expected_job_log_statuses": [
         "running",
         "succeeded"
+      ],
+      "expected_runtime_metadata_any": [
+        {
+          "provider_runtime": "python-local",
+          "filesystem_isolation": "temporary_workdir",
+          "network_policy_enforced": "false"
+        },
+        {
+          "provider_runtime": "docker-python",
+          "filesystem_isolation": "docker_container_bind_mount",
+          "network_policy_enforced": "true"
+        }
       ]
     },
     {
@@ -596,6 +644,18 @@
       "expected_job_log_statuses": [
         "running",
         "succeeded"
+      ],
+      "expected_runtime_metadata_any": [
+        {
+          "provider_runtime": "python-local",
+          "filesystem_isolation": "temporary_workdir",
+          "network_policy_enforced": "false"
+        },
+        {
+          "provider_runtime": "docker-python",
+          "filesystem_isolation": "docker_container_bind_mount",
+          "network_policy_enforced": "true"
+        }
       ]
     },
     {
@@ -941,8 +1001,17 @@
     {
       "id": "smc-chattering-explanation",
       "answer_mode": "explanation",
-      "topic_tags": ["PMSM", "sliding mode control", "chattering", "disturbance observer"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "chattering",
+        "disturbance observer"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
       "question": "How do sliding-mode controllers reduce chattering in motor drives?",
       "expected_refs": [
         {
@@ -960,16 +1029,43 @@
       ],
       "fixture_answer": "Chattering reduction should be explained as a design tradeoff, with PMSM SMC taxonomy context [1] and disturbance-observer terminal SMC evidence [2].",
       "recorded_answer": "Sliding-mode controllers reduce chattering by treating switching gain, boundary layers, and disturbance-observer compensation as design tradeoffs. For PMSM control, the review frames chattering reduction as a core SMC research concern [1]. Chattering-attenuated terminal SMC then combines disturbance observation with terminal sliding surfaces to reduce switching ripple while preserving robustness [2].",
-      "required_answer_terms": ["chattering", "switching gain", "disturbance", "terminal sliding"],
+      "required_answer_terms": [
+        "chattering",
+        "switching gain",
+        "disturbance",
+        "terminal sliding"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["chattering", "switching", "disturbance", "sliding"],
-      "minimum_live_answer_term_coverage": 0.75
+      "live_required_answer_terms": [
+        "chattering",
+        "switching",
+        "disturbance",
+        "sliding"
+      ],
+      "minimum_live_answer_term_coverage": 0.75,
+      "live_expected_refs": [
+        {
+          "source": "li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "source_path": "papers/library/li-2022-frontiers-chattering-suppression-smo-pmsm.pdf",
+          "page": 10,
+          "snippet": "chattering suppression sliding mode observer PMSM"
+        }
+      ]
     },
     {
       "id": "flux-observer-literature-review",
       "answer_mode": "literature_review",
-      "topic_tags": ["PMSM", "flux observer", "sensorless control", "SOGIFO-X", "regression"],
-      "eval_lanes": ["retrieval", "answer_quality"],
+      "topic_tags": [
+        "PMSM",
+        "flux observer",
+        "sensorless control",
+        "SOGIFO-X",
+        "regression"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality"
+      ],
       "question": "Compare regression and SOGIFO-X flux observers for PMSM sensorless control.",
       "expected_refs": [
         {
@@ -987,16 +1083,35 @@
       ],
       "fixture_answer": "A literature-review answer should compare the regression observer's wide-speed motivation [1] with SOGIFO-X filtering and observer design claims [2].",
       "recorded_answer": "A regression flux observer emphasizes model-based IPMSM sensorless operation across a wide speed range [1]. SOGIFO-X focuses on optimized filtering and observer structure for sensorless PMSM control [2]. A useful comparison should separate the regression model's speed-range motivation from the SOGIFO-X algorithm's filtering and observer-design emphasis.",
-      "required_answer_terms": ["regression", "wide speed", "SOGIFO-X", "sensorless"],
+      "required_answer_terms": [
+        "regression",
+        "wide speed",
+        "SOGIFO-X",
+        "sensorless"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["regression", "SOGIFO-X", "flux", "observer"],
+      "live_required_answer_terms": [
+        "regression",
+        "SOGIFO-X",
+        "flux",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "smc-reaching-law-derivation",
       "answer_mode": "derivation",
-      "topic_tags": ["sliding mode control", "reaching law", "constraints", "nonlinear systems"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "reaching law",
+        "constraints",
+        "nonlinear systems"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity"
+      ],
       "question": "Derive the role of a reaching law when sliding-mode control must satisfy state and input constraints.",
       "expected_refs": [
         {
@@ -1008,16 +1123,35 @@
       ],
       "fixture_answer": "A derivation should start from the constrained reaching-law objective and cite the state and control-signal constraint context [1].",
       "recorded_answer": "For a constrained SMC derivation, define the sliding hyperplane, then choose a reaching law that drives the representative point toward that hyperplane while respecting state constraints and control signal limitation [1]. The cited work frames this as finite-time convergence under perturbations, so the derivation should keep disturbance robustness and constraint satisfaction explicit.",
-      "required_answer_terms": ["reaching law", "sliding hyperplane", "state constraints", "control signal"],
+      "required_answer_terms": [
+        "reaching law",
+        "sliding hyperplane",
+        "state constraints",
+        "control signal"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["reaching", "constraint", "sliding", "control"],
+      "live_required_answer_terms": [
+        "reaching",
+        "constraint",
+        "sliding",
+        "control"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "pmsm-smc-implementation-checklist",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "sliding mode control", "hardware validation", "real-time tuning"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "hardware validation",
+        "real-time tuning"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style"
+      ],
       "question": "Give an implementation checklist for validating a PMSM sliding-mode controller before deployment.",
       "expected_refs": [
         {
@@ -1029,30 +1163,43 @@
       ],
       "live_expected_refs": [
         {
-          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
-          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
-          "page": 21,
-          "snippet": "NSMC controller exhibits superior tracking performance"
-        },
-        {
-          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
-          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
-          "page": 3,
-          "snippet": "parameter adjustment of the PI controller used is very time-consuming"
+          "source": "electronics-2024-smc-model-predictive-speed-pmsm.pdf",
+          "source_path": "papers/library/electronics-2024-smc-model-predictive-speed-pmsm.pdf",
+          "page": 8,
+          "snippet": "The Novel Sliding Mode Speed Controller"
         }
       ],
       "fixture_answer": "An implementation answer should turn the PMSM SMC review's hardware-validation and real-time tuning gaps into a deployment checklist [1].",
       "recorded_answer": "A PMSM SMC implementation checklist should verify sensor and sampling assumptions, switching or higher-order SMC behavior, disturbance robustness, hardware validation, energy-efficiency measurement, and real-time tuning before deployment [1]. It should also record operating envelopes and failure cases so controller claims are not limited to simulation.",
-      "required_answer_terms": ["implementation", "hardware validation", "real-time tuning", "robustness"],
+      "required_answer_terms": [
+        "implementation",
+        "hardware validation",
+        "real-time tuning",
+        "robustness"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["implementation", "hardware", "validation", "tuning"],
+      "live_required_answer_terms": [
+        "implementation",
+        "hardware",
+        "validation",
+        "tuning"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "smo-code-generation",
       "answer_mode": "code_generation",
-      "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "code generation"],
-      "eval_lanes": ["retrieval", "answer_quality", "code_generation"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "code generation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "code_generation"
+      ],
       "question": "Generate MATLAB-style pseudocode for a PMSM sliding-mode observer.",
       "expected_refs": [
         {
@@ -1064,16 +1211,44 @@
       ],
       "fixture_answer": "The MATLAB-style observer skeleton should identify measured currents, voltage inputs, and switching gains, while citing the PMSM SMO context [1].",
       "recorded_answer": "A MATLAB-style PMSM sliding-mode observer should define measured currents, voltage inputs, stator resistance, observer gains, and a switching or saturation function. The code skeleton should keep the SMO state update tied to the sensorless PMSM observer context [1].",
-      "required_answer_terms": ["MATLAB", "measured currents", "voltage inputs", "switching"],
+      "required_answer_terms": [
+        "MATLAB",
+        "measured currents",
+        "voltage inputs",
+        "switching"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["MATLAB", "observer", "switching", "voltage"],
-      "minimum_live_answer_term_coverage": 0.75
+      "live_required_answer_terms": [
+        "MATLAB",
+        "observer",
+        "switching",
+        "voltage"
+      ],
+      "minimum_live_answer_term_coverage": 0.75,
+      "live_expected_refs": [
+        {
+          "source": "microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "source_path": "papers/library/microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "page": 6,
+          "snippet": "Transform the measured current to alpha beta reference frame"
+        }
+      ]
     },
     {
       "id": "sogifo-x-filtering-assumption-check",
       "answer_mode": "literature_review",
-      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "sensorless control", "filtering"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "SOGIFO-X",
+        "flux observer",
+        "sensorless control",
+        "filtering"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity"
+      ],
       "question": "What assumptions should be checked before using a SOGIFO-X flux observer for PMSM sensorless control?",
       "expected_refs": [
         {
@@ -1085,16 +1260,36 @@
       ],
       "fixture_answer": "A SOGIFO-X observer answer should cite the optimized sensorless PMSM observer context before listing filtering assumptions [1].",
       "recorded_answer": "Before using a SOGIFO-X flux observer, check that the PMSM sensorless-control problem matches the observer and optimized filtering context in the source paper [1]. The implementation notes should record the assumed sampling behavior, flux-observer inputs, filtering role, and sensorless operating region.",
-      "required_answer_terms": ["SOGIFO-X", "filtering", "observer", "sensorless"],
+      "required_answer_terms": [
+        "SOGIFO-X",
+        "filtering",
+        "observer",
+        "sensorless"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["SOGIFO-X", "filter", "observer", "sensorless"],
+      "live_required_answer_terms": [
+        "SOGIFO-X",
+        "filter",
+        "observer",
+        "sensorless"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "pmsm-current-loop-sampling-forum-check",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "FOC", "sampling", "current loop", "forum-style"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "topic_tags": [
+        "PMSM",
+        "FOC",
+        "sampling",
+        "current loop",
+        "forum-style"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style"
+      ],
       "question": "A motor-control user says their PMSM current loop is unstable after adding SMC. What sampling and FOC checks should FluxMind ask for first?",
       "expected_refs": [
         {
@@ -1112,16 +1307,50 @@
       ],
       "fixture_answer": "The answer should turn PMSM SMC context [1] and sensorless observer context [2] into a first-pass FOC and sampling checklist.",
       "recorded_answer": "For a forum-style unstable PMSM current-loop report, first ask for FOC sampling time, PWM/update timing, current sensor scaling, motor parameters, operating speed, and whether the SMC or observer is being evaluated in sensorless mode. The checklist should stay tied to PMSM SMC context [1] and sensorless observer assumptions [2].",
-      "required_answer_terms": ["FOC", "sampling", "current", "sensorless"],
+      "required_answer_terms": [
+        "FOC",
+        "sampling",
+        "current",
+        "sensorless"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["sampling", "current", "PMSM", "observer"],
-      "minimum_live_answer_term_coverage": 0.75
+      "live_required_answer_terms": [
+        "sampling",
+        "current",
+        "PMSM",
+        "observer"
+      ],
+      "minimum_live_answer_term_coverage": 0.75,
+      "live_expected_refs": [
+        {
+          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "page": 21,
+          "snippet": "NSMC controller exhibits superior tracking performance"
+        },
+        {
+          "source": "zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2024-dsmo-lqr-current-control-pmsm.pdf",
+          "page": 2,
+          "snippet": "the performance of its controller directly affects the control performance of the servo system"
+        }
+      ]
     },
     {
       "id": "terminal-smc-gain-tuning-failure-mode",
       "answer_mode": "explanation",
-      "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering", "gain tuning"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "topic_tags": [
+        "terminal sliding mode control",
+        "disturbance observer",
+        "chattering",
+        "gain tuning"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style",
+        "failure_mode"
+      ],
       "question": "Explain why increasing terminal SMC switching gain can reduce tracking error but worsen chattering.",
       "expected_refs": [
         {
@@ -1141,16 +1370,35 @@
       ],
       "fixture_answer": "The answer should explain the gain/chattering tradeoff using the chattering-attenuated terminal SMC and disturbance-observer context [1].",
       "recorded_answer": "Increasing terminal SMC switching gain can improve robustness against disturbance and reduce tracking error, but excessive gain injects high-frequency switching that appears as chattering. A chattering-attenuated terminal SMC design uses disturbance-observer compensation to reduce that tradeoff rather than only raising gain [1].",
-      "required_answer_terms": ["gain", "chattering", "disturbance", "terminal SMC"],
+      "required_answer_terms": [
+        "gain",
+        "chattering",
+        "disturbance",
+        "terminal SMC"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["gain", "chattering", "disturbance", "terminal"],
+      "live_required_answer_terms": [
+        "gain",
+        "chattering",
+        "disturbance",
+        "terminal"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "constraint-aware-smc-implementation-guardrail",
       "answer_mode": "implementation",
-      "topic_tags": ["sliding mode control", "constraints", "reaching law", "saturation"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "constraints",
+        "reaching law",
+        "saturation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity"
+      ],
       "question": "What implementation guardrails should be added when a reaching-law SMC design has state and actuator constraints?",
       "expected_refs": [
         {
@@ -1162,16 +1410,36 @@
       ],
       "fixture_answer": "The implementation checklist should cite the constrained reaching-law setup and control-signal limitation context [1].",
       "recorded_answer": "For constrained reaching-law SMC, add guardrails for state constraints, actuator or control signal saturation, representative-point convergence, disturbance bounds, and logging when constraints are active. The cited constrained SMC work explicitly frames the reaching-law design around state and control-signal limitations [1].",
-      "required_answer_terms": ["state constraints", "control signal", "reaching law", "saturation"],
+      "required_answer_terms": [
+        "state constraints",
+        "control signal",
+        "reaching law",
+        "saturation"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["constraint", "control", "reaching", "saturation"],
+      "live_required_answer_terms": [
+        "constraint",
+        "control",
+        "reaching",
+        "saturation"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "active-flux-vs-sogifo-debug-path",
       "answer_mode": "literature_review",
-      "topic_tags": ["PMSM", "active flux", "SOGIFO-X", "flux observer", "sensorless control"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "topic_tags": [
+        "PMSM",
+        "active flux",
+        "SOGIFO-X",
+        "flux observer",
+        "sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style"
+      ],
       "question": "If a PMSM sensorless estimate drifts at low speed, how should a user compare active-flux regression and SOGIFO-X observer paths?",
       "expected_refs": [
         {
@@ -1189,16 +1457,35 @@
       ],
       "fixture_answer": "The answer should compare active-flux regression observer context [1] with SOGIFO-X observer context [2].",
       "recorded_answer": "For low-speed PMSM sensorless drift, compare whether the issue is better framed as an active-flux regression observer problem with wide-speed motivation [1] or as a SOGIFO-X filtering and observer-structure problem [2]. The debug path should ask for speed range, voltage/current sensing, parameter mismatch, and flux estimate bias.",
-      "required_answer_terms": ["active-flux", "SOGIFO-X", "low-speed", "sensorless"],
+      "required_answer_terms": [
+        "active-flux",
+        "SOGIFO-X",
+        "low-speed",
+        "sensorless"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["flux", "SOGIFO-X", "speed", "sensorless"],
+      "live_required_answer_terms": [
+        "flux",
+        "SOGIFO-X",
+        "speed",
+        "sensorless"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "smo-code-output-validation-plan",
       "answer_mode": "code_generation",
-      "topic_tags": ["PMSM", "sliding mode observer", "code generation", "plot validation"],
-      "eval_lanes": ["retrieval", "answer_quality", "code_generation"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "code generation",
+        "plot validation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "code_generation"
+      ],
       "question": "Generate a validation plan for Python or Octave code that simulates a PMSM sliding-mode observer and produces plots.",
       "expected_refs": [
         {
@@ -1210,30 +1497,46 @@
       ],
       "live_expected_refs": [
         {
-          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
-          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
-          "page": 1,
-          "snippet": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer"
-        },
-        {
-          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
-          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
-          "page": 11,
-          "snippet": "Figure 6a shows the current plots versus time"
+          "source": "microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "source_path": "papers/library/microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "page": 27,
+          "snippet": "Microchip Devices Code Protection Feature Note"
         }
       ],
       "fixture_answer": "The code-validation plan should cite the PMSM SMO context before asking for simulated currents, estimated flux, and plot artifacts [1].",
       "recorded_answer": "A Python or Octave SMO validation plan should define measured-current inputs, voltage inputs, motor parameters, observer gains, estimated flux or back-EMF outputs, and plots for current, estimation error, and switching signal. The runnable code should cite the PMSM sliding-mode observer context before claiming sensorless validity [1].",
-      "required_answer_terms": ["Python", "Octave", "plots", "observer"],
+      "required_answer_terms": [
+        "Python",
+        "Octave",
+        "plots",
+        "observer"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["code", "plot", "observer", "PMSM"],
+      "live_required_answer_terms": [
+        "code",
+        "plot",
+        "observer",
+        "PMSM"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "paper-to-code-assumption-report",
       "answer_mode": "derivation",
-      "topic_tags": ["paper-to-code", "PMSM", "sliding mode control", "constraints", "sliding mode observer"],
-      "eval_lanes": ["retrieval", "answer_quality", "paper_to_code", "equation_fidelity", "code_generation"],
+      "topic_tags": [
+        "paper-to-code",
+        "PMSM",
+        "sliding mode control",
+        "constraints",
+        "sliding mode observer"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code",
+        "equation_fidelity",
+        "code_generation"
+      ],
       "question": "What should a paper-to-code report preserve when translating a PMSM sliding-mode control paper into a runnable simulation?",
       "expected_refs": [
         {
@@ -1257,16 +1560,44 @@
       ],
       "fixture_answer": "A paper-to-code report should preserve PMSM SMC validation gaps [1], state/control constraints [2], and observer assumptions [3].",
       "recorded_answer": "A paper-to-code report should preserve source/page citations, equations, assumptions, motor parameters, state and control constraints, observer inputs, code scaffold, generated plots, and the gap between simulation and hardware validation. The report should tie PMSM SMC validation concerns [1], constrained SMC assumptions [2], and PMSM SMO assumptions [3] into one traceable artifact.",
-      "required_answer_terms": ["paper-to-code", "equations", "constraints", "plots"],
+      "required_answer_terms": [
+        "paper-to-code",
+        "equations",
+        "constraints",
+        "plots"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["paper", "code", "constraints", "plots"],
-      "minimum_live_answer_term_coverage": 0.75
+      "live_required_answer_terms": [
+        "paper",
+        "code",
+        "constraints",
+        "plots"
+      ],
+      "minimum_live_answer_term_coverage": 0.75,
+      "live_expected_refs": [
+        {
+          "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
+          "source_path": "papers/library/arxiv-2510-18420-smc-pmsm-review.pdf",
+          "page": 15,
+          "snippet": "parameter tuning and uncertainty approximation"
+        }
+      ]
     },
     {
       "id": "ipmsm-zero-speed-observability-failure-mode",
       "answer_mode": "explanation",
-      "topic_tags": ["IPMSM", "active flux", "zero speed", "low-speed observability", "signal injection"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "topic_tags": [
+        "IPMSM",
+        "active flux",
+        "zero speed",
+        "low-speed observability",
+        "signal injection"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
       "question": "Why is zero-speed observability a failure mode for IPMSM sensorless control, and what mitigation paths should be checked?",
       "expected_refs": [
         {
@@ -1284,16 +1615,37 @@
       ],
       "fixture_answer": "The answer should cite the zero-speed observability warning [1] and the low-speed signal-injection versus high-speed model-based mitigation path [2].",
       "recorded_answer": "Zero-speed IPMSM sensorless control is fragile because PMSM observability can be lost at zero speed [1]. A practical mitigation report should check whether the case needs low-speed signal injection, a model-based high-speed observer, or a smooth transition between those regions [2].",
-      "required_answer_terms": ["zero speed", "observability", "signal injection", "model-based"],
+      "required_answer_terms": [
+        "zero speed",
+        "observability",
+        "signal injection",
+        "model-based"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["zero", "observability", "signal", "model"],
+      "live_required_answer_terms": [
+        "zero",
+        "observability",
+        "signal",
+        "model"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "sogifo-x-integrator-bias-debug-card",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "DC bias", "debug intake"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "SOGIFO-X",
+        "flux observer",
+        "DC bias",
+        "debug intake"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style",
+        "failure_mode"
+      ],
       "question": "What debug intake should FluxMind collect when a SOGIFO-X flux observer shows rotor-position drift?",
       "expected_refs": [
         {
@@ -1311,16 +1663,37 @@
       ],
       "fixture_answer": "A debug card should cite sampling-error/DC-bias risk [1] and the stator-current/voltage interaction context for conventional rotor flux observers [2].",
       "recorded_answer": "For SOGIFO-X rotor-position drift, collect sampling rate, current/voltage sensing offsets, DC bias symptoms, integrator or filter settings, and whether stator current and voltage interactions match the flux-observer assumptions. The source specifically warns that flux-observer integration can amplify sampling errors and DC bias [1], and frames conventional observers around stator-current interactions [2].",
-      "required_answer_terms": ["sampling", "DC bias", "stator current", "debug"],
+      "required_answer_terms": [
+        "sampling",
+        "DC bias",
+        "stator current",
+        "debug"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["sampling", "bias", "current", "observer"],
+      "live_required_answer_terms": [
+        "sampling",
+        "bias",
+        "current",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "pmsm-smo-alpha-beta-model-extraction",
       "answer_mode": "derivation",
-      "topic_tags": ["PMSM", "sliding mode observer", "equation extraction", "alpha-beta model", "state-space model"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "equation extraction",
+        "alpha-beta model",
+        "state-space model"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
       "question": "What model variables should be extracted before translating a PMSM SMO paper into code?",
       "expected_refs": [
         {
@@ -1346,16 +1719,35 @@
       ],
       "fixture_answer": "A derivation should cite the two-phase stationary-coordinate SMO model before extracting voltages, currents, rotor angle, inductances, resistance, and flux terms [1].",
       "recorded_answer": "Before translating a PMSM SMO paper into code, extract the two-phase stationary-coordinate model, alpha-beta voltages and currents, stator resistance, inductance terms, rotor angle, speed, flux linkage, and the differential operator. The SMO source grounds the algorithm in that stationary-coordinate mathematical model [1].",
-      "required_answer_terms": ["alpha-beta", "voltages", "currents", "flux"],
+      "required_answer_terms": [
+        "alpha-beta",
+        "voltages",
+        "currents",
+        "flux"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["model", "voltage", "current", "flux"],
+      "live_required_answer_terms": [
+        "model",
+        "voltage",
+        "current",
+        "flux"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "constraint-smc-state-space-equation-card",
       "answer_mode": "derivation",
-      "topic_tags": ["sliding mode control", "constraints", "state-space model", "mismatched disturbances"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "constraints",
+        "state-space model",
+        "mismatched disturbances"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity"
+      ],
       "question": "What state-space facts must be preserved when deriving a constrained nonlinear SMC design?",
       "expected_refs": [
         {
@@ -1373,16 +1765,35 @@
       ],
       "fixture_answer": "The derivation should preserve the state-space system form [1] and the possibility of disturbances that do not satisfy matching conditions [2].",
       "recorded_answer": "A constrained nonlinear SMC derivation should preserve the state vector, nonlinear functions, control input, disturbance bounds, sliding hyperplane, and which constraints apply over the regulation process. It should also flag whether disturbances are mismatched, because the source notes cases where disturbances do not satisfy matching conditions [2] after setting up the state-space dynamics [1].",
-      "required_answer_terms": ["state-space", "state vector", "disturbance", "matching"],
+      "required_answer_terms": [
+        "state-space",
+        "state vector",
+        "disturbance",
+        "matching"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["state", "disturbance", "constraint", "matching"],
+      "live_required_answer_terms": [
+        "state",
+        "disturbance",
+        "constraint",
+        "matching"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "mismatched-disturbance-dob-selection",
       "answer_mode": "literature_review",
-      "topic_tags": ["terminal sliding mode control", "disturbance observer", "mismatched disturbances", "PMSM"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "topic_tags": [
+        "terminal sliding mode control",
+        "disturbance observer",
+        "mismatched disturbances",
+        "PMSM"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
       "question": "When should a disturbance-observer SMC path be considered for mismatched disturbances?",
       "expected_refs": [
         {
@@ -1394,16 +1805,36 @@
       ],
       "fixture_answer": "The answer should cite the mismatched-disturbance definition before recommending disturbance-observer-based SMC [1].",
       "recorded_answer": "A disturbance-observer SMC path should be considered when disturbances do not enter through the same channel as the control input, especially when robustness claims would otherwise assume matched disturbances. The cited work defines mismatched disturbances as acting in a different channel than the control input [1].",
-      "required_answer_terms": ["disturbance-observer", "mismatched", "control input", "robustness"],
+      "required_answer_terms": [
+        "disturbance-observer",
+        "mismatched",
+        "control input",
+        "robustness"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["disturbance", "mismatched", "input", "robust"],
+      "live_required_answer_terms": [
+        "disturbance",
+        "mismatched",
+        "input",
+        "robust"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "pmsm-smc-literature-taxonomy-table",
       "answer_mode": "literature_review",
-      "topic_tags": ["PMSM", "sliding mode control", "taxonomy", "research gaps", "hardware validation"],
-      "eval_lanes": ["retrieval", "answer_quality", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "taxonomy",
+        "research gaps",
+        "hardware validation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "paper_to_code"
+      ],
       "question": "What should a PMSM SMC literature table include before selecting a controller family?",
       "expected_refs": [
         {
@@ -1421,16 +1852,37 @@
       ],
       "fixture_answer": "A PMSM SMC literature table should cite the review's comparative table and research-gap framing before recommending controller families [1][2].",
       "recorded_answer": "A PMSM SMC literature table should list controller family, plant assumptions, disturbance model, chattering mitigation, validation type, hardware status, sampling requirements, strengths, limitations, and open research gaps. The review explicitly motivates comparative trade-off tables [1] and research-gap summaries [2].",
-      "required_answer_terms": ["comparative", "trade-off", "hardware", "research gaps"],
+      "required_answer_terms": [
+        "comparative",
+        "trade-off",
+        "hardware",
+        "research gaps"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["table", "trade", "gap", "hardware"],
+      "live_required_answer_terms": [
+        "table",
+        "trade",
+        "gap",
+        "hardware"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "sensorless-method-selection-checklist",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "sensorless control", "active flux", "MRAS", "EKF", "parameter mismatch"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style"],
+      "topic_tags": [
+        "PMSM",
+        "sensorless control",
+        "active flux",
+        "MRAS",
+        "EKF",
+        "parameter mismatch"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style"
+      ],
       "question": "How should FluxMind help a user choose among active-flux, MRAS, EKF, and SOGIFO-style sensorless methods?",
       "expected_refs": [
         {
@@ -1454,24 +1906,51 @@
       ],
       "live_expected_refs": [
         {
-          "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
-          "source_path": "papers/library/liang-2024-pmsm-sliding-mode-observer.pdf",
+          "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
+          "source_path": "papers/library/choi-2021-regression-flux-observer-ipmsm.pdf",
           "page": 2,
-          "snippet": "Rotor position estimation methods based on a model reference adaptive system"
+          "snippet": "signal injection method at low speed and a model-based method in the high speed region"
+        },
+        {
+          "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "source_path": "papers/library/jin-2024-sogifo-x-flux-observer-pmsm.pdf",
+          "page": 2,
+          "snippet": "enhancing flux estimation accuracy is critical"
         }
       ],
       "fixture_answer": "The checklist should compare speed region and signal injection [1], MRAS/EKF/active-flux categories [2], and flux-estimation accuracy pressure [3].",
       "recorded_answer": "FluxMind should ask for speed range, whether low-speed signal injection is acceptable, parameter accuracy, sensing noise, desired observer category, and evidence for flux-estimation drift. The checklist can compare low-speed signal-injection versus model-based regions [1], MRAS and related rotor-position categories [2], and the need to improve flux-estimation accuracy [3].",
-      "required_answer_terms": ["speed range", "signal injection", "MRAS", "flux-estimation"],
+      "required_answer_terms": [
+        "speed range",
+        "signal injection",
+        "MRAS",
+        "flux-estimation"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["speed", "signal", "MRAS", "flux"],
+      "live_required_answer_terms": [
+        "speed",
+        "signal",
+        "MRAS",
+        "flux"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "control-report-matlab-export-notes",
       "answer_mode": "code_generation",
-      "topic_tags": ["paper-to-code", "MATLAB export", "equation extraction", "state-space model", "plot validation"],
-      "eval_lanes": ["retrieval", "answer_quality", "code_generation", "paper_to_code"],
+      "topic_tags": [
+        "paper-to-code",
+        "MATLAB export",
+        "equation extraction",
+        "state-space model",
+        "plot validation"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "code_generation",
+        "paper_to_code"
+      ],
       "question": "What MATLAB/Octave export notes should accompany a generated control simulation report?",
       "expected_refs": [
         {
@@ -1503,16 +1982,37 @@
       ],
       "fixture_answer": "The export notes should preserve PMSM voltage/current notation [1], state-space variable definitions [2], and stationary-frame IPMSM model assumptions [3].",
       "recorded_answer": "A MATLAB or Octave export note should list notation mappings, state-space variables, PMSM voltage/current frames, parameter units, sample time, solver choice, generated plots, and unsupported assumptions. The report should preserve PMSM voltage notation [1], state variable definitions [2], and stationary-frame IPMSM model assumptions [3].",
-      "required_answer_terms": ["MATLAB", "Octave", "state-space", "plots"],
+      "required_answer_terms": [
+        "MATLAB",
+        "Octave",
+        "state-space",
+        "plots"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["MATLAB", "Octave", "state", "plot"],
+      "live_required_answer_terms": [
+        "MATLAB",
+        "Octave",
+        "state",
+        "plot"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "adaptive-gain-smo-compensation-checklist",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "precise compensation", "sensorless control"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "adaptive gain",
+        "precise compensation",
+        "sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode",
+        "paper_to_code"
+      ],
       "question": "What checklist should FluxMind use before recommending an adaptive-gain SMO with precise compensation?",
       "expected_refs": [
         {
@@ -1530,16 +2030,36 @@
       ],
       "fixture_answer": "An ASMO checklist should cite the adaptive-gain precise-compensation scope [1] and the constant-gain low-speed chattering limitation [2].",
       "recorded_answer": "Before recommending an adaptive-gain SMO, FluxMind should ask for speed range, expected chattering level, whether a continuous switching function is used, stability-margin assumptions, delay compensation, and validation plots. The source frames the method as an adaptive-gain SMO with precise compensation [1] and motivates it by the constant-gain tradeoff between low-speed chattering and high-speed stability [2].",
-      "required_answer_terms": ["adaptive-gain", "chattering", "compensation", "stability"],
+      "required_answer_terms": [
+        "adaptive-gain",
+        "chattering",
+        "compensation",
+        "stability"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["adaptive", "chattering", "compensation", "speed"],
+      "live_required_answer_terms": [
+        "adaptive",
+        "chattering",
+        "compensation",
+        "speed"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "super-twisting-smo-disturbance-tracking",
       "answer_mode": "literature_review",
-      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "parameter disturbance", "sensorless control"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "super twisting",
+        "parameter disturbance",
+        "sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode"
+      ],
       "question": "When should a super-twisting SMO be considered for PMSM sensorless control with parameter disturbances?",
       "expected_refs": [
         {
@@ -1557,16 +2077,37 @@
       ],
       "fixture_answer": "The answer should cite online disturbance tracking [1] and the single-observer simplification claim [2].",
       "recorded_answer": "A super-twisting SMO path is most relevant when the PMSM sensorless-control problem includes parameter disturbances, chattering pressure, and a need to estimate rotor position and speed without adding multiple observers. The cited paper states that the observer can track parameter disturbances online [1] and emphasizes using one super-twisting SMO to estimate position, speed, and disturbances [2].",
-      "required_answer_terms": ["super-twisting", "parameter disturbances", "position", "speed"],
+      "required_answer_terms": [
+        "super-twisting",
+        "parameter disturbances",
+        "position",
+        "speed"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["super", "disturbance", "position", "speed"],
+      "live_required_answer_terms": [
+        "super",
+        "disturbance",
+        "position",
+        "speed"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "sta-smo-adaptive-parameter-mismatch",
       "answer_mode": "explanation",
-      "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "adaptive parameters", "parameter mismatch"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "failure_mode"],
+      "topic_tags": [
+        "IPMSM",
+        "sliding mode observer",
+        "super twisting",
+        "adaptive parameters",
+        "parameter mismatch"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "failure_mode"
+      ],
       "question": "How should FluxMind explain the role of adaptive parameter estimation in an STA-SMO for IPMSM?",
       "expected_refs": [
         {
@@ -1584,16 +2125,37 @@
       ],
       "fixture_answer": "The explanation should tie parameter-mismatch motivation [1] to the APEC plus STA-SMO architecture [2].",
       "recorded_answer": "FluxMind should explain adaptive parameter estimation as a way to keep IPMSM sensorless estimates robust when resistance or inductance mismatch would distort back-EMF estimation. The source explicitly considers parameter mismatches [1] and combines an adaptive parameter estimation controller with an STA-SMO to reduce chattering and improve observation accuracy [2].",
-      "required_answer_terms": ["adaptive parameter", "STA-SMO", "parameter mismatch", "back-EMF"],
+      "required_answer_terms": [
+        "adaptive parameter",
+        "STA-SMO",
+        "parameter mismatch",
+        "back-EMF"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["adaptive", "parameter", "mismatch", "observer"],
+      "live_required_answer_terms": [
+        "adaptive",
+        "parameter",
+        "mismatch",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "switching-function-boundary-layer-selection",
       "answer_mode": "derivation",
-      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "chattering"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "switching function",
+        "boundary layer",
+        "chattering"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
       "question": "What tradeoff should be preserved when translating SMO switching-function choices into code?",
       "expected_refs": [
         {
@@ -1611,16 +2173,37 @@
       ],
       "fixture_answer": "A code translation should preserve the narrow-boundary speed/chattering tradeoff [1] and the wide-boundary robustness tradeoff [2].",
       "recorded_answer": "When translating SMO switching functions into code, preserve the boundary-layer tradeoff: a narrow boundary can increase the approaching speed but increase chattering and harmonic distortion [1], while a wider boundary suppresses chattering but can reduce robustness [2]. The code report should therefore expose the shape coefficient or boundary setting instead of hiding it as a magic constant.",
-      "required_answer_terms": ["boundary", "chattering", "robustness", "shape coefficient"],
+      "required_answer_terms": [
+        "boundary",
+        "chattering",
+        "robustness",
+        "shape coefficient"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["boundary", "chattering", "robust", "switching"],
+      "live_required_answer_terms": [
+        "boundary",
+        "chattering",
+        "robust",
+        "switching"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "mras-flux-linkage-adaptation-card",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "sensorless control"],
-      "eval_lanes": ["retrieval", "answer_quality", "forum_style", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "flux linkage",
+        "MRAS",
+        "parameter identification",
+        "sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "forum_style",
+        "failure_mode"
+      ],
       "question": "What should FluxMind ask when evaluating an MRAS flux-linkage observer for PMSM control?",
       "expected_refs": [
         {
@@ -1638,16 +2221,37 @@
       ],
       "fixture_answer": "The intake should cite the MRAS adaptive flux-linkage model [1] and the feedback path into the nonlinear flux-linkage model [2].",
       "recorded_answer": "For an MRAS flux-linkage observer, FluxMind should ask which parameter is being identified, whether rotor flux linkage changes with temperature or current, how the identified flux value feeds the nonlinear observer, and what low-speed or load-mutation evidence exists. The source introduces a parameter-adaptive flux-linkage model using MRAS [1] and feeds the identified rotor flux linkage into the nonlinear flux-linkage model [2].",
-      "required_answer_terms": ["MRAS", "flux linkage", "parameter", "nonlinear observer"],
+      "required_answer_terms": [
+        "MRAS",
+        "flux linkage",
+        "parameter",
+        "nonlinear observer"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["MRAS", "flux", "parameter", "observer"],
+      "live_required_answer_terms": [
+        "MRAS",
+        "flux",
+        "parameter",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "combined-reaching-law-smo-speed-estimation",
       "answer_mode": "derivation",
-      "topic_tags": ["PMSM", "sliding mode observer", "speed estimation", "combined reaching law", "chattering"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "speed estimation",
+        "combined reaching law",
+        "chattering"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "failure_mode"
+      ],
       "question": "How should FluxMind explain the combined reaching-law SMO for PMSM speed estimation?",
       "expected_refs": [
         {
@@ -1665,16 +2269,37 @@
       ],
       "fixture_answer": "The explanation should cite the combined exponential and arcsine-saturation reaching-law proposal [1] and the staged handoff between reaching laws [2].",
       "recorded_answer": "FluxMind should describe the method as a PMSM sliding-mode observer that combines exponential reaching with an arcsine saturation reaching law to reduce chattering and improve speed estimation [1]. The practical design note is that the exponential reaching law is used early in sliding-mode motion, while the improved law is used later near steady state [2].",
-      "required_answer_terms": ["combined", "arcsine saturation", "chattering", "speed estimation"],
+      "required_answer_terms": [
+        "combined",
+        "arcsine saturation",
+        "chattering",
+        "speed estimation"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["combined", "chattering", "speed", "observer"],
+      "live_required_answer_terms": [
+        "combined",
+        "chattering",
+        "speed",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "itsmrl-eso-pid-surface-checklist",
       "answer_mode": "implementation",
-      "topic_tags": ["PMSM", "sliding mode control", "PID sliding surface", "improved terminal reaching law", "extended state observer"],
-      "eval_lanes": ["retrieval", "answer_quality", "equation_fidelity", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "PID sliding surface",
+        "improved terminal reaching law",
+        "extended state observer"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "equation_fidelity",
+        "paper_to_code"
+      ],
       "question": "What implementation checklist should FluxMind use for a PMSM controller based on PID sliding surface, ITSMRL, and ESO?",
       "expected_refs": [
         {
@@ -1692,16 +2317,38 @@
       ],
       "fixture_answer": "The checklist should cite the PID sliding-surface plus ITSMRL controller scope [1] and the ESO bandwidth/estimation-error tradeoff [2].",
       "recorded_answer": "For a PID sliding-surface plus ITSMRL PMSM controller, FluxMind should ask for speed-loop model assumptions, sliding-surface gains, reaching-law parameters, ESO bandwidth, disturbance bounds, and validation under load changes. The source frames the controller around a PID sliding surface and improved terminal reaching law [1], and notes that increasing ESO bandwidth reduces estimation error and improves convergence speed [2].",
-      "required_answer_terms": ["PID sliding", "ITSMRL", "ESO bandwidth", "disturbance"],
+      "required_answer_terms": [
+        "PID sliding",
+        "ITSMRL",
+        "ESO bandwidth",
+        "disturbance"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["PID", "ITSMRL", "ESO", "disturbance"],
+      "live_required_answer_terms": [
+        "PID",
+        "ITSMRL",
+        "ESO",
+        "disturbance"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
       "id": "fuzzy-super-twisted-smo-switching-function",
       "answer_mode": "explanation",
-      "topic_tags": ["PMSM", "sliding mode observer", "fuzzy control", "super twisting", "switching function", "sensorless control"],
-      "eval_lanes": ["retrieval", "answer_quality", "failure_mode", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "fuzzy control",
+        "super twisting",
+        "switching function",
+        "sensorless control"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality",
+        "failure_mode",
+        "paper_to_code"
+      ],
       "question": "How should FluxMind explain the fuzzy super-twisted SMO switching-function change for PMSM sensorless control?",
       "expected_refs": [
         {
@@ -1719,9 +2366,19 @@
       ],
       "fixture_answer": "The explanation should cite the sin(arctan(nx)) switching-function replacement [1] and the claimed low-pass-filter avoidance [2].",
       "recorded_answer": "FluxMind should explain the fuzzy super-twisted SMO as replacing the discontinuous sign switching function with sin(arctan(nx)) so the observer can reduce chattering in PMSM sensorless control [1]. It should also flag the claimed implementation benefit: the observer behavior can avoid an additional low-pass filter and therefore reduce phase-delay risk in rotor-position estimation [2].",
-      "required_answer_terms": ["sin(arctan", "switching function", "low-pass filter", "chattering"],
+      "required_answer_terms": [
+        "sin(arctan",
+        "switching function",
+        "low-pass filter",
+        "chattering"
+      ],
       "minimum_answer_term_coverage": 0.75,
-      "live_required_answer_terms": ["switching", "filter", "chattering", "observer"],
+      "live_required_answer_terms": [
+        "switching",
+        "filter",
+        "chattering",
+        "observer"
+      ],
       "minimum_live_answer_term_coverage": 0.75
     },
     {
@@ -2401,8 +3058,15 @@
     {
       "id": "retrieval-pmsm-review-motivation",
       "question": "Retrieve the PMSM SMC review motivation around high-performance drive systems.",
-      "topic_tags": ["PMSM", "sliding mode control", "retrieval-only", "review"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "retrieval-only",
+        "review"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2415,8 +3079,16 @@
     {
       "id": "retrieval-pmsm-nonlinearity-load-disturbance",
       "question": "Retrieve the PMSM SMC review statement about nonlinearities, load disturbances, and parameter uncertainty.",
-      "topic_tags": ["PMSM", "load disturbances", "parameter uncertainty", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "load disturbances",
+        "parameter uncertainty",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2429,8 +3101,16 @@
     {
       "id": "retrieval-pmsm-position-sensor-cost",
       "question": "Retrieve why PMSM rotor-position sensing introduces practical cost and reliability issues.",
-      "topic_tags": ["PMSM", "sensorless control", "position sensors", "retrieval-only"],
-      "eval_lanes": ["retrieval", "forum_style"],
+      "topic_tags": [
+        "PMSM",
+        "sensorless control",
+        "position sensors",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "forum_style"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2443,8 +3123,16 @@
     {
       "id": "retrieval-pmsm-torque-current-regulation",
       "question": "Retrieve the PMSM review context that ties torque regulation to stator current control.",
-      "topic_tags": ["PMSM", "current loop", "torque regulation", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "current loop",
+        "torque regulation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2457,8 +3145,16 @@
     {
       "id": "retrieval-smc-comparative-table",
       "question": "Retrieve the review evidence for comparative SMC trade-off tables.",
-      "topic_tags": ["PMSM", "taxonomy", "trade-off table", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "taxonomy",
+        "trade-off table",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2471,8 +3167,16 @@
     {
       "id": "retrieval-smc-research-gap-directions",
       "question": "Retrieve the review statement about research gaps and future directions.",
-      "topic_tags": ["PMSM", "research gaps", "hardware validation", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "research gaps",
+        "hardware validation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "arxiv-2510-18420-smc-pmsm-review.pdf",
@@ -2485,8 +3189,15 @@
     {
       "id": "retrieval-regression-flux-observer-title",
       "question": "Retrieve the regression flux observer source for IPMSM sensorless control.",
-      "topic_tags": ["IPMSM", "flux observer", "regression", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "IPMSM",
+        "flux observer",
+        "regression",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2499,8 +3210,16 @@
     {
       "id": "retrieval-zero-speed-observability",
       "question": "Retrieve the zero-speed observability warning for PMSM sensorless control.",
-      "topic_tags": ["IPMSM", "zero speed", "low-speed observability", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "IPMSM",
+        "zero speed",
+        "low-speed observability",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2513,8 +3232,16 @@
     {
       "id": "retrieval-low-speed-signal-injection",
       "question": "Retrieve the low-speed signal-injection versus high-speed model-based method context.",
-      "topic_tags": ["IPMSM", "signal injection", "model-based observer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "forum_style"],
+      "topic_tags": [
+        "IPMSM",
+        "signal injection",
+        "model-based observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "forum_style"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2527,8 +3254,16 @@
     {
       "id": "retrieval-speed-dependent-changeover",
       "question": "Retrieve the source mentioning speed-dependent hysteresis changeover.",
-      "topic_tags": ["IPMSM", "speed-dependent hysteresis", "chattering", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "IPMSM",
+        "speed-dependent hysteresis",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2541,8 +3276,16 @@
     {
       "id": "retrieval-ipmsm-dynamic-model-section",
       "question": "Retrieve the IPMSM dynamic model section anchor.",
-      "topic_tags": ["IPMSM", "state-space model", "equation extraction", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "IPMSM",
+        "state-space model",
+        "equation extraction",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2555,8 +3298,16 @@
     {
       "id": "retrieval-ipmsm-stationary-frame",
       "question": "Retrieve the stationary-frame IPMSM modeling statement.",
-      "topic_tags": ["IPMSM", "stationary frame", "equation extraction", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "IPMSM",
+        "stationary frame",
+        "equation extraction",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "choi-2021-regression-flux-observer-ipmsm.pdf",
@@ -2569,8 +3320,15 @@
     {
       "id": "retrieval-sogifo-flux-observer-recognition",
       "question": "Retrieve the SOGIFO-X paper's claim that flux observer algorithms are recognized in PMSM sensorless control.",
-      "topic_tags": ["PMSM", "SOGIFO-X", "flux observer", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "PMSM",
+        "SOGIFO-X",
+        "flux observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
@@ -2583,8 +3341,17 @@
     {
       "id": "retrieval-sogifo-sampling-dc-bias",
       "question": "Retrieve the SOGIFO-X source passage on sampling errors and DC bias.",
-      "topic_tags": ["PMSM", "SOGIFO-X", "DC bias", "sampling", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "SOGIFO-X",
+        "DC bias",
+        "sampling",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
@@ -2597,8 +3364,16 @@
     {
       "id": "retrieval-flux-estimation-accuracy-critical",
       "question": "Retrieve the statement that flux-estimation accuracy is critical for sensorless control.",
-      "topic_tags": ["PMSM", "flux observer", "sensorless control", "retrieval-only"],
-      "eval_lanes": ["retrieval", "answer_quality"],
+      "topic_tags": [
+        "PMSM",
+        "flux observer",
+        "sensorless control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "answer_quality"
+      ],
       "expected_refs": [
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
@@ -2611,8 +3386,16 @@
     {
       "id": "retrieval-enhanced-sogifo-x",
       "question": "Retrieve the SOGIFO-X section that introduces the enhanced observer variant.",
-      "topic_tags": ["PMSM", "SOGIFO-X", "observer_estimation", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "SOGIFO-X",
+        "observer_estimation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
@@ -2625,8 +3408,16 @@
     {
       "id": "retrieval-vector-control-block-diagram",
       "question": "Retrieve the closed-loop vector-control block diagram reference.",
-      "topic_tags": ["PMSM", "FOC", "block diagram", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "FOC",
+        "block diagram",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "jin-2024-sogifo-x-flux-observer-pmsm.pdf",
@@ -2639,8 +3430,15 @@
     {
       "id": "retrieval-pmsm-smo-title",
       "question": "Retrieve the PMSM sliding-mode observer source.",
-      "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
@@ -2651,18 +3449,26 @@
       ],
       "live_expected_refs": [
         {
-          "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
-          "source_path": "papers/library/liu-2022-improved-smo-speed-estimation-pmsm.pdf",
-          "page": 1,
-          "snippet": "Research on an Improved Sliding Mode Observer for Speed Estimation in Permanent Magnet Synchronous Motor"
+          "source": "diva-2016-pmsm-sensorless-mras-smo.pdf",
+          "source_path": "papers/library/diva-2016-pmsm-sensorless-mras-smo.pdf",
+          "page": 59,
+          "snippet": "SMO Estimation Model"
         }
       ]
     },
     {
       "id": "retrieval-active-flux-category",
       "question": "Retrieve the active-flux category in PMSM rotor-position estimation.",
-      "topic_tags": ["PMSM", "active flux", "sensorless control", "retrieval-only"],
-      "eval_lanes": ["retrieval", "literature_review"],
+      "topic_tags": [
+        "PMSM",
+        "active flux",
+        "sensorless control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "literature_review"
+      ],
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
@@ -2675,8 +3481,16 @@
     {
       "id": "retrieval-extended-kalman-filter-category",
       "question": "Retrieve the EKF category from the PMSM sensorless control discussion.",
-      "topic_tags": ["PMSM", "EKF", "sensorless control", "retrieval-only"],
-      "eval_lanes": ["retrieval", "literature_review"],
+      "topic_tags": [
+        "PMSM",
+        "EKF",
+        "sensorless control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "literature_review"
+      ],
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
@@ -2684,13 +3498,29 @@
           "page": 2,
           "snippet": "extended Kalman filter"
         }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "energies-2025-position-sensorless-control-pmsm.pdf",
+          "source_path": "papers/library/energies-2025-position-sensorless-control-pmsm.pdf",
+          "page": 2,
+          "snippet": "Current sensorless control strategies for PMSMs primarily"
+        }
       ]
     },
     {
       "id": "retrieval-three-phase-pmsm-model",
       "question": "Retrieve the three-phase PMSM control-system model setup.",
-      "topic_tags": ["PMSM", "sliding mode observer", "equation extraction", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "equation extraction",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
@@ -2698,13 +3528,29 @@
           "page": 3,
           "snippet": "For three-phase PMSM control system"
         }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "source_path": "papers/library/zhou-2024-smc-model-predictive-current-pmsm.pdf",
+          "page": 2,
+          "snippet": "innermost loop, and the performance of its controller directly affects"
+        }
       ]
     },
     {
       "id": "retrieval-extended-back-emf",
       "question": "Retrieve where the PMSM SMO paper introduces extended back EMF.",
-      "topic_tags": ["PMSM", "extended back EMF", "sliding mode observer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "extended back EMF",
+        "sliding mode observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "liang-2024-pmsm-sliding-mode-observer.pdf",
@@ -2712,13 +3558,29 @@
           "page": 3,
           "snippet": "extended back EMF is introduced"
         }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "electronics-2025-improved-back-emf-observer-pmsm.pdf",
+          "source_path": "papers/library/electronics-2025-improved-back-emf-observer-pmsm.pdf",
+          "page": 7,
+          "snippet": "back EMF observer PMSM"
+        }
       ]
     },
     {
       "id": "retrieval-state-constraints-linear-combinations",
       "question": "Retrieve the constrained SMC state-constraint formulation.",
-      "topic_tags": ["sliding mode control", "constraints", "state-space model", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "constraints",
+        "state-space model",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "lesniewski-2023-smc-constraints.pdf",
@@ -2731,8 +3593,16 @@
     {
       "id": "retrieval-control-signal-constraints",
       "question": "Retrieve the constrained SMC paper's control-signal constraint context.",
-      "topic_tags": ["sliding mode control", "constraints", "control signal", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "constraints",
+        "control signal",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "lesniewski-2023-smc-constraints.pdf",
@@ -2745,8 +3615,16 @@
     {
       "id": "retrieval-reaching-law-approach",
       "question": "Retrieve the reaching-law setup for constrained SMC.",
-      "topic_tags": ["sliding mode control", "reaching law", "constraints", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "reaching law",
+        "constraints",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "lesniewski-2023-smc-constraints.pdf",
@@ -2759,8 +3637,16 @@
     {
       "id": "retrieval-sliding-hyperplane-selection",
       "question": "Retrieve the sliding-hyperplane selection statement from constrained SMC.",
-      "topic_tags": ["sliding mode control", "sliding hyperplane", "state-space model", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "sliding mode control",
+        "sliding hyperplane",
+        "state-space model",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "lesniewski-2023-smc-constraints.pdf",
@@ -2773,8 +3659,15 @@
     {
       "id": "retrieval-chattering-attenuated-tsmc-title",
       "question": "Retrieve the disturbance-observer chattering-attenuated TSMC source.",
-      "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "terminal sliding mode control",
+        "disturbance observer",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
@@ -2787,8 +3680,16 @@
     {
       "id": "retrieval-mismatched-disturbance-channel",
       "question": "Retrieve the mismatched-disturbance channel definition.",
-      "topic_tags": ["terminal sliding mode control", "mismatched disturbances", "disturbance observer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "terminal sliding mode control",
+        "mismatched disturbances",
+        "disturbance observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
@@ -2801,8 +3702,16 @@
     {
       "id": "retrieval-integral-smc-comparison",
       "question": "Retrieve the integral SMC comparison context for mismatched disturbances.",
-      "topic_tags": ["sliding mode control", "integral SMC", "mismatched disturbances", "retrieval-only"],
-      "eval_lanes": ["retrieval", "literature_review"],
+      "topic_tags": [
+        "sliding mode control",
+        "integral SMC",
+        "mismatched disturbances",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "literature_review"
+      ],
       "expected_refs": [
         {
           "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
@@ -2815,8 +3724,16 @@
     {
       "id": "retrieval-comparative-simulation-studies",
       "question": "Retrieve the comparative simulation-studies evidence for the disturbance-observer TSMC paper.",
-      "topic_tags": ["terminal sliding mode control", "simulation validation", "plot validation", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "terminal sliding mode control",
+        "simulation validation",
+        "plot validation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "nguyen-2021-chattering-attenuated-tsmc.pdf",
@@ -2829,8 +3746,16 @@
     {
       "id": "retrieval-asmo-precise-compensation-title",
       "question": "Retrieve the adaptive-gain SMO with precise compensation source for PMSM sensorless control.",
-      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "precise compensation", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "adaptive gain",
+        "precise compensation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
@@ -2843,8 +3768,17 @@
     {
       "id": "retrieval-asmo-constant-gain-limitation",
       "question": "Retrieve the ASMO paper's constant-gain limitation for low-speed chattering and high-speed stability.",
-      "topic_tags": ["PMSM", "sliding mode observer", "adaptive gain", "chattering", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "adaptive gain",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "liu-2023-adaptive-gain-smo-pmsm.pdf",
@@ -2857,8 +3791,17 @@
     {
       "id": "retrieval-super-twisting-disturbance-tracking",
       "question": "Retrieve the super-twisting SMO claim about online parameter-disturbance tracking.",
-      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "parameter disturbance", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "super twisting",
+        "parameter disturbance",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
@@ -2871,8 +3814,17 @@
     {
       "id": "retrieval-super-twisting-single-observer",
       "question": "Retrieve the super-twisting SMO passage about using one observer instead of multiple observers.",
-      "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "observer simplification", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "super twisting",
+        "observer simplification",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "zhao-2021-super-twisting-smo-pmsm.pdf",
@@ -2885,8 +3837,17 @@
     {
       "id": "retrieval-sta-smo-parameter-mismatches",
       "question": "Retrieve the STA-SMO source passage where parameter mismatches are considered.",
-      "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "parameter mismatch", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "IPMSM",
+        "sliding mode observer",
+        "super twisting",
+        "parameter mismatch",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
@@ -2899,8 +3860,17 @@
     {
       "id": "retrieval-sta-smo-apec-architecture",
       "question": "Retrieve the STA-SMO paper's adaptive parameter estimation controller architecture.",
-      "topic_tags": ["IPMSM", "sliding mode observer", "adaptive parameters", "parameter mismatch", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "IPMSM",
+        "sliding mode observer",
+        "adaptive parameters",
+        "parameter mismatch",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf",
@@ -2913,8 +3883,17 @@
     {
       "id": "retrieval-switching-boundary-layer-narrow",
       "question": "Retrieve the SMO switching-function passage about narrow boundary-layer effects.",
-      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "switching function",
+        "boundary layer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
@@ -2927,8 +3906,17 @@
     {
       "id": "retrieval-switching-boundary-layer-wide",
       "question": "Retrieve the SMO switching-function passage about wide boundary-layer robustness tradeoffs.",
-      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "boundary layer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "switching function",
+        "boundary layer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "scholz-2022-switching-functions-smo-pmsm.pdf",
@@ -2941,8 +3929,16 @@
     {
       "id": "retrieval-mras-flux-linkage-model",
       "question": "Retrieve the MRAS parameter-adaptive flux linkage model source passage.",
-      "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "retrieval-only"],
-      "eval_lanes": ["retrieval"],
+      "topic_tags": [
+        "PMSM",
+        "flux linkage",
+        "MRAS",
+        "parameter identification",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
       "expected_refs": [
         {
           "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
@@ -2955,8 +3951,17 @@
     {
       "id": "retrieval-mras-feeds-nonlinear-flux-model",
       "question": "Retrieve the passage where MRAS-identified rotor flux linkage feeds the nonlinear flux-linkage model.",
-      "topic_tags": ["PMSM", "flux linkage", "MRAS", "nonlinear observer", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "flux linkage",
+        "MRAS",
+        "nonlinear observer",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "zhu-2024-mras-flux-linkage-observer-pmsm.pdf",
@@ -2969,8 +3974,17 @@
     {
       "id": "retrieval-combined-reaching-law-proposal",
       "question": "Retrieve the combined reaching-law SMO proposal for PMSM speed estimation.",
-      "topic_tags": ["PMSM", "sliding mode observer", "combined reaching law", "speed estimation", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "combined reaching law",
+        "speed estimation",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
@@ -2983,8 +3997,17 @@
     {
       "id": "retrieval-combined-reaching-law-handoff",
       "question": "Retrieve where the combined reaching-law paper describes the early and steady-state reaching-law handoff.",
-      "topic_tags": ["PMSM", "sliding mode observer", "reaching law", "chattering", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "reaching law",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "liu-2022-improved-smo-speed-estimation-pmsm.pdf",
@@ -2997,8 +4020,17 @@
     {
       "id": "retrieval-itsmrl-faster-less-chattering",
       "question": "Retrieve the ITSMRL comparison statement about reaching speed and chattering.",
-      "topic_tags": ["PMSM", "sliding mode control", "improved terminal reaching law", "chattering", "retrieval-only"],
-      "eval_lanes": ["retrieval", "equation_fidelity"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "improved terminal reaching law",
+        "chattering",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "equation_fidelity"
+      ],
       "expected_refs": [
         {
           "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
@@ -3011,8 +4043,17 @@
     {
       "id": "retrieval-eso-bandwidth-estimation-error",
       "question": "Retrieve the ESO bandwidth statement about estimation error and convergence speed.",
-      "topic_tags": ["PMSM", "extended state observer", "disturbance", "convergence", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "extended state observer",
+        "disturbance",
+        "convergence",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf",
@@ -3020,13 +4061,30 @@
           "page": 5,
           "snippet": "increasing the bandwidth of the ESO"
         }
+      ],
+      "live_expected_refs": [
+        {
+          "source": "processes-2024-high-speed-domain-pmsm-sensorless.pdf",
+          "source_path": "papers/library/processes-2024-high-speed-domain-pmsm-sensorless.pdf",
+          "page": 14,
+          "snippet": "Z1 and Z2 bandwidth settings"
+        }
       ]
     },
     {
       "id": "retrieval-fuzzy-super-twisted-switching-function",
       "question": "Retrieve the fuzzy super-twisted SMO switching-function replacement statement.",
-      "topic_tags": ["PMSM", "sliding mode observer", "switching function", "fuzzy control", "retrieval-only"],
-      "eval_lanes": ["retrieval", "paper_to_code"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "switching function",
+        "fuzzy control",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "paper_to_code"
+      ],
       "expected_refs": [
         {
           "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
@@ -3039,8 +4097,17 @@
     {
       "id": "retrieval-fuzzy-super-twisted-no-extra-lpf",
       "question": "Retrieve the fuzzy super-twisted SMO claim about avoiding an extra low-pass filter.",
-      "topic_tags": ["PMSM", "sliding mode observer", "low-pass filter", "rotor position", "retrieval-only"],
-      "eval_lanes": ["retrieval", "failure_mode"],
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "low-pass filter",
+        "rotor position",
+        "retrieval-only"
+      ],
+      "eval_lanes": [
+        "retrieval",
+        "failure_mode"
+      ],
       "expected_refs": [
         {
           "source": "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf",
@@ -3496,6 +4563,515 @@
           "source_path": "papers/library/xu-2025-ceso-composite-smc-pmsm.pdf",
           "page": 1,
           "snippet": "cogging torque (a periodic disturbance)"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-zhang-2023-arxiv-smo-vector-control-pmsm",
+      "question": "Retrieve the seed-library paper context for: Simulation of Non-inductive Vector Control of Permanent Magnet Synchronous Motor Based on Sliding Mode Observer",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "vector control",
+        "Simulink",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "zhang-2023-arxiv-smo-vector-control-pmsm.pdf",
+          "source_path": "papers/library/zhang-2023-arxiv-smo-vector-control-pmsm.pdf",
+          "page": 1,
+          "snippet": "Simulation of Non-inductive Vector Control of Permanent Magnet Synchronous Motor Based on Sliding Mode Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-aremu-2025-arxiv-smc-pmsm-benchmark",
+      "question": "Retrieve the seed-library paper context for: Sliding-Mode Control Strategies for PMSM: Benchmarking and Comparative Simulation Study",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "benchmark",
+        "super twisting",
+        "adaptive SMC",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "aremu-2025-arxiv-smc-pmsm-benchmark.pdf",
+          "source_path": "papers/library/aremu-2025-arxiv-smc-pmsm-benchmark.pdf",
+          "page": 1,
+          "snippet": "Sliding-Mode Control Strategies for PMSM: Benchmarking and Comparative Simulation Study"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-microchip-2024-an4398-pmsm-smo-foc",
+      "question": "Retrieve the seed-library paper context for: Sensorless Field Oriented Control for a Permanent Magnet Synchronous Motor Using Sliding Mode Observer",
+      "topic_tags": [
+        "PMSM",
+        "field oriented control",
+        "sliding mode observer",
+        "application note",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "source_path": "papers/library/microchip-2024-an4398-pmsm-smo-foc.pdf",
+          "page": 1,
+          "snippet": "Sensorless Field Oriented Control for a Permanent Magnet Synchronous Motor Using Sliding Mode Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-diva-2016-pmsm-sensorless-mras-smo",
+      "question": "Retrieve the seed-library paper context for: Sensorless Control of PMSM",
+      "topic_tags": [
+        "PMSM",
+        "sensorless control",
+        "MRAS",
+        "sliding mode observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "diva-2016-pmsm-sensorless-mras-smo.pdf",
+          "source_path": "papers/library/diva-2016-pmsm-sensorless-mras-smo.pdf",
+          "page": 1,
+          "snippet": "Evaluation of Different Speed and Position"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-applsci-2025-smo-air-compressor-pmsm",
+      "question": "Retrieve the seed-library paper context for: Sliding Mode Observer-Based Sensorless Control Strategy for Permanent Magnet Synchronous Motor Drives",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "air compressor",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "applsci-2025-smo-air-compressor-pmsm.pdf",
+          "source_path": "papers/library/applsci-2025-smo-air-compressor-pmsm.pdf",
+          "page": 1,
+          "snippet": "Sliding Mode Observer-Based Sensorless Control Strategy"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-sensors-2025-dynamic-self-adjusting-pmsm-smo",
+      "question": "Retrieve the seed-library paper context for: A Dynamic Self-Adjusting System for Permanent Magnet Synchronous Motor Sensorless Control",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode observer",
+        "sensorless control",
+        "dynamic self-adjusting",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "sensors-2025-dynamic-self-adjusting-pmsm-smo.pdf",
+          "source_path": "papers/library/sensors-2025-dynamic-self-adjusting-pmsm-smo.pdf",
+          "page": 1,
+          "snippet": "A Dynamic Self-Adjusting System for Permanent Magnet Synchronous"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-symmetry-2025-adaptive-fractional-smc-pmsm",
+      "question": "Retrieve the seed-library paper context for: PMSM Speed Control Based on Improved Adaptive Fractional-Order Sliding Mode Control",
+      "topic_tags": [
+        "PMSM",
+        "fractional-order sliding mode",
+        "disturbance observer",
+        "speed control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "symmetry-2025-adaptive-fractional-smc-pmsm.pdf",
+          "source_path": "papers/library/symmetry-2025-adaptive-fractional-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "PMSM Speed Control Based on Improved Adaptive Fractional-Order Sliding Mode Control"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-fractalfract-2024-fractional-super-twisting-pmsm",
+      "question": "Retrieve the seed-library paper context for: Robust Speed Control of Permanent Magnet Synchronous Motor Using Variable-Gain Fractional-Order Super-Twisting Sliding Mode Control",
+      "topic_tags": [
+        "PMSM",
+        "super twisting",
+        "fractional-order control",
+        "sliding-mode disturbance observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "fractalfract-2024-fractional-super-twisting-pmsm.pdf",
+          "source_path": "papers/library/fractalfract-2024-fractional-super-twisting-pmsm.pdf",
+          "page": 1,
+          "snippet": "Robust Speed Control of Permanent Magnet Synchronous Motor"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-electronics-2025-improved-back-emf-observer-pmsm",
+      "question": "Retrieve the seed-library paper context for: Robust Sensorless PMSM Control with Improved Back-EMF Observer",
+      "topic_tags": [
+        "PMSM",
+        "sensorless control",
+        "back-EMF observer",
+        "sliding mode observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "electronics-2025-improved-back-emf-observer-pmsm.pdf",
+          "source_path": "papers/library/electronics-2025-improved-back-emf-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "Robust Sensorless PMSM Control with Improved Back-EMF Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-energies-2025-position-sensorless-control-pmsm",
+      "question": "Retrieve the seed-library paper context for: Position Sensorless Control of Permanent Magnet Synchronous Motor",
+      "topic_tags": [
+        "PMSM",
+        "position sensorless control",
+        "observer",
+        "flux estimation",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "energies-2025-position-sensorless-control-pmsm.pdf",
+          "source_path": "papers/library/energies-2025-position-sensorless-control-pmsm.pdf",
+          "page": 1,
+          "snippet": "Position Sensorless Control of Permanent Magnet Synchronous Motor"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-energies-2025-model-free-adaptive-fuzzy-smo-pmsm",
+      "question": "Retrieve the seed-library paper context for: Model-Free Adaptive Fuzzy Sliding-Mode Observer Control for PMSM",
+      "topic_tags": [
+        "PMSM",
+        "model-free adaptive control",
+        "fuzzy control",
+        "sliding-mode observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "energies-2025-model-free-adaptive-fuzzy-smo-pmsm.pdf",
+          "source_path": "papers/library/energies-2025-model-free-adaptive-fuzzy-smo-pmsm.pdf",
+          "page": 1,
+          "snippet": "Model-Free Adaptive Fuzzy Sliding-Mode Observer Control for PMSM"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-machines-2025-current-observation-smc-pmsm",
+      "question": "Retrieve the seed-library paper context for: A Real-Time Demanded Current Observation-Based Sliding Mode Control Method for PMSM",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "current observation",
+        "real-time control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "machines-2025-current-observation-smc-pmsm.pdf",
+          "source_path": "papers/library/machines-2025-current-observation-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "A Real-Time Demanded Current Observation-Based Sliding Mode Control"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-electronics-2024-smc-model-predictive-speed-pmsm",
+      "question": "Retrieve the seed-library paper context for: Sliding Mode Speed Control for PMSM Based on Model Predictive Control",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "model predictive control",
+        "disturbance observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "electronics-2024-smc-model-predictive-speed-pmsm.pdf",
+          "source_path": "papers/library/electronics-2024-smc-model-predictive-speed-pmsm.pdf",
+          "page": 1,
+          "snippet": "Sliding Mode Speed Control for PMSM Based on Model Predictive"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-applsci-2022-super-twisting-svr-dob-pmsm",
+      "question": "Retrieve the seed-library paper context for: Super-Twisting Sliding Mode Control with SVR Disturbance Observer for PMSM Speed Regulation",
+      "topic_tags": [
+        "PMSM",
+        "super twisting",
+        "disturbance observer",
+        "SVR",
+        "speed regulation",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "applsci-2022-super-twisting-svr-dob-pmsm.pdf",
+          "source_path": "papers/library/applsci-2022-super-twisting-svr-dob-pmsm.pdf",
+          "page": 1,
+          "snippet": "Super-Twisting Sliding Mode Control with SVR Disturbance Observer for PMSM Speed Regulation"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-energies-2022-synergetic-smc-pmsm",
+      "question": "Retrieve the seed-library paper context for: Improvement of PMSM Sensorless Control Based on Synergetic and Sliding Mode Controllers",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "synergetic control",
+        "sensorless control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "energies-2022-synergetic-smc-pmsm.pdf",
+          "source_path": "papers/library/energies-2022-synergetic-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Improvement of PMSM Sensorless Control Based on Synergetic and Sliding Mode Controllers"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-mathematics-2024-fast-variable-speed-smc-pmsm",
+      "question": "Retrieve the seed-library paper context for: Speed Control for PMSM with Fast Variable-Speed Sliding Mode Control via High-Gain Disturbance Observer",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "high-gain disturbance observer",
+        "speed control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "mathematics-2024-fast-variable-speed-smc-pmsm.pdf",
+          "source_path": "papers/library/mathematics-2024-fast-variable-speed-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Speed Control for PMSM with Fast Variable-Speed Sliding Mode Control via High-Gain Disturbance Observer"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-applsci-2022-backstepping-smc-pmsm",
+      "question": "Retrieve the seed-library paper context for: Backstepping Sliding Mode Control of a Permanent Magnet Synchronous Motor",
+      "topic_tags": [
+        "PMSM",
+        "backstepping",
+        "sliding mode control",
+        "disturbance compensation",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "applsci-2022-backstepping-smc-pmsm.pdf",
+          "source_path": "papers/library/applsci-2022-backstepping-smc-pmsm.pdf",
+          "page": 1,
+          "snippet": "Backstepping Sliding Mode Control of a Permanent Magnet Synchronous Motor"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-mathematics-2024-surface-mount-pmsm-sensorless",
+      "question": "Retrieve the seed-library paper context for: Sensorless Control of Surface-Mount Permanent-Magnet Synchronous Motors",
+      "topic_tags": [
+        "SPMSM",
+        "sensorless control",
+        "sliding mode observer",
+        "control implementation",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "mathematics-2024-surface-mount-pmsm-sensorless.pdf",
+          "source_path": "papers/library/mathematics-2024-surface-mount-pmsm-sensorless.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control of Surface-Mount Permanent-Magnet Synchronous Motors"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-processes-2024-high-speed-domain-pmsm-sensorless",
+      "question": "Retrieve the seed-library paper context for: Sensorless Position Control in High-Speed Domain of PMSM Based on an Improved Sliding Mode Observer",
+      "topic_tags": [
+        "PMSM",
+        "high-speed domain",
+        "sliding mode observer",
+        "sensorless control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "processes-2024-high-speed-domain-pmsm-sensorless.pdf",
+          "source_path": "papers/library/processes-2024-high-speed-domain-pmsm-sensorless.pdf",
+          "page": 1,
+          "snippet": "Sensorless Position Control in High-Speed Domain of PMSM Based on"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-sensors-2025-ultra-high-speed-pr-observer-pmsm",
+      "question": "Retrieve the seed-library paper context for: Sensorless Control of Ultra-High-Speed PMSM via Improved PR Observer",
+      "topic_tags": [
+        "PMSM",
+        "ultra-high-speed",
+        "sensorless control",
+        "observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "sensors-2025-ultra-high-speed-pr-observer-pmsm.pdf",
+          "source_path": "papers/library/sensors-2025-ultra-high-speed-pr-observer-pmsm.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control of Ultra-High-Speed PMSM via Improved PR"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-applsci-2026-fuzzy-smc-sensorless-pmsm",
+      "question": "Retrieve the seed-library paper context for: Sensorless Control of PMSM Based on Fuzzy Sliding Mode Control",
+      "topic_tags": [
+        "PMSM",
+        "sensorless control",
+        "fuzzy sliding mode",
+        "sliding mode observer",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "applsci-2026-fuzzy-smc-sensorless-pmsm.pdf",
+          "source_path": "papers/library/applsci-2026-fuzzy-smc-sensorless-pmsm.pdf",
+          "page": 1,
+          "snippet": "Sensorless Control of PMSM Based on Fuzzy Sliding"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-seed-symmetry-2025-symmetric-pmsm-smc",
+      "question": "Retrieve the seed-library paper context for: Sliding Mode Control of Symmetric Permanent Magnet Synchronous Motors",
+      "topic_tags": [
+        "PMSM",
+        "sliding mode control",
+        "symmetric motor",
+        "speed control",
+        "retrieval-only",
+        "seed-library"
+      ],
+      "eval_lanes": [
+        "retrieval"
+      ],
+      "expected_refs": [
+        {
+          "source": "symmetry-2025-symmetric-pmsm-smc.pdf",
+          "source_path": "papers/library/symmetry-2025-symmetric-pmsm-smc.pdf",
+          "page": 1,
+          "snippet": "Sliding Mode Control of Symmetric Permanent Magnet Synchronous"
         }
       ]
     }

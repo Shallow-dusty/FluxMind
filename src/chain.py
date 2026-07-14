@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import math
+import json
 import re
 import threading
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -22,6 +23,7 @@ from src.config import (
     LLM_API_KEY,
     LLM_BASE_URL,
     LLM_MODEL,
+    PAPERS_LIBRARY_DIR,
     PROJECT_ROOT,
     RERANKER_MODEL,
     TOP_K,
@@ -225,9 +227,109 @@ def tokenize_terms(text: str) -> list[str]:
     ]
 
 
+SOURCE_QUERY_STOP_TERMS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "into",
+    "what",
+    "how",
+    "should",
+    "give",
+    "generate",
+    "retrieve",
+    "retrieval",
+    "source",
+    "paper",
+    "context",
+    "seed",
+    "library",
+    "seed-library",
+    "style",
+    "user",
+    "says",
+    "their",
+    "after",
+    "before",
+    "among",
+    "first",
+    "fluxmind",
+}
+
+
+def source_query_terms(text: str) -> set[str]:
+    """Return meaningful terms for source/title-level retrieval matching."""
+    return {
+        term
+        for term in tokenize_terms(text)
+        if term not in SOURCE_QUERY_STOP_TERMS
+    }
+
+
+@lru_cache(maxsize=1)
+def library_paper_search_metadata() -> dict[str, dict[str, str]]:
+    """Return source-level manifest text for title/source-aware local retrieval."""
+    manifest_path = PAPERS_LIBRARY_DIR / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(manifest, dict):
+        return {}
+
+    metadata_by_source: dict[str, dict[str, str]] = {}
+    for filename, entry in manifest.items():
+        if not isinstance(filename, str) or not isinstance(entry, dict):
+            continue
+        title = str(entry.get("title") or "")
+        values = [
+            filename,
+            Path(filename).stem.replace("-", " "),
+        ]
+        for field in ("title", "authors", "topic", "venue", "year", "doi", "arxiv_id"):
+            value = entry.get(field)
+            if value not in {None, ""}:
+                values.append(str(value))
+        topic_tags = entry.get("topic_tags")
+        if isinstance(topic_tags, list):
+            values.extend(str(tag) for tag in topic_tags if str(tag).strip())
+        text = " ".join(values)
+        record = {"text": text, "title": title}
+        metadata_by_source[filename] = record
+        metadata_by_source[f"papers/library/{filename}"] = record
+    return metadata_by_source
+
+
+def library_paper_search_record(doc: Document) -> dict[str, str] | None:
+    """Return source-level manifest record for a chunk, if available."""
+    metadata = doc.metadata or {}
+    source_path = str(metadata.get("source_path") or metadata.get("source") or "")
+    source = str(metadata.get("source") or Path(source_path).name)
+    return library_paper_search_metadata().get(source_path) or library_paper_search_metadata().get(source)
+
+
+def document_metadata_search_text(doc: Document) -> str:
+    """Build source/title metadata text for local lexical retrieval."""
+    metadata = doc.metadata or {}
+    source_path = str(metadata.get("source_path") or metadata.get("source") or "")
+    source = str(metadata.get("source") or Path(source_path).name)
+    values = [str(value) for value in metadata.values() if str(value).strip()]
+    if source:
+        values.append(Path(source).stem.replace("-", " "))
+    if source_path:
+        values.append(Path(source_path).stem.replace("-", " "))
+    manifest_record = library_paper_search_record(doc)
+    manifest_text = manifest_record.get("text", "") if manifest_record else ""
+    if manifest_text:
+        values.extend([manifest_text, manifest_text])
+    return " ".join(values)
+
+
 def document_search_text(doc: Document) -> str:
     """Combine chunk content and metadata for local lexical scoring."""
-    metadata_text = " ".join(str(value) for value in doc.metadata.values())
+    metadata_text = document_metadata_search_text(doc)
     return f"{doc.page_content}\n{metadata_text}"
 
 
@@ -254,6 +356,63 @@ def keyword_search_documents(store: FAISS, question: str, *, k: int) -> list[Doc
     ]
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
     return [doc for _score, _index, doc in scored[:k]]
+
+
+def source_metadata_relevance_score(question: str, doc: Document) -> float:
+    """Score source/title metadata overlap for source-aware retrieval."""
+    query_terms = source_query_terms(question)
+    if not query_terms:
+        return 0.0
+
+    metadata_text = document_metadata_search_text(doc)
+    metadata_terms = source_query_terms(metadata_text)
+    overlap = query_terms & metadata_terms
+    if not overlap:
+        return 0.0
+
+    score = len(overlap) / max(len(query_terms), 1)
+    score += 0.10 * len(overlap)
+
+    record = library_paper_search_record(doc)
+    title_terms = source_query_terms(record.get("title", "")) if record else set()
+    if title_terms:
+        title_overlap = query_terms & title_terms
+        score += 2.0 * (len(title_overlap) / len(title_terms))
+        if title_terms <= query_terms:
+            score += 3.0
+    return score
+
+
+def source_keyword_search_documents(store: FAISS, question: str, *, k: int) -> list[Document]:
+    """Return best chunks from source/title-level manifest matches."""
+    docs = iter_index_documents(store)
+    if not docs:
+        return []
+
+    by_source: dict[str, list[Document]] = defaultdict(list)
+    source_scores: dict[str, float] = {}
+    for doc in docs:
+        key = document_key(doc)
+        source = key[0]
+        if not source:
+            continue
+        by_source[source].append(doc)
+        source_scores.setdefault(source, source_metadata_relevance_score(question, doc))
+
+    top_sources = [
+        source
+        for source, score in sorted(source_scores.items(), key=lambda item: item[1], reverse=True)
+        if score > 0
+    ][:k]
+    selected: list[Document] = []
+    for source in top_sources:
+        source_docs = by_source[source]
+        scores = bm25_relevance_scores(question, source_docs)
+        if not scores:
+            continue
+        best_index = max(range(len(source_docs)), key=lambda index: (scores[index], -index))
+        selected.append(source_docs[best_index])
+    return selected
 
 
 def document_key(doc: Document) -> tuple[str, str, str]:
@@ -393,9 +552,13 @@ def select_source_diverse_documents(
 
 def rerank_documents(question: str, docs: list[Document], *, k: int = TOP_K) -> list[Document]:
     """Deterministic no-key BM25-lite reranker with first-pass source diversity."""
-    scores = bm25_relevance_scores(question, docs)
+    bm25_scores = bm25_relevance_scores(question, docs)
     scored = [
-        (scores[index], -index, doc)
+        (
+            bm25_scores[index] + 4.0 * source_metadata_relevance_score(question, doc),
+            -index,
+            doc,
+        )
         for index, doc in enumerate(docs)
     ]
     return select_source_diverse_documents(scored, k=k, min_score=0.0)
@@ -422,9 +585,10 @@ def hybrid_retrieve(question: str, *, k: int = TOP_K) -> list[Document]:
     candidate_k = max(k * 4, k)
     vector_docs = store.similarity_search(question, k=candidate_k)
     keyword_docs = keyword_search_documents(store, question, k=candidate_k)
+    source_docs = source_keyword_search_documents(store, question, k=candidate_k)
     merged: list[Document] = []
     seen: set[tuple[str, str, str]] = set()
-    for doc in vector_docs + keyword_docs:
+    for doc in source_docs + vector_docs + keyword_docs:
         key = document_key(doc)
         if key in seen:
             continue

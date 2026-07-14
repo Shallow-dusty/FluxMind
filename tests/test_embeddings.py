@@ -31,3 +31,18 @@ def test_get_embedding_model_uses_cpu_normalized_cached_instance(monkeypatch):
     ]
 
     embeddings.get_embedding_model.cache_clear()
+
+
+def test_get_embedding_model_falls_back_to_hash_embeddings(monkeypatch):
+    monkeypatch.setitem(sys.modules, "langchain_huggingface", None)
+    embeddings.get_embedding_model.cache_clear()
+
+    model = embeddings.get_embedding_model()
+    vectors = model.embed_documents(["PMSM sliding mode observer", "PMSM sliding mode observer"])
+
+    assert isinstance(model, embeddings.HashEmbeddings)
+    assert len(vectors) == 2
+    assert len(vectors[0]) == 384
+    assert vectors[0] == vectors[1]
+
+    embeddings.get_embedding_model.cache_clear()

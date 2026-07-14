@@ -1,4 +1,103 @@
 {
+  "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf": {
+    "title": "Adaptive Quick Sliding Mode Reaching Law and Disturbance Observer for Robust PMSM Control Systems",
+    "authors": "Hyeongki Ahn; Sangkyeum Kim; Jihoon Park; Yoonuh Chung; Mingyuan Hu; Kwanho You",
+    "year": 2024,
+    "topic": "adaptive quick reaching law",
+    "doi": "10.3390/act13040136",
+    "venue": "Actuators",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "quick reaching law",
+      "sliding mode observer",
+      "chattering suppression"
+    ],
+    "source_url": "https://www.mdpi.com/2076-0825/13/4/136",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00136/article_deploy/actuators-13-00136.pdf",
+    "license": "CC BY"
+  },
+  "applsci-2022-backstepping-smc-pmsm.pdf": {
+    "title": "Backstepping Sliding Mode Control of a Permanent Magnet Synchronous Motor",
+    "year": 2022,
+    "topic": "backstepping SMC",
+    "topic_tags": [
+      "PMSM",
+      "backstepping",
+      "sliding mode control",
+      "disturbance compensation"
+    ],
+    "source_url": "https://www.mdpi.com/2076-3417/12/21/11225",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-12-11225/article_deploy/applsci-12-11225.pdf",
+    "venue": "Applied Sciences",
+    "license": "CC BY"
+  },
+  "applsci-2022-super-twisting-svr-dob-pmsm.pdf": {
+    "title": "Super-Twisting Sliding Mode Control with SVR Disturbance Observer for PMSM Speed Regulation",
+    "year": 2022,
+    "topic": "super-twisting SMC SVR DOB",
+    "topic_tags": [
+      "PMSM",
+      "super twisting",
+      "disturbance observer",
+      "SVR",
+      "speed regulation"
+    ],
+    "source_url": "https://www.mdpi.com/2076-3417/12/21/10749",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-12-10749/article_deploy/applsci-12-10749.pdf",
+    "venue": "Applied Sciences",
+    "authors": "Ahyeong Choi; Hyunchang Kim; Mingyuan Hu; Youngjae Kim; Hyeongki Ahn; Kwanho You",
+    "doi": "10.3390/app122110749",
+    "license": "CC BY"
+  },
+  "applsci-2025-smo-air-compressor-pmsm.pdf": {
+    "title": "Sliding Mode Observer-Based Sensorless Control Strategy for Permanent Magnet Synchronous Motor Drives",
+    "year": 2025,
+    "topic": "PMSM SMO compressor drive",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "air compressor"
+    ],
+    "source_url": "https://www.mdpi.com/2076-3417/15/20/11206",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-15-11206/article_deploy/applsci-15-11206.pdf",
+    "venue": "Applied Sciences",
+    "license": "CC BY"
+  },
+  "applsci-2026-fuzzy-smc-sensorless-pmsm.pdf": {
+    "title": "Sensorless Control of PMSM Based on Fuzzy Sliding Mode Control",
+    "year": 2026,
+    "topic": "fuzzy SMC sensorless PMSM",
+    "topic_tags": [
+      "PMSM",
+      "sensorless control",
+      "fuzzy sliding mode",
+      "sliding mode observer"
+    ],
+    "source_url": "https://www.mdpi.com/2076-3417/16/5/2544",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-16-02544/article_deploy/applsci-16-02544.pdf",
+    "venue": "Applied Sciences",
+    "license": "CC BY"
+  },
+  "aremu-2025-arxiv-smc-pmsm-benchmark.pdf": {
+    "title": "Sliding-Mode Control Strategies for PMSM: Benchmarking and Comparative Simulation Study",
+    "year": 2025,
+    "topic": "PMSM SMC benchmark",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "benchmark",
+      "super twisting",
+      "adaptive SMC"
+    ],
+    "source_url": "https://arxiv.org/abs/2512.06603",
+    "pdf_url": "https://arxiv.org/pdf/2512.06603",
+    "venue": "arXiv",
+    "authors": "Mubarak Badamasi Aremu; Abdullah Ajasa; Ali Nasir",
+    "arxiv_id": "2512.06603",
+    "license": "arXiv open access"
+  },
   "arxiv-2510-18420-smc-pmsm-review.pdf": {
     "title": "Sliding-Mode Control Strategies for PMSM Speed Control: A Comprehensive Review, Taxonomy and Research Gaps",
     "authors": "Abdullah Ajasa; Mubarak Badamasi Aremu; Ali Nasir",
@@ -6,7 +105,12 @@
     "topic": "PMSM SMC review",
     "arxiv_id": "2510.18420",
     "venue": "arXiv",
-    "topic_tags": ["PMSM", "sliding mode control", "review", "taxonomy"],
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "review",
+      "taxonomy"
+    ],
     "source_url": "https://arxiv.org/abs/2510.18420",
     "pdf_url": "https://arxiv.org/pdf/2510.18420",
     "license": "arXiv open access"
@@ -18,153 +122,137 @@
     "topic": "active flux observer",
     "doi": "10.3390/en14196249",
     "venue": "Energies",
-    "topic_tags": ["IPMSM", "active flux", "sensorless control", "observer"],
+    "topic_tags": [
+      "IPMSM",
+      "active flux",
+      "sensorless control",
+      "observer"
+    ],
     "source_url": "https://www.mdpi.com/1996-1073/14/19/6249",
     "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06249/article_deploy/energies-14-06249.pdf",
     "license": "CC BY"
   },
-  "jin-2024-sogifo-x-flux-observer-pmsm.pdf": {
-    "title": "Optimizing Sensorless Control in PMSM Based on the SOGIFO-X Flux Observer Algorithm",
-    "authors": "Rencheng Jin; Ji Chen; Peihao Hu; Jianzhang Li",
-    "year": 2024,
-    "topic": "flux observer",
-    "doi": "10.3390/s24030817",
-    "venue": "Sensors",
-    "topic_tags": ["PMSM", "flux observer", "SOGIFO-X", "sensorless control"],
-    "source_url": "https://www.mdpi.com/1424-8220/24/3/817",
-    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-24-00817/article_deploy/sensors-24-00817.pdf",
-    "license": "CC BY"
+  "diva-2016-pmsm-sensorless-mras-smo.pdf": {
+    "title": "Sensorless Control of PMSM",
+    "year": 2016,
+    "topic": "PMSM MRAS and SMO",
+    "topic_tags": [
+      "PMSM",
+      "sensorless control",
+      "MRAS",
+      "sliding mode observer"
+    ],
+    "source_url": "https://www.diva-portal.org/smash/record.jsf?pid=diva2:1032918",
+    "pdf_url": "https://www.diva-portal.org/smash/get/diva2%3A1032918/FULLTEXT01.pdf",
+    "venue": "DiVA thesis",
+    "license": "open access thesis"
   },
-  "lesniewski-2023-smc-constraints.pdf": {
-    "title": "Sliding Mode Control for Perturbed Nonlinear Systems with State and Control Signal Constraints",
-    "authors": "Piotr Lesniewski; Marek Jaskula",
+  "du-2023-ismo-antidisturbance-pmsm.pdf": {
+    "title": "Research on a Permanent Magnet Synchronous Motor Sensorless Anti-Disturbance Control Strategy Based on an Improved Sliding Mode Observer",
+    "authors": "Shenhui Du; Yang Liu; Yao Wang; Ying Li; Zhibang Yan",
     "year": 2023,
-    "topic": "SMC reaching law",
-    "doi": "10.3390/en16145481",
-    "venue": "Energies",
-    "topic_tags": ["sliding mode control", "constraints", "nonlinear systems", "reaching law"],
-    "source_url": "https://www.mdpi.com/1996-1073/16/14/5481",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-05481/article_deploy/energies-16-05481.pdf",
-    "license": "CC BY"
-  },
-  "liang-2024-pmsm-sliding-mode-observer.pdf": {
-    "title": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer",
-    "authors": "Jinfa Liang; Jun Wu; Yong Wang; Zhihong Zhong; Xinxin Bai",
-    "year": 2024,
-    "topic": "PMSM SMO",
-    "doi": "10.3390/eng5030091",
-    "venue": "Eng",
-    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control"],
-    "source_url": "https://www.mdpi.com/2673-4117/5/3/91",
-    "pdf_url": "https://res.mdpi.com/d_attachment/eng/eng-05-00091/article_deploy/eng-05-00091.pdf",
-    "license": "CC BY"
-  },
-  "nguyen-2021-chattering-attenuated-tsmc.pdf": {
-    "title": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control for Nonlinear Systems Subject to Matched and Mismatched Disturbances",
-    "authors": "Duc Giap Nguyen; Duc Thien Tran; Kyoung Kwan Ahn",
-    "year": 2021,
-    "topic": "chattering attenuation",
-    "doi": "10.3390/app11178158",
-    "venue": "Applied Sciences",
-    "topic_tags": ["terminal sliding mode control", "disturbance observer", "chattering attenuation"],
-    "source_url": "https://www.mdpi.com/2076-3417/11/17/8158",
-    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-11-08158/article_deploy/applsci-11-08158.pdf",
-    "license": "CC BY"
-  },
-  "liu-2023-adaptive-gain-smo-pmsm.pdf": {
-    "title": "An Adaptive-Gain Sliding Mode Observer with Precise Compensation for Sensorless Control of PMSM",
-    "authors": "Wenfei Liu; Bo Luo; Yong Yang; Haoming Niu; Xujun Zhang; Yu Zhou; Chengbi Zeng",
-    "year": 2023,
-    "topic": "adaptive-gain SMO",
-    "doi": "10.3390/en16247968",
-    "venue": "Energies",
-    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "adaptive gain", "compensation"],
-    "source_url": "https://www.mdpi.com/1996-1073/16/24/7968",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-07968/article_deploy/energies-16-07968.pdf",
-    "license": "CC BY"
-  },
-  "liu-2022-improved-smo-speed-estimation-pmsm.pdf": {
-    "title": "Research on an Improved Sliding Mode Observer for Speed Estimation in Permanent Magnet Synchronous Motor",
-    "authors": "Zhiqiang Liu; Wenkai Chen",
-    "year": 2022,
-    "topic": "combined reaching-law SMO",
-    "doi": "10.3390/pr10061182",
-    "venue": "Processes",
-    "topic_tags": ["PMSM", "sliding mode observer", "speed estimation", "combined reaching law", "chattering"],
-    "source_url": "https://www.mdpi.com/2227-9717/10/6/1182",
-    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-10-01182/article_deploy/processes-10-01182.pdf",
-    "license": "CC BY"
-  },
-  "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf": {
-    "title": "PID Sliding Mode Control of PMSM Based on Improved Terminal Sliding Mode Reaching Law",
-    "authors": "Guodong Qin; Min Wang; Guizhou Cao; Qi Wang; Yuefeng Liao",
-    "year": 2025,
-    "topic": "PID sliding surface ITSMRL",
-    "doi": "10.3390/en18102661",
-    "venue": "Energies",
-    "topic_tags": ["PMSM", "sliding mode control", "PID sliding surface", "improved terminal reaching law", "extended state observer"],
-    "source_url": "https://www.mdpi.com/1996-1073/18/10/2661",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-18-02661/article_deploy/energies-18-02661.pdf",
-    "license": "CC BY"
-  },
-  "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf": {
-    "title": "Research on Sensorless Control System of Permanent Magnet Synchronous Motor Based on Improved Fuzzy Super Twisted Sliding Mode Observer",
-    "authors": "Haoran Jiang; Xiaodong Lv; Xiaoqi Fan; Guangming Zhang",
-    "year": 2025,
-    "topic": "fuzzy super-twisted SMO",
-    "doi": "10.3390/electronics14091900",
+    "topic": "ISMO anti-disturbance sensorless control",
+    "doi": "10.3390/electronics12204188",
     "venue": "Electronics",
-    "topic_tags": ["PMSM", "sliding mode observer", "fuzzy control", "super twisting", "sensorless control", "switching function"],
-    "source_url": "https://www.mdpi.com/2079-9292/14/9/1900",
-    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01900/article_deploy/electronics-14-01900.pdf",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "fuzzy control",
+      "anti-disturbance"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/12/20/4188",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-12-04188/article_deploy/electronics-12-04188.pdf",
     "license": "CC BY"
   },
-  "zhao-2021-super-twisting-smo-pmsm.pdf": {
-    "title": "An Improved Super-Twisting High-Order Sliding Mode Observer for Sensorless Control of Permanent Magnet Synchronous Motor",
-    "authors": "Yujiao Zhao; Haisheng Yu; Shixian Wang",
-    "year": 2021,
-    "topic": "super-twisting SMO",
-    "doi": "10.3390/en14196047",
-    "venue": "Energies",
-    "topic_tags": ["PMSM", "sliding mode observer", "super twisting", "sensorless control", "parameter disturbance"],
-    "source_url": "https://www.mdpi.com/1996-1073/14/19/6047",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06047/article_deploy/energies-14-06047.pdf",
-    "license": "CC BY"
-  },
-  "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf": {
-    "title": "Sliding Mode Observer with Adaptive Parameter Estimation for Sensorless Control of IPMSM",
-    "authors": "Yubo Liu; Junlong Fang; Kezhu Tan; Boyan Huang; Wenshuai He",
-    "year": 2020,
-    "topic": "adaptive parameter STA-SMO",
-    "doi": "10.3390/en13225991",
-    "venue": "Energies",
-    "topic_tags": ["IPMSM", "sliding mode observer", "super twisting", "adaptive parameters", "parameter mismatch"],
-    "source_url": "https://www.mdpi.com/1996-1073/13/22/5991",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-13-05991/article_deploy/energies-13-05991.pdf",
-    "license": "CC BY"
-  },
-  "scholz-2022-switching-functions-smo-pmsm.pdf": {
-    "title": "A Comparative Study and Optimization of Switching Functions for Sliding-Mode Observer in Sensorless Control of PMSM",
-    "authors": "Karol Kyslan; Viktor Petro; Peter Bober; Viktor Slapak; Frantisek Durovsky; Mateusz Dybkowski; Matus Hric",
-    "year": 2022,
-    "topic": "SMO switching functions",
-    "doi": "10.3390/en15072689",
-    "venue": "Energies",
-    "topic_tags": ["PMSM", "sliding mode observer", "switching function", "sensorless control", "optimization"],
-    "source_url": "https://www.mdpi.com/1996-1073/15/7/2689",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-15-02689/article_deploy/energies-15-02689.pdf",
-    "license": "CC BY"
-  },
-  "zhu-2024-mras-flux-linkage-observer-pmsm.pdf": {
-    "title": "Nonlinear Flux Linkage Observer with Model Reference Adaptive System for Improved Permanent Magnet Synchronous Motor Control",
-    "authors": "Shaopeng Zhu; Kaida Hu; Jian Lin; Yongqing Liu; Huipeng Chen; Weiyang Wang; Jian Gao",
+  "electronics-2024-smc-model-predictive-speed-pmsm.pdf": {
+    "title": "Sliding Mode Speed Control for PMSM Based on Model Predictive Control",
     "year": 2024,
-    "topic": "MRAS flux linkage observer",
-    "doi": "10.3390/act13100403",
-    "venue": "Actuators",
-    "topic_tags": ["PMSM", "flux linkage", "MRAS", "parameter identification", "sensorless control"],
-    "source_url": "https://www.mdpi.com/2076-0825/13/10/403",
-    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00403/article_deploy/actuators-13-00403.pdf",
+    "topic": "SMC model predictive speed control",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "model predictive control",
+      "disturbance observer"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/13/13/2561",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-13-02561/article_deploy/electronics-13-02561.pdf",
+    "venue": "Electronics",
+    "license": "CC BY"
+  },
+  "electronics-2025-improved-back-emf-observer-pmsm.pdf": {
+    "title": "Robust Sensorless PMSM Control with Improved Back-EMF Observer",
+    "year": 2025,
+    "topic": "back-EMF observer",
+    "topic_tags": [
+      "PMSM",
+      "sensorless control",
+      "back-EMF observer",
+      "sliding mode observer"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/14/7/1238",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01238/article_deploy/electronics-14-01238.pdf",
+    "venue": "Electronics",
+    "license": "CC BY"
+  },
+  "energies-2022-synergetic-smc-pmsm.pdf": {
+    "title": "Improvement of PMSM Sensorless Control Based on Synergetic and Sliding Mode Controllers",
+    "year": 2022,
+    "topic": "synergetic and SMC control",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "synergetic control",
+      "sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/15/6/2208",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-15-02208/article_deploy/energies-15-02208.pdf",
+    "venue": "Energies",
+    "license": "CC BY"
+  },
+  "energies-2025-model-free-adaptive-fuzzy-smo-pmsm.pdf": {
+    "title": "Model-Free Adaptive Fuzzy Sliding-Mode Observer Control for PMSM",
+    "year": 2025,
+    "topic": "model-free fuzzy SMO",
+    "topic_tags": [
+      "PMSM",
+      "model-free adaptive control",
+      "fuzzy control",
+      "sliding-mode observer"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/18/8/1877",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-18-01877/article_deploy/energies-18-01877.pdf",
+    "venue": "Energies",
+    "license": "CC BY"
+  },
+  "energies-2025-position-sensorless-control-pmsm.pdf": {
+    "title": "Position Sensorless Control of Permanent Magnet Synchronous Motor",
+    "year": 2025,
+    "topic": "PMSM sensorless control",
+    "topic_tags": [
+      "PMSM",
+      "position sensorless control",
+      "observer",
+      "flux estimation"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/18/10/2531",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-18-02531/article_deploy/energies-18-02531.pdf",
+    "venue": "Energies",
+    "license": "CC BY"
+  },
+  "fractalfract-2024-fractional-super-twisting-pmsm.pdf": {
+    "title": "Robust Speed Control of Permanent Magnet Synchronous Motor Using Variable-Gain Fractional-Order Super-Twisting Sliding Mode Control",
+    "year": 2024,
+    "topic": "fractional super-twisting SMC",
+    "topic_tags": [
+      "PMSM",
+      "super twisting",
+      "fractional-order control",
+      "sliding-mode disturbance observer"
+    ],
+    "source_url": "https://www.mdpi.com/2504-3110/8/7/368",
+    "pdf_url": "https://res.mdpi.com/d_attachment/fractalfract/fractalfract-08-00368/article_deploy/fractalfract-08-00368.pdf",
+    "venue": "Fractal and Fractional",
     "license": "CC BY"
   },
   "hu-2023-super-twisting-dob-pmsm.pdf": {
@@ -174,105 +262,15 @@
     "topic": "super-twisting SMC disturbance observer",
     "doi": "10.3390/math11071618",
     "venue": "Mathematics",
-    "topic_tags": ["PMSM", "sliding mode control", "super twisting", "disturbance observer", "extended state observer"],
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "super twisting",
+      "disturbance observer",
+      "extended state observer"
+    ],
     "source_url": "https://www.mdpi.com/2227-7390/11/7/1618",
     "pdf_url": "https://res.mdpi.com/d_attachment/mathematics/mathematics-11-01618/article_deploy/mathematics-11-01618.pdf",
-    "license": "CC BY"
-  },
-  "ahn-2024-adaptive-quick-reaching-law-pmsm.pdf": {
-    "title": "Adaptive Quick Sliding Mode Reaching Law and Disturbance Observer for Robust PMSM Control Systems",
-    "authors": "Hyeongki Ahn; Sangkyeum Kim; Jihoon Park; Yoonuh Chung; Mingyuan Hu; Kwanho You",
-    "year": 2024,
-    "topic": "adaptive quick reaching law",
-    "doi": "10.3390/act13040136",
-    "venue": "Actuators",
-    "topic_tags": ["PMSM", "sliding mode control", "quick reaching law", "sliding mode observer", "chattering suppression"],
-    "source_url": "https://www.mdpi.com/2076-0825/13/4/136",
-    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00136/article_deploy/actuators-13-00136.pdf",
-    "license": "CC BY"
-  },
-  "zhang-2024-dsmo-lqr-current-control-pmsm.pdf": {
-    "title": "A Disturbance Sliding Mode Observer Designed for Enhancing the LQR Current-Control Scheme of a Permanent Magnet Synchronous Motor",
-    "authors": "Zhidong Zhang; Gongliu Yang; Jing Fan; Tao Li; Qingzhong Cai",
-    "year": 2024,
-    "topic": "DSMO LQR current loop",
-    "doi": "10.3390/act13080283",
-    "venue": "Actuators",
-    "topic_tags": ["PMSM", "current loop", "sliding mode observer", "LQR", "disturbance suppression"],
-    "source_url": "https://www.mdpi.com/2076-0825/13/8/283",
-    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00283/article_deploy/actuators-13-00283.pdf",
-    "license": "CC BY"
-  },
-  "shi-2024-nftsmc-sdob-pmsm.pdf": {
-    "title": "A Novel Nonsingular Fast Terminal Sliding Mode Control with Sliding Mode Disturbance Observer for Permanent Magnet Synchronous Motor Servo Control",
-    "authors": "Difen Shi; Kai Bodemann; Yao Wang; Changliang Xu; Lulu Liu; Chungui Feng",
-    "year": 2024,
-    "topic": "NFTSMC sliding mode disturbance observer",
-    "doi": "10.3390/pr12091986",
-    "venue": "Processes",
-    "topic_tags": ["PMSM", "terminal sliding mode control", "sliding mode disturbance observer", "chattering", "hardware validation"],
-    "source_url": "https://www.mdpi.com/2227-9717/12/9/1986",
-    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-12-01986/article_deploy/processes-12-01986.pdf",
-    "license": "CC BY"
-  },
-  "tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf": {
-    "title": "Integrated Sliding Mode Control for Permanent Magnet Synchronous Motor Drives Based on Second-Order Disturbance Observer and Low-Pass Filter",
-    "authors": "Tran Thanh Tuyen; Jian Yang; Liqing Liao; Jingyang Zhou",
-    "year": 2025,
-    "topic": "integrated SMC disturbance observer",
-    "doi": "10.3390/electronics14071466",
-    "venue": "Electronics",
-    "topic_tags": ["PMSM", "sliding mode control", "disturbance observer", "low-pass filter", "speed regulation"],
-    "source_url": "https://www.mdpi.com/2079-9292/14/7/1466",
-    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01466/article_deploy/electronics-14-01466.pdf",
-    "license": "CC BY"
-  },
-  "yao-2023-second-order-adaptive-smo-pmsm.pdf": {
-    "title": "Study on a Second-Order Adaptive Sliding-Mode Observer Control Algorithm for the Sensorless Permanent Magnet Synchronous Motor",
-    "authors": "Guozhong Yao; Yuanpeng Cheng; Zhengjiang Wang; Yuhan Xiao",
-    "year": 2023,
-    "topic": "second-order adaptive SMO",
-    "doi": "10.3390/pr11061636",
-    "venue": "Processes",
-    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "super twisting", "position-sensorless control"],
-    "source_url": "https://www.mdpi.com/2227-9717/11/6/1636",
-    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-11-01636/article_deploy/processes-11-01636.pdf",
-    "license": "CC BY"
-  },
-  "kong-2024-fast-terminal-smpc-pmsm.pdf": {
-    "title": "Fast Terminal Sliding-Mode Predictive Speed Controller for Permanent-Magnet Synchronous Motor Drive Systems",
-    "authors": "Delin Kong; Haiwei Cai; Wenkai Zeng",
-    "year": 2024,
-    "topic": "fast terminal sliding-mode predictive speed control",
-    "doi": "10.3390/en17153767",
-    "venue": "Energies",
-    "topic_tags": ["PMSM", "sliding mode control", "model predictive control", "reaching law", "speed regulation"],
-    "source_url": "https://www.mdpi.com/1996-1073/17/15/3767",
-    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-17-03767/article_deploy/energies-17-03767.pdf",
-    "license": "CC BY"
-  },
-  "ma-2025-model-free-gsta-ftsmc-pmsm.pdf": {
-    "title": "Model-Free Generalized Super-Twisting Fast Terminal Sliding Mode Control for Permanent Magnet Synchronous Motors",
-    "authors": "Xingyi Ma; Yu Xu; Lei Zhang; Jing Bai",
-    "year": 2025,
-    "topic": "model-free generalized super-twisting FTSMC",
-    "doi": "10.3390/sym17010018",
-    "venue": "Symmetry",
-    "topic_tags": ["PMSM", "sliding mode control", "super twisting", "terminal sliding mode control", "disturbance observer"],
-    "source_url": "https://www.mdpi.com/2073-8994/17/1/18",
-    "pdf_url": "https://res.mdpi.com/d_attachment/symmetry/symmetry-17-00018/article_deploy/symmetry-17-00018.pdf",
-    "license": "CC BY"
-  },
-  "ullah-2024-fractional-super-twisting-smdo-pmsm.pdf": {
-    "title": "Robust Speed Control of Permanent Magnet Synchronous Motor Drive System Using Sliding-Mode Disturbance Observer-Based Variable-Gain Fractional-Order Super-Twisting Sliding-Mode Control",
-    "authors": "Ameen Ullah; Jianfei Pan; Safeer Ullah; Zhang Zhang",
-    "year": 2024,
-    "topic": "fractional-order super-twisting SMDO",
-    "doi": "10.3390/fractalfract8070368",
-    "venue": "Fractal and Fractional",
-    "topic_tags": ["PMSM", "sliding mode control", "sliding mode disturbance observer", "fractional-order control", "chattering"],
-    "source_url": "https://www.mdpi.com/2504-3110/8/7/368",
-    "pdf_url": "https://res.mdpi.com/d_attachment/fractalfract/fractalfract-08-00368/article_deploy/fractalfract-08-00368.pdf",
     "license": "CC BY"
   },
   "hu-2025-iftsm-adaptive-control-law-pmsm.pdf": {
@@ -282,69 +280,86 @@
     "topic": "IFTSM adaptive reaching law",
     "doi": "10.3390/sym17101586",
     "venue": "Symmetry",
-    "topic_tags": ["PMSM", "sliding mode control", "terminal sliding mode control", "adaptive reaching law", "disturbance rejection"],
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "terminal sliding mode control",
+      "adaptive reaching law",
+      "disturbance rejection"
+    ],
     "source_url": "https://www.mdpi.com/2073-8994/17/10/1586",
     "pdf_url": "https://res.mdpi.com/d_attachment/symmetry/symmetry-17-01586/article_deploy/symmetry-17-01586.pdf",
     "license": "CC BY"
   },
-  "xu-2025-ceso-composite-smc-pmsm.pdf": {
-    "title": "Cascaded Extended State Observer-Based Composite Sliding-Mode Controller for a PMSM Speed-Loop Anti-Interference Control Strategy",
-    "authors": "Yifan Xu; Bin Zhang; Yuxin Kang; He Wang",
+  "jiang-2025-fuzzy-super-twisted-smo-pmsm.pdf": {
+    "title": "Research on Sensorless Control System of Permanent Magnet Synchronous Motor Based on Improved Fuzzy Super Twisted Sliding Mode Observer",
+    "authors": "Haoran Jiang; Xiaodong Lv; Xiaoqi Fan; Guangming Zhang",
     "year": 2025,
-    "topic": "CESO composite SMC",
-    "doi": "10.3390/s25041133",
-    "venue": "Sensors",
-    "topic_tags": ["PMSM", "sliding mode control", "extended state observer", "anti-interference", "speed loop"],
-    "source_url": "https://www.mdpi.com/1424-8220/25/4/1133",
-    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-25-01133/article_deploy/sensors-25-01133.pdf",
+    "topic": "fuzzy super-twisted SMO",
+    "doi": "10.3390/electronics14091900",
+    "venue": "Electronics",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "fuzzy control",
+      "super twisting",
+      "sensorless control",
+      "switching function"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/14/9/1900",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01900/article_deploy/electronics-14-01900.pdf",
     "license": "CC BY"
   },
-  "zhou-2024-smc-model-predictive-current-pmsm.pdf": {
-    "title": "Sliding Mode Speed Control for PMSM Based on Model Predictive Current",
-    "authors": "Weihong Zhou; Zhe Song; Xi Xiao; Yougui Guo; Yu Mo",
+  "jin-2024-sogifo-x-flux-observer-pmsm.pdf": {
+    "title": "Optimizing Sensorless Control in PMSM Based on the SOGIFO-X Flux Observer Algorithm",
+    "authors": "Rencheng Jin; Ji Chen; Peihao Hu; Jianzhang Li",
     "year": 2024,
-    "topic": "SMC model predictive current",
-    "doi": "10.3390/electronics13132561",
-    "venue": "Electronics",
-    "topic_tags": ["PMSM", "sliding mode control", "model predictive current", "current loop", "speed regulation"],
-    "source_url": "https://www.mdpi.com/2079-9292/13/13/2561",
-    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-13-02561/article_deploy/electronics-13-02561.pdf",
+    "topic": "flux observer",
+    "doi": "10.3390/s24030817",
+    "venue": "Sensors",
+    "topic_tags": [
+      "PMSM",
+      "flux observer",
+      "SOGIFO-X",
+      "sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/1424-8220/24/3/817",
+    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-24-00817/article_deploy/sensors-24-00817.pdf",
     "license": "CC BY"
   },
-  "yao-2025-prescribed-performance-leso-pmsm.pdf": {
-    "title": "Prescribed Performance Global Non-Singular Fast Terminal Sliding Mode Control of PMSM Based on Linear Extended State Observer",
-    "authors": "Yifei Yao; Yaoming Zhuang; Yizhi Xie; Peng Xu; Chengdong Wu",
-    "year": 2025,
-    "topic": "prescribed-performance FTSMC LESO",
-    "doi": "10.3390/act14020065",
-    "venue": "Actuators",
-    "topic_tags": ["PMSM", "sliding mode control", "terminal sliding mode control", "linear extended state observer", "prescribed performance"],
-    "source_url": "https://www.mdpi.com/2076-0825/14/2/65",
-    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-14-00065/article_deploy/actuators-14-00065.pdf",
+  "kong-2024-fast-terminal-smpc-pmsm.pdf": {
+    "title": "Fast Terminal Sliding-Mode Predictive Speed Controller for Permanent-Magnet Synchronous Motor Drive Systems",
+    "authors": "Delin Kong; Haiwei Cai; Wenkai Zeng",
+    "year": 2024,
+    "topic": "fast terminal sliding-mode predictive speed control",
+    "doi": "10.3390/en17153767",
+    "venue": "Energies",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "model predictive control",
+      "reaching law",
+      "speed regulation"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/17/15/3767",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-17-03767/article_deploy/energies-17-03767.pdf",
     "license": "CC BY"
   },
-  "du-2023-ismo-antidisturbance-pmsm.pdf": {
-    "title": "Research on a Permanent Magnet Synchronous Motor Sensorless Anti-Disturbance Control Strategy Based on an Improved Sliding Mode Observer",
-    "authors": "Shenhui Du; Yang Liu; Yao Wang; Ying Li; Zhibang Yan",
+  "lesniewski-2023-smc-constraints.pdf": {
+    "title": "Sliding Mode Control for Perturbed Nonlinear Systems with State and Control Signal Constraints",
+    "authors": "Piotr Lesniewski; Marek Jaskula",
     "year": 2023,
-    "topic": "ISMO anti-disturbance sensorless control",
-    "doi": "10.3390/electronics12204188",
-    "venue": "Electronics",
-    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "fuzzy control", "anti-disturbance"],
-    "source_url": "https://www.mdpi.com/2079-9292/12/20/4188",
-    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-12-04188/article_deploy/electronics-12-04188.pdf",
-    "license": "CC BY"
-  },
-  "liu-2022-frontiers-smo-sensorless-pmsm.pdf": {
-    "title": "SMO-Based Sensorless Control of a Permanent Magnet Synchronous Motor",
-    "authors": "Xin Liu; Zhiwei Wang; Wenzhuo Wang; Yunling Lv; Bo Yuan; Shijie Wang; Wujing Li; Qiufang Li; Qiwen Zhang; Qianchang Chen",
-    "year": 2022,
-    "topic": "SMO PLL sensorless control",
-    "doi": "10.3389/fenrg.2022.839329",
-    "venue": "Frontiers in Energy Research",
-    "topic_tags": ["PMSM", "sliding mode observer", "sensorless control", "PLL", "chattering"],
-    "source_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.839329/full",
-    "pdf_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.839329/pdf",
+    "topic": "SMC reaching law",
+    "doi": "10.3390/en16145481",
+    "venue": "Energies",
+    "topic_tags": [
+      "sliding mode control",
+      "constraints",
+      "nonlinear systems",
+      "reaching law"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/16/14/5481",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-05481/article_deploy/energies-16-05481.pdf",
     "license": "CC BY"
   },
   "li-2022-frontiers-chattering-suppression-smo-pmsm.pdf": {
@@ -354,9 +369,508 @@
     "topic": "SMO chattering suppression",
     "doi": "10.3389/fenrg.2022.994180",
     "venue": "Frontiers in Energy Research",
-    "topic_tags": ["PMSM", "sliding mode observer", "chattering suppression", "piecewise power function", "marine electric propulsion"],
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "chattering suppression",
+      "piecewise power function",
+      "marine electric propulsion"
+    ],
     "source_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.994180/full",
     "pdf_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.994180/pdf",
+    "license": "CC BY"
+  },
+  "liang-2024-pmsm-sliding-mode-observer.pdf": {
+    "title": "Sensorless Control for a Permanent Magnet Synchronous Motor Based on a Sliding Mode Observer",
+    "authors": "Jinfa Liang; Jun Wu; Yong Wang; Zhihong Zhong; Xinxin Bai",
+    "year": 2024,
+    "topic": "PMSM SMO",
+    "doi": "10.3390/eng5030091",
+    "venue": "Eng",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/2673-4117/5/3/91",
+    "pdf_url": "https://res.mdpi.com/d_attachment/eng/eng-05-00091/article_deploy/eng-05-00091.pdf",
+    "license": "CC BY"
+  },
+  "liu-2020-sta-smo-adaptive-parameter-ipmsm.pdf": {
+    "title": "Sliding Mode Observer with Adaptive Parameter Estimation for Sensorless Control of IPMSM",
+    "authors": "Yubo Liu; Junlong Fang; Kezhu Tan; Boyan Huang; Wenshuai He",
+    "year": 2020,
+    "topic": "adaptive parameter STA-SMO",
+    "doi": "10.3390/en13225991",
+    "venue": "Energies",
+    "topic_tags": [
+      "IPMSM",
+      "sliding mode observer",
+      "super twisting",
+      "adaptive parameters",
+      "parameter mismatch"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/13/22/5991",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-13-05991/article_deploy/energies-13-05991.pdf",
+    "license": "CC BY"
+  },
+  "liu-2022-frontiers-smo-sensorless-pmsm.pdf": {
+    "title": "SMO-Based Sensorless Control of a Permanent Magnet Synchronous Motor",
+    "authors": "Xin Liu; Zhiwei Wang; Wenzhuo Wang; Yunling Lv; Bo Yuan; Shijie Wang; Wujing Li; Qiufang Li; Qiwen Zhang; Qianchang Chen",
+    "year": 2022,
+    "topic": "SMO PLL sensorless control",
+    "doi": "10.3389/fenrg.2022.839329",
+    "venue": "Frontiers in Energy Research",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "PLL",
+      "chattering"
+    ],
+    "source_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.839329/full",
+    "pdf_url": "https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2022.839329/pdf",
+    "license": "CC BY"
+  },
+  "liu-2022-improved-smo-speed-estimation-pmsm.pdf": {
+    "title": "Research on an Improved Sliding Mode Observer for Speed Estimation in Permanent Magnet Synchronous Motor",
+    "authors": "Zhiqiang Liu; Wenkai Chen",
+    "year": 2022,
+    "topic": "combined reaching-law SMO",
+    "doi": "10.3390/pr10061182",
+    "venue": "Processes",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "speed estimation",
+      "combined reaching law",
+      "chattering"
+    ],
+    "source_url": "https://www.mdpi.com/2227-9717/10/6/1182",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-10-01182/article_deploy/processes-10-01182.pdf",
+    "license": "CC BY"
+  },
+  "liu-2023-adaptive-gain-smo-pmsm.pdf": {
+    "title": "An Adaptive-Gain Sliding Mode Observer with Precise Compensation for Sensorless Control of PMSM",
+    "authors": "Wenfei Liu; Bo Luo; Yong Yang; Haoming Niu; Xujun Zhang; Yu Zhou; Chengbi Zeng",
+    "year": 2023,
+    "topic": "adaptive-gain SMO",
+    "doi": "10.3390/en16247968",
+    "venue": "Energies",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "adaptive gain",
+      "compensation"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/16/24/7968",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-16-07968/article_deploy/energies-16-07968.pdf",
+    "license": "CC BY"
+  },
+  "ma-2025-model-free-gsta-ftsmc-pmsm.pdf": {
+    "title": "Model-Free Generalized Super-Twisting Fast Terminal Sliding Mode Control for Permanent Magnet Synchronous Motors",
+    "authors": "Xingyi Ma; Yu Xu; Lei Zhang; Jing Bai",
+    "year": 2025,
+    "topic": "model-free generalized super-twisting FTSMC",
+    "doi": "10.3390/sym17010018",
+    "venue": "Symmetry",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "super twisting",
+      "terminal sliding mode control",
+      "disturbance observer"
+    ],
+    "source_url": "https://www.mdpi.com/2073-8994/17/1/18",
+    "pdf_url": "https://res.mdpi.com/d_attachment/symmetry/symmetry-17-00018/article_deploy/symmetry-17-00018.pdf",
+    "license": "CC BY"
+  },
+  "machines-2025-current-observation-smc-pmsm.pdf": {
+    "title": "A Real-Time Demanded Current Observation-Based Sliding Mode Control Method for PMSM",
+    "year": 2025,
+    "topic": "current-observation SMC",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "current observation",
+      "real-time control"
+    ],
+    "source_url": "https://www.mdpi.com/2075-1702/13/2/146",
+    "pdf_url": "https://res.mdpi.com/d_attachment/machines/machines-13-00146/article_deploy/machines-13-00146.pdf",
+    "venue": "Machines",
+    "license": "CC BY"
+  },
+  "mathematics-2024-fast-variable-speed-smc-pmsm.pdf": {
+    "title": "Speed Control for PMSM with Fast Variable-Speed Sliding Mode Control via High-Gain Disturbance Observer",
+    "year": 2024,
+    "topic": "fast variable-speed SMC",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "high-gain disturbance observer",
+      "speed control"
+    ],
+    "source_url": "https://www.mdpi.com/2227-7390/12/13/2036",
+    "pdf_url": "https://res.mdpi.com/d_attachment/mathematics/mathematics-12-02036/article_deploy/mathematics-12-02036.pdf",
+    "venue": "Mathematics",
+    "authors": "Hengqiang Wang; Guangming Zhang; Xiaojun Liu",
+    "doi": "10.3390/math12132036",
+    "license": "CC BY"
+  },
+  "mathematics-2024-surface-mount-pmsm-sensorless.pdf": {
+    "title": "Sensorless Control of Surface-Mount Permanent-Magnet Synchronous Motors",
+    "year": 2024,
+    "topic": "surface-mount PMSM sensorless control",
+    "topic_tags": [
+      "SPMSM",
+      "sensorless control",
+      "sliding mode observer",
+      "control implementation"
+    ],
+    "source_url": "https://www.mdpi.com/2227-7390/12/13/2029",
+    "pdf_url": "https://res.mdpi.com/d_attachment/mathematics/mathematics-12-02029/article_deploy/mathematics-12-02029.pdf",
+    "venue": "Mathematics",
+    "license": "CC BY"
+  },
+  "microchip-2024-an4398-pmsm-smo-foc.pdf": {
+    "title": "Sensorless Field Oriented Control for a Permanent Magnet Synchronous Motor Using Sliding Mode Observer",
+    "year": 2024,
+    "topic": "PMSM SMO application note",
+    "topic_tags": [
+      "PMSM",
+      "field oriented control",
+      "sliding mode observer",
+      "application note"
+    ],
+    "source_url": "https://www.microchip.com/",
+    "pdf_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MCU32/ApplicationNotes/ApplicationNotes/AN4398-Sensorless-Field-Oriented-Control-for-a-Permanent-Magnet-Synchronous-Motor-Using-Sliding-Mode-Observer-DS00004398.pdf",
+    "venue": "Microchip Application Note AN4398",
+    "license": "vendor application note"
+  },
+  "nguyen-2021-chattering-attenuated-tsmc.pdf": {
+    "title": "Disturbance Observer-Based Chattering-Attenuated Terminal Sliding Mode Control for Nonlinear Systems Subject to Matched and Mismatched Disturbances",
+    "authors": "Duc Giap Nguyen; Duc Thien Tran; Kyoung Kwan Ahn",
+    "year": 2021,
+    "topic": "chattering attenuation",
+    "doi": "10.3390/app11178158",
+    "venue": "Applied Sciences",
+    "topic_tags": [
+      "terminal sliding mode control",
+      "disturbance observer",
+      "chattering attenuation"
+    ],
+    "source_url": "https://www.mdpi.com/2076-3417/11/17/8158",
+    "pdf_url": "https://res.mdpi.com/d_attachment/applsci/applsci-11-08158/article_deploy/applsci-11-08158.pdf",
+    "license": "CC BY"
+  },
+  "processes-2024-high-speed-domain-pmsm-sensorless.pdf": {
+    "title": "Sensorless Position Control in High-Speed Domain of PMSM Based on an Improved Sliding Mode Observer",
+    "year": 2024,
+    "topic": "high-speed PMSM sensorless control",
+    "topic_tags": [
+      "PMSM",
+      "high-speed domain",
+      "sliding mode observer",
+      "sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/2227-9717/12/11/2581",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-12-02581/article_deploy/processes-12-02581.pdf",
+    "venue": "Processes",
+    "license": "CC BY"
+  },
+  "qin-2025-pid-smc-terminal-reaching-law-pmsm.pdf": {
+    "title": "PID Sliding Mode Control of PMSM Based on Improved Terminal Sliding Mode Reaching Law",
+    "authors": "Guodong Qin; Min Wang; Guizhou Cao; Qi Wang; Yuefeng Liao",
+    "year": 2025,
+    "topic": "PID sliding surface ITSMRL",
+    "doi": "10.3390/en18102661",
+    "venue": "Energies",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "PID sliding surface",
+      "improved terminal reaching law",
+      "extended state observer"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/18/10/2661",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-18-02661/article_deploy/energies-18-02661.pdf",
+    "license": "CC BY"
+  },
+  "scholz-2022-switching-functions-smo-pmsm.pdf": {
+    "title": "A Comparative Study and Optimization of Switching Functions for Sliding-Mode Observer in Sensorless Control of PMSM",
+    "authors": "Karol Kyslan; Viktor Petro; Peter Bober; Viktor Slapak; Frantisek Durovsky; Mateusz Dybkowski; Matus Hric",
+    "year": 2022,
+    "topic": "SMO switching functions",
+    "doi": "10.3390/en15072689",
+    "venue": "Energies",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "switching function",
+      "sensorless control",
+      "optimization"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/15/7/2689",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-15-02689/article_deploy/energies-15-02689.pdf",
+    "license": "CC BY"
+  },
+  "sensors-2025-dynamic-self-adjusting-pmsm-smo.pdf": {
+    "title": "A Dynamic Self-Adjusting System for Permanent Magnet Synchronous Motor Sensorless Control",
+    "year": 2025,
+    "topic": "PMSM adaptive SMO",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "dynamic self-adjusting"
+    ],
+    "source_url": "https://www.mdpi.com/1424-8220/25/12/3623",
+    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-25-03623/article_deploy/sensors-25-03623.pdf",
+    "venue": "Sensors",
+    "license": "CC BY"
+  },
+  "sensors-2025-ultra-high-speed-pr-observer-pmsm.pdf": {
+    "title": "Sensorless Control of Ultra-High-Speed PMSM via Improved PR Observer",
+    "year": 2025,
+    "topic": "ultra-high-speed PMSM observer",
+    "topic_tags": [
+      "PMSM",
+      "ultra-high-speed",
+      "sensorless control",
+      "observer"
+    ],
+    "source_url": "https://www.mdpi.com/1424-8220/25/5/1290",
+    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-25-01290/article_deploy/sensors-25-01290.pdf",
+    "venue": "Sensors",
+    "license": "CC BY"
+  },
+  "shi-2024-nftsmc-sdob-pmsm.pdf": {
+    "title": "A Novel Nonsingular Fast Terminal Sliding Mode Control with Sliding Mode Disturbance Observer for Permanent Magnet Synchronous Motor Servo Control",
+    "authors": "Difen Shi; Kai Bodemann; Yao Wang; Changliang Xu; Lulu Liu; Chungui Feng",
+    "year": 2024,
+    "topic": "NFTSMC sliding mode disturbance observer",
+    "doi": "10.3390/pr12091986",
+    "venue": "Processes",
+    "topic_tags": [
+      "PMSM",
+      "terminal sliding mode control",
+      "sliding mode disturbance observer",
+      "chattering",
+      "hardware validation"
+    ],
+    "source_url": "https://www.mdpi.com/2227-9717/12/9/1986",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-12-01986/article_deploy/processes-12-01986.pdf",
+    "license": "CC BY"
+  },
+  "symmetry-2025-adaptive-fractional-smc-pmsm.pdf": {
+    "title": "PMSM Speed Control Based on Improved Adaptive Fractional-Order Sliding Mode Control",
+    "year": 2025,
+    "topic": "fractional-order SMC",
+    "topic_tags": [
+      "PMSM",
+      "fractional-order sliding mode",
+      "disturbance observer",
+      "speed control"
+    ],
+    "source_url": "https://www.mdpi.com/2073-8994/17/5/736",
+    "pdf_url": "https://res.mdpi.com/d_attachment/symmetry/symmetry-17-00736/article_deploy/symmetry-17-00736.pdf",
+    "venue": "Symmetry",
+    "license": "CC BY"
+  },
+  "symmetry-2025-symmetric-pmsm-smc.pdf": {
+    "title": "Sliding Mode Control of Symmetric Permanent Magnet Synchronous Motors",
+    "year": 2025,
+    "topic": "symmetric PMSM SMC",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "symmetric motor",
+      "speed control"
+    ],
+    "source_url": "https://www.mdpi.com/2073-8994/17/12/2057",
+    "pdf_url": "https://res.mdpi.com/d_attachment/symmetry/symmetry-17-02057/article_deploy/symmetry-17-02057.pdf",
+    "venue": "Symmetry",
+    "license": "CC BY"
+  },
+  "tuyen-2025-integrated-smc-dob-lpf-pmsm.pdf": {
+    "title": "Integrated Sliding Mode Control for Permanent Magnet Synchronous Motor Drives Based on Second-Order Disturbance Observer and Low-Pass Filter",
+    "authors": "Tran Thanh Tuyen; Jian Yang; Liqing Liao; Jingyang Zhou",
+    "year": 2025,
+    "topic": "integrated SMC disturbance observer",
+    "doi": "10.3390/electronics14071466",
+    "venue": "Electronics",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "disturbance observer",
+      "low-pass filter",
+      "speed regulation"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/14/7/1466",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-14-01466/article_deploy/electronics-14-01466.pdf",
+    "license": "CC BY"
+  },
+  "ullah-2024-fractional-super-twisting-smdo-pmsm.pdf": {
+    "title": "Robust Speed Control of Permanent Magnet Synchronous Motor Drive System Using Sliding-Mode Disturbance Observer-Based Variable-Gain Fractional-Order Super-Twisting Sliding-Mode Control",
+    "authors": "Ameen Ullah; Jianfei Pan; Safeer Ullah; Zhang Zhang",
+    "year": 2024,
+    "topic": "fractional-order super-twisting SMDO",
+    "doi": "10.3390/fractalfract8070368",
+    "venue": "Fractal and Fractional",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "sliding mode disturbance observer",
+      "fractional-order control",
+      "chattering"
+    ],
+    "source_url": "https://www.mdpi.com/2504-3110/8/7/368",
+    "pdf_url": "https://res.mdpi.com/d_attachment/fractalfract/fractalfract-08-00368/article_deploy/fractalfract-08-00368.pdf",
+    "license": "CC BY"
+  },
+  "xu-2025-ceso-composite-smc-pmsm.pdf": {
+    "title": "Cascaded Extended State Observer-Based Composite Sliding-Mode Controller for a PMSM Speed-Loop Anti-Interference Control Strategy",
+    "authors": "Yifan Xu; Bin Zhang; Yuxin Kang; He Wang",
+    "year": 2025,
+    "topic": "CESO composite SMC",
+    "doi": "10.3390/s25041133",
+    "venue": "Sensors",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "extended state observer",
+      "anti-interference",
+      "speed loop"
+    ],
+    "source_url": "https://www.mdpi.com/1424-8220/25/4/1133",
+    "pdf_url": "https://res.mdpi.com/d_attachment/sensors/sensors-25-01133/article_deploy/sensors-25-01133.pdf",
+    "license": "CC BY"
+  },
+  "yao-2023-second-order-adaptive-smo-pmsm.pdf": {
+    "title": "Study on a Second-Order Adaptive Sliding-Mode Observer Control Algorithm for the Sensorless Permanent Magnet Synchronous Motor",
+    "authors": "Guozhong Yao; Yuanpeng Cheng; Zhengjiang Wang; Yuhan Xiao",
+    "year": 2023,
+    "topic": "second-order adaptive SMO",
+    "doi": "10.3390/pr11061636",
+    "venue": "Processes",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "super twisting",
+      "position-sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/2227-9717/11/6/1636",
+    "pdf_url": "https://res.mdpi.com/d_attachment/processes/processes-11-01636/article_deploy/processes-11-01636.pdf",
+    "license": "CC BY"
+  },
+  "yao-2025-prescribed-performance-leso-pmsm.pdf": {
+    "title": "Prescribed Performance Global Non-Singular Fast Terminal Sliding Mode Control of PMSM Based on Linear Extended State Observer",
+    "authors": "Yifei Yao; Yaoming Zhuang; Yizhi Xie; Peng Xu; Chengdong Wu",
+    "year": 2025,
+    "topic": "prescribed-performance FTSMC LESO",
+    "doi": "10.3390/act14020065",
+    "venue": "Actuators",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "terminal sliding mode control",
+      "linear extended state observer",
+      "prescribed performance"
+    ],
+    "source_url": "https://www.mdpi.com/2076-0825/14/2/65",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-14-00065/article_deploy/actuators-14-00065.pdf",
+    "license": "CC BY"
+  },
+  "zhang-2023-arxiv-smo-vector-control-pmsm.pdf": {
+    "title": "Simulation of Non-inductive Vector Control of Permanent Magnet Synchronous Motor Based on Sliding Mode Observer",
+    "year": 2023,
+    "topic": "PMSM SMO simulation",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "sensorless control",
+      "vector control",
+      "Simulink"
+    ],
+    "source_url": "https://arxiv.org/abs/2305.04046",
+    "pdf_url": "https://arxiv.org/pdf/2305.04046",
+    "venue": "arXiv",
+    "authors": "Caiyue Zhang; Zipin Liu; Bowen Xu",
+    "arxiv_id": "2305.04046",
+    "license": "arXiv open access"
+  },
+  "zhang-2024-dsmo-lqr-current-control-pmsm.pdf": {
+    "title": "A Disturbance Sliding Mode Observer Designed for Enhancing the LQR Current-Control Scheme of a Permanent Magnet Synchronous Motor",
+    "authors": "Zhidong Zhang; Gongliu Yang; Jing Fan; Tao Li; Qingzhong Cai",
+    "year": 2024,
+    "topic": "DSMO LQR current loop",
+    "doi": "10.3390/act13080283",
+    "venue": "Actuators",
+    "topic_tags": [
+      "PMSM",
+      "current loop",
+      "sliding mode observer",
+      "LQR",
+      "disturbance suppression"
+    ],
+    "source_url": "https://www.mdpi.com/2076-0825/13/8/283",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00283/article_deploy/actuators-13-00283.pdf",
+    "license": "CC BY"
+  },
+  "zhao-2021-super-twisting-smo-pmsm.pdf": {
+    "title": "An Improved Super-Twisting High-Order Sliding Mode Observer for Sensorless Control of Permanent Magnet Synchronous Motor",
+    "authors": "Yujiao Zhao; Haisheng Yu; Shixian Wang",
+    "year": 2021,
+    "topic": "super-twisting SMO",
+    "doi": "10.3390/en14196047",
+    "venue": "Energies",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode observer",
+      "super twisting",
+      "sensorless control",
+      "parameter disturbance"
+    ],
+    "source_url": "https://www.mdpi.com/1996-1073/14/19/6047",
+    "pdf_url": "https://res.mdpi.com/d_attachment/energies/energies-14-06047/article_deploy/energies-14-06047.pdf",
+    "license": "CC BY"
+  },
+  "zhou-2024-smc-model-predictive-current-pmsm.pdf": {
+    "title": "Sliding Mode Speed Control for PMSM Based on Model Predictive Current",
+    "authors": "Weihong Zhou; Zhe Song; Xi Xiao; Yougui Guo; Yu Mo",
+    "year": 2024,
+    "topic": "SMC model predictive current",
+    "doi": "10.3390/electronics13132561",
+    "venue": "Electronics",
+    "topic_tags": [
+      "PMSM",
+      "sliding mode control",
+      "model predictive current",
+      "current loop",
+      "speed regulation"
+    ],
+    "source_url": "https://www.mdpi.com/2079-9292/13/13/2561",
+    "pdf_url": "https://res.mdpi.com/d_attachment/electronics/electronics-13-02561/article_deploy/electronics-13-02561.pdf",
+    "license": "CC BY"
+  },
+  "zhu-2024-mras-flux-linkage-observer-pmsm.pdf": {
+    "title": "Nonlinear Flux Linkage Observer with Model Reference Adaptive System for Improved Permanent Magnet Synchronous Motor Control",
+    "authors": "Shaopeng Zhu; Kaida Hu; Jian Lin; Yongqing Liu; Huipeng Chen; Weiyang Wang; Jian Gao",
+    "year": 2024,
+    "topic": "MRAS flux linkage observer",
+    "doi": "10.3390/act13100403",
+    "venue": "Actuators",
+    "topic_tags": [
+      "PMSM",
+      "flux linkage",
+      "MRAS",
+      "parameter identification",
+      "sensorless control"
+    ],
+    "source_url": "https://www.mdpi.com/2076-0825/13/10/403",
+    "pdf_url": "https://res.mdpi.com/d_attachment/actuators/actuators-13-00403/article_deploy/actuators-13-00403.pdf",
     "license": "CC BY"
   }
 }

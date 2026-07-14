@@ -941,6 +941,40 @@ def _matches_expected_runtime_unavailable(
     return not missing, missing
 
 
+def _missing_expected_runtime_metadata(
+    case: dict[str, Any],
+    result: CodeExecutionResult,
+) -> list[str]:
+    """Return missing runtime metadata, accepting configured alternatives."""
+
+    def missing_for(expected: dict[str, Any]) -> list[str]:
+        expected_metadata = {
+            str(key): str(value)
+            for key, value in expected.items()
+        }
+        return [
+            f"{key}={value}"
+            for key, value in expected_metadata.items()
+            if result.runtime_metadata.get(key) != value
+        ]
+
+    alternatives = case.get("expected_runtime_metadata_any")
+    if isinstance(alternatives, list):
+        missing_options = [
+            missing_for(expected)
+            for expected in alternatives
+            if isinstance(expected, dict)
+        ]
+        if missing_options:
+            for missing in missing_options:
+                if not missing:
+                    return []
+            return min(missing_options, key=len)
+
+    expected = case.get("expected_runtime_metadata", {})
+    return missing_for(expected if isinstance(expected, dict) else {})
+
+
 def evaluate_code_output_case(case: dict[str, Any]) -> CodeOutputCaseResult:
     """Run one no-key local code-output eval and verify stdout/artifacts."""
     language = str(case.get("language", "python"))
@@ -1098,15 +1132,7 @@ def evaluate_code_output_case(case: dict[str, Any]) -> CodeOutputCaseResult:
             _evaluate_code_output_artifact(expected, result.artifacts)
             for expected in expected_artifacts
         ]
-        expected_metadata = {
-            str(key): str(value)
-            for key, value in case.get("expected_runtime_metadata", {}).items()
-        }
-        missing_runtime_metadata = [
-            f"{key}={value}"
-            for key, value in expected_metadata.items()
-            if result.runtime_metadata.get(key) != value
-        ]
+        missing_runtime_metadata = _missing_expected_runtime_metadata(case, result)
 
     stdout_ok = not missing_stdout_terms
     runtime_metadata_ok = not missing_runtime_metadata
