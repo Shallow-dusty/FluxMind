@@ -4,7 +4,7 @@
 
 FluxMind turns a curated research corpus into traceable answers, retrieval diagnostics, paper-to-code handoffs, executable local examples, and no-secret operational evidence. It is currently a deployed small-group research baseline, not a fully activated SaaS platform.
 
-> **For Contributors:** Before starting development, read [CODE_PRINCIPLES.md](CODE_PRINCIPLES.md) and [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md). The project has been refocused (2026-06-21) from over-engineering to delivering real user value.
+> **For Contributors:** Before starting development, read [DEVELOPMENT.md](DEVELOPMENT.md) — the single source of truth for positioning, features, architecture, conventions, status, and roadmap. Legacy constraint docs are archived under `docs/legacy/` (read-only).
 
 [English](#english) | [中文](#中文)
 
@@ -218,10 +218,8 @@ README is the GitHub entrypoint. Detailed facts live in owner documents:
 
 ```text
 # Development Guides (Start Here for Contributors)
-CODE_PRINCIPLES.md                     development principles, defensive code freeze, red lines
-DEVELOPMENT_PLAN.md                    3-week detailed plan (2026-06-21 to 07-12)
-NEXT_STEPS.md                          quick action checklist and checkpoints
-DISCUSSION.md                          project diagnosis and decision records (reference)
+DEVELOPMENT.md                         single entry: positioning/features/architecture/conventions/status/roadmap
+docs/legacy/                           archived legacy constraint docs (read-only)
 
 # Current Documentation
 docs/README.md                         reading order and source-of-truth map
@@ -454,10 +452,8 @@ README 是 GitHub 入口页，详细事实由 owner 文档维护：
 
 ```text
 # 开发指南（贡献者必读）
-CODE_PRINCIPLES.md                     开发原则、防御代码冻结、红线警报
-DEVELOPMENT_PLAN.md                    3周详细计划（2026-06-21 至 07-12）
-NEXT_STEPS.md                          快速行动清单和检查点
-DISCUSSION.md                          项目诊断和决策记录（参考）
+DEVELOPMENT.md                         单一入口：定位/功能/架构/约定/状态/路线图
+docs/legacy/                           旧约束文档归档（只读）
 
 # 当前文档
 docs/README.md                         阅读顺序和事实归属图

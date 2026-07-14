@@ -6,19 +6,15 @@ FluxMind 是基于 RAG 的控制理论研究 Copilot（滑模控制 SMC + 磁链
 
 > **AGENTS.md 与本文件应保持同步**——它面向其他 agent，内容应与此处一致。
 
-## ⚠️ 重要：先读开发指南（2026-06-21 更新）
+## ⚠️ 重要：先读开发指南
 
-**在开始任何开发工作前，必须先阅读**：
+**在开始任何开发工作前，必须先阅读 [DEVELOPMENT.md](DEVELOPMENT.md)**（项目定位、功能、架构、开发约定、状态、路线图的单一事实来源）。
 
-1. **CODE_PRINCIPLES.md** - 开发原则和防御代码冻结规定
-2. **DEVELOPMENT_PLAN.md** - 3周详细开发计划（2026-06-21 至 07-12）
-
-**核心原则**：
-- ❌ 不再添加 no-secret 投影层
-- ❌ 不再添加 sanitize/redact 代码  
-- ✅ 优先实现 Priority 1-3 功能（论文库、图像、代码执行）
-- ✅ 每周至少 1 个用户可见功能
-- ✅ 若旧架构说明与 `CODE_PRINCIPLES.md` / `DEVELOPMENT_PLAN.md` 冲突，以这两个 2026-06-21 指导文档为准
+**核心约定**（详见 DEVELOPMENT.md）：
+- 功能优先：每个改动回答"这能让用户更容易完成研究任务吗？"
+- 不过度防御：内部互信环境，不再添加 no-secret 投影层 / 错误 sanitize / 复杂审计
+- 配置：secret 写入 `.env`（gitignored），`.env.example` 留模板
+- 旧的防御冻结/红线/比例约束已废止，归档于 `docs/legacy/`（只读）
 
 **项目定位**：轻量级多用户工具（5-20人内部使用），不是企业级 SaaS。
 
@@ -105,10 +101,8 @@ python scripts/deploy_sync.py                # rsync 部署（默认 dry-run，-
 ## 文档结构（2026-06-21 整理后）
 
 ### 顶层指导文档
-- **CODE_PRINCIPLES.md** - 开发原则、防御代码冻结、红线警报
-- **DEVELOPMENT_PLAN.md** - 3周详细计划（每日任务、验收标准）
-- **NEXT_STEPS.md** - 快速行动清单和检查点
-- **DISCUSSION.md** - 项目诊断和决策记录（参考）
+- **DEVELOPMENT.md** - 开发指南（定位/功能/架构/约定/状态/路线图，单一入口）
+- `docs/legacy/` - 旧约束文档归档（CODE_PRINCIPLES/DEVELOPMENT_PLAN/NEXT_STEPS/DISCUSSION/CLEANUP_SUMMARY，只读）
 
 ### docs/ 目录结构
 - **docs/README.md** - 文档导航索引
