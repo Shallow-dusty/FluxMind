@@ -97,7 +97,7 @@ Streamlit UI (app.py, :18501)      FastAPI (api.py, :18502)
 - **配置文件优于环境变量**（区分同源不同用处、便于配额统计）
 - secret 写入 `.env`（gitignored），`.env.example` 留模板（key 留空）
 - 当前凭据（见 `.env`，不入库）：
-  - LLM 生成：elysiver 中转 `https://elysiver.h-e.top/v1`，主力 `deepseek-v4-flash`（快速档 `gpt-oss-120b`，高质量档 `deepseek-v4-pro`）
+  - LLM 生成：elysiver 中转（别名"烁"）`https://elysiver.h-e.top/v1`，主力 `deepseek-v4-pro`（质量严谨，~18s）；辅助 `deepseek-v4-flash`（小任务/辅助/最终兜底，~13s）
   - 图像：huyunapi 中转 `https://www.huyunapi.com/v1`，`gpt-image-2`，`quality=low`
   - 注意：中转对 `output_format` 参数会挂起 → `OPENAI_IMAGE_SEND_OUTPUT_FORMAT=false`
   - ⚠️ 中转 prompt 会过境第三方；控制框图 prompt 无敏感数据，可接受
@@ -165,7 +165,7 @@ python scripts/rebuild_seed_index.py --require-count 52
 
 | 用途 | 来源 | 说明 |
 |------|------|------|
-| LLM 生成 | elysiver 中转 | `deepseek-v4-flash`（默认）/ `gpt-oss-120b`（快）/ `deepseek-v4-pro`（强） |
+| LLM 生成 | elysiver 中转（别名"烁"） | 主力 `deepseek-v4-pro`；辅助 `deepseek-v4-flash`（兜底） |
 | 图像生成 | huyunapi 中转 | `gpt-image-2`，`quality=low`，`send_output_format=false` |
 | Docker Python | `python:3.11-slim` | 生产用 `m.daocloud.io` 镜像加速 |
 | Docker Octave | `fluxmind/octave:trixie-slim` | Trace-Twin 本地构建（`deploy/docker/octave-trixie-slim.Dockerfile`） |

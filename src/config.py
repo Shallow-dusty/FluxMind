@@ -18,6 +18,8 @@ except PermissionError:
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.example.com/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "DeepSeek-V3.2")
+# Auxiliary/fallback model: small tasks, assist, and final fallback when primary fails.
+LLM_FALLBACK_MODEL = os.getenv("LLM_FALLBACK_MODEL", "").strip()
 
 
 def _env_flag(name: str, default: str) -> bool:

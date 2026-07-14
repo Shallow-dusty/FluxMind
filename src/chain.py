@@ -22,6 +22,7 @@ from src.config import (
     FAISS_INDEX_DIR,
     LLM_API_KEY,
     LLM_BASE_URL,
+    LLM_FALLBACK_MODEL,
     LLM_MODEL,
     PAPERS_LIBRARY_DIR,
     PROJECT_ROOT,
@@ -154,12 +155,12 @@ class RetrievalDiagnostics:
         }
 
 
-def get_llm() -> ChatOpenAI:
-    """Get the LLM instance."""
+def get_llm(*, model: str | None = None) -> ChatOpenAI:
+    """Get the LLM instance. Pass `model` to override the configured primary model."""
     return ChatOpenAI(
         base_url=LLM_BASE_URL,
         api_key=LLM_API_KEY,
-        model=LLM_MODEL,
+        model=model or LLM_MODEL,
         temperature=0.3,
         max_tokens=GENERATION_MAX_TOKENS,
     )
@@ -845,23 +846,27 @@ def query_with_metadata(
         ("human", USER_TEMPLATE),
     ])
 
-    # Generate
-    llm = get_llm()
-    chain = prompt | llm
+    # Generate (primary; final fallback to LLM_FALLBACK_MODEL on failure)
+    invoke_args = {
+        "context": context,
+        "artifact_context": artifact_context,
+        "question": question,
+        "answer_mode": mode,
+        "mode_instruction": mode_instruction,
+        "citation_instruction": citation_guard,
+    }
     try:
-        response = chain.invoke(
-            {
-                "context": context,
-                "artifact_context": artifact_context,
-                "question": question,
-                "answer_mode": mode,
-                "mode_instruction": mode_instruction,
-                "citation_instruction": citation_guard,
-            }
-        )
+        response = (prompt | get_llm()).invoke(invoke_args)
     except Exception as exc:
-        error = normalize_exception(exc)
-        raise ProviderError(error.message, code=error.code, status_code=error.status_code) from exc
+        if LLM_FALLBACK_MODEL and LLM_FALLBACK_MODEL != LLM_MODEL:
+            try:
+                response = (prompt | get_llm(model=LLM_FALLBACK_MODEL)).invoke(invoke_args)
+            except Exception as exc2:
+                error = normalize_exception(exc2)
+                raise ProviderError(error.message, code=error.code, status_code=error.status_code) from exc2
+        else:
+            error = normalize_exception(exc)
+            raise ProviderError(error.message, code=error.code, status_code=error.status_code) from exc
     answer = neutralize_invalid_numbered_citations(response.content, max_ref=len(context_docs))
     return QueryResult(
         answer=answer,
