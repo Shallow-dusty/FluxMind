@@ -1,7 +1,9 @@
+import base64
 import hashlib
 import io
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +17,7 @@ from src.providers import (
     LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
+    OpenAIImageGenerationProvider,
     _is_collectable_output,
     docker_execution_status,
 )
@@ -58,6 +61,55 @@ def test_mock_image_provider_supports_paper_redraft_template(tmp_path: Path):
     assert artifact.metadata["diagram_template"] == "paper-figure-redraft"
     assert "Paper Figure Redraft" in svg
     assert "redraft" in svg
+
+
+def test_openai_image_provider_writes_b64_image_artifact(tmp_path: Path):
+    captured_kwargs = {}
+
+    class FakeImages:
+        def generate(self, **kwargs):
+            captured_kwargs.update(kwargs)
+            return SimpleNamespace(
+                data=[
+                    SimpleNamespace(
+                        b64_json=base64.b64encode(b"fake-png-bytes").decode("ascii"),
+                        revised_prompt="clean control diagram",
+                    )
+                ]
+            )
+
+    provider = OpenAIImageGenerationProvider(
+        LocalArtifactStore(tmp_path),
+        api_key="sk-test",
+        model="gpt-image-2",
+        client=SimpleNamespace(images=FakeImages()),
+    )
+
+    artifact = provider.generate(
+        ImageGenerationRequest(
+            prompt="Draw a PMSM control loop",
+            diagram_template="pmsm-control-loop",
+            size="1024x1024",
+        )
+    )
+
+    artifact_path = Path(artifact.uri.removeprefix("file://"))
+    assert artifact.kind == "image"
+    assert artifact.mime_type == "image/png"
+    assert artifact_path.read_bytes() == b"fake-png-bytes"
+    assert artifact.metadata["provider"] == "openai"
+    assert artifact.metadata["model"] == "gpt-image-2"
+    assert artifact.metadata["diagram_template"] == "pmsm-control-loop"
+    assert captured_kwargs["model"] == "gpt-image-2"
+    assert captured_kwargs["size"] == "1024x1024"
+    assert "PMSM control-loop" in captured_kwargs["prompt"]
+
+
+def test_openai_image_provider_requires_api_key(tmp_path: Path):
+    provider = OpenAIImageGenerationProvider(LocalArtifactStore(tmp_path), api_key="")
+
+    with pytest.raises(RuntimeError, match="OPENAI_IMAGE_API_KEY"):
+        provider.generate(ImageGenerationRequest(prompt="Draw an observer"))
 
 
 def test_local_python_execution_provider_runs_snippet():

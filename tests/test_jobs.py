@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.capabilities import CodeExecutionRequest, CodeExecutionResult, ImageGenerationRequest
+from src.capabilities import CodeExecutionRequest, CodeExecutionResult, GeneratedArtifact, ImageGenerationRequest
 from src.execution_policy import POLICY_VIOLATION_EXIT_CODE
 from src.ingestion import IngestionCancelled
 from src.jobs import (
@@ -144,6 +144,43 @@ def test_mock_image_job_persists_succeeded_record(tmp_path: Path, monkeypatch):
     assert loaded.kind == "image_generation"
     assert loaded.artifacts[0]["mime_type"] == "image/svg+xml"
     assert [entry["status"] for entry in loaded.logs] == ["running", "succeeded"]
+
+
+def test_configured_image_job_uses_openai_provider(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+    monkeypatch.setattr("src.jobs.IMAGE_PROVIDER_BACKEND", "openai")
+    monkeypatch.setattr("src.jobs.OPENAI_IMAGE_API_KEY", "sk-test")
+
+    class FakeOpenAIImageGenerationProvider:
+        def __init__(self, store, **_kwargs):
+            self.store = store
+
+        def generate(self, request: ImageGenerationRequest) -> GeneratedArtifact:
+            artifact = self.store.write_bytes(
+                "fake-openai/image.png",
+                b"fake-openai-image",
+                "image/png",
+            )
+            return GeneratedArtifact(
+                kind=artifact.kind,
+                uri=artifact.uri,
+                mime_type=artifact.mime_type,
+                title=artifact.title,
+                metadata={**artifact.metadata, "provider": "openai-fake", "prompt": request.prompt},
+            )
+
+    monkeypatch.setattr("src.jobs.OpenAIImageGenerationProvider", FakeOpenAIImageGenerationProvider)
+    store = LocalJobStore(tmp_path / "jobs.jsonl")
+    runner = LocalJobRunner(store)
+
+    job = runner.run_image_generation(ImageGenerationRequest(prompt="PMSM control diagram"))
+    loaded = store.get(job.job_id)
+
+    assert loaded is not None
+    assert loaded.status == "succeeded"
+    assert loaded.request["_provider_backend"] == "openai"
+    assert loaded.artifacts[0]["mime_type"] == "image/png"
+    assert loaded.artifacts[0]["metadata"]["provider"] == "openai-fake"
 
 
 def test_local_python_job_persists_execution_result(tmp_path: Path, monkeypatch):

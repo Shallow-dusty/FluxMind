@@ -72,7 +72,9 @@ from src.config import (
     CODE_EXECUTION_BACKEND,
     FAISS_INDEX_DIR,
     IDENTITY_QUOTAS_BILLING_ENABLED,
+    IMAGE_PROVIDER_BACKEND,
     LLM_MODEL,
+    OPENAI_IMAGE_API_KEY,
     PRODUCT_QUOTA_GUARD_ENABLED,
     PRODUCT_QUOTA_METRIC,
     PRODUCT_RBAC_GUARD_ENABLED,
@@ -135,6 +137,8 @@ _STARTUP_WARMUP_STATE: dict[str, Any] = {
     "ready": False,
     "error": "",
 }
+
+_OPENAI_IMAGE_BACKENDS = {"openai", "openai-image", "openai-images", "gpt-image", "gpt-image-2"}
 
 
 def discover_pdfs():
@@ -4185,7 +4189,145 @@ def ask_with_report(
     )
 
 
-@app.post("/jobs/image/mock", response_model=JobResponse, summary="Run no-key mock image job")
+def _image_generation_request_from_api(req: MockImageJobRequest) -> ImageGenerationRequest:
+    return ImageGenerationRequest(
+        prompt=req.prompt,
+        style=req.style,
+        size=req.size,
+        diagram_template=req.diagram_template,
+        reference_uris=req.reference_uris,
+    )
+
+
+def _require_configured_image_provider() -> None:
+    backend = (IMAGE_PROVIDER_BACKEND or "local-mock").strip().lower()
+    if backend in _OPENAI_IMAGE_BACKENDS and not OPENAI_IMAGE_API_KEY:
+        raise HTTPException(
+            status_code=409,
+            detail="OpenAI image provider requires OPENAI_IMAGE_API_KEY or OPENAI_API_KEY.",
+        )
+
+
+def _create_image_job_response(
+    req: MockImageJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+    configured_backend: bool,
+) -> JobResponse:
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(req, auth_context)
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    if configured_backend:
+        _require_configured_image_provider()
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=endpoint,
+        action="job_submit",
+    )
+    existing = existing_idempotent_job("image_generation", req.idempotency_key)
+    if existing is not None:
+        return JobResponse(job=job_to_dict(existing))
+    image_request = _image_generation_request_from_api(req)
+    runner = LocalJobRunner()
+    if configured_backend:
+        job = runner.run_image_generation(
+            image_request,
+            request_id=request_id,
+            idempotency_key=req.idempotency_key,
+            ownership=ownership,
+        )
+    else:
+        job = runner.run_mock_image(
+            image_request,
+            request_id=request_id,
+            idempotency_key=req.idempotency_key,
+            ownership=ownership,
+        )
+    return JobResponse(job=job_to_dict(job))
+
+
+def _enqueue_image_job_response(
+    req: MockImageJobRequest,
+    response: Response,
+    authorization: str | None,
+    x_api_key: str | None,
+    x_request_id: str | None,
+    *,
+    endpoint: str,
+    configured_backend: bool,
+) -> JobResponse:
+    auth_context = verify_api_token(authorization, x_api_key)
+    request_id = request_id_header(response, x_request_id)
+    ownership = request_ownership(req, auth_context)
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    if configured_backend:
+        _require_configured_image_provider()
+    enforce_product_rbac(
+        req=req,
+        response=response,
+        request_id=request_id,
+        ownership=ownership,
+        auth_context=auth_context,
+        endpoint=endpoint,
+        action="job_submit",
+    )
+    image_request = _image_generation_request_from_api(req)
+    manager = get_async_job_manager()
+    if configured_backend:
+        job = manager.enqueue_image_generation(
+            image_request,
+            request_id=request_id,
+            queue_timeout_s=req.queue_timeout_s,
+            idempotency_key=req.idempotency_key,
+            max_attempts=req.max_attempts,
+            retry_backoff_s=req.retry_backoff_s,
+            ownership=ownership,
+        )
+    else:
+        job = manager.enqueue_mock_image(
+            image_request,
+            request_id=request_id,
+            queue_timeout_s=req.queue_timeout_s,
+            idempotency_key=req.idempotency_key,
+            max_attempts=req.max_attempts,
+            retry_backoff_s=req.retry_backoff_s,
+            ownership=ownership,
+        )
+    return JobResponse(job=job_to_dict(job))
+
+
+@app.post("/jobs/image", response_model=JobResponse, summary="Run configured image generation job")
+def create_image_job(
+    req: MockImageJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Generate an image artifact with the configured image provider backend."""
+    return _create_image_job_response(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/image",
+        configured_backend=True,
+    )
+
+
+@app.post("/jobs/image/mock", response_model=JobResponse, summary="Run local mock image job")
 def create_mock_image_job(
     req: MockImageJobRequest,
     response: Response,
@@ -4193,40 +4335,39 @@ def create_mock_image_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Generate a deterministic local SVG artifact without an external provider key."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
-    if not req.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
+    """Generate a deterministic local SVG artifact."""
+    return _create_image_job_response(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
         endpoint="/jobs/image/mock",
-        action="job_submit",
+        configured_backend=False,
     )
-    existing = existing_idempotent_job("image_generation", req.idempotency_key)
-    if existing is not None:
-        return JobResponse(job=job_to_dict(existing))
-    job = LocalJobRunner().run_mock_image(
-        ImageGenerationRequest(
-            prompt=req.prompt,
-            style=req.style,
-            size=req.size,
-            diagram_template=req.diagram_template,
-            reference_uris=req.reference_uris,
-        ),
-        request_id=request_id,
-        idempotency_key=req.idempotency_key,
-        ownership=ownership,
-    )
-    return JobResponse(job=job_to_dict(job))
 
 
-@app.post("/jobs/async/image/mock", response_model=JobResponse, summary="Queue no-key mock image job")
+@app.post("/jobs/async/image", response_model=JobResponse, summary="Queue configured image generation job")
+def enqueue_image_job(
+    req: MockImageJobRequest,
+    response: Response,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+    x_request_id: str | None = Header(default=None),
+):
+    """Queue image artifact generation with the configured image provider backend."""
+    return _enqueue_image_job_response(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
+        endpoint="/jobs/async/image",
+        configured_backend=True,
+    )
+
+
+@app.post("/jobs/async/image/mock", response_model=JobResponse, summary="Queue local mock image job")
 def enqueue_mock_image_job(
     req: MockImageJobRequest,
     response: Response,
@@ -4234,37 +4375,16 @@ def enqueue_mock_image_job(
     x_api_key: str | None = Header(default=None),
     x_request_id: str | None = Header(default=None),
 ):
-    """Queue deterministic local SVG artifact generation without an external provider key."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
-    if not req.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
+    """Queue deterministic local SVG artifact generation."""
+    return _enqueue_image_job_response(
+        req,
+        response,
+        authorization,
+        x_api_key,
+        x_request_id,
         endpoint="/jobs/async/image/mock",
-        action="job_submit",
+        configured_backend=False,
     )
-    job = get_async_job_manager().enqueue_mock_image(
-        ImageGenerationRequest(
-            prompt=req.prompt,
-            style=req.style,
-            size=req.size,
-            diagram_template=req.diagram_template,
-            reference_uris=req.reference_uris,
-        ),
-        request_id=request_id,
-        queue_timeout_s=req.queue_timeout_s,
-        idempotency_key=req.idempotency_key,
-        max_attempts=req.max_attempts,
-        retry_backoff_s=req.retry_backoff_s,
-        ownership=ownership,
-    )
-    return JobResponse(job=job_to_dict(job))
 
 
 def _require_docker_execution_backend() -> None:

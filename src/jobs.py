@@ -25,7 +25,15 @@ from src.config import (
     DOCKER_EXECUTION_IMAGE,
     DOCKER_OCTAVE_EXECUTION_IMAGE,
     DOCKER_PYTHON_EXECUTION_IMAGE,
+    IMAGE_PROVIDER_BACKEND,
     JOBS_FILE,
+    OPENAI_IMAGE_API_KEY,
+    OPENAI_IMAGE_BASE_URL,
+    OPENAI_IMAGE_MODEL,
+    OPENAI_IMAGE_OUTPUT_FORMAT,
+    OPENAI_IMAGE_QUALITY,
+    OPENAI_IMAGE_TIMEOUT_S,
+    OPENAI_IMAGE_SEND_OUTPUT_FORMAT,
     PROJECT_ROOT,
 )
 from src.providers import (
@@ -34,6 +42,7 @@ from src.providers import (
     LocalOctaveExecutionProvider,
     LocalPythonExecutionProvider,
     MockImageGenerationProvider,
+    OpenAIImageGenerationProvider,
 )
 from src.runtime import append_runtime_event, new_request_id, normalize_exception, runtime_ownership_metadata
 
@@ -45,6 +54,7 @@ MAX_IDEMPOTENCY_KEY_LENGTH = 128
 MAX_OWNER_FIELD_LENGTH = 128
 DEFAULT_OWNER_ID = "local-user"
 DEFAULT_OWNER_LABEL = "Local user"
+IMAGE_PROVIDER_BACKEND_MARKER = "_provider_backend"
 
 
 class _LazyIngestion:
@@ -124,6 +134,23 @@ def ownership_from_record(record: "JobRecord") -> dict[str, str]:
         owner_label=record.owner_label,
         ownership_source=record.ownership_source,
     )
+
+
+def image_generation_job_payload(
+    request: ImageGenerationRequest,
+    *,
+    provider_backend: str | None = None,
+) -> dict[str, Any]:
+    payload = asdict(request)
+    if provider_backend:
+        payload[IMAGE_PROVIDER_BACKEND_MARKER] = provider_backend
+    return payload
+
+
+def image_generation_request_from_payload(payload: dict[str, Any]) -> tuple[ImageGenerationRequest, str]:
+    clean_payload = dict(payload)
+    provider_backend = str(clean_payload.pop(IMAGE_PROVIDER_BACKEND_MARKER, "local-mock") or "local-mock")
+    return ImageGenerationRequest(**clean_payload), provider_backend
 
 
 def apply_job_ownership(record: "JobRecord") -> None:
@@ -1290,10 +1317,26 @@ class LocalJobRunner:
             or "executable file not found" in stderr
         )
 
-    def run_mock_image(
+    def _image_generation_provider(self, provider_backend: str | None = None):
+        backend = (provider_backend or IMAGE_PROVIDER_BACKEND or "local-mock").strip().lower()
+        if backend in {"openai", "openai-image", "openai-images", "gpt-image", "gpt-image-2"}:
+            return OpenAIImageGenerationProvider(
+                self._artifact_store(),
+                api_key=OPENAI_IMAGE_API_KEY,
+                base_url=OPENAI_IMAGE_BASE_URL,
+                model=OPENAI_IMAGE_MODEL,
+                quality=OPENAI_IMAGE_QUALITY,
+                output_format=OPENAI_IMAGE_OUTPUT_FORMAT,
+                send_output_format=OPENAI_IMAGE_SEND_OUTPUT_FORMAT,
+                timeout_s=OPENAI_IMAGE_TIMEOUT_S,
+            )
+        return MockImageGenerationProvider(self._artifact_store())
+
+    def run_image_generation(
         self,
         request: ImageGenerationRequest,
         *,
+        provider_backend: str | None = None,
         request_id: str | None = None,
         idempotency_key: str | None = None,
         ownership: dict[str, str] | None = None,
@@ -1305,7 +1348,7 @@ class LocalJobRunner:
         else:
             record, created = self._start_with_create_result(
                 "image_generation",
-                asdict(request),
+                image_generation_job_payload(request, provider_backend=provider_backend or IMAGE_PROVIDER_BACKEND),
                 request_id,
                 idempotency_key=idempotency_key,
                 ownership=ownership,
@@ -1319,11 +1362,31 @@ class LocalJobRunner:
                     status="cancelled",
                     error={"code": "cancelled", "message": "Job was cancelled."},
                 )
-            artifact = MockImageGenerationProvider(self._artifact_store()).generate(request)
+            artifact = self._image_generation_provider(provider_backend).generate(request)
         except Exception as exc:
             error = normalize_exception(exc)
             return self._finish(record, status="failed", error=asdict(error))
         return self._finish(record, status="succeeded", artifacts=[artifact])
+
+    def run_mock_image(
+        self,
+        request: ImageGenerationRequest,
+        *,
+        request_id: str | None = None,
+        idempotency_key: str | None = None,
+        ownership: dict[str, str] | None = None,
+        record: JobRecord | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> JobRecord:
+        return self.run_image_generation(
+            request,
+            provider_backend="local-mock",
+            request_id=request_id,
+            idempotency_key=idempotency_key,
+            ownership=ownership,
+            record=record,
+            cancel_event=cancel_event,
+        )
 
     def run_local_python(
         self,
@@ -1648,7 +1711,38 @@ class AsyncJobManager:
             return existing
         record, created = self.runner._enqueue_with_create_result(
             "image_generation",
-            asdict(request),
+            image_generation_job_payload(request, provider_backend="local-mock"),
+            request_id,
+            deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
+            idempotency_key=idempotency_key,
+            max_attempts=max_attempts,
+            retry_backoff_s=retry_backoff_s,
+            ownership=ownership,
+        )
+        if created:
+            self._enqueue(record)
+        return record
+
+    def enqueue_image_generation(
+        self,
+        request: ImageGenerationRequest,
+        *,
+        queue_timeout_s: int | None = None,
+        request_id: str | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        retry_backoff_s: int = 0,
+        ownership: dict[str, str] | None = None,
+    ) -> JobRecord:
+        existing = self.store.find_by_idempotency_key(
+            kind="image_generation",
+            key=idempotency_key,
+        )
+        if existing is not None:
+            return existing
+        record, created = self.runner._enqueue_with_create_result(
+            "image_generation",
+            image_generation_job_payload(request, provider_backend=IMAGE_PROVIDER_BACKEND),
             request_id,
             deadline_at=future_utc(queue_timeout_s) if queue_timeout_s is not None else None,
             idempotency_key=idempotency_key,
@@ -1841,8 +1935,10 @@ class AsyncJobManager:
             self._requeue_if_needed(result)
             return
         if record.kind == "image_generation":
-            result = self.runner.run_mock_image(
-                ImageGenerationRequest(**record.request),
+            image_request, provider_backend = image_generation_request_from_payload(record.request)
+            result = self.runner.run_image_generation(
+                image_request,
+                provider_backend=provider_backend,
                 request_id=record.request_id,
                 record=record,
                 cancel_event=event,
@@ -1944,8 +2040,10 @@ class LocalDurableJobWorker:
         monitor.start()
         try:
             if record.kind == "image_generation":
-                return self.runner.run_mock_image(
-                    ImageGenerationRequest(**record.request),
+                image_request, provider_backend = image_generation_request_from_payload(record.request)
+                return self.runner.run_image_generation(
+                    image_request,
+                    provider_backend=provider_backend,
                     request_id=record.request_id,
                     record=record,
                     cancel_event=cancel_event,

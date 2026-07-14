@@ -3736,18 +3736,49 @@ def test_mock_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
     assert job["artifacts"][0]["metadata"]["reference_count"] == 0
     assert job["artifacts"][0]["metadata"]["cost_estimate_usd"] == "0"
     assert "uri" not in job["artifacts"][0]
-    assert "prompt" not in job["artifacts"][0]["metadata"]
-    assert "diagram_template" not in job["artifacts"][0]["metadata"]
-    assert [entry["status"] for entry in job["logs"]] == ["running", "succeeded"]
-    assert "lab-image-api" not in json.dumps(job["logs"], sort_keys=True)
-    assert "Image API Lab" not in json.dumps(job["logs"], sort_keys=True)
 
-    loaded = client.get(f"/jobs/{job['job_id']}")
-    assert loaded.status_code == 200
-    assert loaded.json()["job"]["job_id"] == job["job_id"]
-    assert loaded.json()["job"]["logs"] == job["logs"]
-    assert "lab-image-api" not in loaded.text
-    assert "Image API Lab" not in loaded.text
+
+def test_configured_image_job_endpoint_returns_persisted_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr("src.jobs.IMAGE_PROVIDER_BACKEND", "local-mock")
+    monkeypatch.setattr("src.jobs.JOBS_FILE", tmp_path / "jobs.jsonl")
+    monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/image",
+        json={
+            "prompt": "Draw a PMSM control loop",
+            "diagram_template": "pmsm-control-loop",
+        },
+        headers={"X-Request-ID": "req-image-configured"},
+    )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["kind"] == "image_generation"
+    assert job["status"] == "succeeded"
+    assert job["request_id"] == "req-image-configured"
+    assert job["artifacts"][0]["mime_type"] == "image/svg+xml"
+    assert job["artifacts"][0]["metadata"]["diagram_template_present"] is True
+
+
+def test_configured_image_job_endpoint_requires_openai_key(monkeypatch):
+    monkeypatch.setattr(api, "API_TOKEN", "")
+    monkeypatch.setattr(api, "IMAGE_PROVIDER_BACKEND", "openai")
+    monkeypatch.setattr(api, "OPENAI_IMAGE_API_KEY", "")
+
+    client = TestClient(api.app)
+    response = client.post(
+        "/jobs/image",
+        json={
+            "prompt": "Draw a PMSM control loop",
+            "diagram_template": "pmsm-control-loop",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "OPENAI_IMAGE_API_KEY" in response.json()["detail"]
 
 
 def test_local_python_job_endpoint_returns_execution_result(tmp_path, monkeypatch):

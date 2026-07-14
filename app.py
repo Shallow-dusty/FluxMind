@@ -60,7 +60,10 @@ from src.config import (
     CODE_EXECUTION_BACKEND,
     DOCKER_OCTAVE_EXECUTION_IMAGE,
     DOCKER_PYTHON_EXECUTION_IMAGE,
+    IMAGE_PROVIDER_BACKEND,
     MAX_UPLOAD_SIZE_MB,
+    OPENAI_IMAGE_API_KEY,
+    OPENAI_IMAGE_MODEL,
     PAPERS_LIBRARY_DIR,
     PROJECT_ROOT,
     STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED,
@@ -298,10 +301,13 @@ I18N = {
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
-        "mock_image_job": "生成本地 SVG 图",
+        "mock_image_job": "生成图像（当前后端）",
         "mock_image_prompt": "图示提示词",
         "mock_image_template": "图示模板",
-        "run_mock_image": "运行图示任务",
+        "image_backend_caption": "当前图像后端：{backend}",
+        "image_model_caption": "OpenAI 图像模型：{model}",
+        "image_missing_key": "当前图像后端为 OpenAI，但尚未配置 OPENAI_IMAGE_API_KEY 或 OPENAI_API_KEY。",
+        "run_mock_image": "运行图像任务",
         "python_job": "运行 Python（当前后端）",
         "code_execution_backend_caption": "当前代码执行后端：{backend}",
         "code_execution_image_caption": "Docker 镜像：{image}",
@@ -511,9 +517,12 @@ I18N = {
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
-        "mock_image_job": "Generate Local SVG",
+        "mock_image_job": "Generate Image (configured backend)",
         "mock_image_prompt": "Diagram prompt",
         "mock_image_template": "Diagram template",
+        "image_backend_caption": "Current image backend: {backend}",
+        "image_model_caption": "OpenAI image model: {model}",
+        "image_missing_key": "Current image backend is OpenAI, but OPENAI_IMAGE_API_KEY or OPENAI_API_KEY is not configured.",
         "run_mock_image": "Run Image Job",
         "python_job": "Run Python (configured backend)",
         "code_execution_backend_caption": "Current code execution backend: {backend}",
@@ -2032,6 +2041,14 @@ with st.sidebar:
     st.divider()
     st.subheader(f"🧪 {text['jobs']}")
     with st.expander(text["mock_image_job"]):
+        image_backend = (IMAGE_PROVIDER_BACKEND or "local-mock").strip().lower()
+        openai_image_backends = {"openai", "openai-image", "openai-images", "gpt-image", "gpt-image-2"}
+        image_key_missing = image_backend in openai_image_backends and not OPENAI_IMAGE_API_KEY
+        st.caption(text["image_backend_caption"].format(backend=IMAGE_PROVIDER_BACKEND or "local-mock"))
+        if image_backend in openai_image_backends:
+            st.caption(text["image_model_caption"].format(model=OPENAI_IMAGE_MODEL))
+        if image_key_missing:
+            st.warning(text["image_missing_key"])
         image_template = st.selectbox(
             text["mock_image_template"],
             options=[
@@ -2048,8 +2065,8 @@ with st.sidebar:
             key="mock_image_prompt",
             height=80,
         )
-        if st.button(text["run_mock_image"], use_container_width=True):
-            job = get_async_job_manager().enqueue_mock_image(
+        if st.button(text["run_mock_image"], use_container_width=True, disabled=image_key_missing):
+            job = get_async_job_manager().enqueue_image_generation(
                 request=ImageGenerationRequest(
                     prompt=image_prompt,
                     diagram_template=image_template,

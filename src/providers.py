@@ -1,13 +1,13 @@
-"""No-key provider implementations for future platform capabilities.
+"""Provider implementations for artifact, execution, and image capabilities.
 
-These providers are deliberately local and replaceable. They let the app
-develop artifact and execution flows without consuming real image-provider keys,
-hosted sandbox accounts, or MATLAB licenses.
+Local providers remain the default for development. External providers are
+activated only through explicit runtime configuration.
 """
 
 from __future__ import annotations
 
 import html
+import base64
 import hashlib
 import json
 import mimetypes
@@ -20,6 +20,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.request import urlopen
 
 from src.capabilities import (
     CodeExecutionProvider,
@@ -823,6 +824,158 @@ class LocalArtifactStore:
                 "checksum_sha256": hashlib.sha256(content).hexdigest(),
                 "byte_count": str(len(content)),
             },
+        )
+
+
+class OpenAIImageGenerationProvider(ImageGenerationProvider):
+    """Generate control-engineering images with the OpenAI Images API."""
+
+    def __init__(
+        self,
+        store: LocalArtifactStore | None = None,
+        *,
+        api_key: str,
+        model: str = "gpt-image-2",
+        base_url: str = "",
+        quality: str = "low",
+        output_format: str = "png",
+        send_output_format: bool = False,
+        timeout_s: int = 180,
+        client: object | None = None,
+    ):
+        self.store = store or LocalArtifactStore()
+        self.api_key = api_key.strip()
+        self.model = model.strip() or "gpt-image-2"
+        self.base_url = base_url.strip()
+        self.quality = quality.strip() or "low"
+        self.output_format = (output_format.strip() or "png").lower()
+        # Some OpenAI-compatible relays hang on the `output_format` query param.
+        # Only forward it when explicitly requested; otherwise let the API pick
+        # its default (png) and treat the saved artifact as png.
+        self.send_output_format = bool(send_output_format)
+        self.timeout_s = max(int(timeout_s), 1)
+        self.client = client
+
+    def generate(self, request: ImageGenerationRequest) -> GeneratedArtifact:
+        client = self._client()
+        provider_prompt = self._provider_prompt(request)
+        kwargs = {
+            "model": self.model,
+            "prompt": provider_prompt,
+            "n": 1,
+            "size": request.size,
+        }
+        if self.quality:
+            kwargs["quality"] = self.quality
+        if self.send_output_format and self.output_format and not self.model.startswith("dall-e"):
+            kwargs["output_format"] = self.output_format
+        if self.model.startswith("dall-e"):
+            kwargs["response_format"] = "b64_json"
+
+        try:
+            response = client.images.generate(**kwargs)
+        except Exception as exc:
+            raise RuntimeError(
+                "OpenAI image generation failed. Check provider configuration and request limits."
+            ) from exc
+
+        data = list(getattr(response, "data", []) or [])
+        if not data:
+            raise RuntimeError("OpenAI image generation returned no image data.")
+        image = data[0]
+        image_bytes, image_source = self._image_bytes(image)
+        revised_prompt = self._image_field(image, "revised_prompt") or ""
+        extension = self._safe_extension()
+        mime_type = "image/jpeg" if extension == "jpeg" else f"image/{extension}"
+        digest = hashlib.sha256(
+            f"{self.model}\n{request.size}\n{request.diagram_template}\n{request.style}\n{request.prompt}".encode(
+                "utf-8"
+            )
+        ).hexdigest()[:12]
+        artifact = self.store.write_bytes(
+            f"openai-images/openai-{digest}.{extension}",
+            image_bytes,
+            mime_type,
+        )
+        return GeneratedArtifact(
+            kind=artifact.kind,
+            uri=artifact.uri,
+            mime_type=artifact.mime_type,
+            title=artifact.title,
+            metadata={
+                **artifact.metadata,
+                "provider": "openai",
+                "model": self.model,
+                "prompt": request.prompt,
+                "style": request.style,
+                "size": request.size,
+                "diagram_template": request.diagram_template,
+                "reference_uris": json.dumps(request.reference_uris, ensure_ascii=False),
+                "image_source": image_source,
+                "revised_prompt": str(revised_prompt),
+            },
+        )
+
+    def _client(self):
+        if self.client is not None:
+            return self.client
+        if not self.api_key:
+            raise RuntimeError("OpenAI image provider requires OPENAI_IMAGE_API_KEY or OPENAI_API_KEY.")
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            raise RuntimeError("OpenAI Python package is required for IMAGE_PROVIDER_BACKEND=openai.") from exc
+        kwargs = {"api_key": self.api_key, "timeout": self.timeout_s}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        self.client = OpenAI(**kwargs)
+        return self.client
+
+    def _image_bytes(self, image: object) -> tuple[bytes, str]:
+        image_base64 = self._image_field(image, "b64_json")
+        if image_base64:
+            return base64.b64decode(str(image_base64)), "b64_json"
+        image_url = self._image_field(image, "url")
+        if image_url:
+            with urlopen(str(image_url), timeout=self.timeout_s) as response:
+                return response.read(), "url"
+        raise RuntimeError("OpenAI image response did not include b64_json or url image data.")
+
+    @staticmethod
+    def _image_field(image: object, field: str) -> object | None:
+        if isinstance(image, dict):
+            return image.get(field)
+        return getattr(image, field, None)
+
+    def _safe_extension(self) -> str:
+        if self.send_output_format and self.output_format in {"png", "webp", "jpeg"}:
+            return self.output_format
+        return "png"
+
+    @staticmethod
+    def _provider_prompt(request: ImageGenerationRequest) -> str:
+        template_guidance = {
+            "generic": "Create a clear control-engineering diagram.",
+            "sliding-mode-observer": (
+                "Create a sliding-mode observer architecture diagram with plant, sliding surface, "
+                "observer, feedback paths, and signal labels."
+            ),
+            "pmsm-control-loop": (
+                "Create a PMSM control-loop block diagram with current controller, inverter, motor, "
+                "estimator, speed loop, and feedback signals."
+            ),
+            "paper-figure-redraft": (
+                "Redraw the requested paper figure as a clean technical schematic while preserving "
+                "engineering meaning."
+            ),
+        }
+        guidance = template_guidance.get(request.diagram_template, template_guidance["generic"])
+        return (
+            f"{guidance}\n"
+            f"Style: {request.style}.\n"
+            "Output should be a publication-ready technical figure with readable labels, "
+            "simple geometry, and no decorative clutter.\n"
+            f"User request: {request.prompt}"
         )
 
 

@@ -72,7 +72,22 @@ CODE_EXECUTION_ALERT_DURATION_MS = int(os.getenv("CODE_EXECUTION_ALERT_DURATION_
 # targets and never expose credential values.
 EXTERNAL_PROVIDERS_ENABLED = _env_flag("EXTERNAL_PROVIDERS_ENABLED", "false")
 IMAGE_PROVIDER_BACKEND = os.getenv("IMAGE_PROVIDER_BACKEND", "local-mock").strip()
-IMAGE_PROVIDER_API_CONFIGURED = _env_flag("IMAGE_PROVIDER_API_CONFIGURED", "false")
+OPENAI_IMAGE_API_KEY = os.getenv(
+    "OPENAI_IMAGE_API_KEY",
+    os.getenv("OPENAI_API_KEY", ""),
+).strip()
+OPENAI_IMAGE_BASE_URL = os.getenv("OPENAI_IMAGE_BASE_URL", "").strip()
+OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip() or "gpt-image-2"
+OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "low").strip() or "low"
+OPENAI_IMAGE_OUTPUT_FORMAT = os.getenv("OPENAI_IMAGE_OUTPUT_FORMAT", "png").strip() or "png"
+# Some OpenAI-compatible relays hang on the `output_format` query param. Keep it
+# off by default; enable only when the upstream confirms it accepts the param.
+OPENAI_IMAGE_SEND_OUTPUT_FORMAT = _env_flag("OPENAI_IMAGE_SEND_OUTPUT_FORMAT", "false")
+OPENAI_IMAGE_TIMEOUT_S = int(os.getenv("OPENAI_IMAGE_TIMEOUT_S", "180"))
+IMAGE_PROVIDER_API_CONFIGURED = _env_flag(
+    "IMAGE_PROVIDER_API_CONFIGURED",
+    "true" if OPENAI_IMAGE_API_KEY else "false",
+)
 HOSTED_EXECUTION_BACKEND = os.getenv("HOSTED_EXECUTION_BACKEND", "none").strip()
 HOSTED_EXECUTION_CONFIGURED = _env_flag("HOSTED_EXECUTION_CONFIGURED", "false")
 MATLAB_BACKEND = os.getenv("MATLAB_BACKEND", "none").strip()
