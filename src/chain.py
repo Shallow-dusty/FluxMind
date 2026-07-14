@@ -925,14 +925,25 @@ def query_stream(question: str, *, answer_mode: str | None = DEFAULT_ANSWER_MODE
     ]
 
     client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
-    try:
-        stream = client.chat.completions.create(
-            model=LLM_MODEL,
+
+    def _open_stream(model: str):
+        return client.chat.completions.create(
+            model=model,
             messages=messages,
             temperature=0.3,
             max_tokens=GENERATION_MAX_TOKENS,
             stream=True,
         )
+
+    try:
+        try:
+            stream = _open_stream(LLM_MODEL)
+        except Exception:
+            # Final fallback: connect-stage failure on primary -> retry on auxiliary model
+            if LLM_FALLBACK_MODEL and LLM_FALLBACK_MODEL != LLM_MODEL:
+                stream = _open_stream(LLM_FALLBACK_MODEL)
+            else:
+                raise
 
         reasoning_started = False
         answer_started = False
