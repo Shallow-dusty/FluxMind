@@ -37,6 +37,7 @@ DEPLOY_EXCLUDES = (
     ".ruff_cache/",
     ".coverage",
     ".env",
+    ".env.bak*",
     ".cache/",
     "models/",
     "metadata/",
