@@ -30,7 +30,7 @@ def test_streamlit_query_errors_sanitize_user_visible_message():
 def test_streamlit_local_job_panel_is_installed():
     assert "get_async_job_manager" in APP_SOURCE
     assert "enqueue_index_rebuild(selected)" in APP_SOURCE
-    assert "enqueue_mock_image" in APP_SOURCE
+    assert "enqueue_image_generation" in APP_SOURCE
     assert "mock_image_template" in APP_SOURCE
     assert "enqueue_local_python" in APP_SOURCE
     assert "PYTHON_EXECUTION_TEMPLATES" in APP_SOURCE
