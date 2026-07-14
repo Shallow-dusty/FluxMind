@@ -1,10 +1,54 @@
 # FluxMind Deployment Status
 
-Last live check: 2026-06-21 15:56 CST
+Last live check: 2026-06-22 01:53 CST
 
 This document records the current deployment snapshot. Treat it as a
 pointer for re-checking the live host, not as proof that the service is still
 healthy at a later time.
+
+## 2026-06-22 Paper Library 52-Paper Activation
+
+The curated paper library expansion was activated on Trace-Twin under the
+existing source/runtime split.
+
+Deployment actions:
+
+- Synchronized the current source tree to `/opt/fluxmind` with
+  `python scripts/deploy_sync.py --apply`; runtime state, `.env`, models,
+  metadata, jobs, artifacts, papers, and FAISS index remained excluded.
+- Synchronized `papers/library/` separately to `/opt/fluxmind/papers/library/`
+  because `scripts/deploy_sync.py` intentionally excludes runtime paper data.
+- Rebuilt the production FAISS index as the `fluxmind` runtime user through
+  `systemd-run` with `WorkingDirectory=/opt/fluxmind` and
+  `EnvironmentFile=/opt/fluxmind/.env`.
+- Restarted `fluxmind-api.service`, `fluxmind-ui.service`, and
+  `fluxmind-worker.service` after the index rebuild.
+
+Verification:
+
+- Production library/index counts are now `library_pdf_count=52`,
+  `active_papers=52`, `chunk_rows=3497`, and `chunk_sources=52`.
+- The remote rebuild reported `rebuilt_chunks=3497` and exited successfully.
+- `fluxmind-api.service`, `fluxmind-ui.service`, `fluxmind-worker.service`, and
+  `cloudflared-fluxmind-smy.service` were active after restart.
+- Local API health returned `{"status":"ok"}` and public API health at
+  `https://api-smy.hyper-dusty.cloud/health` returned `{"status":"ok"}` after
+  the startup warmup window.
+- Server-local
+  `venv/bin/python scripts/evaluate_rag.py --retrieval-url
+  http://127.0.0.1:18502 --json-report
+  /tmp/fluxmind-live-pdf52-eval-report.json` passed. The run covered 42 answer
+  cases, 87 retrieval-only cases, 129 total retrieval questions, 13 code-output
+  cases, 30 PDF-structure cases, 4 provider fixtures, and 42 recorded answers.
+  Regression gates included `minimum_code_output_pass_rate=1.00` and
+  `minimum_live_retrieval_pass_rate=1.00`.
+
+Notes:
+
+- The code-output eval was run with `SupplementaryGroups=docker` to match the
+  production Docker execution boundary.
+- OpenAI image generation was not activated in this pass because the production
+  image-provider key/live smoke remains a separate Priority 2 gate.
 
 ## 2026-06-21 Docker Execution Activation
 

@@ -47,6 +47,8 @@ python scripts/health_check.py              # 本地运行时检查
 # 其他门禁/工具
 python scripts/evaluate_rag.py --json-report artifacts/eval/latest.json
 python scripts/evaluate_rag.py --retrieval-url http://127.0.0.1:18502  # 调用 /query/retrieve 评检索
+python scripts/import_seed_papers.py --require-count 52 # 导入 curated open-access 论文库种子
+python scripts/rebuild_seed_index.py --require-count 52 # 用内置论文库重建本地 FAISS index
 python scripts/storage_schema.py --format markdown   # 存储 schema 漂移检测（drift 时非零退出）
 python scripts/api_key_registry.py status --format markdown # 本地 API key registry no-secret 状态
 python scripts/share_link_registry.py status --format markdown # 本地 share-link token registry no-secret 状态
@@ -56,6 +58,7 @@ python scripts/product_activation_rehearsal.py --format markdown --require-activ
 python scripts/collaboration_readiness.py --format markdown # 私有语料/share-link collaboration readiness
 python scripts/provider_readiness.py --format markdown # 外部 provider/MATLAB activation readiness
 python scripts/provider_runtime_rehearsal.py --format markdown --require-local-foundation # 本地 provider runtime 合约演练
+IMAGE_PROVIDER_BACKEND=openai python scripts/openai_image_smoke.py # 显式 OpenAI 图像生成 smoke（需 key）
 CODE_EXECUTION_BACKEND=docker python scripts/docker_execution_smoke.py --language all # 显式 Docker Python/Octave 执行 smoke
 python scripts/quality_readiness.py --format markdown # self-use/small-group/community 质量 readiness
 python scripts/activation_suite.py --format markdown --require-target local_foundation # 聚合本地激活演练

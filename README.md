@@ -31,8 +31,8 @@ Project index       11.FluxMind
 Primary domain      SMC, PMSM/FOC, observers, flux estimation, control implementation
 Current maturity    small-group research baseline
 Deployment          Trace-Twin, independent UI/API/worker systemd services
-Corpus baseline     30 curated papers, fresh FAISS index, 1934 chunks
-Eval baseline       42 recorded answers, 107 live retrieval questions
+Corpus baseline     52 curated papers, local and Trace-Twin FAISS index rebuilt, 3497 chunks
+Eval baseline       42 recorded answers, 129 retrieval questions, offline and live retrieval eval passing
 Runtime stance      no-key/local by default; external activation is explicit
 ```
 
@@ -133,6 +133,9 @@ Local gates:
 ```bash
 python -m pytest
 python scripts/evaluate_rag.py
+python scripts/import_seed_papers.py --require-count 52
+python scripts/rebuild_seed_index.py --require-count 52
+IMAGE_PROVIDER_BACKEND=openai python scripts/openai_image_smoke.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
@@ -183,6 +186,8 @@ DOCKER_OCTAVE_EXECUTION_IMAGE=gnuoctave/octave:latest
 CODE_EXECUTION_POLICY=local-safe-v1
 EXTERNAL_PROVIDERS_ENABLED=false
 IMAGE_PROVIDER_BACKEND=local-mock
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_OUTPUT_FORMAT=png
 HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
@@ -199,6 +204,11 @@ FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
 FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
+
+Set `IMAGE_PROVIDER_BACKEND=openai` and provide `OPENAI_IMAGE_API_KEY` or `OPENAI_API_KEY`
+to make `POST /jobs/image`, `POST /jobs/async/image`, and the Streamlit image panel call
+the OpenAI Images API. `POST /jobs/image/mock` and `POST /jobs/async/image/mock` remain
+deterministic local SVG fallbacks.
 
 Setting `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` enables the local hashed-token API-key registry. Setting `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` enables the local users/workspaces/RBAC/quotas/billing-attribution ledger plus the local `/admin/product-registry/*` management API. Streamlit product-registry management remains additionally gated by `FLUXMIND_STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED=true`, is disabled by default, and sanitizes operator-facing error output through the no-secret redaction boundary. Setting `FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=sqlite` enables the local hash-only share-link token registry and `/admin/share-links*` API/CLI lifecycle; create returns a one-time token, while list/revoke/resolve outputs omit raw tokens, URLs, resource refs, creator user IDs, descriptions, paths, and content. Streamlit share-link management remains additionally gated by `FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED=true`, is disabled by default, and sanitizes operator-facing error output through the same no-secret redaction boundary. Setting `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` lets `/query`, `/query/inspect`, `/query/retrieve`, and `/query/report` enforce the local request quota. Setting `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` makes query routes require an active workspace membership, lets member/admin/owner roles submit or manage local jobs, and limits corpus/index/admin destructive writes to admin/owner roles. Setting `PROVIDER_QUOTA_GUARD_ENABLED=true` enables the no-secret provider pre-call guard for estimated prompt tokens, requested completion tokens, and optional cost ceilings before LLM/provider clients are constructed. These local registries and guards do not connect to an external identity provider or payment processor. Product and provider activation must pass their readiness gates before being treated as production-ready.
 
@@ -257,8 +267,8 @@ FluxMind 是面向控制理论研究的论文工作台，重点覆盖滑模控�
 核心领域           SMC、PMSM/FOC、观测器、磁链估计、控制实现
 当前成熟度         小组研究可用基线
 部署形态           Trace-Twin，独立 UI/API/worker systemd 服务
-语料基线           30 篇精选论文，FAISS index fresh，1934 个 chunks
-评测基线           42 个 recorded answers，107 个 live retrieval questions
+语料基线           52 篇精选论文，本地与 Trace-Twin FAISS index 已重建，3497 个 chunks
+评测基线           42 个 recorded answers，129 个 retrieval questions，离线与 live retrieval eval 通过
 运行时边界         默认 no-key/local，外部能力必须显式激活
 ```
 
@@ -359,6 +369,9 @@ python scripts/run_job_worker.py --loop --max-jobs 5
 ```bash
 python -m pytest
 python scripts/evaluate_rag.py
+python scripts/import_seed_papers.py --require-count 52
+python scripts/rebuild_seed_index.py --require-count 52
+IMAGE_PROVIDER_BACKEND=openai python scripts/openai_image_smoke.py
 python scripts/health_check.py
 python scripts/storage_schema.py --format markdown
 python scripts/platform_migration_rehearsal.py --include-object-manifest --format markdown
@@ -409,6 +422,8 @@ DOCKER_OCTAVE_EXECUTION_IMAGE=gnuoctave/octave:latest
 CODE_EXECUTION_POLICY=local-safe-v1
 EXTERNAL_PROVIDERS_ENABLED=false
 IMAGE_PROVIDER_BACKEND=local-mock
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_OUTPUT_FORMAT=png
 HOSTED_EXECUTION_BACKEND=none
 MATLAB_BACKEND=none
 PROVIDER_QUOTA_GUARD_ENABLED=false
@@ -425,6 +440,11 @@ FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=false
 FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=false
 IDENTITY_QUOTAS_BILLING_ENABLED=false
 ```
+
+设置 `IMAGE_PROVIDER_BACKEND=openai` 并提供 `OPENAI_IMAGE_API_KEY` 或 `OPENAI_API_KEY`
+后，`POST /jobs/image`、`POST /jobs/async/image` 和 Streamlit 图像面板会调用
+OpenAI Images API。`POST /jobs/image/mock` 和 `POST /jobs/async/image/mock` 保持为
+确定性的本地 SVG fallback。
 
 设置 `FLUXMIND_API_KEY_REGISTRY_BACKEND=sqlite` 可以启用本地 hashed-token API-key registry。设置 `FLUXMIND_PRODUCT_REGISTRY_BACKEND=sqlite` 可以启用本地 user/workspace/RBAC/quota/billing-attribution ledger，以及本地 `/admin/product-registry/*` 管理 API。Streamlit product-registry 管理面还需要 `FLUXMIND_STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED=true`，默认关闭，并且 operator 侧错误输出会走 no-secret redaction 边界。设置 `FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND=sqlite` 可以启用本地 hash-only share-link token registry 和 `/admin/share-links*` API/CLI 生命周期；create 只返回一次 raw token，list/revoke/resolve 不导出 raw token、URL、resource ref、creator user ID、description、路径或内容。Streamlit share-link 管理面还需要 `FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED=true`，默认关闭，并且 operator 侧错误输出也走同一条 no-secret redaction 边界。设置 `FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED=true` 后，`/query`、`/query/inspect`、`/query/retrieve`、`/query/report` 会执行本地请求 quota guard。设置 `FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED=true` 后，查询路由需要 active workspace membership，member/admin/owner 可提交或管理本地 job，corpus/index/admin 破坏性写操作限制为 admin/owner。设置 `PROVIDER_QUOTA_GUARD_ENABLED=true` 后，LLM/provider client 构造前会执行 no-secret provider 调用前 guard，检查估算 prompt token、请求 completion token 和可选 cost ceiling。这些本地 registry/guard 不连接外部身份 provider 或支付系统。生产级 product/provider 激活必须先通过对应 readiness 门禁。
 
@@ -460,7 +480,7 @@ docs/demo-script.md                    中文演示脚本和答辩问答
 
 当前本地研究基线已经可用，后续按依赖关系推进：
 
-1. 扩展社区质量证据：更多精选论文、recorded answers、retrieval questions，以及 live answer 数量、通过率和术语覆盖证据。当前 PDF structure 目标已达到；后续只在出现有价值的新源码锚点时继续增加 PDF cases。
+1. 扩展社区质量证据：论文库已达到 52 篇，本地与 Trace-Twin 生产索引均已重建为 3497 chunks，生产 live retrieval eval 已通过；下一步是补 live answer eval 与 recorded answers 数量、通过率和术语覆盖证据。当前 PDF structure 目标已达到；后续只在出现有价值的新源码锚点时继续增加 PDF cases。
 2. 完成生产状态基础：metadata database、object storage、distributed job-store、迁移、备份和恢复演练。
 3. 强化执行安全和观测：sandbox 方案、滥用控制、生产 metrics/traces/alerts、成本归因。
 4. 建立外部产品身份层：identity-backed API key、外部 quota、billing/payment、team workflow 和审计控制。

@@ -1,7 +1,7 @@
 # FluxMind 下一步行动清单
 
 **生成时间**: 2026-06-21  
-**状态**: Docker 执行后端已在 Trace-Twin 启用、验证、提交并推送
+**状态**: Docker 执行后端与论文库生产激活已完成；OpenAI 图像生成进入实现/待 live smoke 阶段
 
 ---
 
@@ -20,9 +20,8 @@
    - Commit: ed56760
 
 3. **Git 状态**
-   - 当前 HEAD: `f43f65a feat: enable Docker code execution backend`
-   - `main` 与 `origin/main` 同步（ahead 0 / behind 0）
-   - 工作区干净
+   - 上次整理后 HEAD: `379672d docs: refresh Docker execution plan status`
+   - 当前本轮正在开发 OpenAI 图像生成后端，完成后再提交
 
 4. **Docker 代码执行生产启用**
    - Trace-Twin `/opt/fluxmind` 已启用 `CODE_EXECUTION_BACKEND=docker`
@@ -31,18 +30,69 @@
    - Octave 镜像：`fluxmind/octave:trixie-slim`
    - Python/Octave smoke 和 `/jobs/code/*-docker` API smoke 均通过
 
+5. **论文库扩充到 52 篇**
+   - 新增 `scripts/import_seed_papers.py`
+   - 新增 `scripts/rebuild_seed_index.py`
+   - `papers/library` 已从 30 篇扩充到 52 篇
+   - `eval/rag_baseline.json` 新增 22 个 seed-library retrieval-only cases
+   - 本地与 Trace-Twin FAISS index 已重建：52 篇、3497 chunks
+   - `evaluate_rag.py` 本地离线通过
+   - Trace-Twin live retrieval eval 已通过：129/129 retrieval questions，`minimum_live_retrieval_pass_rate=1.00`
+
 ---
 
 ## 🚀 立即行动（今天）
 
-### 1. Docker 执行后端已完成
+### 1. 当前进行中：OpenAI 图像生成
 
-当前 Docker execution slice 已提交并推送。下一步进入下一项功能开发。
+本轮目标是完成 Priority 2 图像生成的第一块真实 provider 接入：
 
-### 2. 进入下一个功能边界
+```text
+POST /jobs/image              使用当前 IMAGE_PROVIDER_BACKEND
+POST /jobs/async/image        使用当前 IMAGE_PROVIDER_BACKEND
+POST /jobs/image/mock         固定本地 SVG fallback
+POST /jobs/async/image/mock   固定本地 SVG fallback
+Streamlit 图像面板            使用当前 IMAGE_PROVIDER_BACKEND
+```
 
-Docker 代码执行已在 Trace-Twin 验证通过。下一步进入 `DEVELOPMENT_PLAN.md`
-后续 Priority 1-3 用户可见功能，优先选择论文库或图像生成改进。
+启用真实 OpenAI 图像生成需要运行环境配置：
+
+```bash
+IMAGE_PROVIDER_BACKEND=openai
+OPENAI_IMAGE_API_KEY=...
+OPENAI_IMAGE_MODEL=gpt-image-2
+```
+
+代码接入完成后，仍需用真实 key 做 API 和 Streamlit live smoke，才能把
+`DEVELOPMENT_PLAN.md` 的 Day 3-4 验收项标为完成。
+当前本地环境未配置 `OPENAI_IMAGE_API_KEY` / `OPENAI_API_KEY`；API 会返回 409，
+Streamlit 会禁用图像按钮并提示缺失配置。
+
+显式 job/artifact smoke 入口：
+
+```bash
+IMAGE_PROVIDER_BACKEND=openai python scripts/openai_image_smoke.py
+```
+
+### 2. Docker 执行后端已完成
+
+当前 Docker execution slice 已提交并推送。下面仅保留回归命令，避免后续功能开发误改 Docker 边界。
+
+### 3. 已完成：论文库扩充验收
+
+本地 PDF 数量目标已经达到：
+
+```bash
+python scripts/import_seed_papers.py --require-count 52
+python scripts/rebuild_seed_index.py --require-count 52
+```
+
+下一步不是继续堆防御代码，而是完成语料激活：
+
+```bash
+python scripts/evaluate_rag.py
+# 本地与生产 live retrieval eval 均已完成
+```
 
 保留 Docker 回归命令：
 
@@ -182,7 +232,7 @@ Day 1-5 完成前，不新增 sanitize/redact/no-secret 投影类工作。
 ### 必须完成
 - [x] Docker 代码执行可用
 - [ ] OpenAI 图像生成可用
-- [ ] 论文库 ≥ 50 篇
+- [x] 论文库 ≥ 50 篇
 - [ ] 基础用户登录和权限
 - [ ] 查询历史可用
 
@@ -222,9 +272,9 @@ Day 1-5 完成前，不新增 sanitize/redact/no-secret 投影类工作。
 - [ ] 基础登录演示成功
 
 ### 第二周末（2026-07-05 周五）
-- [ ] 论文库 ≥ 50 篇
-- [ ] 检索质量测试通过
-- [ ] 生产环境更新索引
+- [x] 论文库 ≥ 50 篇
+- [x] 检索质量测试通过
+- [x] 生产环境更新索引
 
 ### 第三周末（2026-07-12 周五）
 - [ ] 5+ 真实用户试用

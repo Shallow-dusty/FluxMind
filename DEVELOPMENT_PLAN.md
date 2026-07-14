@@ -81,45 +81,51 @@
 ### Day 3-4: OpenAI 图像生成 🟡 Priority 2
 
 #### 目标
-替换 `MockImageGenerationProvider`，接入 OpenAI DALL-E API。
+在保留 `MockImageGenerationProvider` 本地 fallback 的前提下，接入 OpenAI Images API，
+让 `/jobs/image`、`/jobs/async/image` 和 Streamlit 图像面板可通过
+`IMAGE_PROVIDER_BACKEND=openai` 生成真实图像。
 
 #### 具体任务
 ```bash
 # 1. 准备 API 密钥
 - 获取 OpenAI API Key
-- 配置到 ~/.secrets/.env: OPENAI_API_KEY=sk-...
-- 在 src/config.py 中读取
+- 配置到运行环境：OPENAI_IMAGE_API_KEY=... 或 OPENAI_API_KEY=...
+- [x] 在 src/config.py 中读取 OpenAI 图像配置
 
 # 2. 实现真实 Provider
-- 创建 OpenAIImageGenerationProvider
-- 使用 openai.Image.create() API
-- 处理请求失败和重试
-- 保存生成的图像到 artifacts/
+- [x] 创建 OpenAIImageGenerationProvider
+- [x] 使用 OpenAI Python SDK 的 client.images.generate()
+- [x] 将 b64_json/url 图像结果保存到 artifacts/
+- [x] 添加 scripts/openai_image_smoke.py 作为显式 live smoke 入口
+- [ ] 配置真实 key 后做 live smoke
 
 # 3. 集成到系统
-- 更新 src/providers.py 中的 provider 选择逻辑
-- 如果有 API key 则使用 OpenAI，否则降级到 Mock
-- 测试通过 API 和 UI 生成图像
+- [x] 更新 job runner 的 provider 选择逻辑
+- [x] 新增 /jobs/image 与 /jobs/async/image 配置后端入口
+- [x] 保留 /jobs/image/mock 与 /jobs/async/image/mock 本地 SVG fallback
+- [x] Streamlit 图像面板改为配置后端入口
+- [x] OpenAI 后端缺 key 时，API 返回 409，Streamlit 禁用按钮并提示配置缺失
+- [ ] 配置真实 key 后测试 API 和 UI 生成图像
 
 # 4. 特定于控制系统的优化
-- 优化 prompt 模板，适配控制系统领域
-- 预设常用图表类型：
+- [x] 优化 prompt 模板，适配控制系统领域
+- [x] 预设常用图表类型：
   - PMSM 控制框图
   - 滑模控制器结构
   - 观测器架构
   - 波形图
 
 # 5. 文档更新
-- 记录 API 配置方法
-- 添加图像生成示例
+- [x] 记录 API 配置方法和 API/UI 入口
+- [ ] 添加真实 OpenAI 图像生成示例
 ```
 
 #### 验收标准
-- [ ] 能通过 API 生成真实图像
-- [ ] 能通过 Streamlit UI 生成图像
-- [ ] 生成的图像保存为 artifact
-- [ ] 针对"PMSM 控制框图"生成合理的图表
-- [ ] API 失败时有友好的错误提示
+- [ ] 配置真实 key 后，能通过 API 生成真实图像
+- [ ] 配置真实 key 后，能通过 Streamlit UI 生成图像
+- [x] 图像 provider 输出保存为 artifact
+- [ ] live 图像针对"PMSM 控制框图"生成合理的图表
+- [x] API 失败时有友好的错误提示
 
 #### 预估时间
 16 小时（2 天）
@@ -180,7 +186,7 @@
 ### Day 6-10: 论文库扩充 🔵 Priority 1
 
 #### 目标
-从 30 篇扩充到 50+ 篇高质量论文。
+从 30 篇扩充到 50+ 篇高质量论文，并让评估基线覆盖新增论文。
 
 #### 具体任务
 
@@ -196,6 +202,8 @@
 - 经典论文（引用 > 500）
 - 近期综述（2020 年后）
 - 实用算法（有伪代码）
+- [x] 新增 seed-paper importer：scripts/import_seed_papers.py
+- [x] 本地 curated library 已从 30 篇扩充到 52 篇
 ```
 
 **Day 8-9: PMSM 控制方向（10 篇）**
@@ -225,16 +233,20 @@
 - 添加关键贡献摘要
 
 # 3. 更新评估基线
-- 扩展 eval/rag_baseline.json
-- 添加新论文相关的问题
-- 运行 evaluate_rag.py
+- [x] 扩展 eval/rag_baseline.json：新增 22 个 seed-library retrieval-only cases
+- [x] 添加新论文相关的问题
+- [x] 运行 evaluate_rag.py
+- [x] 重建本地 FAISS index，52 篇论文生成 3497 chunks
+- [x] no-LLM retrieve smoke 命中新论文
+- [x] 在生产环境更新索引并运行 live retrieval eval
 ```
 
 #### 验收标准
-- [ ] 论文库达到 50 篇
-- [ ] 每篇论文有完整 metadata
-- [ ] 检索质量评估通过
-- [ ] 评估基线更新
+- [x] 论文库达到 52 篇
+- [x] 每篇新增论文有 manifest/source/pdf_url/topic metadata，并可由 PDF 抽取补充书目信息
+- [x] 本地离线检索质量评估通过
+- [x] 评估基线更新
+- [x] 生产 live retrieval 评估通过
 
 #### 预估时间
 40 小时（5 天）
@@ -244,10 +256,10 @@
 ### 第二周检查点
 
 **周五下午评估**：
-- [ ] 论文库 ≥ 50 篇
-- [ ] 检索质量明显提升
-- [ ] 评估测试全部通过
-- [ ] 在生产环境更新索引
+- [x] 论文库 ≥ 50 篇
+- [x] 本地检索质量明显提升
+- [x] 本地离线评估测试通过
+- [x] 在生产环境更新索引
 
 ---
 
@@ -453,7 +465,7 @@ cat DEVELOPMENT_PLAN.md | grep "^\- \[x\]" | wc -l
 ### 必须完成
 - [x] Docker 代码执行可用
 - [ ] OpenAI 图像生成可用
-- [ ] 论文库 ≥ 50 篇
+- [x] 论文库 ≥ 50 篇
 - [ ] 基础用户登录和权限
 - [ ] 查询历史可用
 
