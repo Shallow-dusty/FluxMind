@@ -3,7 +3,7 @@
 > **单一事实来源**：项目定位、功能、架构、开发约定、状态、路线图。
 > 替代旧版 CODE_PRINCIPLES / DEVELOPMENT_PLAN / NEXT_STEPS / DISCUSSION / CLEANUP_SUMMARY（已归档至 `docs/legacy/`，只读）。
 >
-> 最后更新：2026-07-14
+> 最后更新：2026-07-27
 
 ---
 
@@ -26,15 +26,16 @@ FluxMind 是基于 RAG 的控制理论研究 Copilot，聚焦 **滑模控制（S
 
 | 模块 | 状态 | 实现要点 |
 |------|------|---------|
-| RAG 检索 | ✅ | FAISS 向量 + docstore 关键词混合检索 + BM25-lite 重排 + 源级 manifest 增强；52 篇语料 |
-| RAG 生成 | ✅ | `ChatOpenAI`（elysiver 中转，主力 `deepseek-v4-flash`），引用编号校验 |
-| 图像生成 | ✅ | `OpenAIImageGenerationProvider`（huyunapi 中转 `gpt-image-2`）+ mock fallback；job→artifact |
-| 代码执行 | ✅ | Docker 后端（python:3.11-slim / octave），local fallback；产物入 artifact |
+| RAG 检索 | ✅ | 真实 HuggingFace 语义 embedding + FAISS 向量 / docstore 关键词混合检索 + BM25-lite 重排 + 源级 manifest 增强；52 篇语料 |
+| RAG 生成 | ✅ | `ChatOpenAI`（elysiver 中转，主力 `deepseek-v4-pro`、flash fallback），引用编号校验 |
+| 图像生成 | ✅ | 显式选择 OpenAI（huyunapi 中转 `gpt-image-2`）或 deterministic mock backend；job→artifact |
+| 代码执行 | ✅ | 显式选择 Docker（python:3.11-slim / octave）或 local backend；产物入 artifact |
 | 语料库 | ✅ | 52 篇 curated PDF + manifest + 可复现导入脚本（PDF 不入 git，308MB） |
 | 作业系统 | ✅ | JSONL + SQLite，即时 runner + durable worker，重试/退避/死信 |
 | 工件 | ✅ | artifact 注册表 + 导出 |
-| 多用户 / 查询历史 | ❌ 待实现 | 简单 admin/student + 按用户历史（见路线图 M3） |
-| 引用标注 | △ | 答案未稳定带 `[n]` 编号（`citation_validation` 空），待优化（M2） |
+| 多用户 / 查询历史 | ✅ | 本地 admin/student 登录、管理员账户管理、按用户查询历史；API 生成类入口可显式记录/读取历史 |
+| 任务 / 工件归属 | ✅ | UI 任务绑定当前账户；学生只看自己的任务与工件，管理员可总览；下载使用可读文件名 |
+| 引用标注 | ✅ | 提示词明确要求内联 `[n]`；有检索上下文却无有效编号时校验失败；中英文及流式入口已验证 |
 
 ---
 
@@ -57,17 +58,19 @@ Streamlit UI (app.py, :18501)      FastAPI (api.py, :18502)
 配置：     src/config.py（从 .env 加载）
 ```
 
-外部数据库 / 对象存储 / 分布式队列 / 外部身份 / 支付 默认不启用，以 provider-neutral 接口 + 配置开关 + readiness 形式存在（多数为历史冻结模块，见 §8）。
+当前平台层只服务本地小组运行：SQLite/JSONL 作业、语料与工件存储，
+本地账户，以及可选的共享 API token。外部数据库、对象存储、分布式队列、
+外部身份和支付不在当前产品范围。
 
 ---
 
 ## 4. 技术栈
 
-- Python 3.11+（本地 venv 实际 3.13）
+- Python 3.11+（当前开发环境为 conda `fluxmind` / Python 3.12）
 - UI：Streamlit；API：FastAPI
 - RAG：LangChain + FAISS + `langchain_openai.ChatOpenAI`
 - Provider：OpenAI SDK（图像生成 + streaming）
-- 存储：SQLite（作业 / 语料 / 工件 / 各注册表）
+- 存储：SQLite（用户 / 作业 / 语料 / 工件）+ 少量 JSON/JSONL
 - 执行：Docker（Python / Octave 沙箱）
 - 测试：pytest
 
@@ -84,7 +87,7 @@ Streamlit UI (app.py, :18501)      FastAPI (api.py, :18502)
 
 ### 5.2 代码质量
 - 清晰、可维护、命名准确
-- 不强加行数红线；但单文件过大应考虑拆分（参考 §8 冻结清单）
+- 不强加行数红线；但单文件过大应考虑按真实职责拆分（参考 §8 平台边界）
 - **不过度防御**：内部互信环境，不再添加 no-secret 投影层 / 错误 sanitize / 复杂审计追踪
 - 基础防护保留：SQL 参数化、上传校验、简单权限、请求限流
 
@@ -108,7 +111,7 @@ Streamlit UI (app.py, :18501)      FastAPI (api.py, :18502)
 
 ### 5.6 文档
 - 单一事实来源：本文件为开发入口
-- 部署状态：`docs/current/STATUS.md`（人工维护）
+- 部署状态：`docs/current/DEPLOYMENT_STATUS.md`（人工维护）
 - 架构：`docs/current/ARCHITECTURE.md`
 - 历史参考：`docs/legacy/`（只读）
 
@@ -117,7 +120,7 @@ Streamlit UI (app.py, :18501)      FastAPI (api.py, :18502)
 ## 6. 运行与验证
 
 ```bash
-source .venv/bin/activate
+conda activate fluxmind
 
 # 三进程
 streamlit run app.py                       # UI
@@ -127,7 +130,7 @@ python scripts/run_job_worker.py --loop --max-jobs 5   # worker
 # 质量门禁
 python -m pytest                           # 测试
 python scripts/evaluate_rag.py             # 离线 RAG 基线（无网络）
-python scripts/health_check.py             # 运行时检查
+python scripts/health_check.py             # 核心导入、语料/index、用户库与可选 HTTP/SSH 运行检查
 
 # 真实 provider smoke（需对应 key 在 .env）
 IMAGE_PROVIDER_BACKEND=openai python scripts/openai_image_smoke.py
@@ -143,21 +146,39 @@ python scripts/rebuild_seed_index.py --require-count 52
 ## 7. 路线图（里程碑驱动，不绑死日期）
 
 - **[M1] RAG 端到端可用** ✅ 检索+生成（2026-07-14 验证）
-- **[M2] 引用标注优化** 答案稳定带 `[n]` 编号 + 引用校验生效
-- **[M3] 多用户** 简单 admin/student + 按用户查询历史
-- **[M4] 文档/测试与代码对齐** 审计类测试精简，文档同步
-- **[M5] 生产同步** Trace-Twin 更新 working tree + 新 `.env`
+- **[M2] 引用标注优化** ✅ 答案稳定带 `[n]` 编号 + 零引用校验生效（2026-07-27 验证）
+- **[M3] 多用户** ✅ 简单 admin/student + 按用户查询历史 + 任务/工件归属（2026-07-27 验证）
+- **[M4] 文档/测试与代码对齐** ✅ 静态源码审计改为真实运行检查，活跃文档同步（2026-07-27）
+- **[M4.1] 历史平台瘦身** ✅ 删除 readiness/rehearsal、旧 registry/RBAC/quota 与迁移投影；admin 状态收敛到真实运行问题（2026-07-27）
+- **[M4.2] 任务结果可见性** ✅ job/artifact API 与 UI 直接展示代码、stdout/stderr、错误、提示与 provider 元数据；支持按研究内容搜索（2026-07-27）
+- **[M4.3] 真实 UI 收口** ✅ 首次管理员、管理员完整页和学生页实跑；修复旧翻译键/保留预览结构，删除废弃的浏览器脚本注入与残余 presence/no-secret 字段（2026-07-27）
+- **[M4.4] 真实失败语义** ✅ 空语料、embedding 加载、执行管道与 readiness 直接失败并给出原因；删除伪文档、哈希 embedding 和测试专用输出回退（2026-07-27）
+- **[M4.5] 死代码收口** ✅ 删除旧 workspace/quota 请求字段、空 API-key owner 上下文，以及无调用方的 BM25/job/artifact/Docker 状态包装；高置信度静态死代码扫描无候选（2026-07-27）
+- **[M5] 生产同步** Trace-Twin 更新 source tree + 初始化生产管理员
 - **[M6] 真实用户试用** 邀请 3–5 人 + 收集反馈
 
 ---
 
-## 8. 冻结模块清单（src/ 历史包袱，不再扩展）
+## 8. 平台边界
 
-以下为"企业级 readiness / projection"遗留，保留运行但 **新功能不扩展**，逐步用而不增；待核心功能补齐后再评估清理：
+2026-07-27 已删除不符合当前产品定位的历史实现：
 
-`admin.py`、`activation_suite.py`、`collaboration_readiness.py`、`openapi_contract.py`、`platform_migration.py`、`storage_migration.py`、`storage_manifest.py`、`storage_schema.py`、`product_activation_rehearsal.py`、`product_readiness.py`、`product_registry.py`、`provider_guard.py`、`provider_readiness.py`、`provider_runtime_rehearsal.py`、`quality_readiness.py`、`share_links.py`、`api_keys.py`
+- activation/readiness/rehearsal 聚合面
+- 旧 API-key/product/share-link registry
+- workspace RBAC、quota/billing ledger
+- platform migration/schema 投影
+- 对应 API、Streamlit 管理面、CLI 与防御性测试
 
-**活跃核心**（新功能在此展开）：`chain` / `ingestion` / `embeddings` / `metadata` / `jobs` / `providers` / `capabilities` / `execution_policy` / `artifacts` / `runtime` / `costs` / `evaluation` / `config`
+保留的基础边界都有直接用途：
+
+- `provider_guard.py`：可选的真实 provider token/cost 上限
+- `storage_manifest.py`：gitignored 运行数据的备份完整性检查
+- `admin.py`：语料/index、job/worker、artifact、用户与近期失败的运行状态
+
+**活跃核心**：`chain` / `ingestion` / `embeddings` / `metadata` / `users` /
+`jobs` / `providers` / `capabilities` / `execution_policy` / `artifacts` /
+`runtime` / `admin` / `storage_manifest` / `provider_guard` / `costs` /
+`evaluation` / `config`
 
 ---
 
