@@ -1,4 +1,4 @@
-"""No-secret provider quota and cost guard decisions."""
+"""Provider token and cost limits applied before external calls."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from src.costs import estimate_query_cost_usd, query_pricing_status
 
 
 PROVIDER_QUOTA_GUARD_SCHEMA_VERSION = 1
-SAFE_LABEL_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789_.-")
 MIN_SAFE_DECIMAL_EXPONENT = -18
 MAX_SAFE_DECIMAL_EXPONENT = 18
 
@@ -22,15 +21,6 @@ def _decimal_is_safe(value: Decimal) -> bool:
         return True
     adjusted = value.adjusted()
     return MIN_SAFE_DECIMAL_EXPONENT <= adjusted <= MAX_SAFE_DECIMAL_EXPONENT
-
-
-def _safe_label(value: Any, *, fallback: str = "custom") -> str:
-    label = str(value or "").strip().lower() or fallback
-    if len(label) > 64:
-        return fallback
-    if any(char not in SAFE_LABEL_CHARS for char in label):
-        return fallback
-    return label
 
 
 def _positive_int(value: Any, *, default: int = 0) -> int:
@@ -74,7 +64,7 @@ def provider_quota_policy(
     prompt_usd_per_1m: str | None = None,
     completion_usd_per_1m: str | None = None,
 ) -> dict[str, Any]:
-    """Return no-secret provider quota/cost guard policy metadata."""
+    """Return provider quota/cost guard policy metadata."""
     enabled = (
         config.PROVIDER_QUOTA_GUARD_ENABLED
         if provider_quota_guard_enabled is None
@@ -117,8 +107,6 @@ def provider_quota_policy(
         "cost_limit_configured": cost_limit > 0,
         "pricing_configured": bool(pricing.get("configured", False)),
         "pricing_reason": pricing.get("reason", ""),
-        "content_exported": False,
-        "secrets_exported": False,
     }
 
 
@@ -135,12 +123,7 @@ def provider_quota_guard_decision(
     prompt_usd_per_1m: str | None = None,
     completion_usd_per_1m: str | None = None,
 ) -> dict[str, Any]:
-    """Decide whether a provider call is allowed before external execution.
-
-    The decision intentionally contains only operation/provider labels, counts,
-    thresholds, and reason codes. It never receives or returns prompts, answers,
-    file paths, provider URLs, or credential material.
-    """
+    """Decide whether a provider call is allowed before external execution."""
     prompt_tokens = _positive_int(estimated_prompt_tokens)
     completion_tokens = _positive_int(requested_completion_tokens)
     policy = provider_quota_policy(
@@ -154,8 +137,8 @@ def provider_quota_guard_decision(
     )
     base = {
         "enabled": policy["enabled"],
-        "operation": _safe_label(operation),
-        "provider": _safe_label(provider, fallback="unspecified"),
+        "operation": str(operation).strip() or "custom",
+        "provider": str(provider).strip() or "unspecified",
         "estimated_prompt_tokens": prompt_tokens,
         "requested_completion_tokens": completion_tokens,
         "estimated_total_tokens": prompt_tokens + completion_tokens,
@@ -165,8 +148,6 @@ def provider_quota_guard_decision(
         "estimated_cost_usd": "0",
         "cost_limit_configured": policy["cost_limit_configured"],
         "pricing_configured": policy["pricing_configured"],
-        "content_exported": False,
-        "secrets_exported": False,
     }
     if not policy["enabled"]:
         return {

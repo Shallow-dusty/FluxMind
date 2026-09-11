@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import mimetypes
+import re
 import sqlite3
 import stat
 from dataclasses import asdict, dataclass
-from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -23,19 +23,6 @@ _MIME_EXTENSION_FALLBACKS = {
     "text/plain": ".txt",
     "application/json": ".json",
 }
-MIN_SAFE_DECIMAL_EXPONENT = -18
-MAX_SAFE_DECIMAL_EXPONENT = 18
-
-
-def _decimal_is_safe(value: Decimal) -> bool:
-    if not value.is_finite():
-        return False
-    if value.is_zero():
-        return True
-    adjusted = value.adjusted()
-    return MIN_SAFE_DECIMAL_EXPONENT <= adjusted <= MAX_SAFE_DECIMAL_EXPONENT
-
-
 @dataclass(frozen=True)
 class ArtifactRecord:
     """Exportable artifact metadata derived from persisted jobs."""
@@ -80,80 +67,60 @@ def _safe_filename_artifact_id(artifact_id: str) -> str:
     return hashlib.sha256(artifact_id.encode()).hexdigest()[:16]
 
 
+def _download_title(value: str | None) -> str:
+    title = re.sub(r"[\x00-\x1f\x7f/\\:*?\"<>|]+", "-", (value or "").strip())
+    title = re.sub(r"\s+", " ", title).strip(" .")
+    return title[:120].rstrip(" .")
+
+
 def safe_artifact_download_filename(artifact: ArtifactRecord, path: Path | None = None) -> str:
-    """Return a download filename that does not expose local paths or artifact titles."""
-    safe_id = _safe_filename_artifact_id(artifact.artifact_id)
+    """Return a useful, header-safe filename for a generated artifact."""
     suffix = _safe_download_suffix(artifact.mime_type, path)
-    return f"artifact-{safe_id}{suffix}"
+    title = _download_title(artifact.title)
+    if not title and path is not None:
+        title = _download_title(path.name)
+    if not title:
+        title = f"artifact-{_safe_filename_artifact_id(artifact.artifact_id)}"
+    if suffix:
+        title_path = Path(title)
+        if title_path.suffix.lower() != suffix:
+            title = f"{title_path.stem or title}{suffix}"
+    return title
 
 
-def _safe_cost_estimate_usd(value: object) -> str:
-    text = str(value or "0").strip()
-    if not text or len(text) > 32:
-        return "0"
-    try:
-        amount = Decimal(text)
-    except InvalidOperation:
-        return "0"
-    try:
-        if not _decimal_is_safe(amount) or amount < 0:
-            return "0"
-    except InvalidOperation:
-        return "0"
-    normalized = format(amount, "f")
-    if "." in normalized:
-        normalized = normalized.rstrip("0").rstrip(".")
-    return normalized or "0"
-
-
-def artifact_public_metadata(metadata: dict | None) -> dict[str, object]:
-    """Return a browser-safe summary of artifact metadata."""
-    metadata = metadata or {}
-    byte_count = metadata.get("byte_count")
-    reference_uris = metadata.get("reference_uris") or []
-    reference_count = 0
-    if isinstance(reference_uris, list):
-        reference_count = len(reference_uris)
-    elif isinstance(reference_uris, str):
+def artifact_metadata(metadata: dict | None) -> dict[str, object]:
+    result = dict(metadata or {})
+    references = result.get("reference_uris")
+    if isinstance(references, str):
         try:
-            parsed_references = json.loads(reference_uris)
+            decoded = json.loads(references)
         except json.JSONDecodeError:
-            parsed_references = []
-        if isinstance(parsed_references, list):
-            reference_count = len(parsed_references)
-    try:
-        normalized_byte_count = max(0, int(byte_count or 0))
-    except (TypeError, ValueError):
-        normalized_byte_count = 0
-    return {
-        "byte_count": normalized_byte_count,
-        "checksum_present": bool(metadata.get("checksum_sha256")),
-        "cost_estimate_usd": _safe_cost_estimate_usd(metadata.get("cost_estimate_usd")),
-        "provider_present": bool(metadata.get("provider") or metadata.get("model")),
-        "style_present": bool(metadata.get("style")),
-        "diagram_template_present": bool(metadata.get("diagram_template")),
-        "reference_count": reference_count,
-    }
+            decoded = references
+        result["reference_uris"] = decoded
+    return result
 
 
-def artifact_to_public_dict(artifact: ArtifactRecord) -> dict[str, object]:
-    """Project artifact metadata for API/UI without URI, paths, prompts, or owners."""
+def artifact_to_dict(artifact: ArtifactRecord) -> dict[str, object]:
+    """Return useful artifact metadata while keeping the internal file URI private."""
     return {
         "artifact_id": artifact.artifact_id,
+        "job_id": artifact.job_id,
         "job_kind": artifact.job_kind,
         "kind": artifact.kind,
         "mime_type": artifact.mime_type,
-        "title_present": bool(artifact.title),
-        "metadata": artifact_public_metadata(artifact.metadata),
+        "title": artifact.title,
+        "metadata": artifact_metadata(artifact.metadata),
+        "owner_id": artifact.owner_id,
+        "owner_label": artifact.owner_label,
         "ownership_source": artifact.ownership_source,
     }
 
 
-def job_artifact_to_public_dict(job: JobRecord, artifact: dict) -> dict[str, object]:
-    """Project an artifact embedded in a job record without leaking raw metadata."""
+def job_artifact_to_dict(job: JobRecord, artifact: dict) -> dict[str, object]:
+    """Return an embedded job artifact in the same shape as registry artifacts."""
     uri = str(artifact.get("uri") or "")
     ownership = ownership_from_record(job)
-    return artifact_to_public_dict(
+    return artifact_to_dict(
         ArtifactRecord(
             artifact_id=artifact_id_for_uri(uri) if uri else "",
             job_id=job.job_id,
@@ -241,7 +208,7 @@ class LocalArtifactRegistry:
                 continue
             if query:
                 searchable = json.dumps(
-                    artifact_to_public_dict(record),
+                    artifact_to_dict(record),
                     ensure_ascii=False,
                     sort_keys=True,
                 ).casefold()
@@ -282,10 +249,6 @@ class LocalArtifactRegistry:
                 )
             )
         return records
-
-    @classmethod
-    def _record_from_job(cls, job: JobRecord, artifact_id: str) -> ArtifactRecord | None:
-        return cls._record_from_records(cls._records_from_job(job), artifact_id)
 
     @staticmethod
     def _record_from_records(
@@ -341,7 +304,7 @@ class LocalArtifactRegistry:
         }
 
     def integrity_status(self, *, limit: int = 1000) -> dict:
-        """Verify local artifact files against persisted no-secret metadata."""
+        """Verify local artifact files against persisted metadata."""
         records = self.list_artifacts(limit=limit)
         status = {
             "checked": 0,
@@ -530,23 +493,25 @@ def format_artifact_references(
 
     parts: list[str] = []
     for artifact in artifacts[:limit]:
-        public_artifact = artifact_to_public_dict(artifact)
-        public_metadata = public_artifact["metadata"]
+        artifact_data = artifact_to_dict(artifact)
+        metadata = artifact_data["metadata"]
+        references = metadata.get("reference_uris") or []
         details = [
-            f"kind={public_artifact['kind']}",
-            f"mime={public_artifact['mime_type']}",
-            f"job_kind={public_artifact['job_kind']}",
-            f"title_present={str(public_artifact['title_present']).lower()}",
+            f"kind={artifact_data['kind']}",
+            f"mime={artifact_data['mime_type']}",
+            f"job_kind={artifact_data['job_kind']}",
         ]
-        if public_metadata["provider_present"]:
-            details.append("provider_present=true")
-        if public_metadata["style_present"]:
-            details.append("style_present=true")
-        if public_metadata["diagram_template_present"]:
-            details.append("diagram_template_present=true")
-        if public_metadata["reference_count"]:
-            details.append(f"reference_count={public_metadata['reference_count']}")
-        if public_metadata["byte_count"]:
-            details.append(f"bytes={public_metadata['byte_count']}")
+        if artifact.title:
+            details.append(f"title={artifact.title}")
+        if metadata.get("provider") or metadata.get("model"):
+            details.append(f"provider={metadata.get('provider') or metadata.get('model')}")
+        if metadata.get("style"):
+            details.append(f"style={metadata['style']}")
+        if metadata.get("diagram_template"):
+            details.append(f"template={metadata['diagram_template']}")
+        if references:
+            details.append(f"reference_count={len(references)}")
+        if metadata.get("byte_count"):
+            details.append(f"bytes={metadata['byte_count']}")
         parts.append(f"[Artifact:{artifact.artifact_id}] " + "; ".join(details))
     return "\n".join(parts)

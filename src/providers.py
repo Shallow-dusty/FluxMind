@@ -117,55 +117,6 @@ class BoundedStreamReader:
                 self._chunks.append(chunk[:remaining])
 
 
-def docker_execution_status(
-    *,
-    configured_backend: str,
-    image: str,
-    timeout_s: float = 3.0,
-) -> dict[str, str | bool]:
-    """Return no-secret readiness for the future Docker execution backend."""
-    docker_path = shutil.which("docker")
-    status: dict[str, str | bool] = {
-        "backend": configured_backend or "local",
-        "configured": configured_backend == "docker",
-        "available": False,
-        "docker_executable": Path(docker_path).name if docker_path else "",
-        "image": image,
-        "reason": "not_configured",
-    }
-    if configured_backend != "docker":
-        return status
-    if docker_path is None:
-        status["reason"] = "docker_not_found"
-        return status
-    try:
-        proc = subprocess.run(
-            [docker_path, "version", "--format", "{{.Server.Version}}"],
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=timeout_s,
-        )
-    except subprocess.TimeoutExpired:
-        status["reason"] = "docker_timeout"
-        return status
-    except OSError as exc:
-        status["reason"] = exc.__class__.__name__
-        return status
-    if proc.returncode != 0:
-        stderr = (proc.stderr or "").lower()
-        if "permission denied" in stderr:
-            status["reason"] = "docker_permission_denied"
-        else:
-            status["reason"] = "docker_unavailable"
-        return status
-    status["available"] = True
-    status["reason"] = "ok"
-    status["docker_server_version"] = (proc.stdout or "").strip()
-    return status
-
-
 def execution_runtime_metadata(
     request: CodeExecutionRequest,
     *,
@@ -177,7 +128,7 @@ def execution_runtime_metadata(
     filesystem_isolation: str = "temporary_workdir",
     network_policy_enforced: bool = False,
 ) -> dict[str, str]:
-    """Return no-secret execution environment metadata for persisted results."""
+    """Return execution environment metadata for persisted results."""
     input_total_bytes = sum(len(content.encode("utf-8")) for content in request.files.values())
     metadata = {
         "language": request.language,
@@ -254,7 +205,7 @@ def execution_policy_failure_result(
 
 
 def python_runtime_details() -> dict[str, str]:
-    """Return stable no-secret details for the local Python runtime."""
+    """Return stable details for the local Python runtime."""
     return {
         "python_executable": Path(sys.executable).name,
         "python_version": sys.version.split()[0],
@@ -267,7 +218,7 @@ def octave_runtime_details(
     executable: str,
     resolved_executable: str | None,
 ) -> dict[str, str]:
-    """Return no-secret details for the local Octave-compatible runtime."""
+    """Return details for the local Octave-compatible runtime."""
     details = {
         "octave_executable": Path(resolved_executable or executable).name,
         "octave_available": "true" if resolved_executable else "false",
@@ -386,13 +337,6 @@ def terminate_process(proc: subprocess.Popen) -> None:
         proc.wait()
 
 
-def truncate_output_text(value: str, limit_bytes: int) -> tuple[str, int, bool]:
-    raw = value.encode("utf-8", errors="replace")
-    if len(raw) <= max(limit_bytes, 0):
-        return value, len(raw), False
-    return raw[: max(limit_bytes, 0)].decode("utf-8", errors="replace"), len(raw), True
-
-
 def capture_process_output(
     proc: subprocess.Popen,
     *,
@@ -405,12 +349,8 @@ def capture_process_output(
     stdout_stream = getattr(proc, "stdout", None)
     stderr_stream = getattr(proc, "stderr", None)
     if stdout_stream is None or stderr_stream is None:
-        return capture_process_output_fallback(
-            proc,
-            timeout_s=timeout_s,
-            cancel_event=cancel_event,
-            on_cancel=on_cancel,
-            on_timeout=on_timeout,
+        raise RuntimeError(
+            "Execution subprocess stdout/stderr pipes are unavailable."
         )
 
     stdout_reader = BoundedStreamReader(
@@ -455,58 +395,6 @@ def capture_process_output(
         timed_out=timed_out,
         cancelled=cancelled,
     )
-
-
-def capture_process_output_fallback(
-    proc,
-    *,
-    timeout_s: int,
-    cancel_event: threading.Event | None = None,
-    on_cancel=None,
-    on_timeout=None,
-) -> CapturedProcessOutput:
-    """Fallback for tests/fakes that do not expose stdout/stderr streams."""
-    started = time.monotonic()
-    timed_out = False
-    cancelled = False
-    while proc.poll() is None:
-        if cancel_event and cancel_event.is_set():
-            cancelled = True
-            if on_cancel:
-                on_cancel()
-            terminate_process(proc)
-            break
-        if time.monotonic() - started > timeout_s:
-            timed_out = True
-            if on_timeout:
-                on_timeout()
-            terminate_process(proc)
-            break
-        time.sleep(0.05)
-    stdout, stderr = proc.communicate()
-    stdout_text = stdout.decode("utf-8", errors="replace") if isinstance(stdout, bytes) else (stdout or "")
-    stderr_text = stderr.decode("utf-8", errors="replace") if isinstance(stderr, bytes) else (stderr or "")
-    stdout_text, stdout_bytes, stdout_truncated = truncate_output_text(
-        stdout_text,
-        CODE_EXECUTION_MAX_STDOUT_BYTES,
-    )
-    stderr_text, stderr_bytes, stderr_truncated = truncate_output_text(
-        stderr_text,
-        CODE_EXECUTION_MAX_STDERR_BYTES,
-    )
-    return CapturedProcessOutput(
-        stdout=stdout_text,
-        stderr=stderr_text,
-        returncode=proc.returncode if proc.returncode is not None else -1,
-        stdout_bytes=stdout_bytes,
-        stderr_bytes=stderr_bytes,
-        stdout_truncated=stdout_truncated,
-        stderr_truncated=stderr_truncated,
-        timed_out=timed_out,
-        cancelled=cancelled,
-    )
-
-
 def _resolve_workdir_path(workdir: Path, name: str) -> Path:
     """Resolve a user-provided relative path without allowing workdir escape."""
     if not name or Path(name).is_absolute():

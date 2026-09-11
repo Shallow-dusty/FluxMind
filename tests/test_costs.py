@@ -31,7 +31,6 @@ def test_summarize_query_cost_uses_provider_tokens_when_available():
         "currency": "USD",
         "prompt_usd_per_1m": "2",
         "completion_usd_per_1m": "5",
-        "external_billing_enabled": False,
     }
 
 
@@ -47,7 +46,6 @@ def test_summarize_query_cost_stays_zero_until_rates_are_configured():
     assert summary["estimated_cost_usd"] == "0"
     assert summary["cost_source"] == "not_configured"
     assert summary["pricing"]["configured"] is False
-    assert summary["pricing"]["external_billing_enabled"] is False
 
 
 def test_summarize_query_cost_supports_mixed_provider_and_estimated_tokens():

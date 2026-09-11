@@ -102,7 +102,7 @@ def evaluate_execution_policy(
     profile: str,
     allowed_python_imports: str,
 ) -> ExecutionPolicyResult:
-    """Return a no-secret policy decision before materializing or running code."""
+    """Return a policy decision before materializing or running code."""
     profile = (profile or DEFAULT_POLICY_PROFILE).strip().lower()
     allowed_imports = parse_allowed_imports(allowed_python_imports)
     if profile == DISABLED_POLICY:

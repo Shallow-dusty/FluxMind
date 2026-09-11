@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import io
-import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -19,7 +18,6 @@ from src.providers import (
     MockImageGenerationProvider,
     OpenAIImageGenerationProvider,
     _is_collectable_output,
-    docker_execution_status,
 )
 
 
@@ -158,16 +156,6 @@ def test_local_python_execution_provider_runs_snippet():
     assert result.runtime_metadata["policy_violation"] == "false"
 
 
-def test_docker_execution_status_reports_not_configured(monkeypatch):
-    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
-
-    status = docker_execution_status(configured_backend="local", image="python:3.12-slim")
-
-    assert status["configured"] is False
-    assert status["available"] is False
-    assert status["reason"] == "not_configured"
-
-
 def test_docker_execution_provider_builds_sandbox_command(tmp_path: Path):
     provider = DockerExecutionProvider(LocalArtifactStore(tmp_path), image="python:3.11-slim")
 
@@ -210,59 +198,6 @@ def test_docker_execution_provider_explains_missing_runtime(tmp_path: Path):
 
     assert "Execution runtime `octave` was not found" in stderr
     assert "python:3.11-slim" in stderr
-
-
-def test_docker_execution_status_reports_permission_denied(monkeypatch):
-    class Completed:
-        returncode = 1
-        stdout = ""
-        stderr = "permission denied while trying to connect to the docker API"
-
-    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
-    monkeypatch.setattr("src.providers.subprocess.run", lambda *_args, **_kwargs: Completed())
-
-    status = docker_execution_status(configured_backend="docker", image="python:3.12-slim")
-
-    assert status["configured"] is True
-    assert status["available"] is False
-    assert status["reason"] == "docker_permission_denied"
-
-
-def test_docker_execution_status_reports_timeout_oserror_unavailable_and_ok(monkeypatch):
-    monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
-
-    def timeout_run(*_args, **_kwargs):
-        raise subprocess.TimeoutExpired("docker", 3)
-
-    monkeypatch.setattr("src.providers.subprocess.run", timeout_run)
-    assert docker_execution_status(configured_backend="docker", image="python")["reason"] == "docker_timeout"
-
-    def oserror_run(*_args, **_kwargs):
-        raise FileNotFoundError("missing")
-
-    monkeypatch.setattr("src.providers.subprocess.run", oserror_run)
-    assert docker_execution_status(configured_backend="docker", image="python")["reason"] == "FileNotFoundError"
-
-    class Unavailable:
-        returncode = 2
-        stdout = ""
-        stderr = "Cannot connect to the Docker daemon"
-
-    monkeypatch.setattr("src.providers.subprocess.run", lambda *_args, **_kwargs: Unavailable())
-    unavailable = docker_execution_status(configured_backend="docker", image="python")
-    assert unavailable["available"] is False
-    assert unavailable["reason"] == "docker_unavailable"
-
-    class Available:
-        returncode = 0
-        stdout = "25.0.0\n"
-        stderr = ""
-
-    monkeypatch.setattr("src.providers.subprocess.run", lambda *_args, **_kwargs: Available())
-    available = docker_execution_status(configured_backend="docker", image="python")
-    assert available["available"] is True
-    assert available["reason"] == "ok"
-    assert available["docker_server_version"] == "25.0.0"
 
 
 def test_bounded_stream_reader_handles_text_stream_and_zero_limit():
@@ -377,6 +312,8 @@ def test_docker_execution_provider_runs_with_sandbox_flags_and_collects_artifact
         returncode = 0
 
         def __init__(self, command, **_kwargs):
+            self.stdout = io.BytesIO(b"docker-ok\n")
+            self.stderr = io.BytesIO()
             captured["command"] = command
             mount = command[command.index("-v") + 1]
             workdir = Path(mount.split(":", 1)[0])
@@ -385,9 +322,6 @@ def test_docker_execution_provider_runs_with_sandbox_flags_and_collects_artifact
 
         def poll(self):
             return self.returncode
-
-        def communicate(self, timeout=None):
-            return "docker-ok\n", ""
 
     monkeypatch.setattr("src.providers.shutil.which", lambda _name: "/usr/bin/docker")
     monkeypatch.setattr("src.providers.subprocess.Popen", FakePopen)
@@ -455,18 +389,16 @@ def test_local_python_execution_provider_truncates_large_output(monkeypatch):
     assert result.runtime_metadata["output_truncated"] == "true"
 
 
-def test_docker_execution_provider_truncates_output_in_fallback_path(monkeypatch):
+def test_docker_execution_provider_truncates_streamed_output(monkeypatch):
     class FakePopen:
         returncode = 0
 
         def __init__(self, *_args, **_kwargs):
-            pass
+            self.stdout = io.BytesIO(b"O" * 30)
+            self.stderr = io.BytesIO(b"E" * 20)
 
         def poll(self):
             return self.returncode
-
-        def communicate(self, timeout=None):
-            return "O" * 30, "E" * 20
 
     monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDOUT_BYTES", 10)
     monkeypatch.setattr("src.providers.CODE_EXECUTION_MAX_STDERR_BYTES", 8)

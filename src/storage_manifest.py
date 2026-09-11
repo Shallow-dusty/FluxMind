@@ -1,4 +1,4 @@
-"""No-secret runtime backup manifest helpers."""
+"""Runtime backup inventory and restore-check helpers."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from typing import Any
 
 from src.config import (
     ACTIVE_PAPERS_FILE,
-    API_KEY_REGISTRY_FILE,
     ARTIFACTS_DIR,
     CHUNK_METADATA_DB_FILE,
     CORPUS_METADATA_DB_FILE,
@@ -23,9 +22,8 @@ from src.config import (
     METADATA_DIR,
     PAPERS_UPLOADS_DIR,
     PROJECT_ROOT,
-    PRODUCT_REGISTRY_FILE,
     RUNTIME_EVENTS_FILE,
-    SHARE_LINK_TOKEN_STORE_FILE,
+    USER_STORE_FILE,
 )
 
 
@@ -127,12 +125,6 @@ def _restore_manifest_errors(manifest: dict[str, Any]) -> list[str]:
         errors.append("mode must be local_runtime_backup_manifest")
     if manifest.get("hash_algorithm") != "sha256":
         errors.append("hash_algorithm must be sha256")
-    if manifest.get("content_exported") is not False:
-        errors.append("content_exported must be false")
-    if manifest.get("secrets_exported") is not False:
-        errors.append("secrets_exported must be false")
-    if manifest.get("delete_enabled") is not False:
-        errors.append("delete_enabled must be false")
     if not isinstance(manifest.get("groups"), list):
         errors.append("groups must be a list")
     return errors
@@ -150,10 +142,8 @@ def default_runtime_groups() -> tuple[RuntimeGroupSpec, ...]:
                 RuntimeFileSpec("corpus_profiles_json", CORPUS_PROFILES_FILE),
                 RuntimeFileSpec("corpus_sqlite", CORPUS_METADATA_DB_FILE),
                 RuntimeFileSpec("chunks_sqlite", CHUNK_METADATA_DB_FILE),
-                RuntimeFileSpec("api_key_registry_sqlite", API_KEY_REGISTRY_FILE),
-                RuntimeFileSpec("product_registry_sqlite", PRODUCT_REGISTRY_FILE),
-                RuntimeFileSpec("share_link_registry_sqlite", SHARE_LINK_TOKEN_STORE_FILE),
                 RuntimeFileSpec("runtime_events_jsonl", RUNTIME_EVENTS_FILE),
+                RuntimeFileSpec("users_sqlite", USER_STORE_FILE),
             ),
         ),
         RuntimeGroupSpec(
@@ -200,7 +190,7 @@ def collect_runtime_backup_manifest(
     groups: tuple[RuntimeGroupSpec, ...] | None = None,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
-    """Return a no-secret manifest for backing up excluded runtime state."""
+    """Return a manifest for backing up excluded runtime state."""
     manifest_groups = [
         _group_manifest(group, project_root=project_root)
         for group in (groups if groups is not None else default_runtime_groups())
@@ -210,13 +200,9 @@ def collect_runtime_backup_manifest(
         "schema_version": 1,
         "generated_at": generated_at or _utc_now(),
         "mode": "local_runtime_backup_manifest",
-        "content_exported": False,
-        "secrets_exported": False,
-        "delete_enabled": False,
         "hash_algorithm": "sha256",
         "project_root": _relative_path(project_root, project_root=project_root),
         "env_file_present": env_file.exists(),
-        "env_file_content_exported": False,
         "total_files": sum(group["files"] for group in manifest_groups),
         "total_bytes": sum(group["bytes"] for group in manifest_groups),
         "groups": manifest_groups,
@@ -224,20 +210,16 @@ def collect_runtime_backup_manifest(
 
 
 def format_runtime_backup_manifest_markdown(manifest: dict[str, Any]) -> str:
-    """Render a backup manifest as no-secret Markdown."""
+    """Render a backup manifest as Markdown."""
     lines = [
         "# FluxMind Runtime Backup Manifest",
         "",
-        "No runtime file contents or secrets are exported by this manifest.",
+        "Inventory of runtime paths, sizes, and hashes to include in a backup.",
         "",
         f"- Generated at: {manifest.get('generated_at', '')}",
         f"- Mode: {manifest.get('mode', '')}",
-        f"- Content exported: {str(manifest.get('content_exported', False)).lower()}",
-        f"- Secrets exported: {str(manifest.get('secrets_exported', False)).lower()}",
-        f"- Delete enabled: {str(manifest.get('delete_enabled', False)).lower()}",
         f"- Hash algorithm: {manifest.get('hash_algorithm', '')}",
         f"- Env file present: {str(manifest.get('env_file_present', False)).lower()}",
-        f"- Env file content exported: {str(manifest.get('env_file_content_exported', False)).lower()}",
         f"- Total files: {manifest.get('total_files', 0)}",
         f"- Total bytes: {manifest.get('total_bytes', 0)}",
         "",
@@ -267,7 +249,7 @@ def collect_runtime_restore_check(
     project_root: Path = PROJECT_ROOT,
     generated_at: str | None = None,
 ) -> dict[str, Any]:
-    """Dry-run check that a target runtime tree matches a no-secret manifest."""
+    """Dry-run check that a target runtime tree matches a manifest."""
     checked_files = 0
     missing_groups = 0
     mismatched_groups = 0
@@ -383,8 +365,6 @@ def collect_runtime_restore_check(
         "source_manifest_generated_at": manifest.get("generated_at"),
         "source_manifest_mode": manifest.get("mode"),
         "project_root": _relative_path(project_root, project_root=project_root),
-        "content_restored": False,
-        "delete_enabled": False,
         "ok": ok,
         "manifest_errors": manifest_errors,
         "checked_groups": len(group_results),
@@ -398,17 +378,15 @@ def collect_runtime_restore_check(
 
 
 def format_runtime_restore_check_markdown(check: dict[str, Any]) -> str:
-    """Render a restore dry-run check as no-secret Markdown."""
+    """Render a restore dry-run check as Markdown."""
     lines = [
         "# FluxMind Runtime Restore Dry Run",
         "",
-        "No files are copied, overwritten, deleted, or restored by this check.",
+        "Compares the current runtime tree with a saved backup manifest.",
         "",
         f"- Generated at: {check.get('generated_at', '')}",
         f"- Source manifest generated at: {check.get('source_manifest_generated_at', '')}",
         f"- Mode: {check.get('mode', '')}",
-        f"- Content restored: {str(check.get('content_restored', False)).lower()}",
-        f"- Delete enabled: {str(check.get('delete_enabled', False)).lower()}",
         f"- OK: {str(check.get('ok', False)).lower()}",
         f"- Manifest errors: {len(check.get('manifest_errors', []))}",
         f"- Checked groups: {check.get('checked_groups', 0)}",

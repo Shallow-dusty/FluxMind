@@ -19,6 +19,12 @@ def test_build_rsync_command_is_dry_run_by_default_and_excludes_runtime_state():
     assert ["--exclude", "venv/"] in [command[index : index + 2] for index in range(len(command) - 1)]
     assert ["--exclude", "models/"] in [command[index : index + 2] for index in range(len(command) - 1)]
     assert ["--exclude", ".coverage"] in [command[index : index + 2] for index in range(len(command) - 1)]
+    assert ["--exclude", "environment.yml"] in [
+        command[index : index + 2] for index in range(len(command) - 1)
+    ]
+    assert ["--exclude", "requirements.lock"] in [
+        command[index : index + 2] for index in range(len(command) - 1)
+    ]
 
 
 def test_build_rsync_command_apply_removes_dry_run_only():
@@ -127,7 +133,7 @@ def test_main_reports_project_root_error(monkeypatch, capsys):
     assert "bad root" in capsys.readouterr().err
 
 
-def test_main_sanitizes_project_root_error(monkeypatch, capsys):
+def test_main_reports_project_root_error_context(monkeypatch, capsys):
     secret_error = "bad root /private/hunter2-fluxmind token=sk-secret-deploy-sync"
     monkeypatch.setattr(
         deploy_sync,
@@ -141,6 +147,4 @@ def test_main_sanitizes_project_root_error(monkeypatch, capsys):
     assert deploy_sync.main() == 2
     err = capsys.readouterr().err
     assert "error:" in err
-    assert "[redacted]" in err
-    assert "/private/hunter2-fluxmind" not in err
-    assert "sk-secret-deploy-sync" not in err
+    assert secret_error in err

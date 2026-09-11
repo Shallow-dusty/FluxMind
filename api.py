@@ -12,39 +12,13 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from types import SimpleNamespace
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
-from src.activation_suite import collect_activation_suite, format_activation_suite_markdown
-from src.collaboration_readiness import (
-    collect_collaboration_readiness,
-    format_collaboration_readiness_markdown,
-)
-from src.openapi_contract import (
-    collect_openapi_contract,
-    format_openapi_contract_markdown,
-    format_openapi_contract_snapshot_verify_markdown,
-    verify_openapi_contract_snapshot,
-)
-from src.quality_readiness import collect_quality_readiness, format_quality_readiness_markdown
-from src.product_activation_rehearsal import (
-    collect_product_activation_rehearsal,
-    format_product_activation_rehearsal_markdown,
-)
-from src.provider_runtime_rehearsal import (
-    collect_provider_runtime_rehearsal,
-    format_provider_runtime_rehearsal_markdown,
-)
-from src.storage_migration import (
-    collect_platform_migration_rehearsal,
-    format_storage_migration_rehearsal_markdown,
-)
 from src.admin import (
     apply_retention_delete,
     collect_admin_status,
@@ -55,40 +29,30 @@ from src.admin import (
     format_admin_metrics,
     format_corpus_profile_status_report,
 )
-from src.api_keys import api_key_registry_backend_status, verify_configured_api_key_token
 from src.artifacts import (
     LocalArtifactRegistry,
-    artifact_to_public_dict,
-    job_artifact_to_public_dict,
+    artifact_to_dict,
+    job_artifact_to_dict,
     safe_artifact_download_filename,
 )
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.chain import get_vector_store, query_with_metadata, retrieve_with_metadata
 from src.config import (
-    API_ACCESS_AUDIT_ENABLED,
     API_RATE_LIMIT_ENABLED,
     API_RATE_LIMIT_MAX_REQUESTS,
     API_RATE_LIMIT_WINDOW_S,
     CODE_EXECUTION_BACKEND,
     FAISS_INDEX_DIR,
-    IDENTITY_QUOTAS_BILLING_ENABLED,
     IMAGE_PROVIDER_BACKEND,
     LLM_MODEL,
     OPENAI_IMAGE_API_KEY,
-    PRODUCT_QUOTA_GUARD_ENABLED,
-    PRODUCT_QUOTA_METRIC,
-    PRODUCT_RBAC_GUARD_ENABLED,
-    PRODUCT_REGISTRY_BACKEND,
     QUERY_COST_COMPLETION_USD_PER_1M,
     QUERY_COST_PROMPT_USD_PER_1M,
     QUERY_COST_PROVIDER,
-    QUOTA_STORE_BACKEND,
-    SHARE_LINK_TOKEN_STORE_BACKEND,
 )
 from src.costs import summarize_query_cost
 from src.jobs import JobRecord, LocalJobRunner, LocalJobStore, get_async_job_manager, normalize_ownership, ownership_from_record
 from src.metadata import ChunkMetadataStore, CorpusProfileStore, safe_corpus_profile_report_filename
-from src.product_registry import LocalProductRegistry, product_registry_backend_status
 from src.runtime import (
     ProviderQuotaGuardError,
     append_runtime_event,
@@ -97,17 +61,16 @@ from src.runtime import (
     logger,
     new_request_id,
     normalize_exception,
-    runtime_event_to_safe_dict,
+    runtime_event_to_dict as project_runtime_event_to_dict,
     runtime_ownership_metadata,
-    sanitize_runtime_event_request_id,
 )
-from src.share_links import LocalShareLinkRegistry, share_link_registry_backend_status
 from src.storage_manifest import (
     collect_runtime_backup_manifest,
     collect_runtime_restore_check,
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
+from src.users import LocalUserStore, UserAccount
 
 API_TOKEN = os.getenv("FLUXMIND_API_TOKEN", "")
 logging.basicConfig(level=os.getenv("FLUXMIND_LOG_LEVEL", "INFO"))
@@ -116,10 +79,6 @@ logging.getLogger("faiss.loader").setLevel(logging.ERROR)
 _CODE_BLOCK_RE = re.compile(r"```(?P<language>[\w.+-]*)\n(?P<body>.*?)```", re.DOTALL)
 _ARTIFACT_REF_RE = re.compile(r"\[Artifact:(?P<artifact_id>[A-Za-z0-9_.:-]+)\]")
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
-_SENSITIVE_REQUEST_ID_RE = re.compile(
-    r"(authorization|bearer|api[-_\s]?key|token|secret|sk-[A-Za-z0-9])",
-    re.IGNORECASE,
-)
 _PAPER_TO_CODE_TERMS = (
     "paper-to-code",
     "code",
@@ -171,11 +130,6 @@ def set_active_paper_source_paths(*args, **kwargs):
     return _set_active_paper_source_paths(*args, **kwargs)
 
 
-def public_error_detail(code: str) -> dict[str, str]:
-    """Return a stable API error body without exception text or local paths."""
-    return {"code": code}
-
-
 def _set_startup_warmup_state(status: str, *, ready: bool, error: str = "") -> None:
     with _STARTUP_WARMUP_LOCK:
         _STARTUP_WARMUP_STATE.update({"status": status, "ready": ready, "error": error})
@@ -194,9 +148,13 @@ def warm_existing_vector_store() -> bool:
         return False
     try:
         get_vector_store()
-    except Exception:
+    except Exception as exc:
         logger.exception("startup.index_warmup_failed path=%s", FAISS_INDEX_DIR)
-        _set_startup_warmup_state("failed", ready=False, error="index_warmup_failed")
+        _set_startup_warmup_state(
+            "failed",
+            ready=False,
+            error=str(exc).strip() or exc.__class__.__name__,
+        )
         return False
     _set_startup_warmup_state("ready", ready=True)
     return True
@@ -235,38 +193,11 @@ app.add_middleware(
 )
 
 
-def public_request_validation_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Project request validation errors without echoing submitted values."""
-    public_errors: list[dict[str, Any]] = []
-    for error in errors:
-        loc = error.get("loc") or []
-        if not isinstance(loc, (list, tuple)):
-            loc = [loc]
-        public_errors.append(
-            {
-                "type": str(error.get("type") or "validation_error"),
-                "loc": [str(part) for part in loc],
-                "msg": "Invalid request field.",
-            }
-        )
-    return public_errors
-
-
-@app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(_request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=422,
-        content={"detail": public_request_validation_errors(exc.errors())},
-    )
-
-
 def api_auth_context(
     authorization: str | None,
     x_api_key: str | None,
-    *,
-    update_registry_usage: bool = False,
 ) -> dict[str, Any]:
-    """Classify API token headers and keep registry owner data internal."""
+    """Classify the optional shared API token."""
     bearer_token = ""
     if authorization and authorization.lower().startswith("bearer "):
         bearer_token = authorization[7:].strip()
@@ -286,22 +217,8 @@ def api_auth_context(
         for candidate in (x_api_key or "", bearer_token)
         if candidate
     )
-    registry_status = api_key_registry_backend_status()
-    registry_configured = bool(registry_status.get("configured") and registry_status.get("supported"))
-    registry_record = None
-    if registry_configured:
-        for candidate in (x_api_key or "", bearer_token):
-            if not candidate:
-                continue
-            registry_record = verify_configured_api_key_token(
-                candidate,
-                update_usage=update_registry_usage,
-            )
-            if registry_record is not None:
-                break
-
-    token_valid = static_token_valid or registry_record is not None
-    auth_configured = bool(API_TOKEN) or registry_configured
+    token_valid = static_token_valid
+    auth_configured = bool(API_TOKEN)
     if not auth_configured:
         token_status = "not_configured"
     elif token_valid:
@@ -310,12 +227,7 @@ def api_auth_context(
         token_status = "invalid"
     else:
         token_status = "missing"
-    if static_token_valid:
-        auth_source = "static_token"
-    elif registry_record is not None:
-        auth_source = "api_key_registry"
-    else:
-        auth_source = "none"
+    auth_source = "static_token" if static_token_valid else "none"
 
     return {
         "token_status": token_status,
@@ -323,33 +235,21 @@ def api_auth_context(
         "credential_present": credential_type != "none",
         "auth_configured": auth_configured,
         "auth_source": auth_source,
-        "api_key_registry_configured": registry_configured,
-        "auth_key_id": registry_record.key_id if registry_record is not None else "",
-        "auth_owner_id": registry_record.owner_id if registry_record is not None else "",
-        "auth_owner_label": registry_record.owner_label if registry_record is not None else "",
-        "auth_owner_source": "api_key" if registry_record is not None else "none",
     }
 
 
 def api_token_status(
     authorization: str | None,
     x_api_key: str | None,
-    *,
-    update_registry_usage: bool = False,
 ) -> dict[str, Any]:
     """Classify API token headers without returning token values or owners."""
-    status = api_auth_context(
-        authorization,
-        x_api_key,
-        update_registry_usage=update_registry_usage,
-    )
+    status = api_auth_context(authorization, x_api_key)
     return {
         "token_status": status["token_status"],
         "credential_type": status["credential_type"],
         "credential_present": status["credential_present"],
         "auth_configured": status["auth_configured"],
         "auth_source": status["auth_source"],
-        "api_key_registry_configured": status["api_key_registry_configured"],
     }
 
 
@@ -358,64 +258,9 @@ def _clean_request_id(value: str | None) -> str | None:
     if not request_id:
         return None
     request_id = request_id[:64]
-    if _SENSITIVE_REQUEST_ID_RE.search(request_id):
-        return None
     if not _REQUEST_ID_RE.fullmatch(request_id):
         return None
     return request_id
-
-
-def _api_access_route_metadata(request: Request) -> dict[str, Any]:
-    route = request.scope.get("route")
-    route_path = str(getattr(route, "path", "") or "").strip()
-    if not route_path:
-        return {"route_present": False, "route_fingerprint": ""}
-    route_fingerprint = hashlib.sha256(route_path.encode("utf-8")).hexdigest()[:12]
-    return {"route_present": True, "route_fingerprint": route_fingerprint}
-
-
-def record_api_access_event(
-    *,
-    request: Request,
-    response: Response | None,
-    status_code: int,
-    duration_ms: int,
-    extra_metadata: dict[str, Any] | None = None,
-) -> None:
-    """Append a no-secret API access audit event."""
-    if not API_ACCESS_AUDIT_ENABLED:
-        return
-    token_status = api_token_status(
-        request.headers.get("authorization"),
-        request.headers.get("x-api-key"),
-    )
-    response_request_id = (
-        _clean_request_id(response.headers.get("X-Request-ID"))
-        if response is not None
-        else None
-    )
-    request_id = response_request_id or _clean_request_id(request.headers.get("X-Request-ID"))
-    route_metadata = _api_access_route_metadata(request)
-    try:
-        append_runtime_event(
-            kind="api_access",
-            code=f"auth_{token_status['token_status']}",
-            message="Metadata-only API access audit event.",
-            request_id=request_id,
-            metadata={
-                "method": request.method,
-                **route_metadata,
-                "status_code": status_code,
-                "duration_ms": duration_ms,
-                **token_status,
-                **(extra_metadata or {}),
-            },
-        )
-    except OSError:
-        logger.warning(
-            "api_access.event_log_failed route_present=%s",
-            route_metadata["route_present"],
-        )
 
 
 def api_rate_limit_decision(request: Request, *, now: float | None = None) -> dict[str, Any]:
@@ -467,17 +312,6 @@ def api_rate_limit_decision(request: Request, *, now: float | None = None) -> di
     }
 
 
-def rate_limit_event_metadata(decision: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "rate_limit_enabled": decision.get("enabled", False),
-        "rate_limited": decision.get("limited", False),
-        "rate_limit": decision.get("limit", 0),
-        "rate_limit_remaining": decision.get("remaining", 0),
-        "rate_limit_window_s": decision.get("window_s", 0),
-        "rate_limit_reset_after_s": decision.get("reset_after_s", 0),
-    }
-
-
 def apply_rate_limit_headers(response: Response, decision: dict[str, Any]) -> None:
     if not decision.get("enabled"):
         return
@@ -487,9 +321,7 @@ def apply_rate_limit_headers(response: Response, decision: dict[str, Any]) -> No
 
 
 @app.middleware("http")
-async def api_access_audit_middleware(request: Request, call_next):
-    started = time.monotonic()
-    response: Response | None = None
+async def api_rate_limit_middleware(request: Request, call_next):
     rate_limit = api_rate_limit_decision(request)
     if rate_limit.get("limited"):
         response = JSONResponse(
@@ -497,43 +329,13 @@ async def api_access_audit_middleware(request: Request, call_next):
             content={"detail": "API rate limit exceeded"},
         )
         apply_rate_limit_headers(response, rate_limit)
-        record_api_access_event(
-            request=request,
-            response=response,
-            status_code=response.status_code,
-            duration_ms=int((time.monotonic() - started) * 1000),
-            extra_metadata=rate_limit_event_metadata(rate_limit),
-        )
         return response
-    try:
-        response = await call_next(request)
-    except Exception:
-        record_api_access_event(
-            request=request,
-            response=None,
-            status_code=500,
-            duration_ms=int((time.monotonic() - started) * 1000),
-            extra_metadata=rate_limit_event_metadata(rate_limit),
-        )
-        raise
+    response = await call_next(request)
     apply_rate_limit_headers(response, rate_limit)
-    record_api_access_event(
-        request=request,
-        response=response,
-        status_code=response.status_code,
-        duration_ms=int((time.monotonic() - started) * 1000),
-        extra_metadata=rate_limit_event_metadata(rate_limit),
-    )
     return response
 
 
 class OwnershipRequest(BaseModel):
-    workspace_id: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=128,
-        description="Optional local workspace metadata for product quota attribution",
-    )
     owner_id: str | None = Field(
         default=None,
         min_length=1,
@@ -554,21 +356,40 @@ class QueryRequest(OwnershipRequest):
         default="explanation",
         description="Answer mode: explanation, derivation, implementation, literature_review, or code_generation",
     )
+    user_id: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=32,
+        description="Optional local FluxMind user ID for per-user query history",
+    )
 
 
 class QueryResponse(BaseModel):
     answer: str = Field(..., description="RAG-generated answer with citations")
     request_id: str = Field(..., description="Correlation ID for logs and support")
+    history_recorded: bool = Field(
+        default=False,
+        description="Whether this answer was saved to the requested local user's history",
+    )
 
 
 class QueryInspectResponse(BaseModel):
     result: dict = Field(..., description="RAG answer plus retrieved-context citation validation")
     request_id: str = Field(..., description="Correlation ID for logs and support")
+    history_recorded: bool = Field(
+        default=False,
+        description="Whether this answer was saved to the requested local user's history",
+    )
 
 
 class QueryRetrieveResponse(BaseModel):
     retrieval: dict = Field(..., description="Retrieved context refs and source/page diagnostics without LLM generation")
     request_id: str = Field(..., description="Correlation ID for logs and support")
+
+
+class QueryHistoryResponse(BaseModel):
+    user: dict = Field(..., description="Local user profile")
+    history: list[dict] = Field(..., description="Newest per-user query history entries")
 
 
 class MockImageJobRequest(OwnershipRequest):
@@ -621,7 +442,7 @@ class CorpusProfileRequest(OwnershipRequest):
     name: str = Field(..., description="Human-readable local corpus profile name")
     source_paths: list[str] = Field(..., description="Project-relative selectable PDF paths in this profile")
     profile_id: str | None = Field(default=None, description="Optional stable local profile ID")
-    description: str | None = Field(default=None, description="Optional no-secret profile description")
+    description: str | None = Field(default=None, description="Optional profile description")
 
 
 class CorpusProfileRebuildRequest(OwnershipRequest):
@@ -637,7 +458,7 @@ class RetryScheduleRequest(BaseModel):
 
 
 class JobResponse(BaseModel):
-    job: dict = Field(..., description="Public no-secret local job record projection")
+    job: dict = Field(..., description="Local job record")
 
 
 class JobListResponse(BaseModel):
@@ -675,7 +496,7 @@ class CorpusProfileResponse(BaseModel):
 
 
 class CorpusProfileStatusResponse(BaseModel):
-    status: dict = Field(..., description="No-secret status for one saved corpus profile")
+    status: dict = Field(..., description="Status for one saved corpus profile")
 
 
 class CorpusProfileRebuildResponse(BaseModel):
@@ -694,84 +515,6 @@ class AdminStatusResponse(BaseModel):
     status: dict = Field(..., description="Local admin/runtime status")
 
 
-class ActivationSuiteResponse(BaseModel):
-    activation_suite: dict = Field(..., description="No-secret local activation suite status")
-
-
-class OpenAPIContractResponse(BaseModel):
-    openapi_contract: dict = Field(..., description="No-secret OpenAPI contract readiness status")
-
-
-class OpenAPIContractSnapshotVerifyResponse(BaseModel):
-    openapi_contract_snapshot_verify: dict = Field(
-        ...,
-        description="No-secret OpenAPI contract snapshot verification status",
-    )
-
-
-class QualityReadinessResponse(BaseModel):
-    quality_readiness: dict = Field(..., description="No-secret staged quality readiness status")
-
-
-class ProductActivationRehearsalResponse(BaseModel):
-    product_activation_rehearsal: dict = Field(
-        ...,
-        description="No-secret local product activation rehearsal status",
-    )
-
-
-class CollaborationReadinessResponse(BaseModel):
-    collaboration_readiness: dict = Field(
-        ...,
-        description="No-secret private-corpus and share-link readiness status",
-    )
-
-
-class ProviderRuntimeRehearsalResponse(BaseModel):
-    provider_runtime_rehearsal: dict = Field(
-        ...,
-        description="No-secret local provider runtime rehearsal status",
-    )
-
-
-class PlatformMigrationRehearsalResponse(BaseModel):
-    platform_migration_rehearsal: dict = Field(
-        ...,
-        description="No-secret local platform migration rehearsal status",
-    )
-
-
-class ActivationSuiteRequest(BaseModel):
-    live_report: dict | None = Field(
-        default=None,
-        description="Optional no-secret evaluate_rag JSON report.",
-    )
-    live_reports: list[dict] = Field(
-        default_factory=list,
-        max_length=4,
-        description="Optional no-secret evaluate_rag JSON reports.",
-    )
-
-
-class QualityReadinessRequest(BaseModel):
-    live_report: dict | None = Field(
-        default=None,
-        description="Optional no-secret evaluate_rag JSON report.",
-    )
-    live_reports: list[dict] = Field(
-        default_factory=list,
-        max_length=4,
-        description="Optional no-secret evaluate_rag JSON reports.",
-    )
-
-
-class OpenAPIContractSnapshotVerifyRequest(BaseModel):
-    snapshot: dict = Field(
-        ...,
-        description="Prior no-secret OpenAPI contract JSON report.",
-    )
-
-
 class RetentionPreviewResponse(BaseModel):
     retention: dict = Field(..., description="No-delete local retention preview")
 
@@ -781,113 +524,27 @@ class RetentionDeleteResponse(BaseModel):
 
 
 class RuntimeEventsResponse(BaseModel):
-    events: list[dict] = Field(..., description="Latest no-secret local runtime events")
+    events: list[dict] = Field(..., description="Latest local runtime events")
 
 
 class RuntimeManifestResponse(BaseModel):
-    manifest: dict = Field(..., description="No-secret local runtime backup manifest")
+    manifest: dict = Field(..., description="Local runtime backup inventory")
 
 
 class RuntimeRestoreCheckRequest(BaseModel):
-    manifest: dict = Field(..., description="No-secret runtime backup manifest to verify")
+    manifest: dict = Field(..., description="Runtime backup manifest to verify")
 
 
 class RuntimeRestoreCheckResponse(BaseModel):
-    restore_check: dict = Field(..., description="No-secret runtime restore dry-run result")
+    restore_check: dict = Field(..., description="Runtime restore dry-run result")
 
 
-class ProductRegistryStatusResponse(BaseModel):
-    status: dict = Field(..., description="No-secret local product registry status")
-
-
-class ProductRegistryWorkspaceListResponse(BaseModel):
-    status: dict = Field(..., description="No-secret local product registry status")
-    workspaces: list[dict] = Field(..., description="Local workspace summaries")
-
-
-class ProductRegistryWorkspaceResponse(BaseModel):
-    workspace: dict = Field(..., description="Local workspace detail")
-
-
-class ProductRegistryWorkspaceRequest(BaseModel):
-    workspace_id: str | None = Field(default=None, min_length=1, max_length=128)
-    label: str | None = Field(default=None, min_length=1, max_length=128)
-    owner_user_id: str | None = Field(default=None, min_length=1, max_length=128)
-    owner_label: str | None = Field(default=None, min_length=1, max_length=128)
-
-
-class ProductRegistryMemberRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, max_length=128)
-    label: str | None = Field(default=None, min_length=1, max_length=128)
-    role: str = Field(default="member", description="Local role: owner, admin, member, or viewer")
-
-
-class ProductRegistryQuotaRequest(BaseModel):
-    metric: str = Field(default="requests", min_length=1, max_length=128)
-    limit_value: int = Field(..., ge=0, le=1_000_000_000)
-    window_s: int = Field(..., ge=0, le=31_536_000)
-
-
-class ProductRegistryBillingRequest(BaseModel):
-    billing_mode: str = Field(default="local-ledger", min_length=1, max_length=128)
-    status: str = Field(default="active", description="Local billing status: active or disabled")
-    attribution_enabled: bool = True
-
-
-class ProductRegistryPermissionCheckRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, max_length=128)
-    action: str = Field(..., min_length=1, max_length=128)
-    workspace_id: str | None = Field(default=None, min_length=1, max_length=128)
-
-
-class ProductRegistryPermissionResponse(BaseModel):
-    permission: dict = Field(..., description="No-secret local product RBAC decision")
-
-
-class ShareLinkRegistryStatusResponse(BaseModel):
-    status: dict = Field(..., description="No-secret local share-link registry status")
-
-
-class ShareLinkListResponse(BaseModel):
-    status: dict = Field(..., description="No-secret local share-link registry status")
-    share_links: list[dict] = Field(..., description="Local share-link summaries")
-
-
-class ShareLinkResponse(BaseModel):
-    share_link: dict = Field(..., description="Local share-link summary")
-
-
-class ShareLinkCreateResponse(BaseModel):
-    token: str = Field(..., description="One-time local share token")
-    share_link: dict = Field(..., description="Created local share-link summary")
-
-
-class ShareLinkResolveResponse(BaseModel):
-    resolution: dict = Field(..., description="No-secret local share-link token resolution")
-
-
-class ShareLinkCreateRequest(BaseModel):
-    workspace_id: str = Field(..., min_length=1, max_length=128)
-    created_by_user_id: str | None = Field(default=None, min_length=1, max_length=128)
-    resource_kind: str = Field(default="corpus_profile", min_length=1, max_length=64)
-    resource_ref: str = Field(..., min_length=1, max_length=512)
-    description: str | None = Field(default=None, max_length=256)
-    expires_in_s: int | None = Field(default=None, ge=60, le=31_536_000)
-    max_redemptions: int = Field(default=0, ge=0, le=1_000_000)
-
-
-class ShareLinkResolveRequest(BaseModel):
-    token: str = Field(..., min_length=1, max_length=512)
-    record_redeem: bool = False
-
-
-def verify_api_token(authorization: str | None, x_api_key: str | None) -> dict[str, Any]:
+def verify_api_token(authorization: str | None, x_api_key: str | None) -> None:
     """Protect public Coze/plugin calls when FLUXMIND_API_TOKEN is configured."""
-    status = api_auth_context(authorization, x_api_key, update_registry_usage=True)
+    status = api_auth_context(authorization, x_api_key)
     if status["token_status"] in {"not_configured", "valid"}:
-        return status
-    else:
-        raise HTTPException(status_code=401, detail="Invalid API token")
+        return
+    raise HTTPException(status_code=401, detail="Invalid API token")
 
 
 def request_id_header(response: Response, x_request_id: str | None) -> str:
@@ -896,598 +553,43 @@ def request_id_header(response: Response, x_request_id: str | None) -> str:
     return request_id
 
 
-def request_ownership(req: Any, auth_context: dict[str, Any] | None = None) -> dict[str, str]:
-    if not getattr(req, "owner_id", None) and auth_context and auth_context.get("auth_owner_id"):
-        return normalize_ownership(
-            owner_id=auth_context.get("auth_owner_id"),
-            owner_label=auth_context.get("auth_owner_label"),
-            ownership_source="api_key",
-        )
+def request_ownership(req: Any) -> dict[str, str]:
     return normalize_ownership(
         owner_id=getattr(req, "owner_id", None),
         owner_label=getattr(req, "owner_label", None),
     )
 
 
-def product_quota_guard_decision(
-    *,
-    req: Any,
-    ownership: dict[str, str],
-    auth_context: dict[str, Any],
-    endpoint: str,
-    amount: int = 1,
-) -> dict[str, Any]:
-    """Check optional local product quota before expensive query work."""
-    if not (IDENTITY_QUOTAS_BILLING_ENABLED and PRODUCT_QUOTA_GUARD_ENABLED):
-        return {
-            "enabled": False,
-            "allowed": True,
-            "limited": False,
-            "reason": "product_quota_guard_disabled",
-        }
-    if PRODUCT_REGISTRY_BACKEND.strip().lower() != "sqlite" or QUOTA_STORE_BACKEND.strip().lower() != "sqlite":
-        return {
-            "enabled": True,
-            "allowed": False,
-            "limited": False,
-            "reason": "product_quota_guard_backend_not_configured",
-            "status_code": 503,
-        }
-    status = product_registry_backend_status(backend="sqlite")
-    if not status.get("available"):
-        return {
-            "enabled": True,
-            "allowed": False,
-            "limited": False,
-            "reason": "product_registry_unavailable",
-            "status_code": 503,
-        }
-
-    registry = LocalProductRegistry()
-    user_id = auth_context.get("auth_owner_id") or ownership.get("owner_id", "local-user")
-    workspace_hint = getattr(req, "workspace_id", None)
-    membership = registry.workspace_for_user(user_id=user_id, workspace_id=workspace_hint)
-    if membership is None:
-        return {
-            "enabled": True,
-            "allowed": False,
-            "limited": False,
-            "reason": "product_workspace_not_found",
-            "status_code": 403,
-            "user_id": user_id,
-            "workspace_id": workspace_hint or "",
-        }
-    decision = registry.quota_decision(
-        workspace_id=membership["workspace_id"],
-        user_id=user_id,
-        metric=PRODUCT_QUOTA_METRIC,
-        amount=amount,
-        source=f"api:{endpoint}",
-        record=True,
-    )
-    decision["role"] = membership.get("role", "")
-    return decision
-
-
-def product_quota_event_metadata(decision: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "product_quota_guard_enabled": bool(decision.get("enabled", False)),
-        "product_quota_limited": bool(decision.get("limited", False)),
-        "product_quota_reason": decision.get("reason", ""),
-        "product_quota_metric": decision.get("metric", ""),
-        "product_quota_limit": int(decision.get("limit_value", 0) or 0),
-        "product_quota_remaining": int(decision.get("remaining", 0) or 0),
-        "product_quota_window_s": int(decision.get("window_s", 0) or 0),
-        "product_workspace_present": bool(str(decision.get("workspace_id", "") or "").strip()),
-    }
-
-
-def product_quota_headers(decision: dict[str, Any]) -> dict[str, str]:
-    if not decision.get("enabled"):
-        return {}
-    headers = {"X-Product-Quota-Reason": str(decision.get("reason", ""))}
-    if decision.get("quota_configured"):
-        headers["X-Product-Quota-Limit"] = str(decision.get("limit_value", 0))
-        headers["X-Product-Quota-Remaining"] = str(decision.get("remaining", 0))
-        headers["X-Product-Quota-Reset"] = str(decision.get("reset_after_s", 0))
-    return headers
-
-
-def apply_product_quota_headers(response: Response, decision: dict[str, Any]) -> None:
-    for key, value in product_quota_headers(decision).items():
-        response.headers[key] = value
-
-
-def enforce_product_quota(
-    *,
-    req: Any,
-    response: Response,
-    request_id: str,
-    ownership: dict[str, str],
-    auth_context: dict[str, Any],
-    endpoint: str,
-) -> dict[str, Any]:
-    decision = product_quota_guard_decision(
-        req=req,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-    )
-    apply_product_quota_headers(response, decision)
-    if decision.get("allowed", True):
-        return decision
-    status_code = int(
-        decision.get(
-            "status_code",
-            429 if decision.get("limited", False) else 403,
-        )
-    )
-    try:
-        append_runtime_event(
-            kind="product_quota",
-            code=str(decision.get("reason", "product_quota_denied")),
-            message="Metadata-only product quota guard event.",
-            request_id=request_id,
-            metadata={
-                "endpoint": endpoint,
-                "status_code": status_code,
-                **product_quota_event_metadata(decision),
-                **runtime_ownership_metadata(ownership),
-            },
-        )
-    except OSError:
-        logger.warning("product_quota.event_log_failed request_id=%s endpoint=%s", request_id, endpoint)
-    raise HTTPException(
-        status_code=status_code,
-        detail={
-            "code": decision.get("reason", "product_quota_denied"),
-            "message": "Product quota guard denied this request.",
-            "request_id": request_id,
-        },
-        headers=product_quota_headers(decision),
-    )
-
-
-def product_rbac_guard_decision(
-    *,
-    req: Any | None,
-    ownership: dict[str, str],
-    auth_context: dict[str, Any],
-    endpoint: str,
-    action: str,
-) -> dict[str, Any]:
-    """Check optional local product RBAC before product-scoped work."""
-    if not (IDENTITY_QUOTAS_BILLING_ENABLED and PRODUCT_RBAC_GUARD_ENABLED):
-        return {
-            "enabled": False,
-            "allowed": True,
-            "reason": "product_rbac_guard_disabled",
-            "action": action,
-        }
-    if PRODUCT_REGISTRY_BACKEND.strip().lower() != "sqlite":
-        return {
-            "enabled": True,
-            "allowed": False,
-            "reason": "product_rbac_guard_backend_not_configured",
-            "action": action,
-            "status_code": 503,
-        }
-    status = product_registry_backend_status(backend="sqlite")
-    if not status.get("available"):
-        return {
-            "enabled": True,
-            "allowed": False,
-            "reason": "product_registry_unavailable",
-            "action": action,
-            "status_code": 503,
-        }
-
-    user_id = auth_context.get("auth_owner_id")
+def resolve_query_history_user(user_id: str | None) -> UserAccount | None:
+    """Resolve an optional active local user before spending a provider call."""
     if not user_id:
-        return {
-            "enabled": True,
-            "allowed": False,
-            "reason": "product_identity_not_authenticated",
-            "action": action,
-            "status_code": 403,
-        }
-    workspace_hint = getattr(req, "workspace_id", None) if req is not None else None
-    decision = LocalProductRegistry().permission_decision(
-        user_id=user_id,
-        workspace_id=workspace_hint,
-        action=action,
-    )
-    decision["enabled"] = True
-    decision["endpoint"] = endpoint
-    decision.setdefault("status_code", 403)
-    return decision
+        return None
+    user = LocalUserStore().get_user(user_id)
+    if user is None or not user.active:
+        raise HTTPException(status_code=400, detail="Local query-history user not found")
+    return user
 
 
-def product_rbac_event_metadata(decision: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "product_rbac_guard_enabled": bool(decision.get("enabled", False)),
-        "product_rbac_reason": decision.get("reason", ""),
-        "product_rbac_action": decision.get("action", ""),
-        "product_rbac_role": decision.get("role", ""),
-        "product_rbac_required_roles": ",".join(decision.get("required_roles", []) or []),
-        "product_workspace_present": bool(str(decision.get("workspace_id", "") or "").strip()),
-    }
-
-
-def product_rbac_headers(decision: dict[str, Any]) -> dict[str, str]:
-    if not decision.get("enabled"):
-        return {}
-    headers = {"X-Product-RBAC-Reason": str(decision.get("reason", ""))}
-    if decision.get("role"):
-        headers["X-Product-RBAC-Role"] = str(decision.get("role", ""))
-    if decision.get("action"):
-        headers["X-Product-RBAC-Action"] = str(decision.get("action", ""))
-    return headers
-
-
-def apply_product_rbac_headers(response: Response, decision: dict[str, Any]) -> None:
-    for key, value in product_rbac_headers(decision).items():
-        response.headers[key] = value
-
-
-def enforce_product_rbac(
+def record_local_query_history(
+    user: UserAccount | None,
     *,
-    req: Any | None,
-    response: Response,
-    request_id: str,
-    ownership: dict[str, str],
-    auth_context: dict[str, Any],
-    endpoint: str,
-    action: str,
-) -> dict[str, Any]:
-    decision = product_rbac_guard_decision(
-        req=req,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action=action,
-    )
-    apply_product_rbac_headers(response, decision)
-    if decision.get("allowed", True):
-        return decision
-    status_code = int(decision.get("status_code", 403))
+    question: str,
+    answer: str,
+    answer_mode: str,
+) -> bool:
+    if user is None:
+        return False
     try:
-        append_runtime_event(
-            kind="product_rbac",
-            code=str(decision.get("reason", "product_rbac_denied")),
-            message="Metadata-only product RBAC guard event.",
-            request_id=request_id,
-            metadata={
-                "endpoint": endpoint,
-                "status_code": status_code,
-                **product_rbac_event_metadata(decision),
-                **runtime_ownership_metadata(ownership),
-            },
+        LocalUserStore().record_query(
+            user_id=user.user_id,
+            question=question,
+            answer=answer,
+            answer_mode=answer_mode,
         )
-    except OSError:
-        logger.warning("product_rbac.event_log_failed request_id=%s endpoint=%s", request_id, endpoint)
-    raise HTTPException(
-        status_code=status_code,
-        detail={
-            "code": decision.get("reason", "product_rbac_denied"),
-            "message": "Product RBAC guard denied this request.",
-            "request_id": request_id,
-        },
-        headers=product_rbac_headers(decision),
-    )
-
-
-def enforce_product_registry_admin_read(
-    *,
-    response: Response,
-    request_id: str,
-    auth_context: dict[str, Any],
-    endpoint: str,
-    workspace_id: str | None = None,
-) -> dict[str, Any]:
-    """Apply local product-admin RBAC to registry read/inspection routes."""
-    ownership = request_ownership(None, auth_context)
-    req = SimpleNamespace(workspace_id=workspace_id) if workspace_id else None
-    return enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="admin_write",
-    )
-
-
-def product_registry_admin_status() -> dict[str, Any]:
-    return product_registry_backend_status(backend=PRODUCT_REGISTRY_BACKEND)
-
-
-def require_local_product_registry() -> LocalProductRegistry:
-    status = product_registry_admin_status()
-    if not status.get("available"):
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": status.get("reason", "product_registry_unavailable"),
-                "message": "Local product registry is not available.",
-                "status": status,
-            },
-        )
-    return LocalProductRegistry()
-
-
-def record_product_registry_admin_event(
-    *,
-    action: str,
-    status_code: int,
-    request_id: str | None = None,
-    workspace_id: str = "",
-    reason: str = "ok",
-) -> None:
-    try:
-        append_runtime_event(
-            kind="product_registry_admin",
-            code=reason,
-            message="Metadata-only product registry admin event.",
-            request_id=request_id,
-            metadata={
-                "action": action,
-                "status_code": status_code,
-                "product_workspace_present": bool(str(workspace_id or "").strip()),
-                "product_registry_backend": PRODUCT_REGISTRY_BACKEND,
-                "content_exported": False,
-                "secrets_exported": False,
-            },
-        )
-    except OSError:
-        logger.warning("product_registry_admin.event_log_failed action=%s", action)
-
-
-def share_link_registry_admin_status() -> dict[str, Any]:
-    return share_link_registry_backend_status(backend=SHARE_LINK_TOKEN_STORE_BACKEND)
-
-
-def require_local_share_link_registry() -> LocalShareLinkRegistry:
-    status = share_link_registry_admin_status()
-    if not status.get("available"):
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": status.get("reason", "share_link_token_store_unavailable"),
-                "message": "Local share-link registry is not available.",
-                "status": status,
-            },
-        )
-    return LocalShareLinkRegistry()
-
-
-def record_share_link_admin_event(
-    *,
-    action: str,
-    status_code: int,
-    request_id: str | None = None,
-    workspace_id: str = "",
-    workspace_present: bool | None = None,
-    link_id: str = "",
-    reason: str = "ok",
-    share_link_valid: bool | None = None,
-) -> None:
-    metadata = {
-        "action": action,
-        "status_code": status_code,
-        "product_workspace_present": (
-            bool(workspace_present)
-            if workspace_present is not None
-            else bool(str(workspace_id or "").strip())
-        ),
-        "share_link_present": bool(str(link_id or "").strip()),
-        "share_link_backend": SHARE_LINK_TOKEN_STORE_BACKEND,
-        "content_exported": False,
-        "secrets_exported": False,
-        "share_tokens_exported": False,
-        "share_urls_exported": False,
-    }
-    if share_link_valid is not None:
-        metadata["share_link_valid"] = bool(share_link_valid)
-    try:
-        append_runtime_event(
-            kind="share_link_admin",
-            code=reason,
-            message="Metadata-only share-link admin event.",
-            request_id=request_id,
-            metadata=metadata,
-        )
-    except OSError:
-        logger.warning("share_link_admin.event_log_failed action=%s", action)
-
-
-def _safe_event_int(value: Any) -> int:
-    try:
-        return max(0, int(value or 0))
-    except (TypeError, ValueError):
-        return 0
-
-
-def _safe_event_list_count(value: Any) -> int:
-    return len(value) if isinstance(value, list) else 0
-
-
-def record_admin_check_event(
-    *,
-    check: str,
-    ok: bool,
-    metadata: dict[str, Any] | None = None,
-    status_code: int = 200,
-) -> None:
-    """Append a metadata-only audit event for admin readiness checks."""
-    if not API_ACCESS_AUDIT_ENABLED:
-        return
-    safe_check = re.sub(r"[^a-z0-9_]+", "_", str(check).casefold()).strip("_") or "admin"
-    try:
-        append_runtime_event(
-            kind="admin_check",
-            code=f"{safe_check}_{'ok' if ok else 'blocked'}",
-            message="Metadata-only admin readiness check event.",
-            metadata={
-                "check": safe_check,
-                "ok": bool(ok),
-                "status_code": status_code,
-                **(metadata or {}),
-                "content_exported": False,
-                "secrets_exported": False,
-                "paths_exported": False,
-            },
-        )
-    except OSError:
-        logger.warning("admin_check.event_log_failed check=%s", safe_check)
-
-
-def _record_openapi_contract_check(status: dict[str, Any]) -> None:
-    record_admin_check_event(
-        check="openapi_contract",
-        ok=bool(status.get("local_contract_ready")),
-        metadata={
-            "route_count": _safe_event_int(status.get("route_count")),
-            "operation_count": _safe_event_int(status.get("operation_count")),
-            "required_operation_missing_count": _safe_event_int(
-                status.get("required_operation_missing_count")
-            ),
-            "undocumented_operation_count": _safe_event_int(
-                status.get("undocumented_operation_count")
-            ),
-            "response_missing_operation_count": _safe_event_int(
-                status.get("response_missing_operation_count")
-            ),
-            "protected_operation_count": _safe_event_int(
-                status.get("protected_operation_count")
-            ),
-            "protected_auth_header_operation_count": _safe_event_int(
-                status.get("protected_auth_header_operation_count")
-            ),
-            "blocker_count": _safe_event_list_count(status.get("blockers")),
-        },
-    )
-
-
-def _record_openapi_snapshot_check(status: dict[str, Any]) -> None:
-    record_admin_check_event(
-        check="openapi_contract_snapshot_verify",
-        ok=bool(status.get("ok")),
-        metadata={
-            "diff_count": _safe_event_int(status.get("diff_count")),
-            "compared_field_count": _safe_event_int(status.get("compared_field_count")),
-            "snapshot_shape_valid": bool(status.get("snapshot_shape_valid")),
-            "snapshot_raw_schema_included": bool(status.get("snapshot_raw_schema_included")),
-            "blocker_count": _safe_event_list_count(status.get("blockers")),
-        },
-    )
-
-
-def _record_quality_readiness_check(status: dict[str, Any]) -> None:
-    record_admin_check_event(
-        check="quality_readiness",
-        ok=bool(status.get("local_foundation_ready")),
-        metadata={
-            "local_foundation_ready": bool(status.get("local_foundation_ready")),
-            "small_group_ready": bool(status.get("small_group_ready")),
-            "community_ready": bool(status.get("community_ready")),
-            "live_evidence_included": bool(status.get("live_evidence_included")),
-            "evidence_request_count": _safe_event_list_count(status.get("evidence_requests")),
-        },
-    )
-
-
-def _record_product_activation_check(status: dict[str, Any]) -> None:
-    readiness = status.get("readiness", {}) or {}
-    lifecycle = status.get("api_key_lifecycle", {}) or {}
-    registry = status.get("product_registry", {}) or {}
-    record_admin_check_event(
-        check="product_activation_rehearsal",
-        ok=bool(status.get("ok")),
-        metadata={
-            "local_foundation_ready": bool(readiness.get("local_foundation_ready")),
-            "activation_ready": bool(readiness.get("activation_ready")),
-            "active_key_count": _safe_event_int(lifecycle.get("active_key_count")),
-            "workspace_count": _safe_event_int(registry.get("workspace_count")),
-        },
-    )
-
-
-def _record_collaboration_readiness_check(status: dict[str, Any]) -> None:
-    summary = status.get("summary", {}) or {}
-    blockers = status.get("blockers", {}) or {}
-    record_admin_check_event(
-        check="collaboration_readiness",
-        ok=bool(status.get("ok")),
-        metadata={
-            "local_foundation_ready": bool(status.get("local_foundation_ready")),
-            "safe_default_ready": bool(status.get("safe_default_ready")),
-            "activation_ready": bool(status.get("activation_ready")),
-            "private_corpora_enabled": bool(summary.get("private_corpora_enabled")),
-            "share_links_enabled": bool(summary.get("share_links_enabled")),
-            "policy_scenario_count": _safe_event_int(summary.get("policy_scenario_count")),
-            "activation_blocker_count": _safe_event_list_count(
-                blockers.get("activation")
-            ),
-        },
-    )
-
-
-def _record_provider_runtime_check(status: dict[str, Any]) -> None:
-    readiness = status.get("readiness", {}) or {}
-    docker = status.get("docker_execution", {}) or {}
-    record_admin_check_event(
-        check="provider_runtime_rehearsal",
-        ok=bool(status.get("ok")),
-        metadata={
-            "local_foundation_ready": bool(readiness.get("local_foundation_ready")),
-            "external_activation_ready": bool(status.get("external_activation_ready")),
-            "docker_available": bool(docker.get("available")),
-        },
-    )
-
-
-def _record_platform_migration_check(status: dict[str, Any]) -> None:
-    summary = status.get("summary", {}) or {}
-    record_admin_check_event(
-        check="platform_migration_rehearsal",
-        ok=bool(status.get("rehearsal_ok")),
-        metadata={
-            "source_preflight_ok": bool(summary.get("source_preflight_ok")),
-            "restore_check_ok": bool(summary.get("restore_check_ok")),
-            "object_manifest_ready": bool(summary.get("object_manifest_ready")),
-            "job_store_manifest_ready": bool(summary.get("job_store_manifest_ready")),
-            "copied_files": _safe_event_int(summary.get("copied_files")),
-            "blocker_count": _safe_event_list_count(status.get("blockers")),
-        },
-    )
-
-
-def _record_activation_suite_check(status: dict[str, Any]) -> None:
-    action_plan = status.get("activation_action_plan", {}) or {}
-    blockers = status.get("blockers", {}) or {}
-    local_foundation_blockers = blockers.get("local_foundation")
-    full_activation_blockers = blockers.get("full_activation")
-    record_admin_check_event(
-        check="activation_suite",
-        ok=bool(status.get("local_foundation_ready")),
-        metadata={
-            "local_foundation_ready": bool(status.get("local_foundation_ready")),
-            "full_activation_ready": bool(status.get("full_activation_ready")),
-            "failed_check_count": _safe_event_int(
-                status.get("failed_check_count")
-                if "failed_check_count" in status
-                else _safe_event_list_count(local_foundation_blockers)
-            ),
-            "full_activation_blocker_count": _safe_event_int(
-                status.get("full_activation_blocker_count")
-                if "full_activation_blocker_count" in status
-                else _safe_event_list_count(full_activation_blockers)
-            ),
-            "activation_step_count": _safe_event_int(action_plan.get("step_count")),
-        },
-    )
+    except (OSError, sqlite3.Error):
+        logger.warning("query.history_write_failed user_id=%s", user.user_id)
+        return False
+    return True
 
 
 def record_query_exception_event(
@@ -1502,11 +604,7 @@ def record_query_exception_event(
     """Record query failures without misclassifying local guard denials."""
     error = normalize_exception(exc)
     event_kind = "provider_quota_guard" if isinstance(exc, ProviderQuotaGuardError) else "provider_failure"
-    message = (
-        "Metadata-only provider quota/cost guard denial."
-        if event_kind == "provider_quota_guard"
-        else error.message
-    )
+    message = error.message
     metadata: dict[str, Any] = {
         "endpoint": endpoint,
         "answer_mode": answer_mode,
@@ -1548,276 +646,34 @@ def record_query_exception_event(
 
 def job_to_dict(record: JobRecord) -> dict:
     ownership = ownership_from_record(record)
-    idempotency_key = record.idempotency_key or ""
-    owner_id = ownership["owner_id"]
-    owner_label = ownership["owner_label"]
-    request_id = public_request_id(record.request_id)
     return {
         "job_id": record.job_id,
         "kind": record.kind,
         "status": record.status,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
-        "request": public_job_request(record),
-        "result": public_job_result(record),
-        "artifacts": [
-            job_artifact_to_public_dict(record, artifact)
-            for artifact in record.artifacts
-        ],
-        "error": public_job_error(record),
+        "request": record.request,
+        "result": record.result,
+        "artifacts": [job_artifact_to_dict(record, artifact) for artifact in record.artifacts],
+        "error": record.error,
         "attempts": record.attempts,
-        **request_id,
+        "request_id": _clean_request_id(record.request_id),
         "parent_job_id": record.parent_job_id,
         "not_before": record.not_before,
         "deadline_at": record.deadline_at,
-        "idempotency_key_present": bool(idempotency_key),
-        "idempotency_key_fingerprint": (
-            hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:16]
-            if idempotency_key
-            else ""
-        ),
-        "idempotency_key_exported": False,
+        "idempotency_key": record.idempotency_key,
         "max_attempts": record.max_attempts,
         "retry_backoff_s": record.retry_backoff_s,
         "dead_lettered_at": record.dead_lettered_at,
-        "owner_id_present": bool(owner_id),
-        "owner_id_fingerprint": (
-            hashlib.sha256(owner_id.encode("utf-8")).hexdigest()[:16]
-            if owner_id
-            else ""
-        ),
-        "owner_label_present": bool(owner_label),
-        "owner_label_fingerprint": (
-            hashlib.sha256(owner_label.encode("utf-8")).hexdigest()[:16]
-            if owner_label
-            else ""
-        ),
-        "owner_exported": False,
+        "owner_id": ownership["owner_id"],
+        "owner_label": ownership["owner_label"],
         "ownership_source": ownership["ownership_source"],
-        "logs": public_job_logs(record),
+        "logs": record.logs,
     }
-
-
-def public_request_id(value: Any) -> dict[str, Any]:
-    safe_request_id, request_id_present, request_id_redacted = (
-        sanitize_runtime_event_request_id(value)
-    )
-    payload: dict[str, Any] = {
-        "request_id_present": request_id_present,
-        "request_id_redacted": request_id_redacted,
-    }
-    if safe_request_id:
-        payload["request_id"] = safe_request_id
-    return payload
-
-
-def _source_path_count(value: Any) -> int:
-    return len(value) if isinstance(value, list) else 0
-
-
-def _string_byte_count(value: Any) -> int:
-    return len(str(value).encode("utf-8")) if isinstance(value, str) else 0
-
-
-def _request_files_summary(value: Any) -> dict[str, int]:
-    if not isinstance(value, dict):
-        return {"input_file_count": 0, "input_total_bytes": 0}
-    return {
-        "input_file_count": len(value),
-        "input_total_bytes": sum(_string_byte_count(content) for content in value.values()),
-    }
-
-
-def _public_scalar(value: Any) -> Any:
-    if isinstance(value, (bool, int, float)) or value is None:
-        return value
-    return str(value)
-
-
-PUBLIC_CODE_RUNTIME_METADATA_KEYS = {
-    "language",
-    "input_file_count",
-    "input_total_bytes",
-    "provider_runtime",
-    "runtime_available",
-    "filesystem_isolation",
-    "network_policy_enforced",
-    "timeout_s",
-    "cpu_time_s",
-    "memory_mb",
-    "memory_limit_enforced",
-    "cpu_limit_enforced",
-    "max_files",
-    "max_file_bytes",
-    "max_total_file_bytes",
-    "max_stdout_bytes",
-    "max_stderr_bytes",
-    "max_artifacts",
-    "max_artifact_bytes",
-    "max_artifact_total_bytes",
-    "max_artifact_candidates",
-    "execution_policy",
-    "execution_policy_enforced",
-    "execution_policy_checked_files",
-    "execution_policy_violations",
-    "policy_violation",
-    "stdout_bytes",
-    "stderr_bytes",
-    "stdout_truncated",
-    "stderr_truncated",
-    "output_truncated",
-    "artifact_scanned_entries",
-    "artifact_scanned_files",
-    "artifact_candidate_count",
-    "artifact_exported_count",
-    "artifact_exported_bytes",
-    "artifact_skipped_count",
-    "artifact_skipped_too_large_count",
-    "artifact_skipped_count_limit",
-    "artifact_skipped_total_bytes_limit",
-    "artifact_skipped_unreadable_count",
-    "artifact_skipped_unreadable_dirs",
-    "artifact_scan_truncated",
-    "artifact_collection_truncated",
-    "docker_network",
-    "runtime",
-    "cost_estimate_usd",
-}
-
-
-def public_code_runtime_metadata(metadata: Any) -> dict[str, Any]:
-    if not isinstance(metadata, dict):
-        return {}
-    return {
-        str(key): _public_scalar(value)
-        for key, value in metadata.items()
-        if key in PUBLIC_CODE_RUNTIME_METADATA_KEYS
-    }
-
-
-def public_job_request(record: JobRecord) -> dict[str, Any]:
-    request = record.request if isinstance(record.request, dict) else {}
-    if record.kind == "image_generation":
-        prompt = request.get("prompt")
-        references = request.get("reference_uris")
-        return {
-            "prompt_present": bool(prompt),
-            "prompt_length": len(prompt) if isinstance(prompt, str) else 0,
-            "style_present": bool(request.get("style")),
-            "size_present": bool(request.get("size")),
-            "diagram_template_present": bool(request.get("diagram_template")),
-            "reference_count": len(references) if isinstance(references, list) else 0,
-        }
-    if record.kind == "code_execution":
-        summary = _request_files_summary(request.get("files"))
-        return {
-            "language": str(request.get("language") or ""),
-            "entrypoint_present": bool(request.get("entrypoint")),
-            **summary,
-            "timeout_s": _public_scalar(request.get("timeout_s")),
-            "memory_mb": _public_scalar(request.get("memory_mb")),
-        }
-    if record.kind != "index_rebuild":
-        return {}
-    source_paths = (
-        request.get("source_paths")
-        if isinstance(request, dict)
-        else None
-    )
-    return {"source_path_count": _source_path_count(source_paths)}
-
-
-def public_job_result(record: JobRecord) -> dict[str, Any] | None:
-    if record.result is None:
-        return None
-    if record.kind == "code_execution":
-        result = record.result if isinstance(record.result, dict) else {}
-        stdout = result.get("stdout")
-        stderr = result.get("stderr")
-        metadata = public_code_runtime_metadata(result.get("runtime_metadata"))
-        return {
-            "exit_code": _public_scalar(result.get("exit_code")),
-            "stdout_present": bool(stdout),
-            "stderr_present": bool(stderr),
-            "stdout_bytes": _public_scalar(
-                metadata.get("stdout_bytes", _string_byte_count(stdout))
-            ),
-            "stderr_bytes": _public_scalar(
-                metadata.get("stderr_bytes", _string_byte_count(stderr))
-            ),
-            "stdout_truncated": _public_scalar(metadata.get("stdout_truncated", "false")),
-            "stderr_truncated": _public_scalar(metadata.get("stderr_truncated", "false")),
-            "output_truncated": _public_scalar(metadata.get("output_truncated", "false")),
-            "artifact_count": len(record.artifacts),
-            "runtime_metadata": metadata,
-        }
-    if record.kind != "index_rebuild":
-        return record.result
-    result = dict(record.result)
-    source_paths = result.pop("source_paths", None)
-    result["source_path_count"] = _source_path_count(source_paths)
-    return result
-
-
-PUBLIC_JOB_ERROR_MESSAGES = {
-    "cancelled": "Job was cancelled.",
-    "execution_failed": "Execution failed.",
-    "execution_policy_violation": "Execution policy rejected the request.",
-    "execution_timeout": "Execution timed out.",
-    "job_deadline_exceeded": "Job deadline exceeded before execution.",
-    "runtime_unavailable": "Execution runtime unavailable.",
-}
-
-
-def public_job_error(record: JobRecord) -> dict[str, Any] | None:
-    if not isinstance(record.error, dict):
-        return None
-    code = str(record.error.get("code") or "job_failed")
-    message = PUBLIC_JOB_ERROR_MESSAGES.get(code, "Job failed.")
-    raw_message = record.error.get("message")
-    return {
-        "code": code,
-        "message": message,
-        "message_redacted": bool(raw_message and raw_message != message),
-    }
-
-
-PUBLIC_JOB_LOG_METADATA_KEYS = {
-    "artifact_count",
-    "attempt",
-    "error_code",
-    "exit_code",
-    "max_attempts",
-    "retry_backoff_s",
-}
-
-
-def public_job_logs(record: JobRecord) -> list[dict[str, Any]]:
-    public_logs: list[dict[str, Any]] = []
-    for entry in record.logs:
-        if not isinstance(entry, dict):
-            continue
-        public_entry = {
-            "created_at": entry.get("created_at"),
-            "status": entry.get("status"),
-            "message": entry.get("message"),
-        }
-        metadata = entry.get("metadata")
-        if isinstance(metadata, dict):
-            public_metadata = {
-                str(key): _public_scalar(value)
-                for key, value in metadata.items()
-                if key in PUBLIC_JOB_LOG_METADATA_KEYS
-            }
-            if public_metadata:
-                public_entry["metadata"] = public_metadata
-        public_logs.append(public_entry)
-    return public_logs
 
 
 def job_summary_to_dict(record: JobRecord) -> dict:
     ownership = ownership_from_record(record)
-    request_id = public_request_id(record.request_id)
     error_code = None
     if isinstance(record.error, dict):
         error_code = record.error.get("code")
@@ -1827,23 +683,19 @@ def job_summary_to_dict(record: JobRecord) -> dict:
         "status": record.status,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
-        "artifacts": [
-            job_artifact_to_public_dict(record, artifact)
-            for artifact in record.artifacts
-        ],
+        "artifacts": [job_artifact_to_dict(record, artifact) for artifact in record.artifacts],
         "error": {"code": error_code} if error_code else None,
         "attempts": record.attempts,
-        "request_id_present": request_id["request_id_present"],
-        "request_id_redacted": request_id["request_id_redacted"],
+        "request_id": _clean_request_id(record.request_id),
         "parent_job_id": record.parent_job_id,
         "not_before": record.not_before,
         "deadline_at": record.deadline_at,
-        "idempotency_key_present": bool(record.idempotency_key),
+        "idempotency_key": record.idempotency_key,
         "max_attempts": record.max_attempts,
         "retry_backoff_s": record.retry_backoff_s,
         "dead_lettered_at": record.dead_lettered_at,
-        "owner_id_present": bool(ownership["owner_id"]),
-        "owner_label_present": bool(ownership["owner_label"]),
+        "owner_id": ownership["owner_id"],
+        "owner_label": ownership["owner_label"],
         "ownership_source": ownership["ownership_source"],
         "log_statuses": [
             str(entry.get("status"))
@@ -1864,12 +716,7 @@ def record_to_dict(record) -> dict:
 
 
 def runtime_event_to_dict(event) -> dict:
-    return runtime_event_to_safe_dict(event, include_request_id=True)
-
-
-def runtime_event_matches_safe_query(event: dict[str, Any], query: str) -> bool:
-    searchable = json.dumps(event, ensure_ascii=False, sort_keys=True).casefold()
-    return query.casefold() in searchable
+    return project_runtime_event_to_dict(event, include_request_id=True)
 
 
 def filter_paper_records(
@@ -1952,7 +799,7 @@ def collect_corpus_structure_markers(
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=public_error_detail("invalid_corpus_source_path"),
+                detail=str(exc),
             ) from exc
     else:
         paths = discover_pdfs()
@@ -1993,7 +840,7 @@ def format_corpus_structure_report(
     q: str | None = None,
     limit: int = 100,
 ) -> str:
-    """Render PDF layout markers as a no-secret Markdown report."""
+    """Render PDF layout markers as a Markdown report."""
     kind_counts: dict[str, int] = {}
     source_counts: dict[str, int] = {}
     for marker in markers:
@@ -2061,7 +908,7 @@ def record_query_usage(
     ownership: dict[str, str] | None = None,
     duration_ms: int | None = None,
 ) -> None:
-    """Append no-secret estimated query usage for local admin/cost-shape checks."""
+    """Append a query usage estimate for local operations."""
     estimated_prompt_tokens = estimate_text_tokens(question)
     estimated_answer_tokens = estimate_text_tokens(answer)
     provider_prompt_tokens = 0
@@ -2110,7 +957,7 @@ def record_query_usage(
         append_runtime_event(
             kind="query_usage",
             code="estimated_usage",
-            message="Estimated no-key query usage. This is not provider billing.",
+            message="Query usage estimate.",
             request_id=request_id,
             metadata=metadata,
         )
@@ -2139,7 +986,7 @@ def record_retrieval_trace(
     citation_ok: bool | None = None,
     retrieval_ok: bool | None = None,
 ) -> None:
-    """Append metadata-only retrieval trace data for local admin observability."""
+    """Append retrieval outcome metrics for local operations."""
     bounded_context_count = max(int(context_count or 0), 0)
     bounded_missing_count = max(int(missing_source_page_count or 0), 0)
     source_page_complete = bounded_missing_count == 0
@@ -2171,7 +1018,7 @@ def record_retrieval_trace(
         append_runtime_event(
             kind="retrieval_trace",
             code=code,
-            message="Metadata-only retrieval trace. No prompt, answer, retrieved text, source path, owner, or request ID is stored.",
+            message="Retrieval trace.",
             request_id=None,
             metadata=metadata,
         )
@@ -2349,6 +1196,7 @@ def format_query_report(*, question: str, result: Any, request_id: str) -> str:
         "",
         f"- Cited refs: {validation.get('cited_refs', [])}",
         f"- Invalid refs: {validation.get('invalid_refs', [])}",
+        f"- Missing citation: {validation.get('missing_citation', False)}",
         f"- Missing required refs: {validation.get('missing_required_refs', [])}",
         f"- Missing source/page refs: {validation.get('missing_source_page_refs', [])}",
         "",
@@ -2379,7 +1227,7 @@ def list_artifacts(
     verify_api_token(authorization, x_api_key)
     bounded_limit = min(max(limit, 1), 500)
     artifacts = [
-        artifact_to_public_dict(artifact)
+        artifact_to_dict(artifact)
         for artifact in LocalArtifactRegistry().list_artifacts(
             limit=bounded_limit,
             kind=kind,
@@ -2406,7 +1254,7 @@ def download_artifact(
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=public_error_detail("artifact_export_denied"),
+            detail=str(exc),
         ) from exc
     return FileResponse(
         path,
@@ -2520,7 +1368,7 @@ def corpus_status(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return no-secret corpus status such as queued, parsing, indexed, failed, or stale."""
+    """Return corpus status such as queued, parsing, indexed, failed, or stale."""
     verify_api_token(authorization, x_api_key)
     return CorpusStatusResponse(status=collect_corpus_status())
 
@@ -2534,18 +1382,9 @@ def update_active_corpus(
     x_request_id: str | None = Header(default=None),
 ):
     """Persist active/deactivated papers without requiring filesystem edits."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/corpus/active",
-        action="corpus_write",
-    )
+    ownership = request_ownership(req)
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
     try:
@@ -2553,7 +1392,7 @@ def update_active_corpus(
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=public_error_detail("invalid_corpus_source_path"),
+            detail=str(exc),
         ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     return ActiveCorpusResponse(
@@ -2583,18 +1422,9 @@ def upsert_corpus_profile(
     x_request_id: str | None = Header(default=None),
 ):
     """Persist a named local corpus selection without changing the active FAISS index."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/corpus/profiles",
-        action="corpus_write",
-    )
+    ownership = request_ownership(req)
     try:
         source_paths = validate_corpus_profile_source_paths(req.source_paths)
         profile = CorpusProfileStore().upsert_profile(
@@ -2606,7 +1436,7 @@ def upsert_corpus_profile(
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=public_error_detail("invalid_corpus_source_path"),
+            detail=str(exc),
         ) from exc
     return CorpusProfileResponse(profile=record_to_dict(profile))
 
@@ -2635,7 +1465,7 @@ def corpus_profile_report(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return one no-secret corpus profile status snapshot as Markdown."""
+    """Return one corpus profile status snapshot as Markdown."""
     verify_api_token(authorization, x_api_key)
     status = corpus_profile_status(profile_id)
     report = format_corpus_profile_status_report(status)
@@ -2664,18 +1494,9 @@ def activate_corpus_profile(
     x_request_id: str | None = Header(default=None),
 ):
     """Apply a saved corpus profile to the active local selection."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=None,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=f"/corpus/profiles/{profile_id}/activate",
-        action="corpus_write",
-    )
+    ownership = request_ownership(None)
     try:
         profile = CorpusProfileStore().get_profile(profile_id)
         papers = [record_to_dict(record) for record in set_active_paper_source_paths(profile.source_paths)]
@@ -2684,7 +1505,7 @@ def activate_corpus_profile(
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=public_error_detail("invalid_corpus_source_path"),
+            detail=str(exc),
         ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     return ActiveCorpusResponse(
@@ -2708,18 +1529,9 @@ def rebuild_corpus_profile(
     x_request_id: str | None = Header(default=None),
 ):
     """Apply a saved corpus profile and queue FAISS rebuild through the local job system."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=f"/corpus/profiles/{profile_id}/rebuild",
-        action="corpus_write",
-    )
+    ownership = request_ownership(req)
     try:
         profile = CorpusProfileStore().get_profile(profile_id)
         papers = [record_to_dict(record) for record in set_active_paper_source_paths(profile.source_paths)]
@@ -2728,7 +1540,7 @@ def rebuild_corpus_profile(
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail=public_error_detail("invalid_corpus_source_path"),
+            detail=str(exc),
         ) from exc
     active_source_paths = [paper["source_path"] for paper in papers if paper["active"]]
     job = get_async_job_manager().enqueue_index_rebuild(
@@ -2754,7 +1566,7 @@ def admin_status(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return no-secret local runtime status for operations and admin UI."""
+    """Return local runtime status for operations and admin UI."""
     verify_api_token(authorization, x_api_key)
     return AdminStatusResponse(status=collect_admin_status().to_dict())
 
@@ -2764,7 +1576,7 @@ def admin_status_report(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return the no-secret local runtime status as a portable Markdown report."""
+    """Return the local runtime status as a portable Markdown report."""
     verify_api_token(authorization, x_api_key)
     report = format_admin_status_report(collect_admin_status())
     return PlainTextResponse(
@@ -2774,7 +1586,7 @@ def admin_status_report(
     )
 
 
-@app.get("/admin/metrics", summary="Export no-secret local metrics")
+@app.get("/admin/metrics", summary="Export local metrics")
 def admin_metrics(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
@@ -2789,395 +1601,12 @@ def admin_metrics(
     )
 
 
-@app.get(
-    "/admin/openapi-contract",
-    response_model=OpenAPIContractResponse,
-    summary="Collect local OpenAPI contract readiness",
-)
-def admin_openapi_contract(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return no-secret OpenAPI contract readiness for API integration work."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_openapi_contract(app.openapi())
-    _record_openapi_contract_check(status)
-    return OpenAPIContractResponse(openapi_contract=status)
-
-
-@app.get("/admin/openapi-contract/report", summary="Download local OpenAPI contract report")
-def admin_openapi_contract_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return OpenAPI contract readiness as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_openapi_contract(app.openapi())
-    _record_openapi_contract_check(status)
-    report = format_openapi_contract_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="fluxmind-openapi-contract.md"'},
-    )
-
-
-@app.post(
-    "/admin/openapi-contract/verify",
-    response_model=OpenAPIContractSnapshotVerifyResponse,
-    summary="Verify local OpenAPI contract snapshot",
-)
-def admin_openapi_contract_snapshot_verify(
-    req: OpenAPIContractSnapshotVerifyRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Compare the current OpenAPI contract with a prior no-secret report."""
-    verify_api_token(authorization, x_api_key)
-    current = collect_openapi_contract(app.openapi())
-    status = verify_openapi_contract_snapshot(current, req.snapshot)
-    _record_openapi_snapshot_check(status)
-    return OpenAPIContractSnapshotVerifyResponse(
-        openapi_contract_snapshot_verify=status
-    )
-
-
-@app.post(
-    "/admin/openapi-contract/verify/report",
-    summary="Download local OpenAPI contract snapshot verification report",
-)
-def admin_openapi_contract_snapshot_verify_report(
-    req: OpenAPIContractSnapshotVerifyRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return OpenAPI contract snapshot verification as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    current = collect_openapi_contract(app.openapi())
-    status = verify_openapi_contract_snapshot(current, req.snapshot)
-    _record_openapi_snapshot_check(status)
-    report = format_openapi_contract_snapshot_verify_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="fluxmind-openapi-contract-verify.md"'
-        },
-    )
-
-
-@app.get(
-    "/admin/quality-readiness",
-    response_model=QualityReadinessResponse,
-    summary="Collect local quality readiness",
-)
-def admin_quality_readiness(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return no-secret staged quality readiness on demand."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_quality_readiness()
-    _record_quality_readiness_check(status)
-    return QualityReadinessResponse(quality_readiness=status)
-
-
-@app.post(
-    "/admin/quality-readiness",
-    response_model=QualityReadinessResponse,
-    summary="Collect local quality readiness with live evidence",
-)
-def admin_quality_readiness_with_report(
-    req: QualityReadinessRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return quality readiness with supplied no-secret eval report evidence."""
-    verify_api_token(authorization, x_api_key)
-    live_reports = list(req.live_reports)
-    if req.live_report is not None:
-        live_reports.insert(0, req.live_report)
-    status = collect_quality_readiness(live_reports=live_reports)
-    _record_quality_readiness_check(status)
-    return QualityReadinessResponse(quality_readiness=status)
-
-
-@app.get("/admin/quality-readiness/report", summary="Download local quality readiness report")
-def admin_quality_readiness_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return staged quality readiness as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_quality_readiness()
-    _record_quality_readiness_check(status)
-    report = format_quality_readiness_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="fluxmind-quality-readiness.md"'},
-    )
-
-
-@app.post("/admin/quality-readiness/report", summary="Download local quality readiness report with live evidence")
-def admin_quality_readiness_report_with_report(
-    req: QualityReadinessRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return a no-secret quality-readiness report with supplied eval evidence."""
-    verify_api_token(authorization, x_api_key)
-    live_reports = list(req.live_reports)
-    if req.live_report is not None:
-        live_reports.insert(0, req.live_report)
-    status = collect_quality_readiness(live_reports=live_reports)
-    _record_quality_readiness_check(status)
-    report = format_quality_readiness_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="fluxmind-quality-readiness.md"'},
-    )
-
-
-@app.get(
-    "/admin/product-activation-rehearsal",
-    response_model=ProductActivationRehearsalResponse,
-    summary="Run local product activation rehearsal",
-)
-def admin_product_activation_rehearsal(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Run the disposable no-secret product activation rehearsal on demand."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_product_activation_rehearsal()
-    _record_product_activation_check(status)
-    return ProductActivationRehearsalResponse(product_activation_rehearsal=status)
-
-
-@app.get(
-    "/admin/product-activation-rehearsal/report",
-    summary="Download local product activation rehearsal report",
-)
-def admin_product_activation_rehearsal_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return product activation rehearsal as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_product_activation_rehearsal()
-    _record_product_activation_check(status)
-    report = format_product_activation_rehearsal_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="fluxmind-product-activation-rehearsal.md"'
-        },
-    )
-
-
-@app.get(
-    "/admin/collaboration-readiness",
-    response_model=CollaborationReadinessResponse,
-    summary="Collect local collaboration readiness",
-)
-def admin_collaboration_readiness(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return no-secret readiness for private corpora and share links."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_collaboration_readiness()
-    _record_collaboration_readiness_check(status)
-    return CollaborationReadinessResponse(collaboration_readiness=status)
-
-
-@app.get(
-    "/admin/collaboration-readiness/report",
-    summary="Download local collaboration readiness report",
-)
-def admin_collaboration_readiness_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return collaboration readiness as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_collaboration_readiness()
-    _record_collaboration_readiness_check(status)
-    report = format_collaboration_readiness_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="fluxmind-collaboration-readiness.md"'
-        },
-    )
-
-
-@app.get(
-    "/admin/provider-runtime-rehearsal",
-    response_model=ProviderRuntimeRehearsalResponse,
-    summary="Run local provider runtime rehearsal",
-)
-def admin_provider_runtime_rehearsal(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Run the disposable no-secret provider runtime rehearsal on demand."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_provider_runtime_rehearsal()
-    _record_provider_runtime_check(status)
-    return ProviderRuntimeRehearsalResponse(provider_runtime_rehearsal=status)
-
-
-@app.get(
-    "/admin/provider-runtime-rehearsal/report",
-    summary="Download local provider runtime rehearsal report",
-)
-def admin_provider_runtime_rehearsal_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return provider runtime rehearsal as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_provider_runtime_rehearsal()
-    _record_provider_runtime_check(status)
-    report = format_provider_runtime_rehearsal_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="fluxmind-provider-runtime-rehearsal.md"'
-        },
-    )
-
-
-@app.get(
-    "/admin/platform-migration-rehearsal",
-    response_model=PlatformMigrationRehearsalResponse,
-    summary="Run local platform migration rehearsal",
-)
-def admin_platform_migration_rehearsal(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Run the disposable no-secret platform migration rehearsal on demand."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_platform_migration_rehearsal()
-    _record_platform_migration_check(status)
-    return PlatformMigrationRehearsalResponse(platform_migration_rehearsal=status)
-
-
-@app.get(
-    "/admin/platform-migration-rehearsal/report",
-    summary="Download local platform migration rehearsal report",
-)
-def admin_platform_migration_rehearsal_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return platform migration rehearsal as no-secret Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_platform_migration_rehearsal()
-    _record_platform_migration_check(status)
-    report = format_storage_migration_rehearsal_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": 'attachment; filename="fluxmind-platform-migration-rehearsal.md"'
-        },
-    )
-
-
-@app.get(
-    "/admin/activation-suite",
-    response_model=ActivationSuiteResponse,
-    summary="Run local activation suite",
-)
-def admin_activation_suite(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Run the explicit no-secret local activation suite on demand."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_activation_suite(openapi_schema=app.openapi())
-    _record_activation_suite_check(status)
-    return ActivationSuiteResponse(activation_suite=status)
-
-
-@app.post(
-    "/admin/activation-suite",
-    response_model=ActivationSuiteResponse,
-    summary="Run local activation suite with live evidence",
-)
-def admin_activation_suite_with_report(
-    req: ActivationSuiteRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Run the activation suite with supplied no-secret eval report evidence."""
-    verify_api_token(authorization, x_api_key)
-    live_reports = list(req.live_reports)
-    if req.live_report is not None:
-        live_reports.insert(0, req.live_report)
-    status = collect_activation_suite(
-        live_reports=live_reports,
-        openapi_schema=app.openapi(),
-    )
-    _record_activation_suite_check(status)
-    return ActivationSuiteResponse(activation_suite=status)
-
-
-@app.get("/admin/activation-suite/report", summary="Download local activation suite report")
-def admin_activation_suite_report(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return the explicit no-secret local activation suite as Markdown."""
-    verify_api_token(authorization, x_api_key)
-    status = collect_activation_suite(openapi_schema=app.openapi())
-    _record_activation_suite_check(status)
-    report = format_activation_suite_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="fluxmind-activation-suite.md"'},
-    )
-
-
-@app.post("/admin/activation-suite/report", summary="Download local activation suite report with live evidence")
-def admin_activation_suite_report_with_report(
-    req: ActivationSuiteRequest,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return a no-secret activation-suite report with supplied eval evidence."""
-    verify_api_token(authorization, x_api_key)
-    live_reports = list(req.live_reports)
-    if req.live_report is not None:
-        live_reports.insert(0, req.live_report)
-    status = collect_activation_suite(
-        live_reports=live_reports,
-        openapi_schema=app.openapi(),
-    )
-    _record_activation_suite_check(status)
-    report = format_activation_suite_markdown(status)
-    return PlainTextResponse(
-        report,
-        media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="fluxmind-activation-suite.md"'},
-    )
-
-
 @app.get("/admin/runtime-manifest", response_model=RuntimeManifestResponse, summary="Inspect runtime backup manifest")
 def admin_runtime_manifest(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return a no-secret backup manifest for excluded local runtime state."""
+    """Return a backup manifest for excluded local runtime state."""
     verify_api_token(authorization, x_api_key)
     return RuntimeManifestResponse(manifest=collect_runtime_backup_manifest())
 
@@ -3187,7 +1616,7 @@ def admin_runtime_manifest_report(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return the no-secret runtime backup manifest as portable Markdown."""
+    """Return the runtime backup manifest as portable Markdown."""
     verify_api_token(authorization, x_api_key)
     report = format_runtime_backup_manifest_markdown(collect_runtime_backup_manifest())
     return PlainTextResponse(
@@ -3207,7 +1636,7 @@ def admin_runtime_manifest_restore_check(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Check whether local runtime state matches a no-secret manifest."""
+    """Check whether local runtime state matches a manifest."""
     verify_api_token(authorization, x_api_key)
     return RuntimeRestoreCheckResponse(
         restore_check=collect_runtime_restore_check(request.manifest)
@@ -3223,7 +1652,7 @@ def admin_runtime_manifest_restore_check_report(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """Return a no-secret Markdown report for the runtime restore dry-run."""
+    """Return a Markdown report for the runtime restore dry-run."""
     verify_api_token(authorization, x_api_key)
     report = format_runtime_restore_check_markdown(
         collect_runtime_restore_check(request.manifest)
@@ -3267,18 +1696,9 @@ def admin_retention_delete(
     x_request_id: str | None = Header(default=None),
 ):
     """Delete local upload/artifact retention candidates when explicitly enabled."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=None,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/retention/delete",
-        action="admin_write",
-    )
+    ownership = request_ownership(None)
     retention = apply_retention_delete(
         upload_days=upload_days,
         artifact_days=artifact_days,
@@ -3304,527 +1724,40 @@ def admin_runtime_events(
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ):
-    """List no-secret provider failure and query usage events without reading JSONL by hand."""
+    """List recent operational events."""
     verify_api_token(authorization, x_api_key)
     bounded_limit = min(max(limit, 1), 200)
-    safe_query = (q or "").strip()
     events = [
         runtime_event_to_dict(event)
         for event in list_runtime_events(
             kind=kind,
             code=code,
-            q=None,
-            limit=1000 if safe_query else bounded_limit,
+            q=q,
+            limit=bounded_limit,
         )
     ]
-    if safe_query:
-        events = [
-            event for event in events if runtime_event_matches_safe_query(event, safe_query)
-        ][:bounded_limit]
     return RuntimeEventsResponse(events=events)
 
 
 @app.get(
-    "/admin/product-registry/status",
-    response_model=ProductRegistryStatusResponse,
-    summary="Inspect local product registry status",
+    "/query/history/{user_id}",
+    response_model=QueryHistoryResponse,
+    summary="List one local user's query history",
 )
-def admin_product_registry_status(
+def query_history(
+    user_id: str,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
-):
-    """Return no-secret local product registry availability and counts."""
-    verify_api_token(authorization, x_api_key)
-    return ProductRegistryStatusResponse(status=product_registry_admin_status())
-
-
-@app.get(
-    "/admin/product-registry/workspaces",
-    response_model=ProductRegistryWorkspaceListResponse,
-    summary="List local product workspaces",
-)
-def admin_product_registry_workspaces(
-    response: Response,
     limit: int = 50,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
 ):
-    """List local product workspace summaries when the SQLite registry is enabled."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    enforce_product_registry_admin_read(
-        response=response,
-        request_id=request_id,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces",
-    )
-    registry = require_local_product_registry()
-    bounded_limit = min(max(limit, 1), 200)
-    return ProductRegistryWorkspaceListResponse(
-        status=product_registry_admin_status(),
-        workspaces=registry.list_workspace_summaries(limit=bounded_limit),
-    )
-
-
-@app.post(
-    "/admin/product-registry/workspaces",
-    response_model=ProductRegistryWorkspaceResponse,
-    summary="Create or update a local product workspace",
-)
-def admin_product_registry_create_workspace(
-    req: ProductRegistryWorkspaceRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Create or update a local workspace and owner membership."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces",
-        action="admin_write",
-    )
-    registry = require_local_product_registry()
-    try:
-        workspace = registry.create_workspace(
-            workspace_id=req.workspace_id,
-            label=req.label,
-            owner_user_id=req.owner_user_id,
-            owner_label=req.owner_label,
-        )
-        detail = registry.workspace_detail(workspace_id=workspace.workspace_id)
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "product_registry_write_failed"},
-        ) from exc
-    record_product_registry_admin_event(
-        action="workspace_upsert",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=workspace.workspace_id,
-    )
-    return ProductRegistryWorkspaceResponse(workspace=detail or {})
-
-
-@app.get(
-    "/admin/product-registry/workspaces/{workspace_id}",
-    response_model=ProductRegistryWorkspaceResponse,
-    summary="Inspect one local product workspace",
-)
-def admin_product_registry_workspace_detail(
-    workspace_id: str,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Return one local workspace with members, quota limits, and billing state."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    enforce_product_registry_admin_read(
-        response=response,
-        request_id=request_id,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces/{workspace_id}",
-        workspace_id=workspace_id,
-    )
-    detail = require_local_product_registry().workspace_detail(workspace_id=workspace_id)
-    if detail is None:
-        raise HTTPException(status_code=404, detail="Product workspace not found")
-    return ProductRegistryWorkspaceResponse(workspace=detail)
-
-
-@app.post(
-    "/admin/product-registry/workspaces/{workspace_id}/members",
-    response_model=ProductRegistryWorkspaceResponse,
-    summary="Add or update a local product workspace member",
-)
-def admin_product_registry_add_member(
-    workspace_id: str,
-    req: ProductRegistryMemberRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Add or update a local workspace member role."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=SimpleNamespace(workspace_id=workspace_id),
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces/{workspace_id}/members",
-        action="admin_write",
-    )
-    registry = require_local_product_registry()
-    if registry.workspace_detail(workspace_id=workspace_id) is None:
-        raise HTTPException(status_code=404, detail="Product workspace not found")
-    try:
-        registry.add_member(
-            workspace_id=workspace_id,
-            user_id=req.user_id,
-            label=req.label,
-            role=req.role,
-        )
-        detail = registry.workspace_detail(workspace_id=workspace_id)
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "product_registry_write_failed"},
-        ) from exc
-    record_product_registry_admin_event(
-        action="member_upsert",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=workspace_id,
-    )
-    return ProductRegistryWorkspaceResponse(workspace=detail or {})
-
-
-@app.put(
-    "/admin/product-registry/workspaces/{workspace_id}/quota",
-    response_model=ProductRegistryWorkspaceResponse,
-    summary="Set a local product workspace quota",
-)
-def admin_product_registry_set_quota(
-    workspace_id: str,
-    req: ProductRegistryQuotaRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Set one local quota limit for a workspace."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=SimpleNamespace(workspace_id=workspace_id),
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces/{workspace_id}/quota",
-        action="admin_write",
-    )
-    registry = require_local_product_registry()
-    if registry.workspace_detail(workspace_id=workspace_id) is None:
-        raise HTTPException(status_code=404, detail="Product workspace not found")
-    try:
-        registry.set_quota(
-            workspace_id=workspace_id,
-            metric=req.metric,
-            limit_value=req.limit_value,
-            window_s=req.window_s,
-        )
-        detail = registry.workspace_detail(workspace_id=workspace_id)
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "product_registry_write_failed"},
-        ) from exc
-    record_product_registry_admin_event(
-        action="quota_set",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=workspace_id,
-    )
-    return ProductRegistryWorkspaceResponse(workspace=detail or {})
-
-
-@app.put(
-    "/admin/product-registry/workspaces/{workspace_id}/billing",
-    response_model=ProductRegistryWorkspaceResponse,
-    summary="Set local product billing attribution state",
-)
-def admin_product_registry_set_billing(
-    workspace_id: str,
-    req: ProductRegistryBillingRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Set local billing-attribution metadata without external payment credentials."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=SimpleNamespace(workspace_id=workspace_id),
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/workspaces/{workspace_id}/billing",
-        action="admin_write",
-    )
-    registry = require_local_product_registry()
-    if registry.workspace_detail(workspace_id=workspace_id) is None:
-        raise HTTPException(status_code=404, detail="Product workspace not found")
-    try:
-        registry.set_billing_account(
-            workspace_id=workspace_id,
-            billing_mode=req.billing_mode,
-            status=req.status,
-            attribution_enabled=req.attribution_enabled,
-        )
-        detail = registry.workspace_detail(workspace_id=workspace_id)
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={"code": "product_registry_write_failed"},
-        ) from exc
-    record_product_registry_admin_event(
-        action="billing_set",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=workspace_id,
-    )
-    return ProductRegistryWorkspaceResponse(workspace=detail or {})
-
-
-@app.post(
-    "/admin/product-registry/permissions/check",
-    response_model=ProductRegistryPermissionResponse,
-    summary="Check local product RBAC permission",
-)
-def admin_product_registry_check_permission(
-    req: ProductRegistryPermissionCheckRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Check a local product RBAC decision without performing the target action."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    enforce_product_registry_admin_read(
-        response=response,
-        request_id=request_id,
-        auth_context=auth_context,
-        endpoint="/admin/product-registry/permissions/check",
-        workspace_id=req.workspace_id,
-    )
-    registry = require_local_product_registry()
-    decision = registry.permission_decision(
-        user_id=req.user_id,
-        action=req.action,
-        workspace_id=req.workspace_id,
-    )
-    record_product_registry_admin_event(
-        action="permission_check",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=str(decision.get("workspace_id", req.workspace_id or "")),
-        reason=str(decision.get("reason", "ok")),
-    )
-    return ProductRegistryPermissionResponse(permission=decision)
-
-
-@app.get(
-    "/admin/share-links/status",
-    response_model=ShareLinkRegistryStatusResponse,
-    summary="Inspect local share-link registry status",
-)
-def admin_share_link_registry_status(
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-):
-    """Return no-secret local share-link registry availability and counts."""
+    """Return newest saved questions and answers for one local FluxMind user."""
     verify_api_token(authorization, x_api_key)
-    return ShareLinkRegistryStatusResponse(status=share_link_registry_admin_status())
-
-
-@app.get(
-    "/admin/share-links",
-    response_model=ShareLinkListResponse,
-    summary="List local share links",
-)
-def admin_share_link_list(
-    response: Response,
-    workspace_id: str | None = None,
-    include_revoked: bool = False,
-    limit: int = 50,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """List local share-link summaries without share tokens, URLs, or resource refs."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    enforce_product_registry_admin_read(
-        response=response,
-        request_id=request_id,
-        auth_context=auth_context,
-        endpoint="/admin/share-links",
-        workspace_id=workspace_id,
+    user = resolve_query_history_user(user_id)
+    history = LocalUserStore().list_history(user.user_id, limit=limit)
+    return QueryHistoryResponse(
+        user=user.to_dict(),
+        history=[entry.to_dict() for entry in history],
     )
-    registry = require_local_share_link_registry()
-    bounded_limit = min(max(limit, 1), 200)
-    links = [
-        record.to_public_dict()
-        for record in registry.list_links(
-            workspace_id=workspace_id,
-            include_revoked=include_revoked,
-            limit=bounded_limit,
-        )
-    ]
-    record_share_link_admin_event(
-        action="list",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=workspace_id or "",
-    )
-    return ShareLinkListResponse(
-        status=share_link_registry_admin_status(),
-        share_links=links,
-    )
-
-
-@app.post(
-    "/admin/share-links",
-    response_model=ShareLinkCreateResponse,
-    summary="Create a local share link",
-)
-def admin_share_link_create(
-    req: ShareLinkCreateRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Create a local hash-only share token and return it once."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/share-links",
-        action="admin_write",
-    )
-    creator_id = req.created_by_user_id or ownership["owner_id"]
-    registry = require_local_share_link_registry()
-    try:
-        payload = registry.create_link(
-            workspace_id=req.workspace_id,
-            created_by_user_id=creator_id,
-            resource_kind=req.resource_kind,
-            resource_ref=req.resource_ref,
-            description=req.description,
-            expires_in_s=req.expires_in_s,
-            max_redemptions=req.max_redemptions,
-        )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=public_error_detail("invalid_share_link_request"),
-        ) from exc
-    except (OSError, sqlite3.Error) as exc:
-        raise HTTPException(status_code=500, detail={"code": "share_link_write_failed"}) from exc
-    share_link = payload.get("share_link", {}) or {}
-    record_share_link_admin_event(
-        action="create",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=str(share_link.get("workspace_id", req.workspace_id)),
-        link_id=str(share_link.get("link_id", "")),
-    )
-    return ShareLinkCreateResponse(**payload)
-
-
-@app.post(
-    "/admin/share-links/{link_id}/revoke",
-    response_model=ShareLinkResponse,
-    summary="Revoke a local share link",
-)
-def admin_share_link_revoke(
-    link_id: str,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Revoke a local share link without returning its token or resource ref."""
-    auth_context = verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    registry = require_local_share_link_registry()
-    existing = registry.get_link(link_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="Share link not found")
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=SimpleNamespace(workspace_id=existing.workspace_id),
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/admin/share-links/{link_id}/revoke",
-        action="admin_write",
-    )
-    try:
-        record = registry.revoke_link(link_id)
-    except (OSError, sqlite3.Error) as exc:
-        raise HTTPException(status_code=500, detail={"code": "share_link_write_failed"}) from exc
-    if record is None:
-        raise HTTPException(status_code=404, detail="Share link not found")
-    record_share_link_admin_event(
-        action="revoke",
-        status_code=200,
-        request_id=request_id,
-        workspace_id=record.workspace_id,
-        link_id=record.link_id,
-    )
-    return ShareLinkResponse(share_link=record.to_public_dict())
-
-
-@app.post(
-    "/admin/share-links/resolve",
-    response_model=ShareLinkResolveResponse,
-    summary="Resolve a local share token",
-)
-def admin_share_link_resolve(
-    req: ShareLinkResolveRequest,
-    response: Response,
-    authorization: str | None = Header(default=None),
-    x_api_key: str | None = Header(default=None),
-    x_request_id: str | None = Header(default=None),
-):
-    """Resolve a local share token without echoing the token, URL, or content."""
-    verify_api_token(authorization, x_api_key)
-    request_id = request_id_header(response, x_request_id)
-    registry = require_local_share_link_registry()
-    try:
-        resolution = registry.resolve_token(req.token, record_redeem=req.record_redeem)
-    except (OSError, sqlite3.Error) as exc:
-        raise HTTPException(status_code=500, detail={"code": "share_link_read_failed"}) from exc
-    share_link = resolution.get("share_link", {}) or {}
-    record_share_link_admin_event(
-        action="resolve",
-        status_code=200,
-        request_id=request_id,
-        workspace_present=bool(share_link.get("workspace_present")),
-        link_id=str(share_link.get("link_id", "")),
-        reason=str(resolution.get("reason", "unknown")),
-        share_link_valid=bool(resolution.get("valid")),
-    )
-    return ShareLinkResolveResponse(resolution=resolution)
 
 
 @app.post("/query", response_model=QueryResponse, summary="Ask FluxMind")
@@ -3837,28 +1770,12 @@ def ask(
     x_request_id: str | None = Header(default=None),
 ):
     """Query the FluxMind knowledge base. Retrieves relevant paper chunks and generates an answer."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query",
-        action="query",
-    )
-    quota_decision = enforce_product_quota(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query",
-    )
+    history_user = resolve_query_history_user(req.user_id)
     logger.info(
         "query.start request_id=%s client=%s chars=%s",
         request_id,
@@ -3904,7 +1821,6 @@ def ask(
         ownership=ownership,
         duration_ms=duration_ms,
     )
-    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query",
         answer_mode=req.answer_mode,
@@ -3912,8 +1828,18 @@ def ask(
         provider_called=True,
         duration_ms=duration_ms,
     )
+    history_recorded = record_local_query_history(
+        history_user,
+        question=req.question,
+        answer=answer,
+        answer_mode=req.answer_mode,
+    )
     logger.info("query.ok request_id=%s chars=%s", request_id, len(answer))
-    return QueryResponse(answer=answer, request_id=request_id)
+    return QueryResponse(
+        answer=answer,
+        request_id=request_id,
+        history_recorded=history_recorded,
+    )
 
 
 @app.post("/query/inspect", response_model=QueryInspectResponse, summary="Ask FluxMind with citation inspection")
@@ -3926,28 +1852,12 @@ def ask_with_inspection(
     x_request_id: str | None = Header(default=None),
 ):
     """Return an answer plus numbered citation validation against retrieved chunks."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/inspect",
-        action="query",
-    )
-    quota_decision = enforce_product_quota(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/inspect",
-    )
+    history_user = resolve_query_history_user(req.user_id)
     logger.info(
         "query.inspect_start request_id=%s client=%s chars=%s",
         request_id,
@@ -3999,7 +1909,6 @@ def ask_with_inspection(
         ownership=ownership,
         duration_ms=duration_ms,
     )
-    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query/inspect",
         answer_mode=req.answer_mode,
@@ -4007,7 +1916,17 @@ def ask_with_inspection(
         provider_called=True,
         duration_ms=duration_ms,
     )
-    return QueryInspectResponse(result=result.to_dict(), request_id=request_id)
+    history_recorded = record_local_query_history(
+        history_user,
+        question=req.question,
+        answer=result.answer,
+        answer_mode=req.answer_mode,
+    )
+    return QueryInspectResponse(
+        result=result.to_dict(),
+        request_id=request_id,
+        history_recorded=history_recorded,
+    )
 
 
 @app.post("/query/retrieve", response_model=QueryRetrieveResponse, summary="Inspect FluxMind retrieval without LLM generation")
@@ -4020,28 +1939,11 @@ def inspect_retrieval(
     x_request_id: str | None = Header(default=None),
 ):
     """Return retrieved source/page context refs without calling the model provider."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/retrieve",
-        action="query",
-    )
-    quota_decision = enforce_product_quota(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/retrieve",
-    )
     logger.info(
         "query.retrieve_start request_id=%s client=%s chars=%s",
         request_id,
@@ -4084,7 +1986,6 @@ def inspect_retrieval(
         retrieval_ok=retrieval.ok,
         duration_ms=duration_ms,
     )
-    apply_product_quota_headers(response, quota_decision)
     return QueryRetrieveResponse(retrieval=retrieval.to_dict(), request_id=request_id)
 
 
@@ -4098,28 +1999,12 @@ def ask_with_report(
     x_request_id: str | None = Header(default=None),
 ):
     """Return a Markdown report with answer, citation validation, and context refs."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/report",
-        action="query",
-    )
-    quota_decision = enforce_product_quota(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/query/report",
-    )
+    history_user = resolve_query_history_user(req.user_id)
     logger.info(
         "query.report_start request_id=%s client=%s chars=%s",
         request_id,
@@ -4165,13 +2050,18 @@ def ask_with_report(
         ownership=ownership,
         duration_ms=duration_ms,
     )
-    apply_product_quota_headers(response, quota_decision)
     record_result_retrieval_trace(
         endpoint="/query/report",
         answer_mode=req.answer_mode,
         result=result,
         provider_called=True,
         duration_ms=duration_ms,
+    )
+    history_recorded = record_local_query_history(
+        history_user,
+        question=req.question,
+        answer=result.answer,
+        answer_mode=req.answer_mode,
     )
     report = format_query_report(question=req.question, result=result, request_id=request_id)
     logger.info(
@@ -4182,6 +2072,7 @@ def ask_with_report(
     )
     headers = dict(response.headers)
     headers["Content-Disposition"] = 'attachment; filename="fluxmind-query-report.md"'
+    headers["X-FluxMind-History-Recorded"] = str(history_recorded).lower()
     return PlainTextResponse(
         report,
         media_type="text/markdown; charset=utf-8",
@@ -4218,22 +2109,13 @@ def _create_image_job_response(
     endpoint: str,
     configured_backend: bool,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
     if configured_backend:
         _require_configured_image_provider()
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     existing = existing_idempotent_job("image_generation", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -4266,22 +2148,13 @@ def _enqueue_image_job_response(
     endpoint: str,
     configured_backend: bool,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
     if configured_backend:
         _require_configured_image_provider()
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     image_request = _image_generation_request_from_api(req)
     manager = get_async_job_manager()
     if configured_backend:
@@ -4446,20 +2319,11 @@ def _create_python_job(
     *,
     endpoint: str,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -4526,20 +2390,11 @@ def _enqueue_python_job(
     *,
     endpoint: str,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     job = get_async_job_manager().enqueue_local_python(
         CodeExecutionRequest(
             language="python",
@@ -4606,20 +2461,11 @@ def _create_octave_job(
     *,
     endpoint: str,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     existing = existing_idempotent_job("code_execution", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -4686,20 +2532,11 @@ def _enqueue_octave_job(
     *,
     endpoint: str,
 ) -> JobResponse:
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.entrypoint.strip():
         raise HTTPException(status_code=400, detail="Entrypoint cannot be empty")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=endpoint,
-        action="job_submit",
-    )
     job = get_async_job_manager().enqueue_local_octave(
         CodeExecutionRequest(
             language="octave",
@@ -4727,20 +2564,11 @@ def create_index_rebuild_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Rebuild the local FAISS index from selected project PDFs as a persisted job."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/jobs/index/rebuild",
-        action="corpus_write",
-    )
     existing = existing_idempotent_job("index_rebuild", req.idempotency_key)
     if existing is not None:
         return JobResponse(job=job_to_dict(existing))
@@ -4762,20 +2590,11 @@ def enqueue_index_rebuild_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue local FAISS rebuild from selected project PDFs."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(req, auth_context)
+    ownership = request_ownership(req)
     if not req.source_paths:
         raise HTTPException(status_code=400, detail="At least one source path is required")
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint="/jobs/async/index/rebuild",
-        action="corpus_write",
-    )
     job = get_async_job_manager().enqueue_index_rebuild(
         req.source_paths,
         request_id=request_id,
@@ -4837,18 +2656,9 @@ def cancel_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Mark a queued/running local job as cancelled."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=None,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=f"/jobs/{job_id}/cancel",
-        action="job_submit",
-    )
+    ownership = request_ownership(None)
     job = get_async_job_manager().cancel(job_id) or LocalJobStore().cancel(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -4864,18 +2674,9 @@ def retry_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Retry a failed/cancelled local job with a new job ID."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=None,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=f"/jobs/{job_id}/retry",
-        action="job_submit",
-    )
+    ownership = request_ownership(None)
     job = LocalJobRunner().retry(job_id, request_id=request_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -4892,18 +2693,9 @@ def schedule_retry_job(
     x_request_id: str | None = Header(default=None),
 ):
     """Queue a failed/cancelled local job retry after a bounded backoff delay."""
-    auth_context = verify_api_token(authorization, x_api_key)
+    verify_api_token(authorization, x_api_key)
     request_id = request_id_header(response, x_request_id)
-    ownership = request_ownership(None, auth_context)
-    enforce_product_rbac(
-        req=req,
-        response=response,
-        request_id=request_id,
-        ownership=ownership,
-        auth_context=auth_context,
-        endpoint=f"/jobs/{job_id}/retry-scheduled",
-        action="job_submit",
-    )
+    ownership = request_ownership(None)
     job = get_async_job_manager().schedule_retry(
         job_id,
         delay_s=req.delay_s,

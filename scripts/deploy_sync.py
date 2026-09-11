@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts._safe_cli import format_os_error  # noqa: E402
+from scripts._cli import format_error  # noqa: E402
 
 DEFAULT_HOST = "root@100.100.233.26"
 DEFAULT_REMOTE_PATH = "/opt/fluxmind/"
@@ -38,6 +38,8 @@ DEPLOY_EXCLUDES = (
     ".coverage",
     ".env",
     ".env.bak*",
+    "environment.yml",
+    "requirements.lock",
     ".cache/",
     "models/",
     "metadata/",
@@ -50,6 +52,8 @@ DEPLOY_EXCLUDES = (
 REQUIRED_RUNTIME_EXCLUDES = {
     ".env",
     ".coverage",
+    "environment.yml",
+    "requirements.lock",
     ".cache/",
     "venv/",
     "models/",
@@ -127,7 +131,7 @@ def main() -> int:
             apply=args.apply,
         )
     except RuntimeError as exc:
-        print(f"error: {format_os_error(exc)}", file=sys.stderr)
+        print(f"error: {format_error(exc)}", file=sys.stderr)
         return 2
 
     if not args.apply:

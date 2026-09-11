@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print a no-secret backup manifest for FluxMind runtime state."""
+"""Print a backup manifest for FluxMind runtime state."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from src.storage_manifest import (
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
-from scripts._safe_cli import format_cli_error, format_os_error
+from scripts._cli import format_error
 
 
 def load_json_manifest(path_arg: str) -> dict:
@@ -46,7 +46,7 @@ def main() -> int:
     parser.add_argument(
         "--restore-check",
         metavar="MANIFEST_JSON",
-        help="Dry-run verify this no-secret runtime manifest against a target root. Use '-' for stdin.",
+        help="Dry-run verify this runtime manifest against a target root. Use '-' for stdin.",
     )
     parser.add_argument(
         "--target-root",
@@ -81,10 +81,10 @@ def main() -> int:
             output = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         emit_output(output, args.output)
     except OSError as exc:
-        print(f"error: {format_os_error(exc)}", file=sys.stderr)
+        print(f"error: {format_error(exc)}", file=sys.stderr)
         return 2
     except json.JSONDecodeError as exc:
-        print(f"error: {format_cli_error(exc)}", file=sys.stderr)
+        print(f"error: {format_error(exc)}", file=sys.stderr)
         return 2
     return 0
 

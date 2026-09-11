@@ -59,7 +59,7 @@ def main() -> int:
     parser.add_argument(
         "--json-report",
         type=Path,
-        help="Optional path for a no-secret machine-readable evaluation report",
+        help="Optional path for a machine-readable evaluation report",
     )
     args = parser.parse_args()
 
@@ -129,8 +129,7 @@ def main() -> int:
             print(
                 f"{status:4} live answer {result.case_id}: "
                 f"{result.message} "
-                f"request_id_present={result.request_id_present} "
-                f"request_id_redacted={result.request_id_redacted}"
+                f"request_id={result.request_id or '-'}"
             )
             if not result.ok:
                 failures.append(f"live answer {result.case_id}")
@@ -148,8 +147,7 @@ def main() -> int:
             print(
                 f"{status:4} live retrieval {result.case_id}: "
                 f"{result.message} "
-                f"request_id_present={result.request_id_present} "
-                f"request_id_redacted={result.request_id_redacted}"
+                f"request_id={result.request_id or '-'}"
             )
             if not result.ok:
                 failures.append(f"live retrieval {result.case_id}")

@@ -1,4 +1,5 @@
 from dataclasses import asdict
+import io
 import json
 import time
 import sqlite3
@@ -242,7 +243,7 @@ def test_code_execution_error_classifies_docker_failures():
     assert LocalJobRunner._code_execution_error_from_result(user_exit_127)["code"] == "execution_failed"
 
 
-def test_local_python_job_records_no_secret_execution_event(tmp_path: Path, monkeypatch):
+def test_local_python_job_records_execution_event(tmp_path: Path, monkeypatch):
     events = []
     monkeypatch.setattr("src.jobs.append_runtime_event", lambda **kwargs: events.append(kwargs))
     store = LocalJobStore(tmp_path / "jobs.jsonl")
@@ -274,13 +275,9 @@ def test_local_python_job_records_no_secret_execution_event(tmp_path: Path, monk
     assert metadata["status"] == "succeeded"
     assert metadata["language"] == "python"
     assert metadata["backend"] == "local"
-    assert metadata["owner_id_present"] is True
-    assert metadata["owner_label_present"] is True
+    assert metadata["owner_id"] == "lab-code"
+    assert metadata["owner_label"] == "Code Lab"
     assert metadata["ownership_source"] == "request"
-    assert "owner_id" not in metadata
-    assert "owner_label" not in metadata
-    assert "lab-code" not in str(event)
-    assert "Code Lab" not in str(event)
     assert metadata["provider_runtime"] == "python-local"
     assert metadata["execution_policy"] == "local-safe-v1"
     assert metadata["policy_violation"] == "false"
@@ -322,6 +319,8 @@ def test_local_python_job_uses_configured_docker_backend(tmp_path: Path, monkeyp
         returncode = 0
 
         def __init__(self, command, **_kwargs):
+            self.stdout = io.BytesIO(b"job-docker-ok\n")
+            self.stderr = io.BytesIO()
             captured["command"] = command
             mount = command[command.index("-v") + 1]
             workdir = Path(mount.split(":", 1)[0])
@@ -329,9 +328,6 @@ def test_local_python_job_uses_configured_docker_backend(tmp_path: Path, monkeyp
 
         def poll(self):
             return self.returncode
-
-        def communicate(self, timeout=None):
-            return "job-docker-ok\n", ""
 
     monkeypatch.setattr("src.jobs.CODE_EXECUTION_BACKEND", "docker")
     monkeypatch.setattr("src.jobs.DOCKER_PYTHON_EXECUTION_IMAGE", "python:3.12-slim")
@@ -448,10 +444,14 @@ def test_job_store_filters_latest_records(tmp_path: Path, monkeypatch):
     assert [job.job_id for job in store.list_latest(kind="image_generation")] == [image_job.job_id]
     assert [job.job_id for job in store.list_latest(q=image_job.job_id)] == [image_job.job_id]
     assert [job.job_id for job in store.list_latest(q="image_generation")] == [image_job.job_id]
-    assert store.list_latest(q="observer filter") == []
-    assert store.list_latest(q="req-python-filter") == []
-    assert store.list_latest(q="main.py") == []
-    assert store.list_latest(q="SystemExit") == []
+    assert [job.job_id for job in store.list_latest(q="observer filter")] == [image_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="req-python-filter")] == [
+        failed_job.job_id
+    ]
+    assert [job.job_id for job in store.list_latest(q="main.py")] == [failed_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="SystemExit")] == [
+        failed_job.job_id
+    ]
     assert store.list_latest(status="queued") == []
 
 
@@ -479,8 +479,8 @@ def test_job_store_persists_and_filters_local_ownership(tmp_path: Path):
     assert loaded_owned.logs[0]["metadata"]["owner_id"] == "lab-a"
     assert [job.job_id for job in store.list_latest(owner_id="lab-a")] == [owned_job.job_id]
     assert [job.job_id for job in store.list_latest(q="request")] == [owned_job.job_id]
-    assert store.list_latest(q="Lab A") == []
-    assert store.list_latest(q="lab-a") == []
+    assert [job.job_id for job in store.list_latest(q="Lab A")] == [owned_job.job_id]
+    assert [job.job_id for job in store.list_latest(q="lab-a")] == [owned_job.job_id]
 
     with sqlite3.connect(jobs_file.with_suffix(".sqlite3")) as conn:
         row = conn.execute(
@@ -860,63 +860,6 @@ def test_job_store_summarizes_worker_lease_health(tmp_path: Path):
     assert health["active_leases"] == 1
     assert health["expired_leases"] == 1
     assert {item["worker_id"] for item in health["latest"]} == {"worker-a", "worker-b"}
-
-
-def test_job_store_releases_worker_lease(tmp_path: Path):
-    store = LocalJobStore(tmp_path / "jobs.jsonl")
-    due = LocalJobRunner(store)._enqueue(
-        "image_generation",
-        {"prompt": "release me"},
-        "req-release",
-    )
-    claimed = store.claim_job(due.job_id, worker_id="worker-a", lease_seconds=30)
-
-    released = store.release_job_lease(claimed.job_id, worker_id="worker-a")
-
-    assert released.worker_id is None
-    assert released.leased_at is None
-    assert released.lease_expires_at is None
-    assert store.claim_job(due.job_id, worker_id="worker-b", lease_seconds=30).worker_id == "worker-b"
-
-
-def test_job_store_release_lease_preserves_mismatched_and_terminal_jobs(tmp_path: Path):
-    store = LocalJobStore(tmp_path / "jobs.jsonl")
-    runner = LocalJobRunner(store)
-    queued = runner._enqueue(
-        "image_generation",
-        {"prompt": "lease guard"},
-        "req-lease-guard",
-    )
-    claimed = store.claim_job(queued.job_id, worker_id="worker-a", lease_seconds=30)
-
-    mismatch = store.release_job_lease(claimed.job_id, worker_id="worker-b")
-
-    assert mismatch.worker_id == "worker-a"
-    assert mismatch.leased_at == claimed.leased_at
-    assert mismatch.lease_expires_at == claimed.lease_expires_at
-
-    succeeded = runner.run_local_python(
-        CodeExecutionRequest(
-            language="python",
-            entrypoint="main.py",
-            files={"main.py": "print('leased-terminal')"},
-        )
-    )
-    succeeded.worker_id = "worker-terminal"
-    succeeded.leased_at = "2026-01-01T00:00:00+00:00"
-    succeeded.lease_expires_at = "2026-01-01T01:00:00+00:00"
-    store.append(succeeded)
-
-    released_terminal = store.release_job_lease(
-        succeeded.job_id,
-        worker_id="worker-terminal",
-    )
-
-    assert released_terminal.status == "succeeded"
-    assert released_terminal.worker_id == "worker-terminal"
-    assert released_terminal.leased_at == "2026-01-01T00:00:00+00:00"
-    assert released_terminal.lease_expires_at == "2026-01-01T01:00:00+00:00"
-    assert store.get(succeeded.job_id).worker_id == "worker-terminal"
 
 
 def test_async_manager_runs_zero_delay_scheduled_retry(tmp_path: Path):

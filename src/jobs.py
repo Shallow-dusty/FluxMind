@@ -194,33 +194,28 @@ class JobRecord:
 _JOB_RECORD_FIELDS = set(JobRecord.__dataclass_fields__)
 
 
-def job_search_projection(record: JobRecord) -> dict[str, Any]:
-    """Return fields safe to use for local job free-text search."""
-    error_code = None
-    if isinstance(record.error, dict):
-        error_code = record.error.get("code")
-    log_statuses = [
-        str(entry.get("status"))
-        for entry in record.logs
-        if isinstance(entry, dict) and entry.get("status")
-    ]
+def job_view(record: JobRecord) -> dict[str, Any]:
+    """Return useful local job fields for the sidebar and free-text search."""
     return {
         "job_id": record.job_id,
         "kind": record.kind,
         "status": record.status,
         "created_at": record.created_at,
         "updated_at": record.updated_at,
+        "request": record.request,
+        "result": record.result,
+        "error": record.error,
         "parent_job_id": record.parent_job_id or "",
         "ownership_source": record.ownership_source,
+        "owner_id": record.owner_id,
+        "owner_label": record.owner_label,
         "attempts": record.attempts,
         "max_attempts": record.max_attempts,
         "retry_backoff_s": record.retry_backoff_s,
-        "request_id_present": bool(record.request_id),
-        "idempotency_key_present": bool(record.idempotency_key),
-        "result_present": bool(record.result),
+        "idempotency_key": record.idempotency_key,
+        "request_id": record.request_id,
         "artifact_count": len(record.artifacts),
-        "error_code": error_code or "",
-        "log_statuses": log_statuses,
+        "logs": record.logs,
     }
 
 
@@ -241,7 +236,7 @@ def _search_values(value: Any) -> list[str]:
 
 
 def job_search_text(record: JobRecord) -> str:
-    return " ".join(_search_values(job_search_projection(record))).casefold()
+    return " ".join(_search_values(job_view(record))).casefold()
 
 
 def _job_record_from_payload(payload: Any) -> JobRecord | None:
@@ -272,7 +267,7 @@ def _job_record_from_json_payload(payload: Any) -> JobRecord | None:
 
 
 def append_job_log(record: JobRecord, status: str, message: str, **metadata: Any) -> None:
-    """Append a no-secret transition log entry to a local job record."""
+    """Append a transition log entry to a local job record."""
     entry: dict[str, Any] = {
         "created_at": utc_now(),
         "status": status,
@@ -544,16 +539,6 @@ class LocalJobStore:
         self.append(record)
         return record
 
-    def scheduled_count(self) -> int:
-        now = datetime.now(timezone.utc)
-        return sum(
-            1
-            for job in self.list_latest(limit=10000)
-            if job.status == "queued"
-            and job.not_before
-            and parse_utc(job.not_before) > now
-        )
-
     def list_queued(self, *, limit: int = 1000) -> list[JobRecord]:
         """Return queued jobs from durable state, ordered by creation time."""
         jobs = [job for job in self.list_latest(limit=limit) if job.status == "queued"]
@@ -603,7 +588,7 @@ class LocalJobStore:
         }
 
     def worker_lease_health(self, *, limit: int = 5) -> dict[str, Any]:
-        """Summarize no-secret worker lease activity for admin/status surfaces."""
+        """Summarize worker lease activity for admin/status surfaces."""
         now = datetime.now(timezone.utc)
         leased_jobs = [
             job for job in self.list_latest(limit=10000)
@@ -671,22 +656,6 @@ class LocalJobStore:
     ) -> JobRecord | None:
         """Claim the oldest due queued job for future durable worker loops."""
         return self._claim_candidate(worker_id=worker_id, lease_seconds=lease_seconds)
-
-    def release_job_lease(self, job_id: str, *, worker_id: str | None = None) -> JobRecord | None:
-        """Clear a queued job lease so another worker can claim it."""
-        record = self.get(job_id)
-        if record is None:
-            return None
-        if record.status != "queued":
-            return record
-        if worker_id is not None and record.worker_id != worker_id:
-            return record
-        record.worker_id = None
-        record.leased_at = None
-        record.lease_expires_at = None
-        record.updated_at = utc_now()
-        self.append(record)
-        return record
 
     def _claim_candidate(
         self,
@@ -1011,7 +980,7 @@ class LocalJobRunner:
         error: dict[str, Any] | None,
         duration_ms: int,
     ) -> None:
-        """Append a no-secret execution outcome event without affecting the job."""
+        """Append an execution outcome event without affecting the job."""
         if not self.record_runtime_events:
             return
         runtime_metadata = result.runtime_metadata if result else {}
@@ -1128,28 +1097,6 @@ class LocalJobRunner:
         )
         append_job_log(record, "running", f"{kind} job started.", **owner)
         return self.store.append_new(record)
-
-    def _start(
-        self,
-        kind: JobKind,
-        request: dict[str, Any],
-        request_id: str | None,
-        *,
-        idempotency_key: str | None = None,
-        max_attempts: int = 1,
-        retry_backoff_s: int = 0,
-        ownership: dict[str, str] | None = None,
-    ) -> JobRecord:
-        record, _created = self._start_with_create_result(
-            kind,
-            request,
-            request_id,
-            idempotency_key=idempotency_key,
-            max_attempts=max_attempts,
-            retry_backoff_s=retry_backoff_s,
-            ownership=ownership,
-        )
-        return record
 
     def _enqueue_with_create_result(
         self,

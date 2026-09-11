@@ -1,4 +1,3 @@
-import hashlib
 from pathlib import Path
 import sqlite3
 
@@ -232,7 +231,7 @@ def test_corpus_profile_store_persists_named_selection(tmp_path: Path):
     assert store.storage_status()["profiles"] == 1
 
 
-def test_corpus_profile_report_filename_is_safe():
+def test_corpus_profile_report_filename_is_header_safe():
     assert (
         safe_corpus_profile_report_filename("SMC Core")
         == "fluxmind-corpus-profile-smc-core.md"
@@ -240,10 +239,8 @@ def test_corpus_profile_report_filename_is_safe():
 
     sensitive_id = 'abc"\r\nContent-Disposition: x-secret'
     filename = safe_corpus_profile_report_filename(sensitive_id)
-    expected_id = hashlib.sha256(sensitive_id.encode()).hexdigest()[:16]
 
-    assert filename == f"fluxmind-corpus-profile-{expected_id}.md"
-    assert "secret" not in filename
+    assert filename == "fluxmind-corpus-profile-abc-content-disposition-x-secret.md"
     assert '"' not in filename
     assert "\r" not in filename
     assert "\n" not in filename

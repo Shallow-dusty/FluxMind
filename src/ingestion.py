@@ -199,7 +199,7 @@ def _active_content_markers(content: bytes) -> tuple[str, ...]:
 
 
 def scan_uploaded_pdf(pdf_bytes: bytes) -> UploadScanResult:
-    """Run a local no-secret PDF upload scan before writing upload bytes."""
+    """Run a local PDF upload scan before writing upload bytes."""
     byte_count = len(pdf_bytes)
     if not UPLOAD_SCAN_ENABLED:
         return UploadScanResult(
@@ -262,7 +262,7 @@ def _record_upload_scan_event(result: UploadScanResult) -> None:
         append_runtime_event(
             kind="upload_scan",
             code="upload_scan_allowed" if result.allowed else "upload_scan_blocked",
-            message="Metadata-only PDF upload scan event.",
+            message="PDF upload scan.",
             metadata=result.to_metadata(),
         )
     except OSError:
@@ -827,11 +827,11 @@ def build_vector_store(
 ) -> FAISS:
     """Build or load FAISS vector store."""
     _raise_if_cancelled(cancel_event)
-    embeddings = get_embedding_model()
     index_path = FAISS_INDEX_DIR
 
     # If index exists, load it
     if not rebuild and index_path.exists() and (index_path / "index.faiss").exists():
+        embeddings = get_embedding_model()
         store = FAISS.load_local(
             str(index_path), embeddings, allow_dangerous_deserialization=True
         )
@@ -851,20 +851,11 @@ def build_vector_store(
         documents = load_all_pdfs(cancel_event=cancel_event)
 
     if not documents:
-        _raise_if_cancelled(cancel_event)
-        # Create empty store with a placeholder
-        store = FAISS.from_documents(
-            [Document(page_content="FluxMind knowledge base initialized.", metadata={"source": "system"})],
-            embeddings,
+        raise ValueError(
+            "No PDF documents are available to build the knowledge-base index."
         )
-        _raise_if_cancelled(cancel_event)
-        if rebuild:
-            _save_rebuilt_vector_store(store, index_path)
-        else:
-            store.save_local(str(index_path))
-            _clear_vector_store_cache()
-        return store
 
+    embeddings = get_embedding_model()
     chunks = split_documents(documents, cancel_event=cancel_event)
     _raise_if_cancelled(cancel_event)
     store = FAISS.from_documents(chunks, embeddings)

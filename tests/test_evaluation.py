@@ -23,7 +23,6 @@ from src.chain import (
     query_with_metadata,
     rerank_documents,
     retrieve_with_metadata,
-    tokenize_query,
     validate_numbered_citations,
 )
 from src.evaluation import (
@@ -65,8 +64,9 @@ def test_answer_mode_normalization_and_context_refs():
 
 def test_citation_instruction_bounds_numbered_refs():
     assert citation_instruction(0) == "No numbered source refs are available; do not use numbered citations like [1]."
-    assert citation_instruction(1) == "Valid numbered source refs for this answer: [1] only."
-    assert citation_instruction(3) == "Valid numbered source refs for this answer: [1] through [3] only."
+    assert "Valid numbered source refs for this answer: [1] only." in citation_instruction(1)
+    assert "Use at least one of these refs" in citation_instruction(1)
+    assert "Valid numbered source refs for this answer: [1] through [3] only." in citation_instruction(3)
     assert "measured currents" in ANSWER_MODE_INSTRUCTIONS["code_generation"]
 
 
@@ -82,6 +82,23 @@ def test_numbered_citation_validation_rejects_unknown_refs():
     assert result.valid_refs == [1]
     assert result.invalid_refs == [3]
     assert result.missing_required_refs == [2]
+
+
+def test_numbered_citation_validation_rejects_missing_citations_when_context_exists():
+    docs = [Document(page_content="a", metadata={"source": "a.pdf", "page": 1})]
+
+    result = validate_numbered_citations("An uncited answer.", docs)
+
+    assert not result.ok
+    assert result.missing_citation is True
+    assert result.cited_refs == []
+
+
+def test_numbered_citation_validation_allows_no_citation_without_context():
+    result = validate_numbered_citations("A general answer.", [])
+
+    assert result.ok
+    assert result.missing_citation is False
 
 
 def test_invalid_numbered_citations_are_neutralized_before_validation():
@@ -150,6 +167,8 @@ def test_query_with_metadata_blocks_before_provider_when_guard_denies(monkeypatc
             "allowed": False,
             "reason": "provider_prompt_token_limit_exceeded",
             "status_code": 429,
+            "estimated_prompt_tokens": 101,
+            "max_prompt_tokens_per_request": 100,
         },
     )
 
@@ -163,6 +182,9 @@ def test_query_with_metadata_blocks_before_provider_when_guard_denies(monkeypatc
 
     assert exc.value.user_error.code == "provider_prompt_token_limit_exceeded"
     assert exc.value.user_error.status_code == 429
+    assert exc.value.user_error.message == (
+        "Estimated prompt tokens (101) exceed the configured limit (100)."
+    )
 
 
 def test_provider_usage_from_response_reads_langchain_usage_metadata():
@@ -275,7 +297,7 @@ def test_retrieve_with_metadata_reports_source_page_quality(monkeypatch):
     assert diagnostics.context_refs[0]["source_path"] == "papers/library/paper.pdf"
     assert diagnostics.missing_source_page_refs == [2]
     assert diagnostics.ok is False
-    assert diagnostics.to_dict()["citation_instruction"] == "Valid numbered source refs for this answer: [1] through [2] only."
+    assert "Valid numbered source refs for this answer: [1] through [2] only." in diagnostics.to_dict()["citation_instruction"]
 
 
 def test_hybrid_retrieve_reranks_keyword_hits(monkeypatch):
@@ -449,14 +471,8 @@ def test_generated_artifact_context_formats_recent_artifacts(monkeypatch):
     assert "[Artifact:abc123]" in context
     assert "kind=image" in context
     assert "job_kind=image_generation" in context
-    assert "style_present=true" in context
+    assert "style=engineering" in context
     assert "SMC diagram" not in context
-    assert "engineering" not in context
-
-
-def test_tokenize_query_supports_cjk_terms():
-    assert "磁链" in tokenize_query("磁链 observer")
-    assert "observer" in tokenize_query("磁链 observer")
 
 
 def test_offline_eval_config_passes():
@@ -552,9 +568,9 @@ def test_evaluation_report_summarizes_results_without_secrets():
     assert "api_key" not in str(report).lower()
 
 
-def test_evaluation_report_redacts_live_request_ids():
+def test_evaluation_report_keeps_live_request_ids_for_debugging():
     case = {
-        "id": "live-redaction",
+        "id": "live-request-id",
         "question": "Explain SMC",
         "expected_refs": [
             {"source": "a.pdf", "source_path": "papers/library/a.pdf", "page": 1},
@@ -565,7 +581,7 @@ def test_evaluation_report_redacts_live_request_ids():
     live_answer = evaluate_live_query_payload(
         case,
         {
-            "request_id": "req-/private/hunter2-sk-live",
+            "request_id": "req-live-answer",
             "result": {
                 "answer": "observer answer [1]",
                 "citation_validation": {"ok": True, "invalid_refs": [], "missing_source_page_refs": []},
@@ -579,7 +595,7 @@ def test_evaluation_report_redacts_live_request_ids():
     live_retrieval = evaluate_live_retrieval_payload(
         case,
         {
-            "request_id": "retrieval-/private/hunter2-sk-live",
+            "request_id": "req-live-retrieval",
             "retrieval": {
                 "ok": True,
                 "context_count": 1,
@@ -605,17 +621,10 @@ def test_evaluation_report_redacts_live_request_ids():
         regression_gate_results=[],
     )
 
-    serialized = str(report)
-    assert "hunter2" not in serialized
-    assert "sk-live" not in serialized
     live_answer_report = report["results"]["live_answers"][0]
     live_retrieval_report = report["results"]["live_retrieval"][0]
-    assert "request_id" not in live_answer_report
-    assert "request_id" not in live_retrieval_report
-    assert live_answer_report["request_id_present"] is True
-    assert live_answer_report["request_id_redacted"] is True
-    assert live_retrieval_report["request_id_present"] is True
-    assert live_retrieval_report["request_id_redacted"] is True
+    assert live_answer_report["request_id"] == "req-live-answer"
+    assert live_retrieval_report["request_id"] == "req-live-retrieval"
 
 
 def test_default_rag_baseline_reaches_twenty_case_domain_gate():
@@ -1466,8 +1475,7 @@ def test_live_query_payload_scores_context_citations_and_terms():
     )
 
     assert result.ok
-    assert result.request_id_present is True
-    assert result.request_id_redacted is True
+    assert result.request_id == "req-live"
     assert result.expected_context_coverage == 0.5
     assert result.answer_term_coverage == 1.0
 
@@ -1528,8 +1536,7 @@ def test_live_retrieval_payload_scores_context_sources_without_answer():
     )
 
     assert result.ok
-    assert result.request_id_present is True
-    assert result.request_id_redacted is True
+    assert result.request_id == "req-retrieval"
     assert result.expected_context_coverage == 1.0
     assert result.context_count == 2
 

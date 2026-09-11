@@ -65,14 +65,6 @@ CODE_EXECUTION_MAX_ARTIFACT_TOTAL_BYTES = int(
 CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES = int(
     os.getenv("CODE_EXECUTION_MAX_ARTIFACT_CANDIDATES", "256")
 )
-CODE_EXECUTION_ALERT_MIN_EVENTS = int(os.getenv("CODE_EXECUTION_ALERT_MIN_EVENTS", "5"))
-CODE_EXECUTION_ALERT_FAILURE_RATE = float(os.getenv("CODE_EXECUTION_ALERT_FAILURE_RATE", "0.5"))
-CODE_EXECUTION_ALERT_DURATION_MS = int(os.getenv("CODE_EXECUTION_ALERT_DURATION_MS", "30000"))
-
-# External provider activation readiness. Local mock/image and local execution
-# remain active; these settings only report future real provider activation
-# targets and never expose credential values.
-EXTERNAL_PROVIDERS_ENABLED = _env_flag("EXTERNAL_PROVIDERS_ENABLED", "false")
 IMAGE_PROVIDER_BACKEND = os.getenv("IMAGE_PROVIDER_BACKEND", "local-mock").strip()
 OPENAI_IMAGE_API_KEY = os.getenv(
     "OPENAI_IMAGE_API_KEY",
@@ -86,14 +78,6 @@ OPENAI_IMAGE_OUTPUT_FORMAT = os.getenv("OPENAI_IMAGE_OUTPUT_FORMAT", "png").stri
 # off by default; enable only when the upstream confirms it accepts the param.
 OPENAI_IMAGE_SEND_OUTPUT_FORMAT = _env_flag("OPENAI_IMAGE_SEND_OUTPUT_FORMAT", "false")
 OPENAI_IMAGE_TIMEOUT_S = int(os.getenv("OPENAI_IMAGE_TIMEOUT_S", "180"))
-IMAGE_PROVIDER_API_CONFIGURED = _env_flag(
-    "IMAGE_PROVIDER_API_CONFIGURED",
-    "true" if OPENAI_IMAGE_API_KEY else "false",
-)
-HOSTED_EXECUTION_BACKEND = os.getenv("HOSTED_EXECUTION_BACKEND", "none").strip()
-HOSTED_EXECUTION_CONFIGURED = _env_flag("HOSTED_EXECUTION_CONFIGURED", "false")
-MATLAB_BACKEND = os.getenv("MATLAB_BACKEND", "none").strip()
-MATLAB_LICENSE_CONFIGURED = _env_flag("MATLAB_LICENSE_CONFIGURED", "false")
 PROVIDER_QUOTA_GUARD_ENABLED = _env_flag("PROVIDER_QUOTA_GUARD_ENABLED", "false")
 PROVIDER_QUOTA_MAX_PROMPT_TOKENS_PER_REQUEST = int(
     os.getenv("PROVIDER_QUOTA_MAX_PROMPT_TOKENS_PER_REQUEST", "128000")
@@ -106,87 +90,14 @@ PROVIDER_QUOTA_MAX_COST_USD_PER_REQUEST = os.getenv(
     "0",
 ).strip()
 
-# Storage backend readiness. Local JSON/SQLite/filesystem storage remains the
-# active no-key backend; external database/object storage requires explicit
-# configuration and is only reported as readiness here.
-METADATA_STORAGE_BACKEND = os.getenv("METADATA_STORAGE_BACKEND", "local").strip().lower()
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-OBJECT_STORAGE_BACKEND = os.getenv("OBJECT_STORAGE_BACKEND", "local").strip().lower()
-OBJECT_STORAGE_BUCKET = os.getenv("OBJECT_STORAGE_BUCKET", "")
-OBJECT_STORAGE_ENDPOINT = os.getenv("OBJECT_STORAGE_ENDPOINT", "")
-OBJECT_STORAGE_REGION = os.getenv("OBJECT_STORAGE_REGION", "")
-
-# Distributed worker readiness. Local SQLite/JSONL remains the active job store;
-# external job-store configuration is reported as a no-secret readiness contract
-# until a deliberate migration activates a distributed backend.
-DISTRIBUTED_JOB_STORE_BACKEND = os.getenv("DISTRIBUTED_JOB_STORE_BACKEND", "local").strip().lower()
-DISTRIBUTED_JOB_STORE_URL = os.getenv("DISTRIBUTED_JOB_STORE_URL", "")
-DISTRIBUTED_JOB_QUEUE_NAME = os.getenv("DISTRIBUTED_JOB_QUEUE_NAME", "fluxmind-jobs").strip()
-
-# Optional local cost estimation. These rates are no-secret configuration used
-# only for admin estimates; FluxMind does not connect to external billing.
+# Optional local cost estimation.
 QUERY_COST_PROVIDER = os.getenv("QUERY_COST_PROVIDER", "").strip()
 QUERY_COST_PROMPT_USD_PER_1M = os.getenv("QUERY_COST_PROMPT_USD_PER_1M", "0").strip()
 QUERY_COST_COMPLETION_USD_PER_1M = os.getenv("QUERY_COST_COMPLETION_USD_PER_1M", "0").strip()
-QUERY_ALERT_MIN_EVENTS = int(os.getenv("QUERY_ALERT_MIN_EVENTS", "5"))
-QUERY_ALERT_DURATION_MS = int(os.getenv("QUERY_ALERT_DURATION_MS", "15000"))
-RETRIEVAL_TRACE_ALERT_MIN_EVENTS = int(os.getenv("RETRIEVAL_TRACE_ALERT_MIN_EVENTS", "5"))
-RETRIEVAL_TRACE_ALERT_EMPTY_RATE = float(os.getenv("RETRIEVAL_TRACE_ALERT_EMPTY_RATE", "0.25"))
-RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE = float(
-    os.getenv("RETRIEVAL_TRACE_ALERT_SOURCE_PAGE_INCOMPLETE_RATE", "0.25")
-)
-RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE = float(
-    os.getenv("RETRIEVAL_TRACE_ALERT_CITATION_FAILURE_RATE", "0.25")
-)
-PROVIDER_FAILURE_ALERT_MIN_EVENTS = int(os.getenv("PROVIDER_FAILURE_ALERT_MIN_EVENTS", "3"))
-PROVIDER_FAILURE_ALERT_RATE = float(os.getenv("PROVIDER_FAILURE_ALERT_RATE", "0.25"))
-JOB_ALERT_FAILED_MIN_EVENTS = int(os.getenv("JOB_ALERT_FAILED_MIN_EVENTS", "3"))
-JOB_ALERT_EXPIRED_MIN_EVENTS = int(os.getenv("JOB_ALERT_EXPIRED_MIN_EVENTS", "1"))
-API_ACCESS_AUDIT_ENABLED = _env_flag("API_ACCESS_AUDIT_ENABLED", "true")
 API_RATE_LIMIT_ENABLED = _env_flag("API_RATE_LIMIT_ENABLED", "false")
 API_RATE_LIMIT_MAX_REQUESTS = int(os.getenv("API_RATE_LIMIT_MAX_REQUESTS", "300"))
 API_RATE_LIMIT_WINDOW_S = int(os.getenv("API_RATE_LIMIT_WINDOW_S", "60"))
 
-# Productization readiness. These values are no-secret configuration signals
-# for future identity, quota, and billing activation; the current local runtime
-# remains no-key/no-account unless explicitly changed by later implementation.
-FLUXMIND_API_TOKEN_CONFIGURED = bool(os.getenv("FLUXMIND_API_TOKEN", "").strip())
-IDENTITY_PROVIDER = os.getenv("FLUXMIND_IDENTITY_PROVIDER", os.getenv("IDENTITY_PROVIDER", "none")).strip()
-API_KEY_REGISTRY_BACKEND = os.getenv(
-    "FLUXMIND_API_KEY_REGISTRY_BACKEND",
-    os.getenv("API_KEY_REGISTRY_BACKEND", "none"),
-).strip()
-QUOTA_STORE_BACKEND = os.getenv(
-    "FLUXMIND_QUOTA_STORE_BACKEND",
-    os.getenv("QUOTA_STORE_BACKEND", "none"),
-).strip()
-BILLING_PROVIDER = os.getenv(
-    "FLUXMIND_BILLING_PROVIDER",
-    os.getenv("BILLING_PROVIDER", "none"),
-).strip()
-BILLING_ATTRIBUTION_ENABLED = _env_flag("FLUXMIND_BILLING_ATTRIBUTION_ENABLED", "false")
-IDENTITY_QUOTAS_BILLING_ENABLED = _env_flag("IDENTITY_QUOTAS_BILLING_ENABLED", "false")
-PRODUCT_QUOTA_GUARD_ENABLED = _env_flag("FLUXMIND_PRODUCT_QUOTA_GUARD_ENABLED", "false")
-PRODUCT_QUOTA_METRIC = os.getenv("FLUXMIND_PRODUCT_QUOTA_METRIC", "requests").strip() or "requests"
-PRODUCT_RBAC_GUARD_ENABLED = _env_flag("FLUXMIND_PRODUCT_RBAC_GUARD_ENABLED", "false")
-PRODUCT_REGISTRY_BACKEND = os.getenv(
-    "FLUXMIND_PRODUCT_REGISTRY_BACKEND",
-    os.getenv("PRODUCT_REGISTRY_BACKEND", "none"),
-).strip()
-STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED = _env_flag(
-    "FLUXMIND_STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED",
-    "false",
-)
-PRIVATE_CORPORA_ENABLED = _env_flag("FLUXMIND_PRIVATE_CORPORA_ENABLED", "false")
-SHARE_LINKS_ENABLED = _env_flag("FLUXMIND_SHARE_LINKS_ENABLED", "false")
-SHARE_LINK_TOKEN_STORE_BACKEND = os.getenv(
-    "FLUXMIND_SHARE_LINK_TOKEN_STORE_BACKEND",
-    "none",
-).strip()
-STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED = _env_flag(
-    "FLUXMIND_STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED",
-    "false",
-)
 UPLOAD_SCAN_ENABLED = _env_flag("UPLOAD_SCAN_ENABLED", "true")
 UPLOAD_SCAN_REJECT_ENCRYPTED = _env_flag("UPLOAD_SCAN_REJECT_ENCRYPTED", "true")
 UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT = _env_flag("UPLOAD_SCAN_BLOCK_ACTIVE_CONTENT", "true")
@@ -210,19 +121,10 @@ CORPUS_PROFILES_FILE = METADATA_DIR / "corpus_profiles.json"
 CORPUS_METADATA_DB_FILE = METADATA_DIR / "corpus.sqlite3"
 CHUNK_METADATA_DB_FILE = METADATA_DIR / "chunks.sqlite3"
 RUNTIME_EVENTS_FILE = METADATA_DIR / "runtime_events.jsonl"
-API_KEY_REGISTRY_FILE = _project_path_from_env(
-    "FLUXMIND_API_KEY_REGISTRY_FILE",
-    METADATA_DIR / "api_keys.sqlite3",
+USER_STORE_FILE = _project_path_from_env(
+    "FLUXMIND_USER_STORE_FILE",
+    METADATA_DIR / "users.sqlite3",
 )
-PRODUCT_REGISTRY_FILE = _project_path_from_env(
-    "FLUXMIND_PRODUCT_REGISTRY_FILE",
-    METADATA_DIR / "product_registry.sqlite3",
-)
-SHARE_LINK_TOKEN_STORE_FILE = _project_path_from_env(
-    "FLUXMIND_SHARE_LINK_TOKEN_STORE_FILE",
-    METADATA_DIR / "share_links.sqlite3",
-)
-
 # RAG parameters
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200

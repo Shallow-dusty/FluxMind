@@ -4,7 +4,6 @@ import json
 import sqlite3
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 # Must be first Streamlit call
 st.set_page_config(
@@ -23,35 +22,11 @@ from src.admin import (
     format_admin_status_report,
     format_corpus_profile_status_report,
 )
-from src.activation_suite import collect_activation_suite, format_activation_suite_markdown
-from src.collaboration_readiness import (
-    collect_collaboration_readiness,
-    format_collaboration_readiness_markdown,
-)
-from src.openapi_contract import (
-    collect_openapi_contract,
-    format_openapi_contract_markdown,
-    format_openapi_contract_snapshot_verify_markdown,
-    verify_openapi_contract_snapshot,
-)
-from src.quality_readiness import collect_quality_readiness, format_quality_readiness_markdown
-from src.product_activation_rehearsal import (
-    collect_product_activation_rehearsal,
-    format_product_activation_rehearsal_markdown,
-)
-from src.provider_runtime_rehearsal import (
-    collect_provider_runtime_rehearsal,
-    format_provider_runtime_rehearsal_markdown,
-)
-from src.storage_migration import (
-    collect_platform_migration_rehearsal,
-    format_storage_migration_rehearsal_markdown,
-)
 from src.capabilities import CodeExecutionRequest, ImageGenerationRequest
 from src.artifacts import (
     LocalArtifactRegistry,
-    artifact_to_public_dict,
-    job_artifact_to_public_dict,
+    artifact_to_dict,
+    job_artifact_to_dict,
     local_artifact_path,
     safe_artifact_download_filename,
 )
@@ -66,8 +41,6 @@ from src.config import (
     OPENAI_IMAGE_MODEL,
     PAPERS_LIBRARY_DIR,
     PROJECT_ROOT,
-    STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED,
-    STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED,
 )
 from src.execution_templates import OCTAVE_EXECUTION_TEMPLATES, PYTHON_EXECUTION_TEMPLATES
 from src.ingestion import (
@@ -79,24 +52,23 @@ from src.ingestion import (
     rebuild_vector_store_from_pdfs,
     set_active_paper_source_paths,
 )
-from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager, job_search_projection
+from src.jobs import LocalJobRunner, LocalJobStore, get_async_job_manager, job_view
 from src.metadata import CorpusProfileStore, safe_corpus_profile_report_filename
-from src.product_registry import LocalProductRegistry, product_registry_backend_status
 from src.runtime import (
     list_runtime_events,
     logger,
     new_request_id,
     normalize_exception,
-    runtime_event_to_safe_dict,
+    runtime_event_to_dict,
 )
-from src.share_links import LocalShareLinkRegistry, share_link_registry_backend_status
 from src.storage_manifest import (
     collect_runtime_backup_manifest,
     collect_runtime_restore_check,
     format_runtime_backup_manifest_markdown,
     format_runtime_restore_check_markdown,
 )
-from scripts._safe_cli import format_os_error, sanitize_cli_error_message
+from src.users import LocalUserStore, UserAccount
+from scripts._cli import format_error
 
 DEMO_SCRIPT_PATH = PROJECT_ROOT / "docs" / "demo-script.md"
 
@@ -104,32 +76,34 @@ RUNTIME_EVENT_KIND_FILTER_OPTIONS = (
     "",
     "provider_failure",
     "provider_quota_guard",
-    "product_quota",
-    "product_rbac",
-    "product_registry_admin",
-    "share_link_admin",
     "query_usage",
     "retrieval_trace",
     "code_execution",
-    "api_access",
     "admin_check",
     "upload_scan",
     "retention_delete",
 )
 
 
-def safe_streamlit_error_message(exc: BaseException) -> str:
-    if isinstance(exc, (OSError, sqlite3.Error)):
-        return format_os_error(exc)
-    return sanitize_cli_error_message(str(exc)) or exc.__class__.__name__
+def streamlit_error_message(exc: BaseException) -> str:
+    return format_error(exc)
 
 
-def safe_streamlit_error_text(template: str, exc: BaseException) -> str:
-    return template.format(error=safe_streamlit_error_message(exc))
+def streamlit_error_text(template: str, exc: BaseException) -> str:
+    return template.format(error=streamlit_error_message(exc))
 
 
-def safe_streamlit_status_message(message: object, *, fallback: str) -> str:
-    return sanitize_cli_error_message(str(message or "")) or fallback
+def streamlit_status_message(message: object, *, fallback: str) -> str:
+    return str(message or "").strip() or fallback
+
+
+def account_ownership(user: UserAccount) -> dict[str, str]:
+    """Attach Streamlit jobs to the signed-in local account."""
+    return {
+        "owner_id": user.user_id,
+        "owner_label": user.display_name,
+        "ownership_source": "streamlit_user",
+    }
 
 
 @st.dialog("演示导览", width="large")
@@ -192,43 +166,6 @@ I18N = {
         "artifact_metadata": "产物元数据",
         "admin_status": "运行状态",
         "refresh_status": "刷新状态",
-        "product_registry_management": "本地产品 Registry",
-        "product_registry_workspace_id": "Workspace ID",
-        "product_registry_workspace_label": "Workspace 名称",
-        "product_registry_owner_id": "Owner user ID",
-        "product_registry_owner_label": "Owner 名称",
-        "product_registry_create_workspace": "创建/更新 Workspace",
-        "product_registry_member_user_id": "成员 user ID",
-        "product_registry_member_label": "成员名称",
-        "product_registry_member_role": "成员角色",
-        "product_registry_add_member": "添加/更新成员",
-        "product_registry_quota_metric": "Quota 指标",
-        "product_registry_quota_limit": "Quota 上限",
-        "product_registry_quota_window": "Quota 窗口秒数",
-        "product_registry_set_quota": "设置 Quota",
-        "product_registry_permission_action": "权限动作",
-        "product_registry_check_permission": "检查权限",
-        "product_registry_disabled": "本地产品 registry 未启用",
-        "product_registry_management_disabled": "本地产品 registry 管理面未启用",
-        "share_link_registry_management": "本地 Share Link Registry",
-        "share_link_workspace_id": "Workspace ID",
-        "share_link_created_by_user_id": "创建者 user ID",
-        "share_link_resource_kind": "资源类型",
-        "share_link_resource_ref": "资源引用",
-        "share_link_description": "描述",
-        "share_link_expires_in_s": "有效秒数",
-        "share_link_max_redemptions": "最大兑换次数",
-        "share_link_create": "创建 Share Link",
-        "share_link_list": "列出 Share Links",
-        "share_link_include_revoked": "包含已撤销",
-        "share_link_limit": "返回上限",
-        "share_link_token": "Share token",
-        "share_link_resolve": "解析 Share token",
-        "share_link_record_redeem": "记录一次兑换",
-        "share_link_id": "Share link ID",
-        "share_link_revoke": "撤销 Share Link",
-        "share_link_registry_disabled": "本地 share-link registry 未启用",
-        "share_link_management_disabled": "本地 share-link 管理面未启用",
         "download_status_report": "下载状态报告",
         "download_metrics": "下载指标文本",
         "download_runtime_manifest": "下载运行时备份清单",
@@ -256,48 +193,11 @@ I18N = {
         "status_retrieval_traces": "检索追踪",
         "status_cost_pricing": "成本估算配置",
         "status_code_execution": "代码执行事件",
-        "status_api_access": "API 访问审计",
         "status_admin_checks": "Admin 检查事件",
         "status_upload_scan": "上传扫描",
         "status_execution_policy": "执行策略",
-        "status_storage": "存储就绪状态",
         "status_storage_inventory": "本地存储盘点",
-        "status_storage_schemas": "本地存储模式",
-        "status_platform_readiness": "平台化就绪状态",
-        "status_platform_migration_rehearsal": "本地平台迁移演练",
-        "run_platform_migration_rehearsal": "运行平台迁移演练",
-        "download_platform_migration_rehearsal_report": "下载平台迁移演练报告",
-        "status_product_readiness": "产品化就绪状态",
-        "status_product_activation_rehearsal": "本地产品激活演练",
-        "run_product_activation_rehearsal": "运行产品激活演练",
-        "download_product_activation_rehearsal_report": "下载产品激活演练报告",
-        "status_collaboration_readiness": "协作能力就绪状态",
-        "run_collaboration_readiness": "运行协作就绪检查",
-        "download_collaboration_readiness_report": "下载协作就绪报告",
-        "status_provider_readiness": "Provider 激活就绪状态",
-        "status_provider_runtime_rehearsal": "本地 Provider 运行时演练",
-        "run_provider_runtime_rehearsal": "运行 Provider 运行时演练",
-        "download_provider_runtime_rehearsal_report": "下载 Provider 运行时演练报告",
-        "status_quality_readiness": "质量成熟度就绪状态",
-        "run_quality_readiness": "运行质量就绪检查",
-        "quality_readiness_live_report": "可选 quality live eval JSON 报告",
-        "download_quality_readiness_report": "下载质量就绪报告",
-        "quality_readiness_report_invalid": "quality live eval JSON 无法解析：{error}",
-        "status_activation_suite": "本地激活套件",
-        "run_activation_suite": "运行本地激活套件",
-        "activation_suite_live_report": "可选 live eval JSON 报告",
-        "download_activation_suite_report": "下载激活套件报告",
-        "activation_suite_report_invalid": "live eval JSON 无法解析：{error}",
-        "status_openapi_contract": "OpenAPI 合约检查",
-        "run_openapi_contract": "运行 OpenAPI 合约检查",
-        "download_openapi_contract_report": "下载 OpenAPI 合约报告",
-        "openapi_contract_snapshot": "可选 OpenAPI 合约 JSON 快照",
-        "run_openapi_contract_verify": "校验 OpenAPI 合约快照",
-        "download_openapi_contract_verify_report": "下载 OpenAPI 合约校验报告",
-        "openapi_contract_snapshot_missing": "请先上传 OpenAPI 合约 JSON 快照。",
-        "openapi_contract_snapshot_invalid": "OpenAPI 合约 JSON 无法解析：{error}",
         "status_runtime_manifest": "运行时备份清单",
-        "status_storage_paths": "本地存储路径",
         "status_runtime_dirs": "运行目录",
         "no_jobs": "暂无任务",
         "run_index_job": "以任务重建索引",
@@ -323,9 +223,29 @@ I18N = {
         "execution_templates": {
             "hello": "最小输出",
             "smc_reaching_law": "SMC 趋近律响应",
+            "pmsm_current_step": "PMSM q 轴电流阶跃",
             "pmsm_current_decay": "PMSM 电流响应",
+            "smc_sign_switching": "SMC 符号切换",
         },
         "answer_mode": "回答模式",
+        "signed_in_as": "当前用户：{name}（{role}）",
+        "logout": "退出登录",
+        "query_history": "查询历史",
+        "no_query_history": "暂无查询历史",
+        "load_history": "载入",
+        "clear_history": "清空我的历史",
+        "account_management": "用户管理",
+        "create_user": "创建用户",
+        "user_id": "用户 ID",
+        "display_name": "显示名称",
+        "password": "密码",
+        "role": "角色",
+        "active": "启用",
+        "save_user": "保存用户",
+        "reset_password": "重置密码",
+        "user_created": "用户已创建",
+        "user_saved": "用户已更新",
+        "password_reset": "密码已更新",
         "answer_modes": {
             "explanation": "解释",
             "derivation": "推导",
@@ -349,6 +269,7 @@ I18N = {
         `问题 -> Embedding -> FAISS 检索 -> LLM 生成`
         """,
         "initializing": "正在初始化知识库...",
+        "initialization_failed": "知识库不可用：{error} 请先由管理员上传并索引 PDF。",
         "hero_subtitle": "*你的滑模控制与磁链估计 AI 研究助手*",
         "try_asking": "### 试试这些问题：",
         "examples": [
@@ -408,43 +329,6 @@ I18N = {
         "artifact_metadata": "Artifact metadata",
         "admin_status": "Runtime status",
         "refresh_status": "Refresh status",
-        "product_registry_management": "Local product registry",
-        "product_registry_workspace_id": "Workspace ID",
-        "product_registry_workspace_label": "Workspace label",
-        "product_registry_owner_id": "Owner user ID",
-        "product_registry_owner_label": "Owner label",
-        "product_registry_create_workspace": "Create/update workspace",
-        "product_registry_member_user_id": "Member user ID",
-        "product_registry_member_label": "Member label",
-        "product_registry_member_role": "Member role",
-        "product_registry_add_member": "Add/update member",
-        "product_registry_quota_metric": "Quota metric",
-        "product_registry_quota_limit": "Quota limit",
-        "product_registry_quota_window": "Quota window seconds",
-        "product_registry_set_quota": "Set quota",
-        "product_registry_permission_action": "Permission action",
-        "product_registry_check_permission": "Check permission",
-        "product_registry_disabled": "Local product registry is not enabled",
-        "product_registry_management_disabled": "Local product registry management is not enabled",
-        "share_link_registry_management": "Local share-link registry",
-        "share_link_workspace_id": "Workspace ID",
-        "share_link_created_by_user_id": "Creator user ID",
-        "share_link_resource_kind": "Resource kind",
-        "share_link_resource_ref": "Resource reference",
-        "share_link_description": "Description",
-        "share_link_expires_in_s": "Expires in seconds",
-        "share_link_max_redemptions": "Max redemptions",
-        "share_link_create": "Create share link",
-        "share_link_list": "List share links",
-        "share_link_include_revoked": "Include revoked",
-        "share_link_limit": "Limit",
-        "share_link_token": "Share token",
-        "share_link_resolve": "Resolve share token",
-        "share_link_record_redeem": "Record redemption",
-        "share_link_id": "Share link ID",
-        "share_link_revoke": "Revoke share link",
-        "share_link_registry_disabled": "Local share-link registry is not enabled",
-        "share_link_management_disabled": "Local share-link management is not enabled",
         "download_status_report": "Download status report",
         "download_metrics": "Download metrics text",
         "download_runtime_manifest": "Download runtime manifest",
@@ -472,48 +356,11 @@ I18N = {
         "status_retrieval_traces": "Retrieval traces",
         "status_cost_pricing": "Cost estimate pricing",
         "status_code_execution": "Code execution events",
-        "status_api_access": "API access audit",
         "status_admin_checks": "Admin check events",
         "status_upload_scan": "Upload scan",
         "status_execution_policy": "Execution policy",
-        "status_storage": "Storage readiness",
         "status_storage_inventory": "Local storage inventory",
-        "status_storage_schemas": "Local storage schemas",
-        "status_platform_readiness": "Platform readiness",
-        "status_platform_migration_rehearsal": "Local platform migration rehearsal",
-        "run_platform_migration_rehearsal": "Run platform migration rehearsal",
-        "download_platform_migration_rehearsal_report": "Download platform migration rehearsal report",
-        "status_product_readiness": "Product readiness",
-        "status_product_activation_rehearsal": "Local product activation rehearsal",
-        "run_product_activation_rehearsal": "Run product activation rehearsal",
-        "download_product_activation_rehearsal_report": "Download product activation rehearsal report",
-        "status_collaboration_readiness": "Collaboration readiness",
-        "run_collaboration_readiness": "Run collaboration readiness",
-        "download_collaboration_readiness_report": "Download collaboration readiness report",
-        "status_provider_readiness": "Provider activation readiness",
-        "status_provider_runtime_rehearsal": "Local provider runtime rehearsal",
-        "run_provider_runtime_rehearsal": "Run provider runtime rehearsal",
-        "download_provider_runtime_rehearsal_report": "Download provider runtime rehearsal report",
-        "status_quality_readiness": "Quality maturity readiness",
-        "run_quality_readiness": "Run quality readiness",
-        "quality_readiness_live_report": "Optional quality live eval JSON report",
-        "download_quality_readiness_report": "Download quality readiness report",
-        "quality_readiness_report_invalid": "Quality live eval JSON could not be parsed: {error}",
-        "status_activation_suite": "Local activation suite",
-        "run_activation_suite": "Run local activation suite",
-        "activation_suite_live_report": "Optional live eval JSON report",
-        "download_activation_suite_report": "Download activation suite report",
-        "activation_suite_report_invalid": "Live eval JSON could not be parsed: {error}",
-        "status_openapi_contract": "OpenAPI contract",
-        "run_openapi_contract": "Run OpenAPI contract check",
-        "download_openapi_contract_report": "Download OpenAPI contract report",
-        "openapi_contract_snapshot": "Optional OpenAPI contract JSON snapshot",
-        "run_openapi_contract_verify": "Verify OpenAPI contract snapshot",
-        "download_openapi_contract_verify_report": "Download OpenAPI contract verify report",
-        "openapi_contract_snapshot_missing": "Upload an OpenAPI contract JSON snapshot first.",
-        "openapi_contract_snapshot_invalid": "OpenAPI contract JSON could not be parsed: {error}",
         "status_runtime_manifest": "Runtime backup manifest",
-        "status_storage_paths": "Local storage paths",
         "status_runtime_dirs": "Runtime directories",
         "no_jobs": "No jobs yet",
         "run_index_job": "Rebuild Index as Job",
@@ -539,9 +386,29 @@ I18N = {
         "execution_templates": {
             "hello": "Minimal output",
             "smc_reaching_law": "SMC reaching-law response",
+            "pmsm_current_step": "PMSM q-axis current step",
             "pmsm_current_decay": "PMSM current response",
+            "smc_sign_switching": "SMC sign switching",
         },
         "answer_mode": "Answer Mode",
+        "signed_in_as": "Signed in as {name} ({role})",
+        "logout": "Sign out",
+        "query_history": "Query history",
+        "no_query_history": "No query history yet",
+        "load_history": "Load",
+        "clear_history": "Clear my history",
+        "account_management": "User management",
+        "create_user": "Create user",
+        "user_id": "User ID",
+        "display_name": "Display name",
+        "password": "Password",
+        "role": "Role",
+        "active": "Active",
+        "save_user": "Save user",
+        "reset_password": "Reset password",
+        "user_created": "User created",
+        "user_saved": "User updated",
+        "password_reset": "Password updated",
         "answer_modes": {
             "explanation": "Explanation",
             "derivation": "Derivation",
@@ -565,6 +432,7 @@ I18N = {
         `Query -> Embedding -> FAISS Retrieval -> LLM Generation`
         """,
         "initializing": "Initializing knowledge base...",
+        "initialization_failed": "Knowledge base unavailable: {error} Ask an administrator to upload and index a PDF.",
         "hero_subtitle": "*Your AI research copilot for Sliding Mode Control & Flux Linkage Estimation*",
         "try_asking": "### Try asking:",
         "examples": [
@@ -608,49 +476,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def install_translation_guard() -> None:
-    """Mark the Streamlit document as non-translatable.
-
-    Browser translation extensions can mutate text nodes while Streamlit is
-    streaming markdown into the same container. That can leave the frontend's
-    virtual DOM out of sync with the real DOM and break streamed rendering.
-    """
-    components.html(
-        """
-        <script>
-        const doc = window.parent.document;
-        const mark = (node) => {
-            if (!node || !node.setAttribute) return;
-            node.setAttribute("translate", "no");
-            node.classList.add("notranslate");
-        };
-        mark(doc.documentElement);
-        mark(doc.body);
-        doc
-          .querySelectorAll('[data-testid="stAppViewContainer"], [data-testid="stChatMessage"]')
-          .forEach(mark);
-        new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        mark(node);
-                        node
-                          .querySelectorAll?.('[data-testid="stChatMessage"], .stMarkdown')
-                          .forEach(mark);
-                    }
-                }
-            }
-        }).observe(doc.body, { childList: true, subtree: true });
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
-install_translation_guard()
-
-
 def rel_path(path) -> str:
     return path.resolve().relative_to(PROJECT_ROOT).as_posix()
 
@@ -663,7 +488,168 @@ def paper_label(path, manifest: dict[str, dict]) -> str:
     return f"[{source}] {title}" + (f" · {topic}" if topic else "")
 
 
-def render_streaming_response(prompt: str, *, answer_mode: str) -> str:
+def render_account_gate(user_store: LocalUserStore) -> UserAccount:
+    """Require a local account before exposing the research workspace."""
+    current_user_id = st.session_state.get("current_user_id")
+    if current_user_id:
+        current_user = user_store.get_user(current_user_id)
+        if current_user and current_user.active:
+            return current_user
+        st.session_state.pop("current_user_id", None)
+        st.session_state.pop("messages", None)
+
+    st.title("⚡ FluxMind")
+    if not user_store.has_users():
+        st.subheader("创建管理员 / Create admin")
+        st.caption("首次启动只需创建一个本地管理员账户。")
+        with st.form("initial_admin_form"):
+            user_id = st.text_input("用户 ID / User ID", value="admin")
+            display_name = st.text_input("显示名称 / Display name", value="Admin")
+            password = st.text_input("密码 / Password", type="password")
+            submitted = st.form_submit_button("创建并登录 / Create and sign in")
+        if submitted:
+            try:
+                user = user_store.create_initial_admin(
+                    user_id=user_id,
+                    display_name=display_name,
+                    password=password,
+                )
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["current_user_id"] = user.user_id
+                st.rerun()
+        st.stop()
+
+    st.subheader("登录 / Sign in")
+    with st.form("login_form"):
+        user_id = st.text_input("用户 ID / User ID")
+        password = st.text_input("密码 / Password", type="password")
+        submitted = st.form_submit_button("登录 / Sign in")
+    if submitted:
+        user = user_store.authenticate(user_id, password)
+        if user is None:
+            st.error("用户 ID 或密码错误 / Invalid user ID or password")
+        else:
+            st.session_state["current_user_id"] = user.user_id
+            st.session_state.pop("messages", None)
+            st.rerun()
+    st.stop()
+
+
+def render_query_history(
+    user_store: LocalUserStore,
+    current_user: UserAccount,
+    labels: dict,
+) -> None:
+    with st.expander(f"🕘 {labels['query_history']}"):
+        history = user_store.list_history(current_user.user_id, limit=20)
+        if not history:
+            st.caption(labels["no_query_history"])
+            return
+        for entry in history:
+            st.caption(f"{entry.created_at[:16].replace('T', ' ')} · {entry.answer_mode}")
+            st.markdown(f"**{entry.question}**")
+            if st.button(
+                labels["load_history"],
+                key=f"load_history_{entry.history_id}",
+                use_container_width=True,
+            ):
+                st.session_state["messages"] = [
+                    {"role": "user", "content": entry.question},
+                    {"role": "assistant", "content": entry.answer},
+                ]
+                st.rerun()
+        if st.button(labels["clear_history"], key="clear_query_history", use_container_width=True):
+            user_store.clear_history(current_user.user_id)
+            st.session_state["messages"] = []
+            st.rerun()
+
+
+def render_user_management(user_store: LocalUserStore, labels: dict) -> None:
+    with st.expander(f"👥 {labels['account_management']}"):
+        st.caption(labels["create_user"])
+        with st.form("create_user_form"):
+            user_id = st.text_input(labels["user_id"], key="create_user_id")
+            display_name = st.text_input(labels["display_name"], key="create_display_name")
+            password = st.text_input(labels["password"], type="password", key="create_password")
+            role = st.selectbox(labels["role"], options=["student", "admin"], key="create_role")
+            submitted = st.form_submit_button(labels["create_user"])
+        if submitted:
+            try:
+                user_store.create_user(
+                    user_id=user_id,
+                    display_name=display_name,
+                    password=password,
+                    role=role,
+                )
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                st.error(str(exc))
+            else:
+                st.success(labels["user_created"])
+                st.rerun()
+
+        users = user_store.list_users(include_inactive=True)
+        selected_id = st.selectbox(
+            labels["user_id"],
+            options=[user.user_id for user in users],
+            format_func=lambda value: next(
+                f"{user.display_name} · {user.role}"
+                for user in users
+                if user.user_id == value
+            ),
+            key="manage_user_id",
+        )
+        selected_user = next(user for user in users if user.user_id == selected_id)
+        with st.form(f"edit_user_form_{selected_id}"):
+            display_name = st.text_input(
+                labels["display_name"],
+                value=selected_user.display_name,
+                key=f"edit_display_name_{selected_id}",
+            )
+            role = st.selectbox(
+                labels["role"],
+                options=["student", "admin"],
+                index=0 if selected_user.role == "student" else 1,
+                key=f"edit_role_{selected_id}",
+            )
+            active = st.checkbox(
+                labels["active"],
+                value=selected_user.active,
+                key=f"edit_active_{selected_id}",
+            )
+            save_submitted = st.form_submit_button(labels["save_user"])
+        if save_submitted:
+            try:
+                user_store.update_user(
+                    selected_id,
+                    display_name=display_name,
+                    role=role,
+                    active=active,
+                )
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                st.error(str(exc))
+            else:
+                st.success(labels["user_saved"])
+                st.rerun()
+
+        with st.form(f"reset_password_form_{selected_id}"):
+            new_password = st.text_input(
+                labels["password"],
+                type="password",
+                key=f"reset_password_{selected_id}",
+            )
+            reset_submitted = st.form_submit_button(labels["reset_password"])
+        if reset_submitted:
+            try:
+                user_store.set_password(selected_id, new_password)
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                st.error(str(exc))
+            else:
+                st.success(labels["password_reset"])
+
+
+def render_streaming_response(prompt: str, *, answer_mode: str) -> tuple[str, bool]:
     """Render a streaming answer through a stable markdown placeholder."""
     request_id = new_request_id()
     logger.info(
@@ -681,13 +667,13 @@ def render_streaming_response(prompt: str, *, answer_mode: str) -> str:
     except Exception as exc:
         error = normalize_exception(exc)
         logger.exception("streamlit.query.error request_id=%s code=%s", request_id, error.code)
-        safe_message = safe_streamlit_status_message(error.message, fallback=error.code)
-        message = f"{safe_message}\n\nRequest ID: `{request_id}`"
+        error_message = streamlit_status_message(error.message, fallback=error.code)
+        message = f"{error_message}\n\nRequest ID: `{request_id}`"
         placeholder.error(message)
-        return message
+        return message, False
     response = "".join(chunks)
     logger.info("streamlit.query.ok request_id=%s chars=%s", request_id, len(response))
-    return response
+    return response, True
 
 
 def render_job_result(job) -> None:
@@ -696,21 +682,18 @@ def render_job_result(job) -> None:
         st.success(text["job_created"].format(job_id=job.job_id, status=job.status))
     else:
         error_message = (job.error or {}).get("message") if isinstance(job.error, dict) else None
-        message = safe_streamlit_status_message(error_message, fallback=job.status)
+        message = streamlit_status_message(error_message, fallback=job.status)
         st.error(text["job_failed"].format(message=message))
 
 
 def job_sidebar_summary(job) -> dict:
-    """Return a no-secret summary for the Streamlit latest-jobs panel."""
-    summary = job_search_projection(job)
-    summary["artifacts"] = [
-        job_artifact_to_public_dict(job, artifact)
-        for artifact in job.artifacts
-    ]
+    """Return the useful parts of a job for the Streamlit latest-jobs panel."""
+    summary = job_view(job)
+    summary["artifacts"] = [job_artifact_to_dict(job, artifact) for artifact in job.artifacts]
     return summary
 
 
-def render_latest_jobs() -> None:
+def render_latest_jobs(current_user: UserAccount, *, is_admin: bool) -> None:
     job_query = st.text_input(text["job_search"], value="", key="job_search")
     col_status, col_kind = st.columns(2)
     with col_status:
@@ -731,6 +714,7 @@ def render_latest_jobs() -> None:
         limit=5,
         status=job_status or None,
         kind=job_kind or None,
+        owner_id=None if is_admin else current_user.user_id,
         q=job_query or None,
     )
     if not jobs:
@@ -768,7 +752,7 @@ def render_latest_jobs() -> None:
                     st.rerun()
 
 
-def render_latest_artifacts() -> None:
+def render_latest_artifacts(current_user: UserAccount, *, is_admin: bool) -> None:
     artifact_query = st.text_input(text["artifact_search"], value="", key="artifact_search")
     col_kind, col_job_kind = st.columns(2)
     with col_kind:
@@ -789,19 +773,20 @@ def render_latest_artifacts() -> None:
         limit=5,
         kind=artifact_kind or None,
         job_kind=artifact_job_kind or None,
+        owner_id=None if is_admin else current_user.user_id,
         q=artifact_query or None,
     )
     if not artifacts:
         st.caption(text["no_artifacts"])
         return
     for artifact in artifacts:
-        public_artifact = artifact_to_public_dict(artifact)
-        label = f"{public_artifact['kind']} · {artifact.artifact_id}"
+        artifact_data = artifact_to_dict(artifact)
+        label = f"{artifact_data['kind']} · {artifact.artifact_id}"
         with st.expander(label):
-            st.caption(str(public_artifact["job_kind"]))
+            st.caption(str(artifact_data["job_kind"]))
             st.caption(f"{text['artifact_id']}: {artifact.artifact_id}")
             st.caption(text["artifact_metadata"])
-            st.json(public_artifact["metadata"])
+            st.json(artifact_data)
             try:
                 path = local_artifact_path(artifact.uri)
                 st.download_button(
@@ -813,917 +798,33 @@ def render_latest_artifacts() -> None:
                     key=f"download_{artifact.artifact_id}",
                 )
             except (FileNotFoundError, ValueError) as exc:
-                st.caption(safe_streamlit_error_message(exc))
-
-
-def render_product_registry_management() -> None:
-    status = product_registry_backend_status()
-    st.caption(text["product_registry_management"])
-    st.json(
-        {
-            "backend": status.get("backend", ""),
-            "available": status.get("available", False),
-            "reason": status.get("reason", ""),
-            "users": status.get("user_count", 0),
-            "workspaces": status.get("workspace_count", 0),
-            "rbac_available": status.get("rbac_available", False),
-            "quota_limits": status.get("quota_limit_count", 0),
-            "usage_events": status.get("usage_event_count", 0),
-            "billing_accounts": status.get("billing_account_count", 0),
-            "management_enabled": STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED,
-            "secrets_exported": status.get("secrets_exported", False),
-        }
-    )
-    if not status.get("available", False):
-        st.caption(text["product_registry_disabled"])
-        return
-    if not STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED:
-        st.caption(text["product_registry_management_disabled"])
-        return
-
-    registry = LocalProductRegistry()
-    try:
-        workspaces = registry.list_workspace_summaries(limit=50)
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        st.error(safe_streamlit_error_message(exc))
-        return
-    st.json({"workspaces": workspaces})
-    default_workspace_id = workspaces[0]["workspace_id"] if workspaces else "local-workspace"
-
-    with st.form("product_registry_workspace_form"):
-        workspace_id = st.text_input(
-            text["product_registry_workspace_id"],
-            value=default_workspace_id,
-            key="product_registry_workspace_id",
-        )
-        workspace_label = st.text_input(
-            text["product_registry_workspace_label"],
-            value="Local workspace",
-            key="product_registry_workspace_label",
-        )
-        owner_id = st.text_input(
-            text["product_registry_owner_id"],
-            value="local-user",
-            key="product_registry_owner_id",
-        )
-        owner_label = st.text_input(
-            text["product_registry_owner_label"],
-            value="Local user",
-            key="product_registry_owner_label",
-        )
-        if st.form_submit_button(text["product_registry_create_workspace"], use_container_width=True):
-            try:
-                workspace = registry.create_workspace(
-                    workspace_id=workspace_id,
-                    label=workspace_label,
-                    owner_user_id=owner_id,
-                    owner_label=owner_label,
-                )
-                st.json(registry.workspace_detail(workspace_id=workspace.workspace_id))
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("product_registry_member_form"):
-        member_workspace_id = st.text_input(
-            text["product_registry_workspace_id"],
-            value=default_workspace_id,
-            key="product_registry_member_workspace_id",
-        )
-        member_user_id = st.text_input(
-            text["product_registry_member_user_id"],
-            value="local-member",
-            key="product_registry_member_user_id",
-        )
-        member_label = st.text_input(
-            text["product_registry_member_label"],
-            value="Local member",
-            key="product_registry_member_label",
-        )
-        member_role = st.selectbox(
-            text["product_registry_member_role"],
-            options=["viewer", "member", "admin", "owner"],
-            index=1,
-            key="product_registry_member_role",
-        )
-        if st.form_submit_button(text["product_registry_add_member"], use_container_width=True):
-            try:
-                if registry.workspace_detail(workspace_id=member_workspace_id) is None:
-                    st.error(text["product_registry_disabled"])
-                else:
-                    registry.add_member(
-                        workspace_id=member_workspace_id,
-                        user_id=member_user_id,
-                        label=member_label,
-                        role=member_role,
-                    )
-                    st.json(registry.workspace_detail(workspace_id=member_workspace_id))
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("product_registry_quota_form"):
-        quota_workspace_id = st.text_input(
-            text["product_registry_workspace_id"],
-            value=default_workspace_id,
-            key="product_registry_quota_workspace_id",
-        )
-        quota_metric = st.text_input(
-            text["product_registry_quota_metric"],
-            value="requests",
-            key="product_registry_quota_metric",
-        )
-        quota_limit = st.number_input(
-            text["product_registry_quota_limit"],
-            min_value=0,
-            max_value=1_000_000_000,
-            value=1000,
-            step=1,
-            key="product_registry_quota_limit",
-        )
-        quota_window = st.number_input(
-            text["product_registry_quota_window"],
-            min_value=0,
-            max_value=31_536_000,
-            value=86400,
-            step=60,
-            key="product_registry_quota_window",
-        )
-        if st.form_submit_button(text["product_registry_set_quota"], use_container_width=True):
-            try:
-                if registry.workspace_detail(workspace_id=quota_workspace_id) is None:
-                    st.error(text["product_registry_disabled"])
-                else:
-                    registry.set_quota(
-                        workspace_id=quota_workspace_id,
-                        metric=quota_metric,
-                        limit_value=int(quota_limit),
-                        window_s=int(quota_window),
-                    )
-                    st.json(registry.workspace_detail(workspace_id=quota_workspace_id))
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("product_registry_permission_form"):
-        permission_workspace_id = st.text_input(
-            text["product_registry_workspace_id"],
-            value=default_workspace_id,
-            key="product_registry_permission_workspace_id",
-        )
-        permission_user_id = st.text_input(
-            text["product_registry_member_user_id"],
-            value="local-member",
-            key="product_registry_permission_user_id",
-        )
-        permission_action = st.selectbox(
-            text["product_registry_permission_action"],
-            options=["query", "job_submit", "corpus_write", "admin_write"],
-            key="product_registry_permission_action",
-        )
-        if st.form_submit_button(text["product_registry_check_permission"], use_container_width=True):
-            try:
-                st.json(
-                    registry.permission_decision(
-                        workspace_id=permission_workspace_id,
-                        user_id=permission_user_id,
-                        action=permission_action,
-                    )
-                )
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-
-def render_share_link_registry_management() -> None:
-    status = share_link_registry_backend_status()
-    st.caption(text["share_link_registry_management"])
-    st.json(
-        {
-            "backend": status.get("backend", ""),
-            "available": status.get("available", False),
-            "reason": status.get("reason", ""),
-            "active_links": status.get("active_link_count", 0),
-            "revoked_links": status.get("revoked_link_count", 0),
-            "expired_links": status.get("expired_link_count", 0),
-            "total_links": status.get("total_link_count", 0),
-            "management_enabled": STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED,
-            "secrets_exported": status.get("secrets_exported", False),
-            "share_tokens_exported": status.get("share_tokens_exported", False),
-            "share_urls_exported": status.get("share_urls_exported", False),
-        }
-    )
-    if not status.get("available", False):
-        st.caption(text["share_link_registry_disabled"])
-        return
-    if not STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED:
-        st.caption(text["share_link_management_disabled"])
-        return
-
-    registry = LocalShareLinkRegistry()
-    try:
-        links = [record.to_public_dict() for record in registry.list_links(include_revoked=True, limit=20)]
-    except (OSError, sqlite3.Error, ValueError) as exc:
-        st.error(safe_streamlit_error_message(exc))
-        return
-    st.json({"share_links": links})
-    default_workspace_id = "local-workspace"
-
-    with st.form("share_link_create_form"):
-        workspace_id = st.text_input(
-            text["share_link_workspace_id"],
-            value=default_workspace_id,
-            key="share_link_create_workspace_id",
-        )
-        created_by_user_id = st.text_input(
-            text["share_link_created_by_user_id"],
-            value="local-user",
-            key="share_link_created_by_user_id",
-        )
-        resource_kind = st.selectbox(
-            text["share_link_resource_kind"],
-            options=["corpus_profile", "paper", "artifact", "job", "report"],
-            key="share_link_resource_kind",
-        )
-        resource_ref = st.text_input(
-            text["share_link_resource_ref"],
-            value="local-corpus-profile",
-            key="share_link_resource_ref",
-        )
-        description = st.text_input(
-            text["share_link_description"],
-            value="",
-            key="share_link_description",
-        )
-        expires_in_s = st.number_input(
-            text["share_link_expires_in_s"],
-            min_value=60,
-            max_value=31_536_000,
-            value=604800,
-            step=60,
-            key="share_link_expires_in_s",
-        )
-        max_redemptions = st.number_input(
-            text["share_link_max_redemptions"],
-            min_value=0,
-            max_value=1_000_000,
-            value=1,
-            step=1,
-            key="share_link_max_redemptions",
-        )
-        if st.form_submit_button(text["share_link_create"], use_container_width=True):
-            try:
-                st.json(
-                    registry.create_link(
-                        workspace_id=workspace_id,
-                        created_by_user_id=created_by_user_id,
-                        resource_kind=resource_kind,
-                        resource_ref=resource_ref,
-                        description=description,
-                        expires_in_s=int(expires_in_s),
-                        max_redemptions=int(max_redemptions),
-                    )
-                )
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("share_link_list_form"):
-        list_workspace_id = st.text_input(
-            text["share_link_workspace_id"],
-            value=default_workspace_id,
-            key="share_link_list_workspace_id",
-        )
-        include_revoked = st.checkbox(
-            text["share_link_include_revoked"],
-            value=True,
-            key="share_link_include_revoked",
-        )
-        limit = st.number_input(
-            text["share_link_limit"],
-            min_value=1,
-            max_value=200,
-            value=50,
-            step=1,
-            key="share_link_limit",
-        )
-        if st.form_submit_button(text["share_link_list"], use_container_width=True):
-            try:
-                st.json(
-                    {
-                        "share_links": [
-                            record.to_public_dict()
-                            for record in registry.list_links(
-                                workspace_id=list_workspace_id,
-                                include_revoked=include_revoked,
-                                limit=int(limit),
-                            )
-                        ],
-                        "content_exported": False,
-                        "secrets_exported": False,
-                        "share_tokens_exported": False,
-                        "share_urls_exported": False,
-                    }
-                )
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("share_link_resolve_form"):
-        token = st.text_input(
-            text["share_link_token"],
-            value="",
-            type="password",
-            key="share_link_resolve_token",
-        )
-        record_redeem = st.checkbox(
-            text["share_link_record_redeem"],
-            value=False,
-            key="share_link_record_redeem",
-        )
-        if st.form_submit_button(text["share_link_resolve"], use_container_width=True):
-            try:
-                st.json(
-                    {
-                        "resolution": registry.resolve_token(
-                            token,
-                            record_redeem=record_redeem,
-                        )
-                    }
-                )
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
-
-    with st.form("share_link_revoke_form"):
-        link_id = st.text_input(
-            text["share_link_id"],
-            value=links[0]["link_id"] if links else "",
-            key="share_link_revoke_link_id",
-        )
-        if st.form_submit_button(text["share_link_revoke"], use_container_width=True):
-            try:
-                record = registry.revoke_link(link_id)
-                if record is None:
-                    st.json(
-                        {
-                            "ok": False,
-                            "reason": "share_link_not_found",
-                            "secrets_exported": False,
-                            "share_tokens_exported": False,
-                        }
-                    )
-                else:
-                    st.json(
-                        {
-                            "ok": True,
-                            "share_link": record.to_public_dict(),
-                            "secrets_exported": False,
-                            "share_tokens_exported": False,
-                            "share_urls_exported": False,
-                        }
-                    )
-            except (OSError, sqlite3.Error, ValueError) as exc:
-                st.error(safe_streamlit_error_message(exc))
+                st.caption(streamlit_error_message(exc))
 
 
 def render_admin_status() -> None:
     status = collect_admin_status().to_dict()
-    jobs = status["jobs"]
-    artifacts = status["artifacts"]
-    storage = status["storage"]
-    storage_schemas = status["storage_schemas"]
-    platform_readiness = status["platform_readiness"]
-    corpus = status["corpus"]
-    provider_failures = status["provider_failures"]
-    query_usage = status["query_usage"]
-    retrieval_traces = status["retrieval_traces"]
-    code_execution = status["code_execution"]
-    api_access = status["api_access"]
-    admin_checks = status["admin_checks"]
-    upload_scans = status["upload_scans"]
-    config = status["config"]
-    storage_readiness = config.get("storage_readiness", {})
-    distributed_job_store = config.get("distributed_job_store", {})
-    product_readiness = config.get("product_readiness", {})
-    provider_readiness = config.get("provider_readiness", {})
-
     st.caption(text["status_jobs"])
-    st.json(
-        {
-            "total": jobs["total"],
-            "by_status": jobs["by_status"],
-            "by_kind": jobs["by_kind"],
-            "failed": jobs["failed"],
-            "scheduled": jobs["scheduled"],
-            "queue_health": jobs["queue_health"],
-            "worker_leases": jobs["worker_leases"],
-            "storage": jobs["storage"],
-        }
-    )
+    st.json(status["jobs"])
     st.caption(text["status_artifacts"])
-    st.json(
-        {
-            "total": artifacts["total"],
-            "bytes": artifacts["bytes"],
-            "integrity": artifacts["integrity"],
-        }
-    )
+    st.json(status["artifacts"])
     st.caption(text["status_corpus"])
-    st.json(corpus)
+    st.json(status["corpus"])
     st.caption(text["status_provider_failures"])
-    st.json(provider_failures)
+    st.json(status["providers"])
     st.caption(text["status_query_usage"])
-    st.json(query_usage)
-    st.caption(text["status_retrieval_traces"])
-    st.json(
-        {
-            "total_recent": retrieval_traces.get("total_recent", 0),
-            "by_code": retrieval_traces.get("by_code", {}),
-            "by_endpoint": retrieval_traces.get("by_endpoint", {}),
-            "by_answer_mode": retrieval_traces.get("by_answer_mode", {}),
-            "empty_recent": retrieval_traces.get("empty_recent", 0),
-            "empty_rate": retrieval_traces.get("empty_rate", 0),
-            "source_page_incomplete_recent": retrieval_traces.get("source_page_incomplete_recent", 0),
-            "source_page_incomplete_rate": retrieval_traces.get("source_page_incomplete_rate", 0),
-            "citation_checked_recent": retrieval_traces.get("citation_checked_recent", 0),
-            "citation_failed_recent": retrieval_traces.get("citation_failed_recent", 0),
-            "citation_failure_rate": retrieval_traces.get("citation_failure_rate", 0),
-            "alerts": retrieval_traces.get("alerts", []),
-            "alert_thresholds": retrieval_traces.get("alert_thresholds", {}),
-            "context_count": retrieval_traces.get("context_count", {}),
-            "duration_ms": retrieval_traces.get("duration_ms", {}),
-        }
-    )
-    st.caption(text["status_cost_pricing"])
-    st.json(query_usage.get("pricing", {}))
-    st.caption(text["status_code_execution"])
-    st.json(
-        {
-            "total_recent": code_execution.get("total_recent", 0),
-            "by_code": code_execution.get("by_code", {}),
-            "by_status": code_execution.get("by_status", {}),
-            "by_backend": code_execution.get("by_backend", {}),
-            "failure_rate": code_execution.get("failure_rate", 0),
-            "artifact_exported_bytes": code_execution.get("artifact_exported_bytes", 0),
-            "alerts": code_execution.get("alerts", []),
-            "alert_thresholds": code_execution.get("alert_thresholds", {}),
-            "duration_ms": code_execution.get("duration_ms", {}),
-        }
-    )
-    st.caption(text["status_api_access"])
-    st.json(
-        {
-            "audit_enabled": api_access.get("audit_enabled", False),
-            "total_recent": api_access.get("total_recent", 0),
-            "by_token_status": api_access.get("by_token_status", {}),
-            "by_status_code": api_access.get("by_status_code", {}),
-            "by_method": api_access.get("by_method", {}),
-            "invalid_recent": api_access.get("invalid_recent", 0),
-            "missing_recent": api_access.get("missing_recent", 0),
-            "rate_limited_recent": api_access.get("rate_limited_recent", 0),
-            "rate_limit": api_access.get("rate_limit", {}),
-        }
-    )
-    st.caption(text["status_admin_checks"])
-    st.json(
-        {
-            "audit_enabled": admin_checks.get("audit_enabled", False),
-            "total_recent": admin_checks.get("total_recent", 0),
-            "by_check": admin_checks.get("by_check", {}),
-            "by_status": admin_checks.get("by_status", {}),
-            "ok_recent": admin_checks.get("ok_recent", 0),
-            "blocked_recent": admin_checks.get("blocked_recent", 0),
-            "blocker_count_total": admin_checks.get("blocker_count_total", 0),
-        }
-    )
-    st.caption(text["status_upload_scan"])
-    st.json(
-        {
-            "scan_enabled": upload_scans.get("scan_enabled", False),
-            "total_recent": upload_scans.get("total_recent", 0),
-            "by_status": upload_scans.get("by_status", {}),
-            "by_reason": upload_scans.get("by_reason", {}),
-            "allowed_recent": upload_scans.get("allowed_recent", 0),
-            "blocked_recent": upload_scans.get("blocked_recent", 0),
-            "active_content_recent": upload_scans.get("active_content_recent", 0),
-            "parse_failed_recent": upload_scans.get("parse_failed_recent", 0),
-            "config": upload_scans.get("config", {}),
-        }
-    )
-    st.caption(text["status_execution_policy"])
-    st.json(
-        {
-            "backend": config.get("code_execution_backend", ""),
-            "policy": config.get("code_execution_policy", ""),
-            "allowed_imports": config.get("code_execution_allowed_imports", []),
-            "output_limits": {
-                "stdout_bytes": config.get("code_execution_max_stdout_bytes", 0),
-                "stderr_bytes": config.get("code_execution_max_stderr_bytes", 0),
-                "artifacts": config.get("code_execution_max_artifacts", 0),
-                "artifact_bytes": config.get("code_execution_max_artifact_bytes", 0),
-                "artifact_total_bytes": config.get("code_execution_max_artifact_total_bytes", 0),
-                "artifact_candidates": config.get("code_execution_max_artifact_candidates", 0),
-            },
-            "docker": config.get("docker_execution", {}),
-        }
-    )
-    st.caption(text["status_storage"])
-    st.json(
-        {
-            "metadata": storage_readiness.get("metadata", {}),
-            "object_storage": storage_readiness.get("object_storage", {}),
-            "distributed_job_store": distributed_job_store,
-            "external_storage_configured": storage_readiness.get("external_storage_configured", False),
-            "external_storage_available": storage_readiness.get("external_storage_available", False),
-        }
-    )
+    st.json(status["activity"])
+    st.caption(text["account_management"])
+    st.json(status["users"])
     st.caption(text["status_storage_inventory"])
-    st.json(storage)
-    st.caption(text["status_storage_schemas"])
-    st.json(storage_schemas)
-    st.caption(text["status_platform_readiness"])
-    st.json(platform_readiness)
-    st.caption(text["status_platform_migration_rehearsal"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/platform-migration-rehearsal",
-            "local_only": True,
-            "raw_manifests_included": False,
-            "checks": [
-                "runtime_backup_manifest",
-                "staged_restore_check",
-                "storage_schema",
-                "object_storage_manifest_summary",
-                "job_store_manifest_summary",
-            ],
-        }
-    )
-    if st.button(
-        text["run_platform_migration_rehearsal"],
-        key="run_platform_migration_rehearsal",
-        use_container_width=True,
-    ):
-        try:
-            st.session_state["platform_migration_rehearsal_status"] = (
-                collect_platform_migration_rehearsal()
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    platform_migration_rehearsal_status = st.session_state.get(
-        "platform_migration_rehearsal_status"
-    )
-    if platform_migration_rehearsal_status:
-        st.json(platform_migration_rehearsal_status)
-        st.download_button(
-            text["download_platform_migration_rehearsal_report"],
-            data=format_storage_migration_rehearsal_markdown(
-                platform_migration_rehearsal_status
-            ),
-            file_name="fluxmind-platform-migration-rehearsal.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_product_readiness"])
-    st.json(
-        {
-            "local_foundation_ready": product_readiness.get("local_foundation_ready", False),
-            "activation_ready": product_readiness.get("activation_ready", False),
-            "identity_quotas_billing_enabled": product_readiness.get("identity_quotas_billing_enabled", False),
-            "summary": product_readiness.get("summary", {}),
-            "blockers": product_readiness.get("blockers", {}),
-            "advisories": product_readiness.get("advisories", []),
-            "content_exported": product_readiness.get("content_exported", False),
-            "secrets_exported": product_readiness.get("secrets_exported", False),
-        }
-    )
-    st.caption(text["status_product_activation_rehearsal"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/product-activation-rehearsal",
-            "local_only": True,
-            "checks": [
-                "api_key_lifecycle",
-                "local_product_registry",
-                "local_rbac",
-                "local_quota",
-                "billing_attribution",
-            ],
-        }
-    )
-    if st.button(
-        text["run_product_activation_rehearsal"],
-        key="run_product_activation_rehearsal",
-        use_container_width=True,
-    ):
-        try:
-            st.session_state["product_activation_rehearsal_status"] = (
-                collect_product_activation_rehearsal()
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    product_activation_rehearsal_status = st.session_state.get(
-        "product_activation_rehearsal_status"
-    )
-    if product_activation_rehearsal_status:
-        st.json(product_activation_rehearsal_status)
-        st.download_button(
-            text["download_product_activation_rehearsal_report"],
-            data=format_product_activation_rehearsal_markdown(
-                product_activation_rehearsal_status
-            ),
-            file_name="fluxmind-product-activation-rehearsal.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_collaboration_readiness"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/collaboration-readiness",
-            "local_only": True,
-            "safe_default": {
-                "private_corpora_enabled": False,
-                "share_links_enabled": False,
-            },
-            "checks": [
-                "private_corpus_policy_matrix",
-                "share_link_policy_matrix",
-                "product_registry_prerequisite",
-                "product_rbac_guard_prerequisite",
-                "share_link_token_store_prerequisite",
-            ],
-        }
-    )
-    if st.button(
-        text["run_collaboration_readiness"],
-        key="run_collaboration_readiness",
-        use_container_width=True,
-    ):
-        try:
-            st.session_state["collaboration_readiness_status"] = (
-                collect_collaboration_readiness()
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    collaboration_readiness_status = st.session_state.get(
-        "collaboration_readiness_status"
-    )
-    if collaboration_readiness_status:
-        st.json(collaboration_readiness_status)
-        st.download_button(
-            text["download_collaboration_readiness_report"],
-            data=format_collaboration_readiness_markdown(
-                collaboration_readiness_status
-            ),
-            file_name="fluxmind-collaboration-readiness.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_provider_readiness"])
-    st.json(
-        {
-            "local_foundation_ready": provider_readiness.get("local_foundation_ready", False),
-            "activation_ready": provider_readiness.get("activation_ready", False),
-            "external_providers_enabled": provider_readiness.get("external_providers_enabled", False),
-            "summary": provider_readiness.get("summary", {}),
-            "checks": provider_readiness.get("checks", {}),
-            "blockers": provider_readiness.get("blockers", {}),
-            "advisories": provider_readiness.get("advisories", []),
-            "content_exported": provider_readiness.get("content_exported", False),
-            "secrets_exported": provider_readiness.get("secrets_exported", False),
-            "connectivity_checked": provider_readiness.get("connectivity_checked", False),
-        }
-    )
-    st.caption(text["status_provider_runtime_rehearsal"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/provider-runtime-rehearsal",
-            "local_only": True,
-            "checks": [
-                "mock_image_generation",
-                "local_python_execution",
-                "octave_runtime_branch",
-                "docker_readiness",
-                "provider_quota_guard",
-            ],
-        }
-    )
-    if st.button(
-        text["run_provider_runtime_rehearsal"],
-        key="run_provider_runtime_rehearsal",
-        use_container_width=True,
-    ):
-        try:
-            st.session_state["provider_runtime_rehearsal_status"] = (
-                collect_provider_runtime_rehearsal()
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    provider_runtime_rehearsal_status = st.session_state.get(
-        "provider_runtime_rehearsal_status"
-    )
-    if provider_runtime_rehearsal_status:
-        st.json(provider_runtime_rehearsal_status)
-        st.download_button(
-            text["download_provider_runtime_rehearsal_report"],
-            data=format_provider_runtime_rehearsal_markdown(
-                provider_runtime_rehearsal_status
-            ),
-            file_name="fluxmind-provider-runtime-rehearsal.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_quality_readiness"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/quality-readiness",
-            "live_report_input": "evaluate_rag_json_report",
-            "targets": ["self_use", "small_group", "community"],
-            "evidence_sources": [
-                "corpus_manifest",
-                "eval_baseline",
-                "live_eval_report",
-            ],
-        }
-    )
-    quality_readiness_live_report = st.file_uploader(
-        text["quality_readiness_live_report"],
-        type=["json"],
-        key="quality_readiness_live_report",
-    )
-    if st.button(text["run_quality_readiness"], key="run_quality_readiness", use_container_width=True):
-        try:
-            live_reports = []
-            if quality_readiness_live_report is not None:
-                live_reports.append(
-                    json.loads(quality_readiness_live_report.getvalue().decode("utf-8"))
-                )
-            st.session_state["quality_readiness_status"] = collect_quality_readiness(
-                live_reports=live_reports,
-            )
-        except json.JSONDecodeError as exc:
-            st.error(
-                safe_streamlit_error_text(text["quality_readiness_report_invalid"], exc)
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    quality_readiness_status = st.session_state.get("quality_readiness_status")
-    if quality_readiness_status:
-        st.json(quality_readiness_status)
-        st.download_button(
-            text["download_quality_readiness_report"],
-            data=format_quality_readiness_markdown(quality_readiness_status),
-            file_name="fluxmind-quality-readiness.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_activation_suite"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/activation-suite",
-            "live_report_input": "evaluate_rag_json_report",
-            "default_gate": "local_foundation",
-            "local_foundation_requires": [
-                "product local foundation",
-                "provider local foundation",
-                "storage migration rehearsal",
-                "quality local foundation",
-                "OpenAPI contract",
-            ],
-            "full_activation_requires": [
-                "product activation",
-                "provider activation",
-                "platform migration activation",
-                "community quality readiness",
-            ],
-        }
-    )
-    activation_suite_live_report = st.file_uploader(
-        text["activation_suite_live_report"],
-        type=["json"],
-        key="activation_suite_live_report",
-    )
-    if st.button(text["run_activation_suite"], key="run_activation_suite", use_container_width=True):
-        try:
-            live_reports = []
-            if activation_suite_live_report is not None:
-                live_reports.append(
-                    json.loads(activation_suite_live_report.getvalue().decode("utf-8"))
-                )
-            import api
-
-            st.session_state["activation_suite_status"] = collect_activation_suite(
-                live_reports=live_reports,
-                openapi_schema=api.app.openapi(),
-            )
-        except json.JSONDecodeError as exc:
-            st.error(
-                safe_streamlit_error_text(text["activation_suite_report_invalid"], exc)
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    activation_suite_status = st.session_state.get("activation_suite_status")
-    if activation_suite_status:
-        st.json(activation_suite_status)
-        st.download_button(
-            text["download_activation_suite_report"],
-            data=format_activation_suite_markdown(activation_suite_status),
-            file_name="fluxmind-activation-suite.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    st.caption(text["status_openapi_contract"])
-    st.json(
-        {
-            "on_demand": True,
-            "route": "/admin/openapi-contract",
-            "verify_route": "/admin/openapi-contract/verify",
-            "raw_schema_included": False,
-            "checks": [
-                "required_path_methods",
-                "operation_summary_ids",
-                "operation_responses",
-                "protected_auth_headers",
-                "route_group_coverage",
-                "snapshot_drift",
-            ],
-        }
-    )
-    if st.button(text["run_openapi_contract"], key="run_openapi_contract", use_container_width=True):
-        try:
-            import api
-
-            st.session_state["openapi_contract_status"] = collect_openapi_contract(
-                api.app.openapi()
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    openapi_contract_status = st.session_state.get("openapi_contract_status")
-    if openapi_contract_status:
-        st.json(openapi_contract_status)
-        st.download_button(
-            text["download_openapi_contract_report"],
-            data=format_openapi_contract_markdown(openapi_contract_status),
-            file_name="fluxmind-openapi-contract.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
-    openapi_contract_snapshot = st.file_uploader(
-        text["openapi_contract_snapshot"],
-        type=["json"],
-        key="openapi_contract_snapshot",
-    )
-    if st.button(
-        text["run_openapi_contract_verify"],
-        key="run_openapi_contract_verify",
-        use_container_width=True,
-    ):
-        try:
-            if openapi_contract_snapshot is None:
-                st.error(text["openapi_contract_snapshot_missing"])
-            else:
-                snapshot = json.loads(openapi_contract_snapshot.getvalue().decode("utf-8"))
-                import api
-
-                current = collect_openapi_contract(api.app.openapi())
-                st.session_state["openapi_contract_verify_status"] = (
-                    verify_openapi_contract_snapshot(current, snapshot)
-                )
-        except json.JSONDecodeError as exc:
-            st.error(
-                safe_streamlit_error_text(text["openapi_contract_snapshot_invalid"], exc)
-            )
-        except OSError as exc:
-            st.error(safe_streamlit_error_message(exc))
-    openapi_contract_verify_status = st.session_state.get("openapi_contract_verify_status")
-    if openapi_contract_verify_status:
-        st.json(openapi_contract_verify_status)
-        st.download_button(
-            text["download_openapi_contract_verify_report"],
-            data=format_openapi_contract_snapshot_verify_markdown(
-                openapi_contract_verify_status
-            ),
-            file_name="fluxmind-openapi-contract-verify.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
+    st.json(status["storage"])
     runtime_manifest = collect_runtime_backup_manifest()
     st.caption(text["status_runtime_manifest"])
     st.json(
         {
             "mode": runtime_manifest["mode"],
-            "content_exported": runtime_manifest["content_exported"],
-            "secrets_exported": runtime_manifest["secrets_exported"],
             "env_file_present": runtime_manifest["env_file_present"],
-            "env_file_content_exported": runtime_manifest["env_file_content_exported"],
             "total_files": runtime_manifest["total_files"],
             "total_bytes": runtime_manifest["total_bytes"],
-        }
-    )
-    st.caption(text["status_storage_paths"])
-    st.json(
-        {
-            "metadata": storage_readiness.get("local_metadata_paths", []),
-            "object_storage": storage_readiness.get("local_object_paths", []),
         }
     )
     st.caption(text["status_runtime_dirs"])
@@ -1762,7 +863,7 @@ def render_admin_status() -> None:
             restore_manifest = json.loads(uploaded_manifest.getvalue().decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             st.error(
-                safe_streamlit_error_text(text["runtime_restore_invalid_manifest"], exc)
+                streamlit_error_text(text["runtime_restore_invalid_manifest"], exc)
             )
         else:
             restore_check = collect_runtime_restore_check(restore_manifest)
@@ -1777,8 +878,6 @@ def render_admin_status() -> None:
                     "mismatched_groups": restore_check["mismatched_groups"],
                     "missing_files": restore_check["missing_files"],
                     "mismatched_files": restore_check["mismatched_files"],
-                    "content_restored": restore_check["content_restored"],
-                    "delete_enabled": restore_check["delete_enabled"],
                 }
             )
             st.download_button(
@@ -1828,15 +927,15 @@ def render_retention_preview() -> None:
     )
     st.json(
         {
-            "mode": preview["mode"],
             "delete_enabled": preview["delete_enabled"],
-            "limit": preview["limit"],
+            "candidate_count": preview["candidate_count"],
+            "candidate_bytes": preview["candidate_bytes"],
         }
     )
     st.caption(text["retention_uploads"])
-    st.json(preview["uploads"])
+    st.json([item for item in preview["candidates"] if item["kind"] == "upload"])
     st.caption(text["retention_artifacts"])
-    st.json(preview["artifacts"])
+    st.json([item for item in preview["candidates"] if item["kind"] == "artifact"])
     if preview["delete_enabled"]:
         if st.button(text["retention_delete"], key="retention_delete", use_container_width=True):
             result = apply_retention_delete(
@@ -1847,12 +946,9 @@ def render_retention_preview() -> None:
             st.caption(text["retention_delete_result"])
             st.json(
                 {
-                    "mode": result["mode"],
-                    "deleted_files": result["deleted_files"],
+                    "deleted_count": result["deleted_count"],
                     "deleted_bytes": result["deleted_bytes"],
-                    "failed_files": result["failed_files"],
-                    "uploads": result["uploads"],
-                    "artifacts": result["artifacts"],
+                    "errors": result["errors"],
                 }
             )
 
@@ -1869,28 +965,25 @@ def render_runtime_events() -> None:
         )
     with col_code:
         event_code = st.text_input(text["event_code_filter"], value="", key="event_code_filter")
-    safe_query = (event_query or "").strip()
-    raw_events = list_runtime_events(
-        kind=event_kind or None,
-        code=event_code or None,
-        q=None,
-        limit=1000 if safe_query else 10,
-    )
+    query = (event_query or "").strip()
     events = [
-        runtime_event_to_safe_dict(event, include_request_id=False)
-        for event in raw_events
+        runtime_event_to_dict(event, include_request_id=False)
+        for event in list_runtime_events(
+            kind=event_kind or None,
+            code=event_code or None,
+            q=query or None,
+            limit=10,
+        )
     ]
-    if safe_query:
-        events = [
-            event
-            for event in events
-            if safe_query.casefold()
-            in json.dumps(event, ensure_ascii=False, sort_keys=True).casefold()
-        ][:10]
     if not events:
         st.caption(text["no_jobs"])
         return
     st.json(events)
+
+
+user_store = LocalUserStore()
+current_user = render_account_gate(user_store)
+is_admin = current_user.role == "admin"
 
 
 # ── Sidebar: Knowledge Base Management ──
@@ -1905,12 +998,25 @@ with st.sidebar:
     )
     text = I18N[language]
     st.caption(text["caption"])
+    st.caption(
+        text["signed_in_as"].format(
+            name=current_user.display_name,
+            role=current_user.role,
+        )
+    )
+    if st.button(text["logout"], key="logout", use_container_width=True):
+        st.session_state.pop("current_user_id", None)
+        st.session_state.pop("messages", None)
+        st.rerun()
     answer_mode = st.selectbox(
         text["answer_mode"],
         options=list(text["answer_modes"]),
         format_func=lambda value: text["answer_modes"][value],
         key="answer_mode",
     )
+    render_query_history(user_store, current_user, text)
+    if is_admin:
+        render_user_management(user_store, text)
     st.divider()
 
     st.subheader(f"📚 {text['knowledge_base']}")
@@ -1931,8 +1037,9 @@ with st.sidebar:
             default=active_defaults,
             format_func=lambda key: paper_label(selectable_by_rel[key], manifest),
             key="paper_selection",
+            disabled=not is_admin,
         )
-        if st.button(text["apply_selection"], use_container_width=True):
+        if st.button(text["apply_selection"], use_container_width=True, disabled=not is_admin):
             if not selected:
                 st.warning(text["select_at_least_one"])
             else:
@@ -1941,19 +1048,22 @@ with st.sidebar:
                     _, chunks = rebuild_vector_store_from_pdfs(paths)
                     st.success(f"{text['rebuilt']} ({chunks} chunks)")
                     st.rerun()
-        if st.button(text["save_selection"], use_container_width=True):
+        if st.button(text["save_selection"], use_container_width=True, disabled=not is_admin):
             if not selected:
                 st.warning(text["select_at_least_one"])
             else:
                 set_active_paper_source_paths(selected)
                 st.success(text["selection_saved"])
                 st.rerun()
-        if st.button(text["run_index_job"], use_container_width=True):
+        if st.button(text["run_index_job"], use_container_width=True, disabled=not is_admin):
             if not selected:
                 st.warning(text["select_at_least_one"])
             else:
                 with st.spinner(text["rebuilding"]):
-                    job = get_async_job_manager().enqueue_index_rebuild(selected)
+                    job = get_async_job_manager().enqueue_index_rebuild(
+                        selected,
+                        ownership=account_ownership(current_user),
+                    )
                     render_job_result(job)
         with st.expander(text["corpus_profiles"]):
             profile_store = CorpusProfileStore()
@@ -1961,8 +1071,9 @@ with st.sidebar:
                 text["profile_name"],
                 value="",
                 key="corpus_profile_name",
+                disabled=not is_admin,
             )
-            if st.button(text["save_profile"], use_container_width=True):
+            if st.button(text["save_profile"], use_container_width=True, disabled=not is_admin):
                 if not selected:
                     st.warning(text["select_at_least_one"])
                 else:
@@ -1983,6 +1094,7 @@ with st.sidebar:
                         if profile.profile_id == profile_id
                     ),
                     key="corpus_profile_select",
+                    disabled=not is_admin,
                 )
                 try:
                     profile_status = collect_corpus_profile_status(selected_profile)
@@ -1998,19 +1110,26 @@ with st.sidebar:
                 except Exception as exc:
                     st.warning(
                         text["profile_report_failed"].format(
-                            error=safe_streamlit_error_message(exc)
+                            error=streamlit_error_message(exc)
                         )
                     )
-                if st.button(text["activate_profile"], use_container_width=True):
+                if st.button(text["activate_profile"], use_container_width=True, disabled=not is_admin):
                     profile = profile_store.get_profile(selected_profile)
                     set_active_paper_source_paths(profile.source_paths)
                     st.success(text["selection_saved"])
                     st.rerun()
-                if st.button(text["activate_profile_rebuild"], use_container_width=True):
+                if st.button(
+                    text["activate_profile_rebuild"],
+                    use_container_width=True,
+                    disabled=not is_admin,
+                ):
                     profile = profile_store.get_profile(selected_profile)
                     set_active_paper_source_paths(profile.source_paths)
                     with st.spinner(text["rebuilding"]):
-                        job = get_async_job_manager().enqueue_index_rebuild(profile.source_paths)
+                        job = get_async_job_manager().enqueue_index_rebuild(
+                            profile.source_paths,
+                            ownership=account_ownership(current_user),
+                        )
                         render_job_result(job)
         with st.expander(text["view_papers"]):
             for p in selectable_papers:
@@ -2025,6 +1144,7 @@ with st.sidebar:
         type=["pdf"],
         accept_multiple_files=True,
         key="pdf_uploader",
+        disabled=not is_admin,
     )
 
     if uploaded_files:
@@ -2034,7 +1154,7 @@ with st.sidebar:
                     saved_path, n_chunks = ingest_uploaded_pdf(uf.read(), uf.name)
                     st.success(text["indexed_chunks"].format(filename=saved_path.name, chunks=n_chunks))
                 except ValueError as exc:
-                    st.error(safe_streamlit_error_text(text["upload_failed"], exc))
+                    st.error(streamlit_error_text(text["upload_failed"], exc))
 
     st.caption(f"Max upload: {MAX_UPLOAD_SIZE_MB} MB")
 
@@ -2070,7 +1190,8 @@ with st.sidebar:
                 request=ImageGenerationRequest(
                     prompt=image_prompt,
                     diagram_template=image_template,
-                )
+                ),
+                ownership=account_ownership(current_user),
             )
             render_job_result(job)
 
@@ -2081,7 +1202,10 @@ with st.sidebar:
         python_template = st.selectbox(
             text["python_template"],
             options=list(PYTHON_EXECUTION_TEMPLATES),
-            format_func=lambda value: text["execution_templates"][value],
+            format_func=lambda value: text["execution_templates"].get(
+                value,
+                value.replace("_", " ").title(),
+            ),
             key="python_execution_template",
         )
         entrypoint = st.text_input(
@@ -2102,7 +1226,8 @@ with st.sidebar:
                     entrypoint=entrypoint,
                     files={entrypoint: code},
                     timeout_s=10,
-                )
+                ),
+                ownership=account_ownership(current_user),
             )
             render_job_result(job)
 
@@ -2113,7 +1238,10 @@ with st.sidebar:
         octave_template = st.selectbox(
             text["octave_template"],
             options=list(OCTAVE_EXECUTION_TEMPLATES),
-            format_func=lambda value: text["execution_templates"][value],
+            format_func=lambda value: text["execution_templates"].get(
+                value,
+                value.replace("_", " ").title(),
+            ),
             key="octave_execution_template",
         )
         octave_entrypoint = st.text_input(
@@ -2134,30 +1262,28 @@ with st.sidebar:
                     entrypoint=octave_entrypoint,
                     files={octave_entrypoint: octave_code},
                     timeout_s=10,
-                )
+                ),
+                ownership=account_ownership(current_user),
             )
             render_job_result(job)
 
     with st.expander(text["latest_jobs"]):
-        render_latest_jobs()
+        render_latest_jobs(current_user, is_admin=is_admin)
 
     with st.expander(text["latest_artifacts"]):
-        render_latest_artifacts()
+        render_latest_artifacts(current_user, is_admin=is_admin)
 
-    with st.expander(text["admin_status"]):
-        if st.button(text["refresh_status"], use_container_width=True):
-            st.rerun()
-        render_admin_status()
-        st.divider()
-        render_product_registry_management()
-        st.divider()
-        render_share_link_registry_management()
-        st.divider()
-        st.caption(text["retention_preview"])
-        render_retention_preview()
-        st.divider()
-        st.caption(text["runtime_events"])
-        render_runtime_events()
+    if is_admin:
+        with st.expander(text["admin_status"]):
+            if st.button(text["refresh_status"], use_container_width=True):
+                st.rerun()
+            render_admin_status()
+            st.divider()
+            st.caption(text["retention_preview"])
+            render_retention_preview()
+            st.divider()
+            st.caption(text["runtime_events"])
+            render_runtime_events()
 
     st.divider()
     st.subheader(f"ℹ️ {text['about']}")
@@ -2170,7 +1296,11 @@ with st.sidebar:
 # ── Init vector store on first run ──
 if "store_initialized" not in st.session_state:
     with st.spinner(text["initializing"]):
-        build_vector_store()
+        try:
+            build_vector_store()
+        except Exception as exc:
+            st.error(streamlit_error_text(text["initialization_failed"], exc))
+            st.stop()
     st.session_state.store_initialized = True
 
 # ── Chat Interface ──
@@ -2202,5 +1332,18 @@ if prompt := st.chat_input(text["chat_placeholder"]):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = render_streaming_response(prompt, answer_mode=st.session_state.answer_mode)
+        response, succeeded = render_streaming_response(
+            prompt,
+            answer_mode=st.session_state.answer_mode,
+        )
     st.session_state.messages.append({"role": "assistant", "content": response})
+    if succeeded:
+        try:
+            user_store.record_query(
+                user_id=current_user.user_id,
+                question=prompt,
+                answer=response,
+                answer_mode=st.session_state.answer_mode,
+            )
+        except (OSError, sqlite3.Error) as exc:
+            st.warning(str(exc))

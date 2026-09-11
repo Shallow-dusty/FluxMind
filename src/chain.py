@@ -31,7 +31,13 @@ from src.config import (
 )
 from src.provider_guard import provider_quota_guard_decision
 from src.embeddings import get_embedding_model
-from src.runtime import ProviderError, ProviderQuotaGuardError, estimate_text_tokens, normalize_exception
+from src.runtime import (
+    ProviderError,
+    ProviderQuotaGuardError,
+    estimate_text_tokens,
+    logger,
+    normalize_exception,
+)
 
 AnswerMode = Literal["explanation", "derivation", "implementation", "literature_review", "code_generation"]
 
@@ -39,10 +45,19 @@ DEFAULT_ANSWER_MODE: AnswerMode = "explanation"
 GENERATION_MAX_TOKENS = 4096
 
 ANSWER_MODE_INSTRUCTIONS: dict[AnswerMode, str] = {
-    "explanation": "Explain the concept clearly, define assumptions, and keep citations close to claims.",
-    "derivation": "Prioritize equations, derivation steps, assumptions, and cite the source context for each key step.",
+    "explanation": (
+        "Explain the concept clearly, define assumptions, and keep numbered "
+        "retrieved-context citations close to the claims they support."
+    ),
+    "derivation": (
+        "Prioritize equations, derivation steps, and assumptions. Cite the "
+        "retrieved-context ref for each supported key step."
+    ),
     "implementation": "Focus on implementation guidance, parameters, engineering tradeoffs, and reproducible steps.",
-    "literature_review": "Compare papers, methods, evidence, and research gaps with source/page citations.",
+    "literature_review": (
+        "Compare papers, methods, evidence, and research gaps with inline "
+        "numbered retrieved-context citations."
+    ),
     "code_generation": (
         "Generate MATLAB/Simulink-oriented code by default. For observer code, "
         "name measured currents, voltage inputs, observer gains, and the "
@@ -57,12 +72,12 @@ You are FluxMind, an expert research copilot specializing in:
 - MATLAB/Simulink modeling for control systems
 
 ## Rules:
-1. When answering theoretical questions, ALWAYS cite the source paper/page from the retrieved context.
+1. Cite claims supported by retrieved context with its inline bracket ref, for example [1].
 2. When generating code, use MATLAB syntax by default. Use Python only if explicitly requested.
 3. Structure your answers clearly with sections and equations (use LaTeX notation).
 4. If the retrieved context doesn't contain relevant information, say so honestly and provide your best knowledge.
 5. Answer in the SAME LANGUAGE as the user's question (Chinese or English).
-6. Only cite retrieved context refs listed below. Do not invent numbered refs, bibliography numbers, or page refs.
+6. Only cite retrieved context refs listed below. Do not invent numbered refs or reuse bibliography numbers found inside a paper.
 
 ## Answer Mode:
 {answer_mode}
@@ -95,6 +110,7 @@ class CitationValidation:
     cited_refs: list[int]
     valid_refs: list[int]
     invalid_refs: list[int]
+    missing_citation: bool
     missing_required_refs: list[int]
     missing_source_page_refs: list[int]
 
@@ -102,6 +118,7 @@ class CitationValidation:
     def ok(self) -> bool:
         return (
             not self.invalid_refs
+            and not self.missing_citation
             and not self.missing_required_refs
             and not self.missing_source_page_refs
         )
@@ -210,15 +227,6 @@ def get_vector_store() -> FAISS | None:
         return store
 
 
-def tokenize_query(text: str) -> set[str]:
-    """Tokenize Latin/CJK text for lightweight local keyword retrieval."""
-    return {
-        token.lower()
-        for token in _TOKEN_RE.findall(text)
-        if len(token.strip()) >= 2
-    }
-
-
 def tokenize_terms(text: str) -> list[str]:
     """Return normalized search terms while preserving term frequency."""
     return [
@@ -275,7 +283,8 @@ def library_paper_search_metadata() -> dict[str, dict[str, str]]:
     manifest_path = PAPERS_LIBRARY_DIR / "manifest.json"
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, json.JSONDecodeError):
+        logger.warning("retrieval.library_manifest_unavailable path=%s", manifest_path)
         return {}
     if not isinstance(manifest, dict):
         return {}
@@ -423,23 +432,6 @@ def document_key(doc: Document) -> tuple[str, str, str]:
         str(doc.metadata.get("page") or ""),
         doc.page_content[:160],
     )
-
-
-def lexical_relevance_score(question: str, doc: Document) -> float:
-    """Score one chunk by local BM25-lite relevance to the query."""
-    return bm25_relevance_score(question, doc)
-
-
-def bm25_relevance_score(question: str, doc: Document, corpus: list[Document] | None = None) -> float:
-    """Score one chunk by local BM25-lite relevance to the query."""
-    docs = corpus or [doc]
-    try:
-        index = docs.index(doc)
-    except ValueError:
-        docs = [doc, *docs]
-        index = 0
-    scores = bm25_relevance_scores(question, docs)
-    return scores[index] if scores else 0.0
 
 
 def bm25_relevance_scores(question: str, docs: list[Document]) -> list[float]:
@@ -619,8 +611,14 @@ def citation_instruction(context_count: int) -> str:
     if context_count <= 0:
         return "No numbered source refs are available; do not use numbered citations like [1]."
     if context_count == 1:
-        return "Valid numbered source refs for this answer: [1] only."
-    return f"Valid numbered source refs for this answer: [1] through [{context_count}] only."
+        valid_range = "[1] only"
+    else:
+        valid_range = f"[1] through [{context_count}] only"
+    return (
+        f"Valid numbered source refs for this answer: {valid_range}. "
+        "Use at least one of these refs, placed immediately after the claim it supports. "
+        "Use the bracket ref itself; a filename, author-year label, or written page number is not a substitute."
+    )
 
 
 def generated_artifact_context(*, limit: int = 5) -> str:
@@ -628,8 +626,36 @@ def generated_artifact_context(*, limit: int = 5) -> str:
     try:
         artifacts = LocalArtifactRegistry().list_artifacts(limit=limit)
     except Exception:
+        logger.warning("retrieval.artifact_context_unavailable", exc_info=True)
         return "(Generated artifact registry is unavailable.)"
     return format_artifact_references(artifacts, limit=limit)
+
+
+def provider_guard_denial_message(decision: dict[str, Any]) -> str:
+    reason = str(decision.get("reason") or "provider_quota_denied")
+    if reason == "provider_prompt_token_limit_exceeded":
+        return (
+            f"Estimated prompt tokens ({decision.get('estimated_prompt_tokens', 0)}) "
+            f"exceed the configured limit "
+            f"({decision.get('max_prompt_tokens_per_request', 0)})."
+        )
+    if reason == "provider_completion_token_limit_exceeded":
+        return (
+            f"Requested completion tokens "
+            f"({decision.get('requested_completion_tokens', 0)}) exceed the configured "
+            f"limit ({decision.get('max_completion_tokens_per_request', 0)})."
+        )
+    if reason == "provider_cost_limit_exceeded":
+        return (
+            f"Estimated request cost (${decision.get('estimated_cost_usd', '0')}) "
+            f"exceeds the configured limit "
+            f"(${decision.get('max_cost_usd_per_request', '0')})."
+        )
+    if reason == "provider_cost_pricing_not_configured":
+        return "A provider cost limit is enabled, but model pricing is not configured."
+    if reason == "provider_quota_guard_invalid_limit":
+        return "Provider token limits must be configured with positive values."
+    return f"Provider request denied: {reason}."
 
 
 def enforce_provider_quota_guard(
@@ -642,7 +668,7 @@ def enforce_provider_quota_guard(
     mode_instruction: str,
     citation_guard: str,
 ) -> dict[str, Any]:
-    """Apply no-secret provider quota/cost guard before LLM calls."""
+    """Apply the provider quota/cost guard before LLM calls."""
     prompt_text = SYSTEM_PROMPT.format(
         context=context,
         artifact_context=artifact_context,
@@ -658,7 +684,7 @@ def enforce_provider_quota_guard(
     )
     if not decision.get("allowed", True):
         raise ProviderQuotaGuardError(
-            "Provider quota guard denied this request.",
+            provider_guard_denial_message(decision),
             code=str(decision.get("reason", "provider_quota_denied")),
             status_code=int(decision.get("status_code", 429) or 429),
             decision=decision,
@@ -686,6 +712,7 @@ def validate_numbered_citations(
     invalid_refs = [ref for ref in cited_refs if ref < 1 or ref > max_ref]
     required = required_refs or []
     missing_required_refs = [ref for ref in required if ref not in cited_refs]
+    missing_citation = bool(docs) and not valid_refs
     missing_source_page_refs = [
         ref
         for ref in valid_refs
@@ -695,6 +722,7 @@ def validate_numbered_citations(
         cited_refs=cited_refs,
         valid_refs=valid_refs,
         invalid_refs=invalid_refs,
+        missing_citation=missing_citation,
         missing_required_refs=missing_required_refs,
         missing_source_page_refs=missing_source_page_refs,
     )
@@ -739,7 +767,7 @@ def context_ref_dicts(docs: list[Document]) -> list[dict]:
 
 
 def provider_usage_from_response(response: Any) -> dict[str, int] | None:
-    """Extract no-secret provider token usage from a LangChain response when available."""
+    """Extract provider token usage from a LangChain response when available."""
     usage_metadata = getattr(response, "usage_metadata", None) or {}
     response_metadata = getattr(response, "response_metadata", None) or {}
     token_usage = response_metadata.get("token_usage") or response_metadata.get("usage") or {}

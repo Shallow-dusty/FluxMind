@@ -199,6 +199,22 @@ def test_save_rebuilt_vector_store_preserves_live_index_on_failure(tmp_path: Pat
     assert not (index_dir / ".rebuild_tmp").exists()
 
 
+def test_build_vector_store_rejects_empty_corpus_before_loading_embeddings(
+    tmp_path: Path,
+    monkeypatch,
+):
+    monkeypatch.setattr(ingestion, "FAISS_INDEX_DIR", tmp_path / "faiss_index")
+    monkeypatch.setattr(ingestion, "load_all_pdfs", lambda **_kwargs: [])
+
+    def fail_embedding_load():
+        raise AssertionError("embedding model should not load for an empty corpus")
+
+    monkeypatch.setattr(ingestion, "get_embedding_model", fail_embedding_load)
+
+    with pytest.raises(ValueError, match="No PDF documents"):
+        ingestion.build_vector_store()
+
+
 def test_refresh_paper_metadata_marks_active_indexed(tmp_path: Path, monkeypatch):
     root = tmp_path
     library = root / "papers" / "library"

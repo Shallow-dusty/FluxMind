@@ -1,4 +1,4 @@
-"""No-secret local cost estimation helpers for query usage."""
+"""Local query cost estimation helpers."""
 
 from __future__ import annotations
 
@@ -77,7 +77,6 @@ def query_pricing_status(
         "currency": "USD",
         "prompt_usd_per_1m": _format_decimal(prompt_rate),
         "completion_usd_per_1m": _format_decimal(completion_rate),
-        "external_billing_enabled": False,
     }
 
 

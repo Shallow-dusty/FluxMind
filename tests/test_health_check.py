@@ -1,54 +1,6 @@
-import scripts.health_check as health_check
 import subprocess
 
-
-def test_remote_ssh_checks_include_recent_safety_anchors():
-    source = (health_check.PROJECT_ROOT / "scripts" / "health_check.py").read_text(
-        encoding="utf-8"
-    )
-
-    assert (
-        "grep -q 'STREAMLIT_PRODUCT_REGISTRY_MANAGEMENT_ENABLED' "
-        "/opt/fluxmind/app.py"
-    ) in source
-    assert (
-        "grep -q 'product_registry_management_disabled' /opt/fluxmind/app.py"
-    ) in source
-    assert (
-        "grep -q 'STREAMLIT_SHARE_LINK_MANAGEMENT_ENABLED' "
-        "/opt/fluxmind/app.py"
-    ) in source
-    assert (
-        "grep -q 'share_link_management_disabled' /opt/fluxmind/app.py"
-    ) in source
-    assert (
-        "grep -q 'enforce_product_registry_admin_read' /opt/fluxmind/api.py"
-    ) in source
-    assert (
-        "grep -q 'endpoint=\\\"/admin/product-registry/workspaces\\\"' "
-        "/opt/fluxmind/api.py"
-    ) in source
-    assert (
-        "grep -q 'endpoint=\\\"/admin/product-registry/permissions/check\\\"' "
-        "/opt/fluxmind/api.py"
-    ) in source
-    assert (
-        "grep -q 'requires --format json' /opt/fluxmind/scripts/api_key_registry.py"
-    ) in source
-    assert (
-        "grep -q 'share_link_registry_backend_status' "
-        "/opt/fluxmind/src/share_links.py"
-    ) in source
-    assert (
-        "grep -q '/admin/share-links/status' /opt/fluxmind/api.py"
-    ) in source
-    assert (
-        "grep -q 'share_link_registry_sqlite' /opt/fluxmind/src/storage_schema.py"
-    ) in source
-    assert (
-        "grep -q 'provider_quota_guard_invalid_limit' "
-        "/opt/fluxmind/src/provider_readiness.py"
-    ) in source
+import scripts.health_check as health_check
 
 
 def test_main_local_health_check_passes(monkeypatch, capsys):
@@ -57,12 +9,9 @@ def test_main_local_health_check_passes(monkeypatch, capsys):
     assert health_check.main() == 0
     output = capsys.readouterr().out
     assert "ok   required file: app.py" in output
-    assert "ok   no-secret readiness CLI OS errors omit raw paths" in output
-    assert "ok   runtime event metadata values redact secret-like strings" in output
-    assert "ok   local execution input materialization conflict guard installed" in output
-    assert "ok   local execution entrypoint regular-file guard installed" in output
-    assert "ok   API startup warmup readiness route installed" in output
-    assert "skip local FAISS index is absent" in output or "ok   local FAISS index is non-empty" in output
+    assert "ok   import src.chain" in output
+    assert "ok   local FAISS vectors are non-empty" in output
+    assert "ok   chunk metadata matches active papers" in output
 
 
 def test_main_reports_url_failures(monkeypatch, capsys):
@@ -173,3 +122,13 @@ def test_run_ssh_uses_minimum_command_timeout(monkeypatch):
     assert code == 0
     assert output == "ok\n"
     assert calls["timeout"] == 180.0
+
+
+def test_remote_command_checks_services_and_user_history_contract():
+    command = health_check.remote_command()
+
+    assert "systemctl is-active" in command
+    assert 'api("/ready")' in command
+    assert '"/query/retrieve"' in command
+    assert '"/query/history/{user_id}"' in command
+    assert '{"users", "query_history"}' in command

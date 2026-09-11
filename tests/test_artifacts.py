@@ -1,5 +1,4 @@
 import hashlib
-import json
 import sqlite3
 from pathlib import Path
 
@@ -9,8 +8,7 @@ from src.artifacts import (
     ArtifactRecord,
     LocalArtifactRegistry,
     artifact_id_for_uri,
-    artifact_public_metadata,
-    artifact_to_public_dict,
+    artifact_to_dict,
     format_artifact_references,
     local_artifact_path,
     safe_artifact_download_filename,
@@ -61,8 +59,8 @@ def test_artifact_registry_carries_job_ownership(tmp_path: Path, monkeypatch):
     assert artifacts[0].owner_id == "lab-art"
     assert artifacts[0].owner_label == "Artifact Lab"
     assert artifacts[0].ownership_source == "request"
-    assert registry.list_artifacts(q="Artifact Lab") == []
-    assert registry.list_artifacts(q="lab-art") == []
+    assert registry.list_artifacts(q="Artifact Lab")[0].artifact_id == artifacts[0].artifact_id
+    assert registry.list_artifacts(q="lab-art")[0].artifact_id == artifacts[0].artifact_id
     assert registry.list_artifacts(owner_id="missing") == []
 
 
@@ -84,8 +82,8 @@ def test_artifact_registry_filters_local_metadata(tmp_path: Path, monkeypatch):
 
     assert [artifact.kind for artifact in registry.list_artifacts(kind="image")] == ["image"]
     assert [artifact.job_kind for artifact in registry.list_artifacts(job_kind="code_execution")] == ["code_execution"]
-    assert registry.list_artifacts(q="observer") == []
-    assert registry.list_artifacts(q=text_job.job_id) == []
+    assert len(registry.list_artifacts(q="observer")) == 1
+    assert registry.list_artifacts(q=text_job.job_id)[0].job_id == text_job.job_id
     text_artifact = registry.list_artifacts(job_kind="code_execution")[0]
     assert registry.list_artifacts(q=text_artifact.artifact_id)[0].title == "notes.txt"
     assert registry.list_artifacts(kind="missing") == []
@@ -102,7 +100,7 @@ def test_artifact_registry_clamps_negative_limit(tmp_path: Path, monkeypatch):
     assert LocalArtifactRegistry(store).list_artifacts(limit=-1) == []
 
 
-def test_artifact_public_projection_omits_sensitive_fields(tmp_path: Path, monkeypatch):
+def test_artifact_view_exposes_useful_metadata_without_internal_uri(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("src.providers.ARTIFACTS_DIR", tmp_path / "artifacts")
     monkeypatch.setattr("src.artifacts.ARTIFACTS_DIR", tmp_path / "artifacts")
     store = LocalJobStore(tmp_path / "jobs.jsonl")
@@ -117,39 +115,22 @@ def test_artifact_public_projection_omits_sensitive_fields(tmp_path: Path, monke
     )
     artifact = LocalArtifactRegistry(store).list_artifacts()[0]
 
-    public_artifact = artifact_to_public_dict(artifact)
-    serialized = json.dumps(public_artifact, sort_keys=True)
+    artifact_data = artifact_to_dict(artifact)
 
-    assert public_artifact["artifact_id"] == artifact.artifact_id
-    assert public_artifact["title_present"] is True
-    assert public_artifact["metadata"]["checksum_present"] is True
-    assert public_artifact["metadata"]["reference_count"] == 1
-    assert public_artifact["metadata"]["style_present"] is True
-    assert public_artifact["metadata"]["diagram_template_present"] is True
-    assert safe_artifact_download_filename(artifact) == f"artifact-{artifact.artifact_id}.svg"
-    assert artifact_public_metadata({"cost_estimate_usd": "secret-cost-token"})["cost_estimate_usd"] == "0"
-    for sensitive in (
-        artifact.uri,
-        artifact.title,
-        "Private SMC prompt",
-        "private-style",
-        "sliding-mode-observer",
-        "paper://secret#page=7",
-        "secret-owner",
-        "Secret Owner",
-    ):
-        assert sensitive not in serialized
+    assert artifact_data["artifact_id"] == artifact.artifact_id
+    assert artifact_data["title"] == artifact.title
+    assert artifact_data["metadata"]["checksum_sha256"]
+    assert artifact_data["metadata"]["prompt"] == "Private SMC prompt"
+    assert artifact_data["metadata"]["style"] == "private-style"
+    assert artifact_data["metadata"]["diagram_template"] == "sliding-mode-observer"
+    assert artifact_data["metadata"]["reference_uris"] == ["paper://secret#page=7"]
+    assert artifact_data["owner_id"] == "secret-owner"
+    assert artifact_data["owner_label"] == "Secret Owner"
+    assert "uri" not in artifact_data
+    assert safe_artifact_download_filename(artifact) == artifact.title
 
 
-def test_artifact_public_metadata_rejects_unbounded_cost_estimates():
-    for invalid_cost in ("NaN", "sNaN", "Infinity", "-Infinity", "1e999999", "1e-999999"):
-        metadata = artifact_public_metadata({"cost_estimate_usd": invalid_cost})
-
-        assert metadata["cost_estimate_usd"] == "0"
-        assert len(metadata["cost_estimate_usd"]) == 1
-
-
-def test_artifact_download_filename_sanitizes_unexpected_ids():
+def test_artifact_download_filename_uses_title_and_strips_header_breaks():
     artifact = ArtifactRecord(
         artifact_id='abc"\r\nContent-Disposition: x-secret',
         job_id="job-secret",
@@ -157,15 +138,14 @@ def test_artifact_download_filename_sanitizes_unexpected_ids():
         kind="text",
         uri="file:///tmp/secret-owner-result.txt",
         mime_type="text/plain",
-        title="secret-owner-result.txt",
+        title='analysis\r\nContent-Disposition: result.txt',
     )
 
     filename = safe_artifact_download_filename(artifact)
 
-    assert filename.endswith(".txt")
-    assert "abc" not in filename
-    assert "Content-Disposition" not in filename
-    assert "secret" not in filename
+    assert filename == "analysis-Content-Disposition- result.txt"
+    assert "\r" not in filename
+    assert "\n" not in filename
 
 
 def test_local_artifact_path_rejects_escaped_file(tmp_path: Path, monkeypatch):
@@ -231,11 +211,9 @@ def test_format_artifact_references_exposes_stable_ids(tmp_path: Path, monkeypat
     context = format_artifact_references(artifacts)
 
     assert f"[Artifact:{artifacts[0].artifact_id}]" in context
-    assert "style_present=true" in context
-    assert "diagram_template_present=true" in context
+    assert "style=control-diagram" in context
+    assert "template=sliding-mode-observer" in context
     assert "reference_count=1" in context
-    assert "control-diagram" not in context
-    assert "sliding-mode-observer" not in context
     assert "Sliding mode observer block diagram" not in context
     assert "paper://smc#page=3" not in context
     assert "owner=" not in context

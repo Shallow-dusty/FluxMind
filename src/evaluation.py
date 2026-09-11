@@ -97,8 +97,7 @@ class LiveAnswerResult:
 
     case_id: str
     ok: bool
-    request_id_present: bool
-    request_id_redacted: bool
+    request_id: str | None
     citation_ok: bool
     expected_context_coverage: float
     answer_term_coverage: float
@@ -115,8 +114,7 @@ class LiveRetrievalResult:
 
     case_id: str
     ok: bool
-    request_id_present: bool
-    request_id_redacted: bool
+    request_id: str | None
     retrieval_ok: bool
     context_count: int
     expected_context_coverage: float
@@ -442,15 +440,6 @@ def live_eval_settings(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _request_id_evidence(value: Any) -> dict[str, bool]:
-    """Return no-secret request-id evidence without copying the identifier."""
-    present = bool(str(value or "").strip())
-    return {
-        "request_id_present": present,
-        "request_id_redacted": present,
-    }
-
-
 def evaluate_live_query_payload(
     case: dict[str, Any],
     payload: dict[str, Any],
@@ -501,7 +490,7 @@ def evaluate_live_query_payload(
     return LiveAnswerResult(
         case_id=case["id"],
         ok=ok,
-        **_request_id_evidence(payload.get("request_id")),
+        request_id=str(payload.get("request_id") or "").strip() or None,
         citation_ok=citation_ok,
         expected_context_coverage=expected_coverage,
         answer_term_coverage=term_coverage,
@@ -557,7 +546,7 @@ def evaluate_live_retrieval_payload(
     return LiveRetrievalResult(
         case_id=case["id"],
         ok=ok,
-        **_request_id_evidence(payload.get("request_id")),
+        request_id=str(payload.get("request_id") or "").strip() or None,
         retrieval_ok=retrieval_ok,
         context_count=context_count,
         expected_context_coverage=expected_coverage,
@@ -650,8 +639,7 @@ def evaluate_live_config(
                 LiveAnswerResult(
                     case_id=case["id"],
                     ok=False,
-                    request_id_present=False,
-                    request_id_redacted=False,
+                    request_id=None,
                     citation_ok=False,
                     expected_context_coverage=0.0,
                     answer_term_coverage=0.0,
@@ -695,8 +683,7 @@ def evaluate_live_retrieval_config(
                 LiveRetrievalResult(
                     case_id=case["id"],
                     ok=False,
-                    request_id_present=False,
-                    request_id_redacted=False,
+                    request_id=None,
                     retrieval_ok=False,
                     context_count=0,
                     expected_context_coverage=0.0,
@@ -1298,7 +1285,7 @@ def quality_metric_values(
     live_retrieval_results: list[LiveRetrievalResult] | None = None,
     project_root: Path = PROJECT_ROOT,
 ) -> dict[str, int | float]:
-    """Return no-secret quality maturity metrics for staged product gates."""
+    """Return quality metrics for the configured evaluation targets."""
     all_retrieval_cases = retrieval_eval_cases(config)
     metrics: dict[str, int | float] = {
         "seed_paper_count": _seed_library_paper_count(project_root=project_root),
@@ -1789,7 +1776,7 @@ def build_evaluation_report(
     regression_gate_results: list[RegressionGateResult] | None = None,
     eval_file: Path | None = None,
 ) -> dict[str, Any]:
-    """Build a no-secret machine-readable evaluation report."""
+    """Build a machine-readable evaluation report."""
     retrieval_only_results = retrieval_only_results or []
     code_output_results = code_output_results or []
     pdf_structure_results = pdf_structure_results or []

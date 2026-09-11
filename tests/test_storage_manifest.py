@@ -15,7 +15,7 @@ from src.storage_manifest import (
 )
 
 
-def test_runtime_backup_manifest_lists_hashes_without_content(tmp_path: Path):
+def test_runtime_backup_manifest_lists_runtime_hashes(tmp_path: Path):
     root = tmp_path
     metadata_dir = root / "metadata"
     jobs_dir = root / "jobs"
@@ -47,11 +47,7 @@ def test_runtime_backup_manifest_lists_hashes_without_content(tmp_path: Path):
     )
 
     assert manifest["schema_version"] == 1
-    assert manifest["content_exported"] is False
-    assert manifest["secrets_exported"] is False
-    assert manifest["delete_enabled"] is False
     assert manifest["env_file_present"] is True
-    assert manifest["env_file_content_exported"] is False
     assert manifest["total_files"] == 2
     assert manifest["total_bytes"] == corpus.stat().st_size + secret_job.stat().st_size
     assert "not exported" not in str(manifest)
@@ -65,7 +61,7 @@ def test_runtime_backup_manifest_lists_hashes_without_content(tmp_path: Path):
     assert groups["jobs"]["known_files"][0]["sha256"] == hashlib.sha256(secret_job.read_bytes()).hexdigest()
 
 
-def test_runtime_backup_manifest_markdown_is_no_secret(tmp_path: Path):
+def test_runtime_backup_manifest_markdown_lists_inventory(tmp_path: Path):
     root = tmp_path
     metadata_dir = root / "metadata"
     metadata_dir.mkdir()
@@ -88,8 +84,7 @@ def test_runtime_backup_manifest_markdown_is_no_secret(tmp_path: Path):
     report = format_runtime_backup_manifest_markdown(manifest)
 
     assert "# FluxMind Runtime Backup Manifest" in report
-    assert "Content exported: false" in report
-    assert "Secrets exported: false" in report
+    assert "Inventory of runtime paths, sizes, and hashes" in report
     assert "metadata/corpus.json" in report
     assert hashlib.sha256(corpus.read_bytes()).hexdigest() in report
     assert "classified content" not in report
@@ -105,20 +100,19 @@ def test_runtime_manifest_cli_emits_json():
 
     data = json.loads(proc.stdout)
     assert data["mode"] == "local_runtime_backup_manifest"
-    assert data["content_exported"] is False
     assert "groups" in data
 
 
-def test_default_runtime_manifest_includes_local_registry_state():
+def test_default_runtime_manifest_includes_user_and_corpus_state():
     groups = {group.name: group for group in default_runtime_groups()}
     metadata_files = {file_spec.name for file_spec in groups["metadata"].known_files}
 
-    assert "api_key_registry_sqlite" in metadata_files
-    assert "product_registry_sqlite" in metadata_files
-    assert "share_link_registry_sqlite" in metadata_files
+    assert "users_sqlite" in metadata_files
+    assert "corpus_json" in metadata_files
+    assert "chunks_sqlite" in metadata_files
 
 
-def test_runtime_restore_check_accepts_matching_manifest_without_content(tmp_path: Path):
+def test_runtime_restore_check_accepts_matching_manifest(tmp_path: Path):
     root = tmp_path
     metadata_dir = root / "metadata"
     metadata_dir.mkdir()
@@ -145,8 +139,6 @@ def test_runtime_restore_check_accepts_matching_manifest_without_content(tmp_pat
     )
 
     assert check["mode"] == "local_runtime_restore_dry_run"
-    assert check["content_restored"] is False
-    assert check["delete_enabled"] is False
     assert check["ok"] is True
     assert check["checked_groups"] == 1
     assert check["checked_files"] == 1
@@ -216,9 +208,6 @@ def test_runtime_restore_check_supports_absolute_manifest_paths(tmp_path: Path):
         "schema_version": 1,
         "generated_at": "2026-06-02T00:00:00+00:00",
         "mode": "local_runtime_backup_manifest",
-        "content_exported": False,
-        "secrets_exported": False,
-        "delete_enabled": False,
         "hash_algorithm": "sha256",
         "groups": [
             {
@@ -268,7 +257,6 @@ def test_runtime_restore_check_rejects_wrong_manifest_contract(tmp_path: Path):
     )
     manifest["schema_version"] = 2
     manifest["hash_algorithm"] = "md5"
-    manifest["secrets_exported"] = True
 
     check = collect_runtime_restore_check(manifest, project_root=root)
 
@@ -277,7 +265,6 @@ def test_runtime_restore_check_rejects_wrong_manifest_contract(tmp_path: Path):
     assert check["missing_files"] == 0
     assert "schema_version must be 1" in check["manifest_errors"]
     assert "hash_algorithm must be sha256" in check["manifest_errors"]
-    assert "secrets_exported must be false" in check["manifest_errors"]
 
 
 def test_runtime_restore_check_reports_malformed_groups_without_crashing():
@@ -285,9 +272,6 @@ def test_runtime_restore_check_reports_malformed_groups_without_crashing():
         {
             "schema_version": 1,
             "mode": "local_runtime_backup_manifest",
-            "content_exported": False,
-            "secrets_exported": False,
-            "delete_enabled": False,
             "hash_algorithm": "sha256",
             "groups": "not-a-list",
         }
@@ -298,7 +282,7 @@ def test_runtime_restore_check_reports_malformed_groups_without_crashing():
     assert check["manifest_errors"] == ["groups must be a list"]
 
 
-def test_runtime_restore_check_markdown_is_no_action_no_secret(tmp_path: Path):
+def test_runtime_restore_check_markdown_summarizes_comparison(tmp_path: Path):
     root = tmp_path
     metadata_dir = root / "metadata"
     metadata_dir.mkdir()
@@ -321,9 +305,7 @@ def test_runtime_restore_check_markdown_is_no_action_no_secret(tmp_path: Path):
     )
 
     assert "# FluxMind Runtime Restore Dry Run" in report
-    assert "No files are copied" in report
-    assert "Content restored: false" in report
-    assert "Delete enabled: false" in report
+    assert "Compares the current runtime tree" in report
     assert "classified content" not in report
 
 
